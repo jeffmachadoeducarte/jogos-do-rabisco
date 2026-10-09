@@ -1,0 +1,9 @@
+.git
+referencias
+ferramentas
+README.md
+Dockerfile
+nginx.conf
+.gitignore
+.dockerignore
+**/.DS_Store

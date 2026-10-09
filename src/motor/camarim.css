@@ -1,0 +1,69 @@
+/* Camarim (src/motor/camarim.js): o Rabisco com as roupas por cima */
+.rabisco-camarim { position: relative; height: 100%; aspect-ratio: 284 / 900; flex: none; }
+.rabisco-camarim img, .rabisco-camarim svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.rabisco-camarim img { filter: drop-shadow(6px 8px 0 rgba(21, 21, 21, 0.15)); }
+.rabisco-camarim .roupa > :not([stroke]) { stroke: #151515; stroke-width: 6; stroke-linejoin: round; }
+.rabisco-camarim .roupa { animation: camarim-entra 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: 142px 450px; }
+.rabisco-camarim.veste { animation: camarim-pula 0.45s ease; }
+.rabisco-camarim.nao { animation: camarim-nao 0.5s ease; }
+.rabisco-camarim.pula { animation: camarim-festa 0.7s ease 2; }
+@keyframes camarim-entra { from { transform: scale(1.25); opacity: 0; } }
+@keyframes camarim-pula { 40% { transform: translateY(-12px); } }
+@keyframes camarim-nao { 20% { transform: rotate(-5deg); } 40% { transform: rotate(5deg); } 60% { transform: rotate(-4deg); } 80% { transform: rotate(3deg); } }
+@keyframes camarim-festa { 30% { transform: translateY(-30px) rotate(-4deg); } 60% { transform: translateY(0) rotate(4deg); } }
+
+/* guarda-roupa: botões grandes com o ícone e o nome */
+.guarda-roupa { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; align-content: center; }
+.peca {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 96px; padding: 6px;
+  background: #fff; border: 4px solid var(--tinta); border-radius: 20px; box-shadow: 0 5px 0 var(--tinta); cursor: pointer;
+  font: 700 14px var(--texto); line-height: 1.1; text-align: center;
+}
+.peca .ic { font-size: 40px; line-height: 1.1; }
+.peca svg { width: 64px; height: 64px; overflow: visible; }
+.peca svg .roupa > :not([stroke]) { stroke: #151515; stroke-width: 10; stroke-linejoin: round; }
+.peca.vestida { background: #fff8d6; border-color: var(--laranja); box-shadow: 0 5px 0 var(--laranja); }
+.peca.errada { animation: camarim-nao 0.5s ease; background: #ffe3e3; }
+.peca .preco { font: 800 16px var(--texto); color: var(--rosa); }
+.peca .desconto { font: 800 12px var(--texto); color: #fff; background: var(--rosa); border-radius: 999px; padding: 0 8px; }
+.peca:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--tinta); }
+.palco-camarim { width: 100%; height: 100%; display: flex; gap: 16px; align-items: stretch; justify-content: center; }
+.palco-camarim .vitrine { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; justify-content: center; overflow-y: auto; padding: 6px; }
+.palco-camarim .lado-rabisco { flex: none; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; padding: 0 30px; }
+.balao {
+  background: #fff; border: 4px solid var(--tinta); border-radius: 22px; padding: 8px 16px; box-shadow: 0 5px 0 var(--tinta);
+  font: 800 clamp(18px, 2.4vw, 26px) var(--texto); text-align: center;
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .peca { min-height: 74px; padding: 4px; font-size: 12px; border-width: 3px; }
+  .peca .ic { font-size: 30px; }
+  .peca svg { width: 46px; height: 46px; }
+  .guarda-roupa { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 7px; }
+  .balao { font-size: 16px; padding: 4px 10px; }
+}
+@media (orientation: portrait) {
+  .palco-camarim { flex-direction: column; }
+  .palco-camarim .lado-rabisco { height: 42%; }
+  .palco-camarim .vitrine { flex: 1 1 0; }
+}
+
+/* jogos de vestir com objetivo (src/motor/vestir.js): efeitos e cenas de clima */
+.lado-rabisco .balao { position: relative; z-index: 2; margin-bottom: 8px; max-width: 280px; }
+.lado-rabisco .rabisco-camarim { height: 100%; flex: none; }
+.lado-rabisco:has(> .balao) .rabisco-camarim { height: calc(100% - 90px); }
+.efeitos { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 3; }
+.efeito { position: absolute; font-size: 34px; transform: translate(-50%, -50%); animation: vestir-voa 1.6s ease-out backwards; }
+@keyframes vestir-voa { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); } 15% { opacity: 1; } 100% { left: var(--x1); top: var(--y1); opacity: 0; transform: translate(-50%, -50%) scale(1.4); } }
+.cena-chuva { background: linear-gradient(#5b7a99, #9db4c8); border-radius: 28px; position: relative; overflow: hidden; }
+.cena-chuva::before { content: ""; position: absolute; inset: -40px 0 0; pointer-events: none; opacity: 0.6;
+  background-image: repeating-linear-gradient(105deg, transparent 0 18px, rgba(255,255,255,0.7) 18px 20px, transparent 20px 46px);
+  animation: vestir-chuva 0.6s linear infinite; }
+@keyframes vestir-chuva { to { transform: translate(-10px, 40px); } }
+.cena-sol { background: radial-gradient(circle at 12% 12%, #fff3a0 0 60px, transparent 61px), linear-gradient(#5fc8ff 0 62%, #f6d7b0 62%); border-radius: 28px; }
+.cena-frio { background: linear-gradient(#b9d7ef, #eef6fc 65%, #ffffff 65%); border-radius: 28px; position: relative; overflow: hidden; }
+.cena-frio::before { content: ""; position: absolute; inset: -60px 0 0; pointer-events: none;
+  background-image: radial-gradient(circle, #fff 0 3px, transparent 4px), radial-gradient(circle, #fff 0 2px, transparent 3px);
+  background-size: 60px 60px, 37px 37px; animation: vestir-neve 3s linear infinite; }
+@keyframes vestir-neve { to { transform: translateY(60px); } }
+.cena-chuva > *, .cena-frio > * { position: relative; }
+.cena-profissao { background: rgba(255, 255, 255, 0.35); border-radius: 28px; }

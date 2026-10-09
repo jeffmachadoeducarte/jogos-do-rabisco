@@ -1,0 +1,276 @@
+@font-face {
+  font-family: "Neulis Cursive";
+  src: url("../../assets/fontes/NeulisCursive-Black.otf") format("opentype");
+  font-weight: 900;
+}
+
+:root {
+  --ciano: #00b5f0;
+  --rosa: #ec2e8c;
+  --laranja: #ff7a00;
+  --amarelo: #ffcc1f;
+  --tinta: #151515;
+  font-family: "Baloo 2", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; height: 100%; overflow: hidden;
+  background: #8fdcff;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+}
+
+#cena { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+.escondido { display: none !important; }
+
+/* ---------- HUD ---------- */
+#hud { position: fixed; inset: 0; pointer-events: none; }
+
+.painel {
+  position: absolute; top: 14px; left: 16px;
+  display: flex; align-items: center; gap: 10px;
+  background: #fff;
+  border: 5px solid var(--tinta);
+  box-shadow: 0 7px 0 var(--tinta);
+  border-radius: 28px;
+  padding: 8px 14px;
+}
+#figura { font-size: clamp(40px, 6vw, 62px); line-height: 1; animation: balanca 1.8s ease-in-out infinite; }
+@keyframes balanca { 50% { transform: rotate(10deg); } }
+#casas { display: flex; gap: 8px; }
+.casa {
+  width: clamp(44px, 6vw, 62px); height: clamp(52px, 7vw, 72px);
+  border: 4px solid var(--ciano);
+  border-radius: 14px;
+  background: #eef9ff;
+  display: grid; place-items: center;
+  font-size: clamp(34px, 5vw, 54px);
+  font-weight: 800;
+  color: var(--rosa);
+}
+.casa.cheia { animation: estoura 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes estoura { from { transform: scale(1.7); } }
+
+.moedas {
+  position: absolute; top: 18px; right: 20px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: clamp(36px, 5vw, 54px); font-weight: 800; color: #fff;
+  -webkit-text-stroke: 3px var(--tinta); paint-order: stroke fill;
+  text-shadow: 0 5px 0 var(--tinta);
+}
+.moedas img { width: clamp(44px, 6vw, 62px); }
+
+#aviso {
+  position: absolute; top: 26%; left: 50%;
+  transform: translate(-50%, -50%) scale(0.5);
+  opacity: 0;
+  font-size: clamp(34px, 6vw, 70px); font-weight: 800; color: #fff;
+  -webkit-text-stroke: 4px var(--tinta); paint-order: stroke fill;
+  text-shadow: 0 6px 0 var(--tinta);
+  white-space: nowrap;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s;
+}
+#aviso.ativo { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+
+.toque {
+  position: absolute; bottom: 18px; left: 0; right: 0;
+  display: none; justify-content: space-between; align-items: flex-end;
+  padding: 0 22px;
+}
+body.touch .toque { display: flex; }
+.setas { display: flex; gap: 16px; }
+.toque button {
+  pointer-events: auto;
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  border: 6px solid rgba(21, 21, 21, 0.55);
+  background: rgba(255, 255, 255, 0.5);
+  font-size: 52px; color: var(--tinta);
+  touch-action: none;
+}
+#btn-pulo { width: 150px; height: 150px; font-size: 64px; }
+.toque button.apertado { background: rgba(255, 255, 255, 0.85); transform: scale(0.94); }
+
+#som {
+  position: fixed; bottom: 16px; right: 50%; transform: translateX(50%);
+  z-index: 20; font-size: 30px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 4px solid var(--tinta); border-radius: 999px;
+  width: 62px; height: 62px;
+}
+
+/* ---------- Telas ---------- */
+.tela {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 16px;
+}
+#abertura {
+  align-items: flex-end;
+  padding-right: 7vw;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 40%, rgba(255, 255, 255, 0.35));
+}
+#abertura > * { width: min(620px, 58vw); }
+#abertura .logo { width: clamp(140px, 17vw, 210px); margin: 0 auto 4px; }
+#abertura h1 {
+  margin: 0;
+  font-family: "Neulis Cursive", "Baloo 2"; font-weight: 900;
+  font-size: clamp(56px, 9vw, 120px); line-height: 1;
+  color: var(--ciano);
+  -webkit-text-stroke: 4px #fff; paint-order: stroke fill;
+  text-shadow: 6px 8px 0 var(--rosa);
+  animation: flutua 3s ease-in-out infinite;
+}
+#abertura .sub {
+  margin: 4px 0 22px;
+  font-size: clamp(26px, 4vw, 46px); font-weight: 800; color: #fff;
+  -webkit-text-stroke: 3px var(--tinta); paint-order: stroke fill;
+}
+#abertura .botao { width: auto; align-self: center; margin: 0 auto; }
+#abertura .dica {
+  margin: 22px auto 0; width: auto;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 999px; padding: 6px 20px;
+  font-size: clamp(16px, 2.2vw, 22px); font-weight: 600;
+}
+@keyframes flutua { 50% { transform: translateY(-8px); } }
+
+.botao {
+  font-family: inherit; font-weight: 800;
+  font-size: clamp(28px, 4.6vw, 48px);
+  color: #fff; border: none; border-radius: 999px;
+  padding: 8px 44px 12px;
+  box-shadow: 0 8px 0 var(--tinta);
+  cursor: pointer;
+}
+.botao:active { transform: translateY(5px); box-shadow: 0 3px 0 var(--tinta); }
+.botao.rosa { background: var(--rosa); }
+.botao.ciano { background: var(--ciano); }
+#jogar { animation: respira 1.4s ease-in-out infinite; }
+@keyframes respira { 50% { transform: scale(1.06); } }
+
+#vitoria {
+  align-items: flex-end; padding-right: 5vw;
+  background: linear-gradient(90deg, rgba(10, 42, 74, 0) 35%, rgba(10, 42, 74, 0.45));
+}
+.cartao {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  background: #fff;
+  border-radius: 40px;
+  box-shadow: 8px 10px 0 var(--tinta);
+  padding: 20px 36px;
+  max-width: min(560px, 92vw);
+}
+.cartao .titulo {
+  font-family: "Neulis Cursive", "Baloo 2"; font-weight: 900;
+  font-size: clamp(44px, 7vw, 80px); line-height: 1.05;
+  color: var(--ciano); text-shadow: 4px 5px 0 var(--rosa);
+}
+#vit-figura { font-size: clamp(60px, 9vw, 104px); line-height: 1.1; }
+#vit-palavra { display: flex; gap: 10px; min-height: 1.1em; font-size: clamp(56px, 9vw, 100px); font-weight: 800; line-height: 1.05; }
+#vit-palavra span {
+  color: var(--rosa);
+  -webkit-text-stroke: 3px var(--tinta); paint-order: stroke fill;
+  transform: scale(0);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+#vit-palavra span.dita { transform: scale(1); }
+#vit-selos { font-size: clamp(22px, 3vw, 32px); font-weight: 800; color: var(--laranja); margin-bottom: 10px; }
+.cartao .botoes { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+.cartao .botao { font-size: clamp(22px, 3vw, 34px); padding: 6px 28px 10px; }
+
+@media (max-width: 760px) {
+  #abertura { align-items: center; justify-content: flex-start; padding: 16px; background: none; }
+  #abertura > * { width: auto; }
+  #vitoria { align-items: center; justify-content: flex-end; padding: 16px; }
+}
+
+/* ---------- Níveis, palavras compostas e cano ---------- */
+#nivel-hud {
+  writing-mode: vertical-rl; transform: rotate(180deg);
+  font-size: 15px; font-weight: 800; color: var(--rosa); letter-spacing: 0.04em;
+}
+.hifen { font-size: clamp(30px, 4vw, 48px); font-weight: 800; color: var(--tinta); align-self: center; padding: 0 2px; }
+#casas.muitas { gap: 5px; }
+#casas.muitas .casa { width: clamp(30px, 3.6vw, 44px); height: clamp(40px, 4.8vw, 56px); font-size: clamp(24px, 3.2vw, 38px); border-width: 3px; border-radius: 10px; }
+#vit-palavra.muitas { font-size: clamp(34px, 5vw, 60px); gap: 4px; flex-wrap: wrap; justify-content: center; }
+#vit-palavra .hifen { transform: none; color: var(--rosa); }
+
+.niveis { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; width: auto !important; }
+.nivel {
+  font-family: inherit; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 0;
+  min-width: 170px; padding: 10px 18px 12px;
+  background: #fff; color: var(--tinta);
+  border: 5px solid var(--tinta); border-radius: 26px;
+  box-shadow: 0 7px 0 var(--tinta);
+}
+.nivel b { font-size: 30px; line-height: 1.1; color: var(--rosa); }
+.nivel span { font-size: 17px; font-weight: 600; }
+.nivel i { font-style: normal; font-weight: 800; font-size: 15px; color: var(--ciano); letter-spacing: 0.06em; }
+.nivel:hover, .nivel:focus-visible { transform: translateY(-3px); outline: none; }
+.nivel:active { transform: translateY(4px); box-shadow: 0 3px 0 var(--tinta); }
+.nivel.feito b::after { content: " ⭐"; }
+
+#btn-baixo { display: none; }
+#btn-baixo.visivel { display: block; background: rgba(255, 204, 31, 0.85); animation: chama 0.8s ease-in-out infinite; }
+@keyframes chama { 50% { transform: translateY(6px); } }
+.botao.branco { background: #fff; color: var(--tinta); }
+
+#vit-progresso { font-size: clamp(18px, 2.4vw, 24px); font-weight: 800; color: var(--tinta); background: #eef9ff; border-radius: 999px; padding: 2px 16px; }
+.nivel { min-width: 150px; padding: 14px 22px; }
+.nivel b { font-size: 34px; }
+
+/* ---------- Celular e telas baixas ---------- */
+.so-toque { display: none; }
+body.touch .so-teclado { display: none; }
+body.touch .so-toque { display: inline; }
+body.com-controle .so-teclado { display: inline; }
+body.com-controle .so-toque { display: none; }
+/* nas telas de menu o som vai para o canto, longe dos botões */
+body:has(.tela:not(.escondido)) #som { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 12px); right: 12px; transform: none; }
+@media (max-height: 520px) {
+  #abertura .logo { width: clamp(80px, 13vh, 120px); margin-bottom: 0; }
+  #abertura h1 { font-size: clamp(40px, 14vh, 76px); }
+  #abertura .sub { font-size: clamp(18px, 6vh, 30px); margin: 0 0 8px; }
+  #abertura .dica { margin-top: 8px; font-size: 14px; }
+  .nivel { min-width: 110px; padding: 6px 14px; border-width: 4px; }
+  .nivel b { font-size: 24px; }
+  .toque { bottom: 10px; padding: 0 14px; }
+  .toque button { width: 84px; height: 84px; font-size: 38px; }
+  #btn-pulo { width: 104px; height: 104px; font-size: 46px; }
+  .setas { gap: 10px; }
+  .painel { top: 8px; left: 10px; padding: 4px 10px; border-width: 4px; }
+  #figura { font-size: clamp(30px, 10vh, 46px); }
+  .casa { width: clamp(30px, 9vh, 46px); height: clamp(36px, 11vh, 54px); font-size: clamp(24px, 8vh, 38px); }
+  .moedas { top: 10px; font-size: clamp(28px, 9vh, 44px); }
+  .moedas img { width: clamp(32px, 10vh, 48px); }
+  .cartao { padding: 10px 24px; gap: 2px; }
+  .cartao .titulo { font-size: clamp(32px, 11vh, 60px); }
+  #vit-figura { font-size: clamp(40px, 13vh, 70px); }
+  #vit-palavra { font-size: clamp(36px, 12vh, 70px); }
+  .cartao .botao { font-size: clamp(18px, 6vh, 28px); padding: 4px 20px 8px; }
+}
+@media (max-width: 760px) and (orientation: portrait) {
+  #abertura { justify-content: center; }
+  .nivel { min-width: 0; padding: 10px 18px; }
+  .toque button { width: 92px; height: 92px; font-size: 40px; }
+  #btn-pulo { width: 116px; height: 116px; }
+  .painel { flex-wrap: wrap; max-width: calc(100vw - 110px); }
+}
+
+/* ---------- Modos (modos.js) ---------- */
+.casas-e-pergunta { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+#pergunta-sr { font-size: clamp(18px, 2.4vw, 26px); font-weight: 800; color: var(--tinta); max-width: min(560px, 60vw); line-height: 1.15; }
+#pergunta-sr[hidden] { display: none; }
+#casas.largas .casa { width: auto; min-width: clamp(64px, 8vw, 90px); padding: 0 8px; }
+#casas.respostas .casa { width: auto; min-width: clamp(44px, 6vw, 62px); height: auto; min-height: clamp(36px, 5vw, 48px); padding: 0 8px; font-size: clamp(14px, 1.8vw, 20px); }
+#vit-palavra.respostas { font-size: clamp(22px, 3.4vw, 36px); flex-wrap: wrap; justify-content: center; gap: 6px 14px; }
+/* Mini: sem setas; a tela inteira é o botão de pular */
+body.modo-mini .toque { display: none !important; }
+body.modo-mini #btn-pulo { display: none; }
+@media (max-height: 520px) {
+  #pergunta-sr { font-size: clamp(14px, 4.4vh, 20px); }
+  #casas.largas .casa { min-width: clamp(44px, 12vh, 64px); }
+}

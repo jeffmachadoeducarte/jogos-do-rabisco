@@ -1,0 +1,183 @@
+/* Painel de entrada: a cena 3D ocupa a tela; título à esquerda (o Rabisco acena logo abaixo),
+   cartões de idade numa fileira embaixo e a lista de jogos abre como painel à direita. */
+@font-face {
+  font-family: "Neulis Cursive";
+  src: url("../assets/fontes/NeulisCursive-Black.otf") format("opentype");
+  font-weight: 900;
+}
+:root {
+  --ciano: #00b5f0;
+  --rosa: #ec2e8c;
+  --laranja: #ff7a00;
+  --amarelo: #ffcc1f;
+  --tinta: #151515;
+  --branco: #ffffff;
+  --papel: #f4fbff;
+  --raio: 26px;
+  --texto: "Baloo 2", system-ui, sans-serif;
+  --titulo: "Neulis Cursive", "Baloo 2", system-ui, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; overflow: hidden;
+  background: #9fdcff;
+  color: var(--tinta);
+  font-family: var(--texto);
+}
+#cena { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+[hidden] { display: none !important; }
+
+.topo {
+  position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 16px; right: 16px;
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  pointer-events: none;
+}
+.topo .logo {
+  height: clamp(44px, 7vw, 70px);
+  background: rgba(255, 255, 255, 0.85); border-radius: 18px; padding: 6px 12px;
+  box-shadow: 0 5px 0 rgba(21, 21, 21, 0.18);
+}
+.filtro-ingles {
+  pointer-events: auto;
+  display: flex; align-items: center; gap: 8px;
+  background: var(--branco); border: 3px solid var(--tinta); border-radius: 999px;
+  padding: 6px 14px; font-weight: 800; cursor: pointer; user-select: none;
+  box-shadow: 0 4px 0 var(--tinta);
+}
+.filtro-ingles input { width: 20px; height: 20px; accent-color: var(--rosa); }
+
+.boas-vindas {
+  position: fixed; top: clamp(90px, 15vh, 140px); left: clamp(16px, 5vw, 70px);
+  max-width: min(560px, 90vw);
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: none;
+}
+.boas-vindas h1 {
+  margin: 0;
+  font-family: var(--titulo); font-weight: 900;
+  font-size: clamp(46px, 8vw, 104px); line-height: 0.95;
+  color: var(--ciano);
+  -webkit-text-stroke: 4px var(--branco); paint-order: stroke fill;
+  text-shadow: 5px 7px 0 var(--rosa);
+  text-wrap: balance;
+}
+.boas-vindas h1 span { color: var(--laranja); }
+.boas-vindas p {
+  display: inline-block; margin: 14px 0 0;
+  background: var(--branco); border-radius: 999px; padding: 4px 18px;
+  font-size: clamp(18px, 2.4vw, 26px); font-weight: 700;
+  box-shadow: 0 5px 0 rgba(21, 21, 21, 0.2);
+}
+.boas-vindas.recolhida { opacity: 0; transform: translateY(-16px); }
+
+/* fileira de idades */
+.faixas {
+  position: fixed; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px;
+  max-width: 1180px; margin: 0 auto;
+}
+.faixa {
+  font-family: inherit; text-align: left; cursor: pointer;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0;
+  min-width: 0; padding: 12px 16px 14px;
+  background: var(--cor); color: var(--branco);
+  border: 4px solid var(--tinta); border-radius: var(--raio);
+  box-shadow: 0 8px 0 var(--tinta);
+  transition: transform 0.15s;
+}
+.faixa:hover, .faixa:focus-visible { transform: translateY(-5px) rotate(-1deg); outline: none; }
+.faixa:active { transform: translateY(4px); box-shadow: 0 4px 0 var(--tinta); }
+.faixa.aberta { transform: translateY(-10px); outline: 4px solid var(--branco); outline-offset: -10px; }
+.faixa .emoji { font-size: clamp(26px, 3vw, 38px); line-height: 1.1; }
+.faixa strong { font-size: clamp(18px, 2vw, 26px); line-height: 1.05; text-wrap: balance; }
+.faixa .idade { font-size: clamp(13px, 1.3vw, 16px); font-weight: 600; opacity: 0.95; }
+.faixa .contagem {
+  margin-top: 6px; background: rgba(255, 255, 255, 0.28);
+  border-radius: 999px; padding: 0 10px; font-weight: 800; font-size: 14px;
+}
+
+/* painel de jogos */
+.painel-jogos {
+  position: fixed; top: calc(env(safe-area-inset-top, 0px) + 96px); right: 16px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 170px);
+  width: min(520px, calc(100vw - 32px));
+  display: flex; flex-direction: column; gap: 10px;
+  background: var(--papel);
+  border: 5px solid var(--tinta); border-radius: 30px;
+  box-shadow: 8px 10px 0 var(--tinta);
+  padding: 14px 16px 16px;
+  animation: entra 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes entra { from { transform: translateX(40px); opacity: 0; } }
+.painel-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.painel-topo h2 { margin: 0; font-size: clamp(26px, 3vw, 34px); line-height: 1.05; color: var(--cor); -webkit-text-stroke: 1px var(--tinta); }
+.painel-topo p { margin: 0; font-weight: 700; }
+.fechar {
+  font: 800 22px var(--texto); width: 44px; height: 44px; flex: none;
+  border: 3px solid var(--tinta); border-radius: 50%; background: var(--branco); cursor: pointer;
+}
+.nota { margin: 0; background: color-mix(in srgb, var(--cor) 18%, white); border-radius: 14px; padding: 8px 12px; font-weight: 600; }
+.jogos { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding: 4px 4px 8px; min-height: 0; }
+.jogo {
+  display: flex; flex-direction: column; gap: 2px;
+  background: var(--branco); color: var(--tinta); text-decoration: none;
+  border: 3px solid color-mix(in srgb, var(--cor) 60%, white); border-radius: 20px;
+  padding: 12px 14px;
+}
+.jogo.pronto { border-color: var(--tinta); box-shadow: 0 6px 0 var(--cor); }
+.jogo.pronto:hover, .jogo.pronto:focus-visible { transform: translateY(-3px); outline: none; }
+.jogo h3 { margin: 4px 0 0; font-size: 22px; line-height: 1.1; }
+.jogo p { margin: 0 0 6px; font-size: 16px; line-height: 1.35; }
+.habilidade {
+  align-self: flex-start; font-weight: 800; font-size: 14px;
+  background: color-mix(in srgb, var(--cor) 20%, white); border-radius: 999px; padding: 1px 12px;
+}
+.selos { display: flex; flex-wrap: wrap; gap: 6px; }
+.selo { font-size: 13px; font-weight: 800; color: var(--branco); border-radius: 999px; padding: 1px 10px; }
+.selo.estilo { background: var(--tinta); }
+.selo.ingles { background: var(--rosa); }
+.selo.breve { background: #9aa3ad; }
+.selo.pronto { background: var(--laranja); }
+.vazio { font-weight: 700; }
+
+.som {
+  position: fixed; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 74px);
+  width: 48px; height: 48px; font-size: 22px;
+  background: rgba(255, 255, 255, 0.85); border: 3px solid var(--tinta); border-radius: 50%; cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .faixas { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .painel-jogos { bottom: calc(env(safe-area-inset-bottom, 0px) + 270px); }
+}
+@media (max-width: 560px) {
+  .faixas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .faixa { padding: 8px 12px 10px; }
+  .faixa .contagem { display: none; }
+  .painel-jogos { top: 80px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); z-index: 2; }
+  .boas-vindas { top: 84px; }
+}
+/* celular deitado: idades numa fileira baixa, título pequeno, painel por cima de tudo */
+@media (max-height: 520px) and (orientation: landscape) {
+  .topo .logo { height: 40px; padding: 4px 10px; }
+  .filtro-ingles { padding: 3px 12px; font-size: 14px; }
+  .som { top: calc(env(safe-area-inset-top, 0px) + 60px); width: 42px; height: 42px; font-size: 18px; }
+  .boas-vindas { top: 64px; }
+  .boas-vindas h1 { font-size: clamp(34px, 11vh, 56px); }
+  .boas-vindas p { margin-top: 8px; font-size: 16px; }
+  .faixas { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); }
+  .faixa { padding: 6px 10px 8px; border-width: 3px; box-shadow: 0 5px 0 var(--tinta); border-radius: 18px; }
+  .faixa .emoji { font-size: 22px; }
+  .faixa strong { font-size: 16px; }
+  .faixa .idade { font-size: 12px; line-height: 1.15; }
+  .faixa .contagem { display: none; }
+  .painel-jogos { top: 10px; bottom: 10px; right: 10px; width: min(480px, 62vw); z-index: 2; padding: 10px 12px; gap: 6px; }
+  .painel-topo h2 { font-size: 24px; }
+  .jogo h3 { font-size: 19px; }
+  .jogo p { font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .faixa, .painel-jogos, .boas-vindas { transition: none; animation: none; }
+}

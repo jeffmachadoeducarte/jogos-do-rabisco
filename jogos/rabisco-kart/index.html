@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Rabisco Kart</title>
+  <link rel="icon" href="../../assets/marca/logos/icone-rosa.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+  <canvas id="cena"></canvas>
+
+  <div id="hud" class="escondido">
+    <div class="placar">
+      <div id="posicao">4º</div>
+      <div id="volta">Volta 1/3</div>
+    </div>
+    <div id="pergunta" class="pergunta"></div>
+    <canvas id="mapa" width="220" height="220"></canvas>
+    <div id="amigos" hidden>🚌 0</div>
+    <div id="mensagem"></div>
+    <div id="linhas-turbo"></div>
+    <div class="toque">
+      <button id="btn-esq" aria-label="Virar para a esquerda">◀</button>
+      <button id="btn-dir" aria-label="Virar para a direita">▶</button>
+    </div>
+  </div>
+
+  <div id="contagem"></div>
+  <button id="som" aria-label="Ligar ou desligar o som">🔊</button>
+
+  <section id="abertura" class="tela">
+    <img class="logo" src="../../assets/marca/logos/azul-icone-rosa.png" alt="Educarte Escola Cristã">
+    <h1>Rabisco <span>Kart</span></h1>
+    <p class="sub">Grande Prêmio da Escola</p>
+    <button id="jogar" class="botao rosa">CORRER ▶</button>
+    <p class="dica"><span class="so-teclado" id="dica">Setas ◀ ▶ para virar · <span class="dica-modo">Passe pelo número certo para ganhar turbo!</span> · P para pausar</span><span class="so-toque">Toque ◀ ▶ para virar · <span class="dica-modo">Passe pelo número certo para ganhar turbo!</span></span></p>
+  </section>
+
+  <section id="resultado" class="tela escondido">
+    <div class="cartao">
+      <div class="texto">
+        <div id="res-lugar">1º lugar!</div>
+        <div id="res-trofeu">🏆</div>
+        <div id="res-acertos"></div>
+        <div class="botoes">
+          <button id="de-novo" class="botao rosa">Correr de novo ↻</button>
+          <button id="sair" class="botao ciano">Sair</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script type="module" src="jogo.js"></script>
+</body>
+</html>

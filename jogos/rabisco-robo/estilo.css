@@ -1,0 +1,28 @@
+/* Rabisco Robô: tabuleiro 6 × 6 e a montagem do programa com blocos */
+.mesa-robo { width: 100%; height: 100%; display: flex; gap: 18px; align-items: center; justify-content: center; }
+.quadro-robo { flex: 1 1 0; height: 100%; min-width: 0; display: grid; place-items: center; container-type: size; }
+.tabuleiro-robo { --c: min(calc(100cqh / 6.4), calc(100cqw / 6.4)); position: relative; display: grid; grid-template-columns: repeat(6, var(--c)); background: #9fe08a; border: 5px solid var(--tinta); border-radius: 18px; box-shadow: 0 7px 0 var(--tinta); overflow: hidden; }
+.casa-robo { width: var(--c); aspect-ratio: 1; display: grid; place-items: center; font-size: calc(var(--c) * 0.55); border: 1px dashed rgba(21,21,21,0.18); }
+.casa-robo.pedra { background: #7dbf6a; }
+.casa-robo.rastro { background: #fff3b0; }
+.robo { position: absolute; left: 0; top: 0; width: var(--c); height: var(--c); transform: translate(calc(var(--x) * var(--c)), calc(var(--y) * var(--c))); transition: transform 0.38s ease-in-out; display: grid; place-items: center; pointer-events: none; }
+.robo.sem-anim { transition: none; }
+.robo img { height: calc(var(--c) * 0.92); width: auto; filter: drop-shadow(2px 3px 0 rgba(0,0,0,0.2)); }
+.robo .seta { position: absolute; right: -4px; bottom: -2px; font-size: calc(var(--c) * 0.34); color: var(--rosa); -webkit-text-stroke: 1px var(--tinta); transition: transform 0.3s; }
+.robo.bateu img { animation: rr-bateu 0.4s ease 2; }
+@keyframes rr-bateu { 25% { transform: rotate(-12deg); } 75% { transform: rotate(12deg); } }
+.lado-robo { flex: 0 1 380px; display: flex; flex-direction: column; gap: 10px; max-height: 100%; }
+.rotulo-prog { font-weight: 800; }
+.programa { list-style: none; margin: 0; padding: 8px; min-height: 64px; display: flex; flex-wrap: wrap; gap: 6px; background: #fff; border: 4px solid var(--tinta); border-radius: 16px; }
+.programa .vazio { color: #8a96a3; font-weight: 700; align-self: center; padding: 0 6px; }
+.bloco-prog, .bloco { width: 52px; height: 52px; display: grid; place-items: center; font: 800 24px var(--texto); border-radius: 12px; border: 3px solid var(--tinta); background: #e8f7ff; }
+.bloco-prog.ativo { background: var(--amarelo); transform: scale(1.12); }
+.blocos { display: flex; flex-wrap: wrap; gap: 8px; }
+.bloco { cursor: pointer; box-shadow: 0 4px 0 var(--tinta); }
+.bloco:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tinta); }
+.bloco-rep2, .bloco-rep3, .bloco-rep5 { background: #ffe1f0; font-size: 18px; }
+.acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.acoes .botao { font-size: 22px; padding: 4px 18px 8px; }
+.acoes .rodar { background: var(--verde); }
+@media (orientation: portrait) { .mesa-robo { flex-direction: column; } .quadro-robo { width: 100%; height: auto; flex: 1 1 0; min-height: 0; } .lado-robo { flex: 0 0 auto; width: 100%; } }
+@media (max-height: 520px) and (orientation: landscape) { .bloco-prog, .bloco { width: 38px; height: 38px; font-size: 18px; } .programa { min-height: 46px; padding: 4px; } .acoes .botao { font-size: 16px; padding: 2px 12px 5px; } .lado-robo { gap: 6px; } .rotulo-prog { font-size: 13px; } }

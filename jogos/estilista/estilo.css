@@ -1,0 +1,24 @@
+/* Rabisco Estilista: vitrine por categoria, orçamento e cartão do desconto */
+.categoria { display: flex; align-items: center; gap: 10px; }
+.categoria h3 { margin: 0; width: 82px; flex: none; font-size: 18px; text-align: right; }
+.categoria .guarda-roupa { flex: 1; grid-template-columns: repeat(3, minmax(84px, 120px)); justify-content: start; }
+.peca { position: relative; }
+.peca .desconto { position: absolute; top: -10px; right: -8px; transform: rotate(10deg); }
+.peca s { color: #777; font-size: 14px; }
+.saldo { font-size: 18px !important; line-height: 1.25; }
+.saldo b { color: var(--verde); } .saldo b.negativo { color: #e63946; }
+.conta-desconto { font: 700 22px var(--texto); text-align: center; } .conta-desconto .rosa { color: var(--rosa); }
+.casca-cartao > svg { width: 90px; height: 90px; overflow: visible; }
+.casca-cartao > svg .roupa > :not([stroke]) { stroke: #151515; stroke-width: 10; stroke-linejoin: round; }
+.pergunta-troco { font: 800 26px var(--texto); }
+.opcoes-troco { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.opcoes-troco .botao { font-size: 24px; padding: 4px 22px 8px; } .opcoes-troco .botao:disabled { opacity: 0.35; }
+.dica-conta { margin: 0; font-weight: 700; color: var(--laranja); min-height: 1.2em; text-align: center; }
+.botao.pequeno { font-size: 18px; padding: 3px 16px 6px; box-shadow: 0 4px 0 var(--tinta); }
+.pote-fundo { position: fixed; inset: 0; z-index: 18; display: grid; place-items: center; background: rgba(10, 42, 74, 0.4); padding: 12px; }
+@media (max-height: 520px) and (orientation: landscape) {
+  .categoria h3 { width: 60px; font-size: 14px; } .categoria .guarda-roupa { grid-template-columns: repeat(3, minmax(64px, 84px)); }
+  .peca { min-height: 58px; } .peca svg { width: 34px; height: 34px; } .peca .preco { font-size: 12px; }
+  .vitrine { gap: 4px !important; } .saldo { font-size: 13px !important; }
+  .casca-cartao > svg { width: 50px; height: 50px; } .conta-desconto { font-size: 16px; } .pergunta-troco { font-size: 18px; } .opcoes-troco .botao { font-size: 18px; }
+}

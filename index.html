@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Jogos do Rabisco</title>
+  <meta name="description" content="Jogos pedagógicos do Rabisco, mascote da Educarte Escola Cristã.">
+  <link rel="icon" href="assets/marca/logos/icone-rosa.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+  <canvas id="cena" aria-hidden="true"></canvas>
+
+  <header class="topo">
+    <img class="logo" src="assets/marca/logos/azul-icone-rosa.png" alt="Educarte Escola Cristã">
+    <label class="filtro-ingles">
+      <input type="checkbox" id="so-ingles">
+      <span>🇺🇸 Só inglês</span>
+    </label>
+  </header>
+
+  <section class="boas-vindas" id="boas-vindas">
+    <h1>Jogos do <span>Rabisco</span></h1>
+    <p>Escolha a sua idade e vamos brincar!</p>
+  </section>
+
+  <nav class="faixas" id="faixas" aria-label="Escolha a idade"></nav>
+
+  <aside class="painel-jogos" id="painel" hidden>
+    <div class="painel-topo">
+      <div>
+        <h2 id="painel-titulo"></h2>
+        <p id="painel-idade"></p>
+      </div>
+      <button class="fechar" id="fechar" aria-label="Voltar para as idades">✕</button>
+    </div>
+    <p class="nota" id="painel-nota" hidden></p>
+    <div class="jogos" id="jogos"></div>
+  </aside>
+
+  <button id="som" class="som" aria-label="Ligar ou desligar o som">🔊</button>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+/* Desenhos para colorir (src/motor/colorir.js) */
+.desenho {
+  width: 100%; height: 100%; max-width: 100%; max-height: 100%;
+  background: #fff; border: 5px solid var(--tinta); border-radius: 24px; box-shadow: 0 8px 0 var(--tinta);
+}
+.desenho [data-parte] { stroke: var(--tinta); stroke-width: 3.5; stroke-linejoin: round; transition: fill 0.25s; }
+.desenho [data-foco] { cursor: pointer; }
+.desenho [data-foco]:hover { filter: brightness(0.94); }
+.desenho .controle-foco { outline: none !important; stroke: var(--amarelo); stroke-width: 7; paint-order: stroke; }
+.desenho .pinta { animation: colorir-pinta 0.35s ease; transform-box: fill-box; transform-origin: center; }
+@keyframes colorir-pinta { 40% { transform: scale(1.06); } }
+.desenho .rotulo { font: 800 16px "Baloo 2", sans-serif; text-anchor: middle; dominant-baseline: central; fill: var(--tinta); pointer-events: none; paint-order: stroke; stroke: #fff; stroke-width: 3px; }
+.desenho .rotulo.feito { display: none; }
+.desenho .errou { animation: colorir-nao 0.4s ease; transform-box: fill-box; transform-origin: center; }
+@keyframes colorir-nao { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+
+/* paleta de cores */
+.paleta { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.paleta .cor {
+  width: var(--tam, 52px); height: var(--tam, 52px); border-radius: 50%; border: 4px solid var(--tinta); box-shadow: 0 4px 0 var(--tinta);
+  cursor: pointer; position: relative; padding: 0; font: 800 18px var(--texto); color: var(--tinta);
+}
+.paleta .cor.escolhida { transform: translateY(-6px) scale(1.12); box-shadow: 0 8px 0 var(--tinta), 0 0 0 5px #fff, 0 0 0 9px var(--tinta); }
+.paleta .cor .num { position: absolute; inset: 0; display: grid; place-items: center; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
+
+/* área do jogo de colorir: desenho e paleta lado a lado (deitado) ou um embaixo do outro (em pé).
+   O quadro é um "container": o desenho ocupa o maior 4:3 que couber, sem faixas brancas. */
+.mesa-colorir { width: 100%; height: 100%; display: flex; gap: 14px; align-items: stretch; justify-content: center; }
+.mesa-colorir .quadro { flex: 1 1 0; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; container-type: size; }
+.mesa-colorir .quadro .desenho { width: min(100cqw, 100cqh * 4 / 3); height: auto; aspect-ratio: 4 / 3; }
+.mesa-colorir .lado { flex: none; display: flex; flex-direction: column; gap: 10px; align-items: center; justify-content: center; max-height: 100%; overflow-y: auto; padding: 14px 16px; }
+.mesa-colorir .lado .paleta { display: grid; grid-template-columns: repeat(2, var(--tam, 52px)); gap: 10px; }
+.mesa-colorir .lado .paleta:has(> :nth-child(11)) { grid-template-columns: repeat(3, var(--tam, 52px)); }
+@media (orientation: portrait) {
+  .mesa-colorir { flex-direction: column; }
+  .mesa-colorir .quadro { flex: 1 1 0; width: 100%; }
+  .mesa-colorir .lado { width: 100%; flex-direction: row; flex-wrap: wrap; overflow: visible; }
+  .mesa-colorir .lado .paleta { display: flex; flex-wrap: wrap; justify-content: center; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .paleta .cor { --tam: 40px; border-width: 3px; }
+  .mesa-colorir .lado .paleta { --tam: 38px !important; grid-template-columns: repeat(3, 38px); gap: 7px; }
+  .mesa-colorir .lado { gap: 6px; padding: 4px; }
+  .botao-pote { font-size: 16px; padding: 3px 12px 5px; }
+  .botao.pronto { font-size: 17px; padding: 2px 16px 5px; }
+}
+
+/* Pintura livre (src/motor/pintura.js): ferramentas, adesivos, pote de misturar e o desenho pronto */
+.ferramentas, .adesivos { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.ferramenta, .adesivo {
+  width: 56px; height: 56px; font-size: 28px; line-height: 1; border-radius: 16px; cursor: pointer;
+  background: #fff; border: 4px solid var(--tinta); box-shadow: 0 4px 0 var(--tinta);
+}
+.ferramenta.escolhida, .adesivo.escolhida { background: var(--amarelo); transform: translateY(-3px); }
+.adesivos { max-width: 136px; }
+.botao-pote { font: 800 20px var(--texto); padding: 6px 16px 8px; border-radius: 999px; border: 4px solid var(--tinta); background: #fff; box-shadow: 0 4px 0 var(--tinta); cursor: pointer; }
+.botao.pronto { font-size: 22px; padding: 4px 22px 8px; background: var(--verde); }
+.desenho .traco { fill: none; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.desenho .adesivo-colado { font-size: 34px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.pote-fundo { position: fixed; inset: 0; z-index: 18; display: grid; place-items: center; background: rgba(10, 42, 74, 0.4); padding: 12px; }
+.pote .potes { display: flex; align-items: center; gap: 10px; font: 800 34px var(--texto); }
+.pote .pote-cor { width: 74px; height: 74px; border-radius: 0 0 30px 30px; border: 5px solid var(--tinta); background: #f3f3f3; display: grid; place-items: center; }
+.pote .pote-cor.mexe { animation: colorir-mexe 0.8s ease; }
+@keyframes colorir-mexe { 30% { transform: rotate(-10deg) scale(1.15); } 60% { transform: rotate(8deg); } }
+.casca-cartao .miniatura { width: min(320px, 70vw); height: auto; box-shadow: none; border-width: 4px; }
+@media (max-height: 520px) and (orientation: landscape) {
+  .ferramenta, .adesivo { width: 44px; height: 44px; font-size: 22px; border-width: 3px; }
+  .casca-cartao .miniatura { width: min(220px, 40vw); }
+  .pote .pote-cor { width: 54px; height: 54px; }
+}
+@media (max-height: 520px) and (orientation: landscape) { .adesivos { max-width: 160px; } .adesivos .adesivo { width: 40px; height: 40px; font-size: 20px; } }

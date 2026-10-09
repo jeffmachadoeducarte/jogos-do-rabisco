@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Provador do Rabisco</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:linear-gradient(#2f9bff,#d6f3ff)}#p{position:fixed;inset:0}</style></head>
+<body><div id="p"></div>
+<script type="module">
+// Provador para conferir as roupas 3D: ?looks=chuva,frio,... ?giro
+import { criarPalco3D, posar } from "../../src/motor3d/palco3d.js";
+import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
+import { vestir, poseDasRoupas, ajustarRoupas } from "../../src/motor3d/roupas3d.js";
+const LOOKS = {
+  nada: [], chuva: ["capa-chuva", "galocha", "guarda-chuva"], sol: ["chapeu-palha", "oculos-sol", "garrafinha"],
+  frio: ["gorro", "cachecol", "casaco", "luvas"], bombeiro: ["capacete-bombeiro", "jaqueta-bombeiro", "botas-bombeiro", "luvas-bombeiro", "mangueira"],
+  medico: ["jaleco", "estetoscopio", "maleta"], astronauta: ["capacete-astronauta", "traje-astronauta", "luvas-astronauta", "botas-astronauta"],
+  chef: ["touca-chef", "avental", "colher"], time: [["camisa-time", { cor: 0x8e6cff, numero: 7 }], ["bone-cor", { cor: 0x8e6cff }], ["chuteira", { cor: 0xffcc1f }], "luvas-goleiro"],
+  coroa: ["coroa"],
+};
+const q = new URLSearchParams(location.search);
+const nomes = (q.get("looks") || Object.keys(LOOKS).join(",")).split(",");
+const palco = criarPalco3D(document.getElementById("p"), { camera: { pos: [0, 2.2, nomes.length * 1.25 + 4], alvo: [0, 1.2, 0] } });
+const ang = Number(q.get("ang") || 0);
+const rbs = nomes.map((n, i) => {
+  const rb = new Rabisco3D({ altura: 2.2 });
+  rb.grupo.position.x = (i - (nomes.length - 1) / 2) * 2.1;
+  rb.grupo.rotation.y = ang;
+  palco.cena.add(rb.grupo);
+  for (const it of LOOKS[n]) Array.isArray(it) ? vestir(rb, it[0], it[1]) : vestir(rb, it);
+  return rb;
+});
+palco.aoQuadro((dt) => { for (const rb of rbs) { rb.atualizar(dt, { modo: q.get("modo") || "parado" }); const p = poseDasRoupas(rb); if (p) posar(rb, p, dt); ajustarRoupas(rb); if (q.has("giro")) rb.grupo.rotation.y += dt * 0.6; } });
+window.pronto = true;
+</script></body></html>

@@ -1,0 +1,15 @@
+/* Rabisco Moves: o Rabisco grande, partes que brilham e a palavra em inglês */
+.pista-danca { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; gap: 4vw; }
+.rabisco-danca { position: relative; height: 100%; aspect-ratio: 284 / 900; }
+.rabisco-danca img { width: 100%; height: 100%; display: block; filter: drop-shadow(6px 8px 0 rgba(0,0,0,0.15)); }
+.rabisco-danca.danca { animation: rm-danca 0.5s ease-in-out 3; }
+.rabisco-danca.festa { animation: rm-danca 0.4s ease-in-out infinite; }
+@keyframes rm-danca { 25% { transform: rotate(-6deg) translateY(-10px); } 75% { transform: rotate(6deg) translateY(-10px); } }
+.alvo { position: absolute; width: 34%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; border: none; background: transparent; padding: 0; cursor: pointer; }
+.alvo.brilha { background: radial-gradient(circle, rgba(255, 236, 80, 0.6), rgba(255, 236, 80, 0) 70%); box-shadow: 0 0 0 5px var(--amarelo), 0 0 22px 6px rgba(255, 204, 31, 0.8); animation: rm-brilha 0.9s ease-in-out infinite; }
+@keyframes rm-brilha { 50% { transform: translate(-50%, -50%) scale(1.25); } }
+.notinha { position: absolute; font-size: 30px; pointer-events: none; animation: rm-nota 1.1s ease-out forwards; }
+@keyframes rm-nota { to { transform: translate(var(--dx), -90px); opacity: 0; } }
+.palavra-en { font-family: var(--titulo); font-weight: 900; font-size: clamp(44px, 9vw, 110px); color: var(--rosa); -webkit-text-stroke: 4px #fff; paint-order: stroke fill; text-shadow: 5px 6px 0 var(--ciano); }
+@media (orientation: portrait) { .pista-danca { flex-direction: column-reverse; } .rabisco-danca { height: 70%; } }
+.alvo.pequeno { width: 22%; }

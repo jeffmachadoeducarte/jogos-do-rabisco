@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Super Rabisco: Caça às Letras</title>
+  <link rel="icon" href="../../assets/marca/logos/icone-rosa.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+  <canvas id="cena"></canvas>
+
+  <div id="hud" class="escondido">
+    <div class="painel">
+      <span id="nivel-hud"></span>
+      <span id="figura"></span>
+      <div class="casas-e-pergunta">
+        <div id="pergunta-sr" hidden></div>
+        <div id="casas"></div>
+      </div>
+    </div>
+    <div class="moedas"><img src="../../assets/elementos/selo-rosa.png" alt=""><span id="n-moedas">0</span></div>
+    <div id="aviso"></div>
+    <div class="toque">
+      <div class="setas">
+        <button id="btn-esq" aria-label="Andar para a esquerda">◀</button>
+        <button id="btn-dir" aria-label="Andar para a direita">▶</button>
+      </div>
+      <button id="btn-baixo" aria-label="Entrar no cano">⬇</button>
+      <button id="btn-pulo" aria-label="Pular">⤒</button>
+    </div>
+  </div>
+  <button id="som" aria-label="Ligar ou desligar o som">🔊</button>
+
+  <section id="abertura" class="tela">
+    <img class="logo" src="../../assets/marca/logos/azul-icone-rosa.png" alt="Educarte Escola Cristã">
+    <h1>Super Rabisco</h1>
+    <p class="sub">Caça às Letras</p>
+    <div class="niveis" role="group" aria-label="Escolha o nível">
+      <button class="nivel" data-nivel="1"><b>Nível 1</b></button>
+      <button class="nivel" data-nivel="2"><b>Nível 2</b></button>
+      <button class="nivel" data-nivel="3"><b>Nível 3</b></button>
+    </div>
+    <p class="dica"><span class="so-teclado" id="dica">Setas para andar · Espaço para pular · ⬇ para entrar no cano · P para pausar</span><span class="so-toque">◀ ▶ para andar · ⤒ para pular · ⬇ para entrar no cano</span></p>
+  </section>
+
+  <section id="vitoria" class="tela escondido">
+    <div class="cartao">
+      <div class="titulo">Muito bem!</div>
+      <div id="vit-progresso"></div>
+      <div id="vit-figura"></div>
+      <div id="vit-palavra"></div>
+      <div id="vit-selos"></div>
+      <div class="botoes">
+        <button id="proximo" class="botao rosa">Próximo nível ▶</button>
+        <button id="de-novo" class="botao ciano">Repetir ↻</button>
+        <button id="sair" class="botao branco">Sair</button>
+      </div>
+    </div>
+  </section>
+
+  <script type="module" src="jogo.js"></script>
+</body>
+</html>

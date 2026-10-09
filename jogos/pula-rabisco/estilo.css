@@ -1,0 +1,14 @@
+/* Pula, Rabisco!: chão de blocos, o Rabisco e a estrela no alto */
+.cena-pulo { position: absolute; inset: 0; overflow: hidden; }
+.chao-blocos { position: absolute; left: 0; right: 0; bottom: 0; height: 14vh; background: repeating-linear-gradient(90deg, #c9773a 0 60px, #b2652d 60px 62px), #c9773a; border-top: 6px solid var(--tinta); }
+.rabisco-pulo { position: absolute; bottom: 14vh; height: 46vh; transform: translateX(-50%); transition: left 0.5s ease-in-out; filter: drop-shadow(5px 6px 0 rgba(0,0,0,0.15)); }
+.rabisco-pulo.andando { animation: pr-anda 0.25s ease-in-out infinite; }
+.rabisco-pulo.pulando { animation: pr-pula 0.75s cubic-bezier(0.3, 0, 0.4, 1); }
+@keyframes pr-anda { 50% { transform: translateX(-50%) translateY(-8px) rotate(-3deg); } }
+@keyframes pr-pula { 45% { transform: translateX(-50%) translateY(-30vh) scaleY(1.05); } 100% { transform: translateX(-50%); } }
+.estrela-alvo { position: absolute; top: 12vh; font-size: clamp(60px, 12vmin, 110px); transform: translateX(-50%); filter: drop-shadow(0 0 12px #fff6a0); }
+.estrela-alvo.aparece { animation: pr-brilha 1.2s ease-in-out infinite, pr-entra 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.estrela-alvo.pega { animation: pr-pega 0.45s ease-out forwards; }
+@keyframes pr-brilha { 50% { transform: translateX(-50%) scale(1.12) rotate(8deg); } }
+@keyframes pr-entra { from { transform: translateX(-50%) scale(0); } }
+@keyframes pr-pega { to { transform: translateX(-50%) translateY(-60px) scale(1.8); opacity: 0; } }

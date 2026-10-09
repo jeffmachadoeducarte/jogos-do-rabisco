@@ -1,0 +1,36 @@
+{
+ "altura": 420,
+ "largura": 131,
+ "pecas": {
+  "corpo": {
+   "origemX": 0.6971,
+   "origemY": 0.9834,
+   "pivoX": 72.4,
+   "pivoY": 316.0
+  },
+  "braco": {
+   "origemX": 0.8179,
+   "origemY": 0.0655,
+   "pivoX": 69.2,
+   "pivoY": 219.6
+  },
+  "punho": {
+   "origemX": 0.5285,
+   "origemY": 0.6237,
+   "pivoX": 69.2,
+   "pivoY": 219.6
+  },
+  "mochila": {
+   "origemX": 0.4921,
+   "origemY": 0.0645,
+   "pivoX": 114.8,
+   "pivoY": 173.0
+  },
+  "perna": {
+   "origemX": 0.696,
+   "origemY": 0.0438,
+   "pivoX": 72.5,
+   "pivoY": 311.0
+  }
+ }
+}

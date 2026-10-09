@@ -1,0 +1,8 @@
+/* Toca e Pinta: o desenho ocupa quase toda a tela (a tela inteira é o botão) */
+.quadro-bebe { width: min(100%, calc((100vh - 110px) * 4 / 3)); aspect-ratio: 4 / 3; }
+.quadro-bebe .desenho [data-foco] { cursor: pointer; }
+.brilho {
+  position: fixed; z-index: 12; font-size: 34px; pointer-events: none; transform: translate(-50%, -50%);
+  animation: tp-brilho 0.8s ease-out forwards;
+}
+@keyframes tp-brilho { to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.4); opacity: 0; } }

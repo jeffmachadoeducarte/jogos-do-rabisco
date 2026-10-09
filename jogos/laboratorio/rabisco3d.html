@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Estúdio do Rabisco 3D</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #bfeaff; font-family: system-ui; }
+    canvas { display: block; width: 100%; height: 100%; }
+    .barra { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
+    .barra button { font-size: 18px; padding: 6px 14px; border-radius: 99px; border: 3px solid #151515; background: #fff; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div class="barra">
+    <button data-modo="parado">Parado</button><button data-modo="andar">Andar</button><button data-modo="correr">Correr</button>
+    <button data-modo="pular">Pular</button><button data-modo="comemorar">Comemorar</button><button data-modo="dirigir">Dirigir</button>
+  </div>
+  <script type="module">
+    import { THREE, toon } from "../../src/motor3d/toon.js";
+    import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
+    const p = new URLSearchParams(location.search);
+    const r = new THREE.WebGLRenderer({ canvas: document.getElementById("c"), antialias: true });
+    r.setPixelRatio(Math.min(devicePixelRatio, 2));
+    r.outputColorSpace = THREE.SRGBColorSpace;
+    r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
+    const cena = new THREE.Scene();
+    cena.background = new THREE.Color(0xbfeaff);
+    const cam = new THREE.PerspectiveCamera(35, 1, 0.1, 200);
+    const sol = new THREE.DirectionalLight(0xffffff, 2.4);
+    sol.position.set(4, 8, 6); sol.castShadow = true; sol.shadow.mapSize.set(2048, 2048); sol.shadow.bias = -0.0005; sol.shadow.normalBias = 0.03;
+    Object.assign(sol.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8 });
+    cena.add(sol, new THREE.HemisphereLight(0xd6f3ff, 0x5aa83a, 1.6));
+    const chao = new THREE.Mesh(new THREE.CircleGeometry(30, 48), toon(0x62c845));
+    chao.rotation.x = -Math.PI / 2; chao.receiveShadow = true; cena.add(chao);
+
+    // várias cópias para conferir ângulos: frente, 3/4, lado, costas
+    const vistas = p.has("vistas");
+    const lista = vistas ? [0, -0.7, -Math.PI / 2, Math.PI] : [0];
+    const rabiscos = lista.map((ang, i) => {
+      const rb = new Rabisco3D({ altura: 2 });
+      rb.grupo.position.x = (i - (lista.length - 1) / 2) * 1.6;
+      rb.grupo.rotation.y = p.has("lado") ? -Math.PI / 2 : p.has("ang") ? Number(p.get("ang")) : ang;
+      cena.add(rb.grupo);
+      return rb;
+    });
+    let modo = p.get("modo") || "parado";
+    document.querySelectorAll("[data-modo]").forEach((b) => b.onclick = () => (modo = b.dataset.modo));
+    const ajustar = () => { r.setSize(innerWidth, innerHeight, false); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); };
+    addEventListener("resize", ajustar); ajustar();
+    const rel = new THREE.Clock();
+    let giro = p.has("giro") ? 0 : null;
+    (function quadro() {
+      const dt = Math.min(rel.getDelta(), 0.05);
+      for (const rb of rabiscos) {
+        const m = modo === "correr" ? "andar" : modo;
+        rb.atualizar(dt, { modo: m, vel: modo === "correr" ? 7 : modo === "andar" ? 2.5 : 0, vmax: 7, virar: Math.sin(rel.elapsedTime) });
+      }
+      if (giro !== null) { giro += dt * 0.6; rabiscos[0].grupo.rotation.y = giro; }
+      if (p.has("mao")) {
+        // câmera colada na mão (a direção vem de ?vista=frente|fora|palma)
+        const alvo = new THREE.Vector3(); rabiscos[0].bracoE.cotovelo.localToWorld(alvo.set(0, -0.85, 0));
+        const dir = { frente: [0, 0, 1], fora: [1, 0, 0.35], palma: [-0.2, 0, 1] }[p.get("vista") || "frente"];
+        cam.position.set(alvo.x + dir[0] * 0.55, alvo.y + 0.08, alvo.z + dir[2] * 0.55); cam.lookAt(alvo);
+      } else {
+        const d = vistas ? 9 : p.has("perto") ? 3.3 : 5.2;
+        cam.position.set(0, 1.4, d); cam.lookAt(0, p.has("perto") ? 1.25 : 1.05, 0);
+      }
+      r.render(cena, cam);
+      requestAnimationFrame(quadro);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<!doctype html>
+<!-- Laboratório: todas as roupas do camarim (src/motor/camarim.js) para conferir o encaixe -->
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Laboratório: camarim</title>
+  <link rel="stylesheet" href="../../src/motor/casca.css">
+  <link rel="stylesheet" href="../../src/motor/camarim.css">
+  <style>body { overflow: auto; } main { display: flex; flex-wrap: wrap; gap: 20px; padding: 20px; } .item { height: 340px; display: flex; flex-direction: column; align-items: center; } .item p { margin: 0; font-weight: 800; }</style>
+</head>
+<body>
+  <main id="m"></main>
+  <script type="module">
+    import { ROUPAS, montarRabisco } from "../../src/motor/camarim.js";
+    const grupos = [["capacete-bombeiro", "farda-bombeiro", "calca-bombeiro", "botas-bombeiro", "mangueira"], ["jaleco", "estetoscopio", "calca-jeans"], ["chapeu-chef", "dolma-chef", "colher-pau"], ["capacete-astronauta", "traje-astronauta", "calca-astronauta", "botas-astronauta"],
+      ["sueste", "capa-chuva", "galochas", "guarda-chuva"], ["oculos-sol", "chapeu-sol", "boia"], ["gorro", "cachecol", "casaco", "botas-neve"], ["bone-time", "camisa-time", "short-time", "chuteira", "bola"], ["coroa", "camisa-listrada"]];
+    for (const g of grupos) {
+      const d = document.createElement("div"); d.className = "item"; m.append(d);
+      const r = montarRabisco(d); g.forEach((id) => r.vestir(id));
+      const p = document.createElement("p"); p.textContent = g[0]; d.append(p);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+/* Casca comum dos jogos 2D do Rabisco: abertura, palco, vitória, som e dicas.
+   Cada jogo só desenha o que acontece dentro de #palco (ver src/motor/casca.js). */
+@font-face {
+  font-family: "Neulis Cursive";
+  src: url("../../assets/fontes/NeulisCursive-Black.otf") format("opentype");
+  font-weight: 900;
+}
+:root {
+  --ciano: #00b5f0;
+  --rosa: #ec2e8c;
+  --laranja: #ff7a00;
+  --amarelo: #ffcc1f;
+  --verde: #1fc08e;
+  --roxo: #8e6cff;
+  --tinta: #151515;
+  --papel: #f4fbff;
+  --cor: var(--ciano);           /* cor da faixa de idade (cada jogo troca) */
+  --texto: "Baloo 2", system-ui, sans-serif;
+  --titulo: "Neulis Cursive", "Baloo 2", system-ui, sans-serif;
+  font-family: var(--texto);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; height: 100%; overflow: hidden;
+  color: var(--tinta);
+  touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  background:
+    radial-gradient(120% 60% at 50% 115%, #7dd36a 0 38%, transparent 38.5%),
+    radial-gradient(70% 45% at 8% 112%, #5cc13a 0 50%, transparent 50.5%),
+    radial-gradient(70% 45% at 95% 110%, #9fe08a 0 50%, transparent 50.5%),
+    linear-gradient(#2f9bff, #8fdcff 55%, #d6f3ff);
+}
+.escondido { display: none !important; }
+button { font-family: inherit; color: inherit; }
+
+/* ---------- Topo do jogo ---------- */
+.casca-topo {
+  position: fixed; z-index: 10; left: 12px; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 10px);
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; pointer-events: none;
+}
+.casca-topo > * { pointer-events: auto; }
+.casca-redondo {
+  width: 54px; height: 54px; flex: none; border-radius: 50%; font-size: 24px; line-height: 1; cursor: pointer;
+  background: rgba(255, 255, 255, 0.9); border: 4px solid var(--tinta); box-shadow: 0 4px 0 var(--tinta);
+}
+.casca-redondo:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tinta); }
+.casca-placar {
+  display: flex; align-items: center; gap: 8px; min-height: 54px;
+  background: #fff; border: 4px solid var(--tinta); border-radius: 999px; box-shadow: 0 4px 0 var(--tinta);
+  padding: 2px 18px 4px; font-weight: 800; font-size: clamp(18px, 2.6vw, 26px);
+}
+.casca-placar:empty { visibility: hidden; }
+/* o botão de pause da pausa.js fica no meio do topo; aqui ele entra entre o placar e o som */
+
+/* ---------- Palco ---------- */
+#palco {
+  position: fixed; inset: 0; z-index: 1;
+  padding: calc(env(safe-area-inset-top, 0px) + 78px) 12px calc(env(safe-area-inset-bottom, 0px) + 12px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+}
+
+/* ---------- Telas ---------- */
+.casca-tela {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center; gap: clamp(8px, 4vw, 60px);
+  padding: 16px; text-align: center;
+}
+.casca-abertura .rabisco { height: min(70vh, 520px); filter: drop-shadow(6px 8px 0 rgba(21, 21, 21, 0.18)); animation: casca-flutua 3s ease-in-out infinite; }
+.casca-abertura .conteudo { display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 640px; }
+.casca-abertura .logo { width: clamp(120px, 16vw, 200px); background: rgba(255, 255, 255, 0.85); border-radius: 18px; padding: 6px 12px; }
+.casca-abertura h1 {
+  margin: 0; font-family: var(--titulo); font-weight: 900; line-height: 1;
+  font-size: clamp(46px, 8vw, 104px); color: var(--ciano);
+  -webkit-text-stroke: 4px #fff; paint-order: stroke fill; text-shadow: 6px 8px 0 var(--rosa);
+  text-wrap: balance;
+}
+.casca-abertura .sub {
+  margin: 0 0 10px; font-size: clamp(20px, 3.4vw, 38px); font-weight: 800; color: #fff;
+  -webkit-text-stroke: 3px var(--tinta); paint-order: stroke fill;
+}
+.casca-niveis { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.casca-nivel {
+  cursor: pointer; display: flex; flex-direction: column; align-items: center; min-width: 150px;
+  padding: 10px 20px 12px; background: #fff; border: 5px solid var(--tinta); border-radius: 26px; box-shadow: 0 7px 0 var(--tinta);
+}
+.casca-nivel b { font-size: 30px; line-height: 1.1; color: var(--rosa); }
+.casca-nivel span { font-size: 16px; font-weight: 700; }
+.casca-nivel.feito b::after { content: " ⭐"; }
+.casca-nivel:active { transform: translateY(4px); box-shadow: 0 3px 0 var(--tinta); }
+.casca-dica {
+  margin: 12px 0 0; background: rgba(255, 255, 255, 0.88); border-radius: 999px; padding: 6px 20px;
+  font-size: clamp(14px, 2vw, 20px); font-weight: 600;
+}
+.so-toque, .so-controle { display: none; }
+body.touch .so-teclado { display: none; }
+body.touch .so-toque { display: inline; }
+body.com-controle .so-teclado, body.com-controle .so-toque { display: none; }
+body.com-controle .so-controle { display: inline; }
+
+.botao {
+  font-weight: 800; font-size: clamp(26px, 4.4vw, 46px); color: #fff; border: none; border-radius: 999px;
+  padding: 8px 44px 12px; box-shadow: 0 8px 0 var(--tinta); cursor: pointer; background: var(--rosa);
+}
+.botao:active { transform: translateY(5px); box-shadow: 0 3px 0 var(--tinta); }
+.botao.ciano { background: var(--ciano); }
+.botao.branco { background: #fff; color: var(--tinta); border: 3px solid var(--tinta); }
+.botao.respira { animation: casca-respira 1.4s ease-in-out infinite; }
+
+.casca-vitoria { background: rgba(10, 42, 74, 0.45); }
+.casca-cartao {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: min(620px, 94vw); max-height: 94vh; overflow: auto;
+  background: #fff; border: 5px solid var(--tinta); border-radius: 40px; box-shadow: 8px 10px 0 var(--tinta); padding: 18px 30px 22px;
+}
+.casca-cartao .titulo { font-family: var(--titulo); font-weight: 900; font-size: clamp(42px, 7vw, 78px); line-height: 1.05; color: var(--ciano); text-shadow: 4px 5px 0 var(--rosa); }
+.casca-cartao .estrelas { font-size: clamp(40px, 7vw, 64px); letter-spacing: 6px; }
+.casca-cartao .estrelas span { display: inline-block; animation: casca-estrela 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards; }
+.casca-cartao .estrelas .apagada { filter: grayscale(1); opacity: 0.3; }
+.casca-cartao .texto { font-size: clamp(20px, 3vw, 28px); font-weight: 800; color: var(--laranja); }
+.casca-cartao .extra:empty { display: none; }
+.casca-cartao .rabisco-feliz { height: clamp(110px, 22vh, 200px); animation: casca-pula 0.9s ease-in-out infinite; }
+.casca-cartao .botoes { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
+.casca-cartao .botao { font-size: clamp(20px, 3vw, 30px); padding: 6px 26px 10px; }
+
+/* aviso que aparece e some no meio da tela */
+.casca-aviso {
+  position: fixed; z-index: 15; top: 30%; left: 50%; transform: translate(-50%, -50%) scale(0.5); opacity: 0;
+  font-size: clamp(32px, 6vw, 68px); font-weight: 800; color: #fff; white-space: nowrap; pointer-events: none;
+  -webkit-text-stroke: 4px var(--tinta); paint-order: stroke fill; text-shadow: 0 6px 0 var(--tinta);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s;
+}
+.casca-aviso.ativo { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+.casca-aviso.bom { color: var(--amarelo); }
+
+/* confete da vitória */
+.casca-confete { position: fixed; z-index: 30; top: -20px; width: 12px; height: 18px; border-radius: 3px; pointer-events: none; animation: casca-cai linear forwards; }
+
+/* foco do controle e do teclado */
+.controle-foco, [data-foco]:focus-visible { outline: 6px solid var(--amarelo) !important; outline-offset: 4px; }
+[data-foco] { cursor: pointer; }
+[data-foco]:focus { outline: none; }
+
+@keyframes casca-flutua { 50% { transform: translateY(-10px); } }
+@keyframes casca-respira { 50% { transform: scale(1.06); } }
+@keyframes casca-pula { 50% { transform: translateY(-14px) rotate(-3deg); } }
+@keyframes casca-estrela { from { transform: scale(0) rotate(-90deg); } }
+@keyframes casca-cai { to { transform: translateY(110vh) rotate(720deg); } }
+
+/* ---------- Celular ---------- */
+@media (max-height: 520px) and (orientation: landscape) {
+  .casca-abertura .rabisco { height: 78vh; }
+  .casca-abertura .logo { width: 100px; padding: 3px 8px; }
+  .casca-abertura h1 { font-size: clamp(34px, 13vh, 64px); }
+  .casca-abertura .sub { font-size: clamp(16px, 6vh, 26px); margin-bottom: 4px; }
+  .casca-nivel { min-width: 110px; padding: 4px 14px 6px; border-width: 4px; }
+  .casca-nivel b { font-size: 22px; }
+  .casca-nivel span { font-size: 13px; }
+  .casca-dica { margin-top: 6px; font-size: 13px; }
+  .botao { font-size: clamp(22px, 8vh, 34px); padding: 4px 30px 8px; }
+  .casca-redondo { width: 44px; height: 44px; font-size: 19px; border-width: 3px; }
+  .pausa-botao { width: 44px !important; height: 44px !important; font-size: 19px !important; border-width: 3px !important; top: calc(env(safe-area-inset-top, 0px) + 10px) !important; box-shadow: 0 3px 0 #151515 !important; }
+  .casca-placar { min-height: 44px; font-size: 17px; border-width: 3px; padding: 0 12px 2px; }
+  #palco { padding-top: calc(env(safe-area-inset-top, 0px) + 62px); }
+  .casca-cartao { padding: 8px 20px 12px; gap: 2px; border-radius: 28px; }
+  .casca-cartao .titulo { font-size: clamp(30px, 11vh, 56px); }
+  .casca-cartao .estrelas { font-size: clamp(28px, 10vh, 48px); }
+  .casca-cartao .rabisco-feliz { height: 18vh; }
+  .casca-cartao .botao { font-size: clamp(16px, 6vh, 24px); padding: 3px 18px 6px; }
+}
+@media (orientation: portrait) and (max-width: 760px) {
+  .casca-tela.casca-abertura { flex-direction: column; gap: 4px; }
+  .casca-abertura .rabisco { height: 30vh; order: 2; }
+  .casca-abertura h1 { font-size: clamp(44px, 13vw, 72px); }
+  .casca-nivel { min-width: 0; flex: 1 1 40%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition: none !important; }
+}
+/* com o desenho pronto (ou outro destaque) no cartão, o Rabisco sai para caber tudo */
+.casca-cartao:has(.extra:not(:empty)) .rabisco-feliz { display: none; }

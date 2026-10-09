@@ -1,0 +1,22 @@
+/* Pixel Art: tabuleiro com coordenadas e a lista de instruções */
+.mesa-pixel { width: 100%; height: 100%; display: flex; gap: 16px; align-items: center; justify-content: center; }
+.quadro-pixel { flex: 1 1 0; height: 100%; min-width: 0; display: grid; place-items: center; }
+.tabuleiro { background: #fff; border: 5px solid var(--tinta); border-radius: 18px; box-shadow: 0 7px 0 var(--tinta); padding: 6px; }
+.tabuleiro .eixo, .tabuleiro .canto { width: var(--lado); aspect-ratio: 1; display: grid; place-items: center; font: 800 calc(var(--lado) * 0.5) var(--texto); color: var(--rosa); }
+.pixel { width: var(--lado); aspect-ratio: 1; padding: 0; border: 1px solid #c9d3dc; border-radius: 3px; background: #fff; cursor: pointer; }
+.pixel.cheio { border-color: rgba(0,0,0,0.25); animation: px-pinta 0.25s ease; }
+.pixel.errou { animation: px-errou 0.4s ease; background: #ffdede; }
+.pixel.some { border-color: transparent; }
+.pixel.controle-foco { outline-offset: 0; outline-width: 4px !important; position: relative; z-index: 1; }
+@keyframes px-pinta { 50% { transform: scale(1.25); } }
+@keyframes px-errou { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+.modo-pares .pixel { border-radius: 0; }
+.lado-pixel { flex: 0 1 380px; max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.paleta-pixel { display: flex; flex-wrap: wrap; gap: 8px; }
+.cor-pixel { display: flex; align-items: center; gap: 6px; padding: 4px 12px 4px 6px; background: #fff; border: 4px solid var(--tinta); border-radius: 999px; box-shadow: 0 4px 0 var(--tinta); font: 800 16px var(--texto); cursor: pointer; }
+.cor-pixel .bolinha { width: 22px; height: 22px; border-radius: 50%; background: var(--c); border: 3px solid var(--tinta); }
+.cor-pixel.escolhida { background: var(--amarelo); transform: translateY(-3px); }
+.instrucoes { background: #fff; border: 4px solid var(--tinta); border-radius: 18px; padding: 8px 14px; font-size: clamp(14px, 1.6vw, 18px); line-height: 1.35; }
+.instrucoes p { margin: 4px 0; }
+@media (orientation: portrait) { .mesa-pixel { flex-direction: column; } .quadro-pixel { width: 100%; height: auto; flex: 1 1 0; min-height: 0; } .lado-pixel { flex: 0 0 auto; max-height: 34%; width: 100%; } }
+@media (max-height: 520px) and (orientation: landscape) { .cor-pixel { font-size: 12px; padding: 2px 8px 2px 4px; border-width: 3px; } .instrucoes { font-size: 12px; padding: 4px 8px; } .lado-pixel { gap: 6px; } }

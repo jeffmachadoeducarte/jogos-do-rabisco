@@ -1,0 +1,16 @@
+/* Bi-bi, Ônibus!: o ônibus na rua com rodas que giram, buzina que balança e janelas que acendem */
+.rua { position: absolute; inset: 0; overflow: hidden; background: linear-gradient(transparent 68%, #9aa3ad 68%, #9aa3ad 92%, #7dd36a 92%); }
+.rua::after { content: ""; position: absolute; left: 0; right: 0; top: 80%; height: 10px; background: repeating-linear-gradient(90deg, #fff 0 60px, transparent 60px 110px); }
+.onibus-bebe { position: absolute; left: 50%; bottom: 14%; width: min(80vw, 110vh); transform: translateX(-50%); cursor: pointer; }
+.onibus-bebe .desenho { width: 100%; height: auto; background: none; border: none; box-shadow: none; }
+.onibus-bebe .roda { transform-box: fill-box; transform-origin: center; }
+.onibus-bebe.anda { animation: bb-anda 1.4s ease-in-out; }
+.onibus-bebe.anda .roda { animation: bb-roda 0.35s linear 4; }
+.onibus-bebe.buzina { animation: bb-buzina 0.6s ease 2; }
+.onibus-bebe.luzes .janela-luz { animation: bb-luz 0.25s steps(1) 6; animation-delay: calc(var(--i) * 0.08s); }
+.onibus-bebe .farol { transition: fill 0.2s; }
+.onibus-bebe.luzes .farol, .onibus-bebe.anda .farol { fill: #fff6a0 !important; filter: drop-shadow(0 0 8px #ffeb3b); }
+@keyframes bb-anda { 0% { transform: translateX(-50%); } 45% { transform: translateX(10%); } 50% { transform: translateX(10%) ; opacity: 0; } 51% { transform: translateX(-120%); opacity: 0; } 55% { opacity: 1; } 100% { transform: translateX(-50%); } }
+@keyframes bb-roda { to { transform: rotate(360deg); } }
+@keyframes bb-buzina { 25% { transform: translateX(-50%) scale(1.04, 0.96); } 50% { transform: translateX(-50%) scale(0.97, 1.04) translateY(-8px); } }
+@keyframes bb-luz { 0% { fill: #ff7a00; } 33% { fill: #ec2e8c; } 66% { fill: #2bb24c; } }
