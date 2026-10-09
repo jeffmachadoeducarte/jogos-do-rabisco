@@ -150,7 +150,7 @@ body {
 
 @media (max-width: 900px) {
   .faixas { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .painel-jogos { bottom: calc(env(safe-area-inset-bottom, 0px) + 270px); }
+  .painel-jogos { top: calc(env(safe-area-inset-top, 0px) + 134px); bottom: calc(env(safe-area-inset-bottom, 0px) + 270px); }
 }
 @media (max-width: 560px) {
   .faixas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
