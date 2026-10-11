@@ -6,8 +6,21 @@ import { sons } from "../../src/motor/sons.js";
 import { falar } from "../../src/motor/voz.js";
 
 const CORES = [["red", "#e63946"], ["blue", "#1d6fe0"], ["yellow", "#ffcc1f"], ["green", "#2bb24c"], ["pink", "#ec2e8c"], ["orange", "#ff7a00"], ["purple", "#8e6cff"]];
-const META = 12;
-let estourados = 0, timer = null;
+// 10 fases: formas, céus e cada vez mais cores (a voz sempre diz a cor em inglês)
+const FASES = [
+  { nome: "Balões", forma: "balao", cores: 3, ceu: ["#2f9bff", "#d6f3ff"] },
+  { nome: "Bolhas", forma: "bolha", cores: 4, ceu: ["#3fb5ff", "#e8fbff"] },
+  { nome: "Estrelas", forma: "estrela", cores: 4, ceu: ["#1b2a6b", "#4a5fa6"] },
+  { nome: "Corações", forma: "coracao", cores: 5, ceu: ["#ff8fbf", "#ffe3ef"] },
+  { nome: "Pipas", forma: "pipa", cores: 5, ceu: ["#5fb8ff", "#fff4d6"] },
+  { nome: "Mais balões", forma: "balao", cores: 6, ceu: ["#6a4fc4", "#ffb27a"] },
+  { nome: "Bolhas no mar", forma: "bolha", cores: 6, ceu: ["#0077b6", "#7fd6ff"] },
+  { nome: "Estrelas cadentes", forma: "estrela", cores: 7, ceu: ["#10002b", "#3c096c"] },
+  { nome: "Corações de festa", forma: "coracao", cores: 7, ceu: ["#d63384", "#ffc2d1"] },
+  { nome: "Festa das cores", forma: "mistura", cores: 7, ceu: ["#00b5f0", "#fff1d6"] },
+];
+const META = 10;
+let estourados = 0, timer = null, F = FASES[0];
 
 const jogo = criarCasca({
   titulo: "Baby Colors",
@@ -15,6 +28,7 @@ const jogo = criarCasca({
   faixa: "bebes",
   cor: "#FFB13B",
   dica: { teclado: "Qualquer tecla estoura um balão", toque: "Toque nos balões", controle: "Qualquer botão estoura um balão" },
+  niveis: FASES.map((f, i) => ({ nome: `${i + 1}`, desc: f.nome })),
   falas: { titulo: "en-bc-titulo", vitoria: "en-bc-vitoria" },
   menuNoJogo: false,
   teclado: false,
@@ -23,8 +37,11 @@ const jogo = criarCasca({
   aoControle: ({ apertou }) => { if (Object.entries(apertou).some(([k, v]) => v && k !== "start")) estourarMaisBaixo(); },
 });
 
-function montar() {
+function montar(n) {
+  F = FASES[n - 1];
   estourados = 0;
+  document.body.style.setProperty("--ceu1", F.ceu[0]);
+  document.body.style.setProperty("--ceu2", F.ceu[1]);
   clearInterval(timer);
   jogo.palco.append(el("div", { class: "ceu-baloes" }));
   jogo.placar(`🎈 0/${META}`);
@@ -35,8 +52,9 @@ function montar() {
 function soltarBalao() {
   const ceu = document.querySelector(".ceu-baloes");
   if (!ceu) return;
-  const [nome, hex] = CORES[Math.floor(Math.random() * CORES.length)];
-  const b = el("button", { class: "balao-cor", "aria-label": `Balão ${nome}`, style: `--c:${hex}; left:${8 + Math.random() * 76}%; animation-duration:${7 + Math.random() * 3}s` });
+  const [nome, hex] = CORES[Math.floor(Math.random() * F.cores)];
+  const forma = F.forma === "mistura" ? ["balao", "bolha", "estrela", "coracao", "pipa"][Math.floor(Math.random() * 5)] : F.forma;
+  const b = el("button", { class: `balao-cor forma-${forma}`, "aria-label": `${nome}`, style: `--c:${hex}; left:${8 + Math.random() * 76}%; animation-duration:${7 + Math.random() * 3}s` });
   b.dataset.cor = nome;
   b.addEventListener("pointerdown", (e) => { e.preventDefault(); estourar(b); });
   b.addEventListener("click", () => estourar(b)); // teclado ou leitor de tela
@@ -65,7 +83,7 @@ function estourar(b) {
   setTimeout(() => b.remove(), 250);
   estourados++;
   jogo.placar(`🎈 ${estourados}/${META}`);
-  if (estourados >= META) { clearInterval(timer); setTimeout(() => jogo.vencer({ titulo: "Yay!", estrelas: null, texto: "Você estourou todos os balões!", proximo: false }), 900); }
+  if (estourados >= META) { clearInterval(timer); setTimeout(() => jogo.vencer({ titulo: "Yay!", estrelas: null, texto: `${F.nome}: você estourou tudo!`, proximo: true }), 900); }
 }
 
 if (new URLSearchParams(location.search).has("teste")) window.teste = { jogo, estourarMaisBaixo, get estourados() { return estourados; } };

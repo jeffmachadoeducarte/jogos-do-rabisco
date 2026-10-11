@@ -12,3 +12,6 @@
 @keyframes pr-brilha { 50% { transform: translateX(-50%) scale(1.12) rotate(8deg); } }
 @keyframes pr-entra { from { transform: translateX(-50%) scale(0); } }
 @keyframes pr-pega { to { transform: translateX(-50%) translateY(-60px) scale(1.8); opacity: 0; } }
+/* fases: céu e chão de cada cenário */
+.cena-pulo { background: linear-gradient(var(--ceu1, #2f9bff), var(--ceu2, #d6f3ff)); }
+.chao-blocos { background: repeating-linear-gradient(90deg, var(--chao, #c9773a) 0 60px, color-mix(in srgb, var(--chao, #c9773a) 80%, black) 60px 62px), var(--chao, #c9773a); }

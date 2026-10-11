@@ -14,3 +14,5 @@
 @keyframes bb-roda { to { transform: rotate(360deg); } }
 @keyframes bb-buzina { 25% { transform: translateX(-50%) scale(1.04, 0.96); } 50% { transform: translateX(-50%) scale(0.97, 1.04) translateY(-8px); } }
 @keyframes bb-luz { 0% { fill: #ff7a00; } 33% { fill: #ec2e8c; } 66% { fill: #2bb24c; } }
+/* fases: céu e grama de cada passeio */
+.rua { background: linear-gradient(var(--ceu1, #2f9bff), var(--ceu2, #d6f3ff) 68%, #9aa3ad 68%, #9aa3ad 92%, var(--grama, #7dd36a) 92%); }

@@ -1,14 +1,15 @@
 // Toca e Pinta (bebês, 4 meses a 1 ano e meio): cada toque em qualquer lugar pinta mais um pedaço
 // do desenho com a cor de verdade, com som e brilho. Qualquer tecla ou botão do controle também pinta.
-// Sem erro, sem tempo: quando tudo fica colorido, festa e outro desenho.
+// Sem erro, sem tempo: quando tudo fica colorido, festa e o próximo desenho (10 fases, uma por desenho).
 
 import { criarCasca } from "../../src/motor/casca.js";
 import { montarDesenho } from "../../src/motor/colorir.js";
+import { DESENHOS } from "../../src/motor/desenhos.js";
 import { sons } from "../../src/motor/sons.js";
 import { falar } from "../../src/motor/voz.js";
 
-const ORDEM = ["casa", "peixe", "jardim", "onibus", "foguete", "rabisco"];
-let vez = 0, desenho = null, fila = [];
+const ORDEM = ["casa", "peixe", "jardim", "onibus", "arcoiris", "barco", "trem", "foguete", "bolo", "rabisco"];
+let desenho = null, fila = [];
 
 const jogo = criarCasca({
   titulo: "Toca e Pinta",
@@ -16,6 +17,7 @@ const jogo = criarCasca({
   faixa: "bebes",
   cor: "#FFB13B",
   dica: { teclado: "Qualquer tecla pinta", toque: "Toque em qualquer lugar", controle: "Qualquer botão pinta" },
+  niveis: ORDEM.map((id, i) => ({ nome: `${i + 1}`, desc: DESENHOS[id].nome })),
   falas: { titulo: "tp-titulo", vitoria: "tp-vitoria" },
   menuNoJogo: false,
   teclado: false,
@@ -23,9 +25,8 @@ const jogo = criarCasca({
   aoControle: ({ apertou }) => { if (apertou.confirma || apertou.voltar || apertou.esq || apertou.dir || apertou.cima || apertou.baixo) pintarProximo(); },
 });
 
-function montar() {
-  const id = ORDEM[vez % ORDEM.length];
-  vez++;
+function montar(n) {
+  const id = ORDEM[n - 1];
   const quadro = document.createElement("div");
   quadro.className = "quadro-bebe";
   jogo.palco.append(quadro);
@@ -54,7 +55,7 @@ function pintarProximo(x, y) {
   brilho(x, y);
   const feitas = desenho.partes.length - fila.length;
   jogo.placar(`🎨 ${feitas}/${desenho.partes.length}`);
-  if (!fila.length) setTimeout(() => jogo.vencer({ titulo: "Que lindo!", estrelas: null, texto: desenho.des.nome, proximo: false }), 500);
+  if (!fila.length) setTimeout(() => jogo.vencer({ titulo: "Que lindo!", estrelas: null, texto: desenho.des.nome, proximo: true }), 500);
 }
 
 // estrelinhas no lugar do toque

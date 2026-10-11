@@ -174,6 +174,7 @@ falas.update({
 falas.update({
     "des-casa": "Vamos pintar a casa!", "des-onibus": "Vamos pintar o ônibus da escola!", "des-peixe": "Vamos pintar o fundo do mar!",
     "des-jardim": "Vamos pintar o jardim!", "des-foguete": "Vamos pintar o foguete!", "des-rabisco": "Vamos pintar o Rabisco!",
+    "des-arcoiris": "Vamos pintar o arco-íris!", "des-barco": "Vamos pintar o barquinho!", "des-trem": "Vamos pintar o trenzinho!", "des-bolo": "Vamos pintar o bolo de aniversário!",
     "tp-titulo": "Toca e Pinta! Toque na tela para pintar!", "tp-vitoria": "Que lindo! Tudo colorido!",
     "cm-titulo": "Colorir Mágico! Escolha uma cor e toque no desenho!", "cm-vitoria": "Que desenho lindo!",
     "at-titulo": "Bem-vindo ao Ateliê do Rabisco! Misture as cores e pinte do seu jeito!", "at-vitoria": "Que obra de arte!",

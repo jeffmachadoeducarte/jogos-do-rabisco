@@ -11,3 +11,11 @@
 @keyframes bc-sobe { to { bottom: 110%; } }
 .pedaco { position: fixed; z-index: 12; width: 14px; height: 14px; border-radius: 4px; background: var(--c); pointer-events: none; animation: bc-pedaco 0.6s ease-out forwards; }
 @keyframes bc-pedaco { to { transform: translate(var(--dx), var(--dy)) rotate(200deg); opacity: 0; } }
+/* fases: céu e formas */
+.ceu-baloes { background: linear-gradient(var(--ceu1, #2f9bff), var(--ceu2, #d6f3ff)); }
+.balao-cor.forma-bolha { border-radius: 50%; aspect-ratio: 1; background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.95) 0 9%, transparent 10%), radial-gradient(circle, transparent 45%, var(--c) 46% 70%, transparent 71%), color-mix(in srgb, var(--c) 22%, transparent); }
+.balao-cor.forma-bolha::after, .balao-cor.forma-estrela::after, .balao-cor.forma-coracao::after { display: none; }
+.balao-cor.forma-estrela { aspect-ratio: 1; border: none; border-radius: 0; clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); filter: drop-shadow(0 0 0 #151515); }
+.balao-cor.forma-coracao { aspect-ratio: 1; border: none; border-radius: 0; clip-path: path("M50 90 C20 70 0 50 0 30 C0 10 20 0 35 5 C45 8 50 18 50 18 C50 18 55 8 65 5 C80 0 100 10 100 30 C100 50 80 70 50 90Z"); }
+.balao-cor.forma-pipa { aspect-ratio: 0.8; border-radius: 4px; clip-path: polygon(50% 0, 100% 40%, 50% 100%, 0 40%); }
+.balao-cor.forma-pipa::after { height: 90px; }
