@@ -8,6 +8,7 @@ import { Rabisco3D } from "./motor3d/rabisco3d.js";
 import { falar, preCarregarFalas } from "./motor/voz.js";
 import { sons } from "./motor/sons.js";
 import { ligarControle } from "./motor/controle.js";
+import { registrarApp, pedirInstalacao, jaInstalado } from "./motor/instalar.js";
 
 const RAIZ = ".";
 const $ = (id) => document.getElementById(id);
@@ -207,3 +208,12 @@ desenharFaixas();
 const faixaDoEndereco = () => location.hash.match(/^#\/faixa\/([\w-]+)/)?.[1];
 if (faixaDoEndereco()) abrirFaixa(faixaDoEndereco());
 addEventListener("hashchange", () => { const f = faixaDoEndereco(); if (f) abrirFaixa(f); });
+
+// App: instala na tela inicial (o pedido aparece assim que a pessoa entra)
+registrarApp();
+pedirInstalacao();
+if (!jaInstalado()) {
+  const b = $("instalar");
+  b.hidden = false;
+  b.addEventListener("click", () => pedirInstalacao({ forcar: true }));
+}

@@ -2,6 +2,13 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#00b5f0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Rabisco">
+  <link rel="apple-touch-icon" href="assets/app/apple-touch-icon.png">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Jogos do Rabisco</title>
   <meta name="description" content="Jogos pedagógicos do Rabisco, mascote da Educarte Escola Cristã.">
@@ -16,6 +23,7 @@
 
   <header class="topo">
     <img class="logo" src="assets/marca/logos/azul-icone-rosa.png" alt="Educarte Escola Cristã">
+    <button class="instalar" id="instalar" hidden aria-label="Instalar o app">📲 Instalar</button>
     <label class="filtro-ingles">
       <input type="checkbox" id="so-ingles">
       <span>🇺🇸 Só inglês</span>

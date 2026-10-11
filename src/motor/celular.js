@@ -4,6 +4,8 @@
 //   prepararCelular({ deitado: true });   // plataforma e corrida
 //   prepararCelular();                    // jogos que funcionam em pé (colorir, memória...)
 
+import { registrarApp } from "./instalar.js";
+
 const CSS = `
 .gire-celular {
   position: fixed; inset: 0; z-index: 100; display: none;
@@ -20,6 +22,7 @@ const CSS = `
 `;
 
 export function prepararCelular({ deitado = false } = {}) {
+  registrarApp();
   const toque = "ontouchstart" in window || navigator.maxTouchPoints > 0;
   if (toque) document.body.classList.add("touch");
   if (!toque) return;
