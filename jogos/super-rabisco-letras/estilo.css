@@ -274,3 +274,13 @@ body.modo-mini #btn-pulo { display: none; }
   #pergunta-sr { font-size: clamp(14px, 4.4vh, 20px); }
   #casas.largas .casa { min-width: clamp(44px, 12vh, 64px); }
 }
+
+/* ---------- Fases (fases.js) ---------- */
+.fases { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; margin: 12px auto 0; width: auto !important; }
+.fases .rotulo { font-weight: 800; color: #fff; -webkit-text-stroke: 2px var(--tinta); paint-order: stroke fill; font-size: 20px; margin-right: 4px; }
+.fase { width: 40px; height: 40px; border-radius: 12px; border: 4px solid var(--tinta); background: #fff; box-shadow: 0 4px 0 var(--tinta); font: 800 18px "Baloo 2", sans-serif; cursor: pointer; position: relative; }
+.fase.atual { background: var(--amarelo); transform: translateY(-3px); }
+.fase.feita::after { content: "⭐"; position: absolute; top: -12px; right: -10px; font-size: 14px; }
+.botao.rosa { background: var(--rosa); }
+@media (max-height: 520px) { .fases { margin-top: 6px; gap: 4px; } .fase { width: 32px; height: 32px; font-size: 15px; border-width: 3px; } .fases .rotulo { font-size: 15px; } }
+@media (max-height: 620px) { #abertura .logo { display: none; } }

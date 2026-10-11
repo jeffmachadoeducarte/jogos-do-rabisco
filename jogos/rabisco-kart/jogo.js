@@ -11,6 +11,7 @@ import { ligarControle } from "../../src/motor/controle.js";
 import { prepararCelular } from "../../src/motor/celular.js";
 import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
 import { modoAtual } from "./modos.js";
+import { pistaAtual, PISTAS, decoracao, estrelas } from "./pistas.js";
 import { botaoVoltar } from "../../src/motor/voltar.js";
 
 const RAIZ = "../..";
@@ -27,10 +28,9 @@ const params = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
 
 // ------------------------------------------------------------------ Pista
-const PONTOS = [
-  [0, 0], [60, -10], [115, -42], [160, -18], [178, 34], [146, 84], [92, 92], [64, 132], [86, 182],
-  [44, 224], [-30, 212], [-72, 160], [-58, 104], [-110, 72], [-134, 12], [-92, -30], [-42, -22],
-].map(([x, z]) => new THREE.Vector3(x * 1.35, 0, z * 1.35));
+const PISTA = pistaAtual();       // 1 a 10 (ver pistas.js): traçado, céu, grama e decoração
+const TEMA = PISTA.cfg;
+const PONTOS = PISTA.pontos;
 const curva = new THREE.CatmullRomCurve3(PONTOS, true, "centripetal");
 const COMPRIMENTO = curva.getLength();
 const PASSO = COMPRIMENTO / AMOSTRAS;
@@ -75,7 +75,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const cena = new THREE.Scene();
-cena.fog = new THREE.Fog(0xd8f5ff, 220, 720);
+cena.fog = new THREE.Fog(TEMA.neblina, 220, 720);
 const camera = new THREE.PerspectiveCamera(62, 16 / 9, 0.3, 1600);
 
 function ajustarTela() {
@@ -93,7 +93,7 @@ ajustarTela();
     new THREE.SphereGeometry(1200, 32, 16),
     new THREE.ShaderMaterial({
       side: THREE.BackSide, depthWrite: false, fog: false,
-      uniforms: { topo: { value: new THREE.Color(0x1fa9ff) }, horizonte: { value: new THREE.Color(0xd8f5ff) } },
+      uniforms: { topo: { value: new THREE.Color(TEMA.ceu[0]) }, horizonte: { value: new THREE.Color(TEMA.ceu[1]) } },
       vertexShader: "varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
       fragmentShader: "uniform vec3 topo; uniform vec3 horizonte; varying vec3 vP; void main(){ float h = clamp(vP.y*1.6, 0.0, 1.0); gl_FragColor = vec4(mix(horizonte, topo, pow(h,0.7)), 1.0); }",
     }),
@@ -102,14 +102,15 @@ ajustarTela();
   cena.userData.ceu = ceu;
 }
 
-const sol = new THREE.DirectionalLight(0xffffff, 2.4);
+const sol = new THREE.DirectionalLight(TEMA.corLuz ?? 0xffffff, TEMA.luz);
 sol.castShadow = true;
 sol.shadow.mapSize.set(2048, 2048);
 Object.assign(sol.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 300 });
 sol.shadow.bias = -0.0005;
 sol.shadow.normalBias = 0.04;
 cena.add(sol, sol.target);
-cena.add(new THREE.HemisphereLight(0xd6f3ff, 0x5aa83a, 1.6));
+cena.add(new THREE.HemisphereLight(TEMA.corLuz ?? 0xd6f3ff, 0x5aa83a, TEMA.ambiente ?? 1.6));
+if (TEMA.estrelas) estrelas(cena);
 
 // ------------------------------------------------------------------ Carregamento
 const carregarImagem = (url) => new Promise((ok, erro) => {
@@ -123,8 +124,8 @@ const carregarImagem = (url) => new Promise((ok, erro) => {
 function construirMundo(img) {
   // Grama listrada (cortada), como nos jogos de kart
   const grama = texturaCanvas(256, 256, (c, w, h) => {
-    c.fillStyle = "#62c845"; c.fillRect(0, 0, w, h);
-    c.fillStyle = "#58b93d"; c.fillRect(0, 0, w, h / 2);
+    c.fillStyle = TEMA.grama[0]; c.fillRect(0, 0, w, h);
+    c.fillStyle = TEMA.grama[1]; c.fillRect(0, 0, w, h / 2);
     c.fillStyle = "rgba(255,255,255,0.05)";
     for (let i = 0; i < 300; i++) c.fillRect(Math.random() * w, Math.random() * h, 2, 3);
   }, { repetir: true });
@@ -181,7 +182,7 @@ function construirMundo(img) {
 
   // acostamento de grama mais escura com florzinhas, para a pista "saltar" da tela
   const acostamento = texturaCanvas(128, 128, (c, w, h) => {
-    c.fillStyle = "#47a933"; c.fillRect(0, 0, w, h);
+    c.fillStyle = TEMA.acost; c.fillRect(0, 0, w, h);
     for (let i = 0; i < 14; i++) {
       c.fillStyle = ["#ffffff", "#ffcc1f", "#ff8fbf"][i % 3];
       c.beginPath(); c.arc(Math.random() * w, Math.random() * h, 2.5, 0, Math.PI * 2); c.fill();
@@ -278,17 +279,28 @@ function construirMundo(img) {
       feitos++;
     }
   };
-  sortear(30, 16, (i) => {
-    const l = lapis3D(coresLapis[i % coresLapis.length], 14 + rnd() * 18, 1.4 + rnd() * 0.8);
-    l.rotation.z = (rnd() - 0.5) * 0.3;
-    return l;
-  });
-  sortear(42, 14, () => arvore3D(0.8 + rnd() * 0.6));
-  sortear(10, 14, () => livros3D());
+  if (PISTA.tema === "escola") {
+    sortear(30, 16, (i) => {
+      const l = lapis3D(coresLapis[i % coresLapis.length], 14 + rnd() * 18, 1.4 + rnd() * 0.8);
+      l.rotation.z = (rnd() - 0.5) * 0.3;
+      return l;
+    });
+    sortear(42, 14, () => arvore3D(0.8 + rnd() * 0.6));
+    sortear(10, 14, () => livros3D());
+  } else {
+    // cada tema tem três tipos de enfeite (ver pistas.js)
+    TEMA.deco.forEach((tipo, k) => sortear(k === 0 ? 34 : 22, tipo === "predio" || tipo === "celeiro" ? 22 : 14, () => {
+      if (tipo === "arvore") return arvore3D(0.8 + rnd() * 0.6);
+      if (tipo === "lapis") return lapis3D(coresLapis[Math.floor(rnd() * coresLapis.length)], 14 + rnd() * 18, 1.4 + rnd() * 0.8);
+      const d = decoracao(tipo, rnd);
+      d.scale.setScalar(0.9 + rnd() * 0.5);
+      return d;
+    }));
+  }
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * Math.PI * 2;
     const r = 520 + rnd() * 160;
-    const m = morro3D(90 + rnd() * 80, i % 2 ? 0x7dd36a : 0x9fe08a);
+    const m = morro3D(90 + rnd() * 80, TEMA.morros[i % 2]);
     m.position.set(30 + Math.cos(a) * r, 0, 120 + Math.sin(a) * r);
     cena.add(m);
   }
@@ -427,7 +439,7 @@ function naLargada(kart) {
     pos: centro[k0].clone().addScaledVector(lado[k0], kart.colunaLargada ? -3.4 : 3.4),
     ang: anguloDe(tangente[k0]), vel: 0, virar: 0,
     amostra: k0, volta: 0, passouMeio: false, progresso: 0, terminou: false, tempoFinal: 0,
-    turbo: 0, foraDaPista: false, giroRoda: 0, habilidade: 0.9 + Math.random() * 0.07, faixaAlvo: (Math.random() - 0.5) * 8,
+    turbo: 0, foraDaPista: false, giroRoda: 0, habilidade: 0.88 + PISTA.numero * 0.007 + Math.random() * 0.06, // pistas mais adiante: amigos um pouco mais rápidos faixaAlvo: (Math.random() - 0.5) * 8,
     proximoPortico: 0, cooldownBatida: 0,
   });
 }
@@ -525,7 +537,30 @@ function atualizarAmigos() { $("amigos").textContent = `🚌 ${amigos}`; }
 document.title = MODO.titulo.replace(/<[^>]+>/g, "");
 document.querySelector("#abertura h1").innerHTML = MODO.titulo;
 $("abertura").append(botaoVoltar({ raiz: RAIZ, faixa: MODO.faixa }));
-document.querySelector("#abertura .sub").textContent = MODO.sub;
+
+// ------------------------------------------------------------------ Pistas (10 por modo) e medalhas
+const CHAVE_MEDALHAS = `kart-${MODO.nome}-medalhas`;
+const lerMedalhas = () => { try { return JSON.parse(localStorage.getItem(CHAVE_MEDALHAS) || "{}"); } catch { return {}; } };
+function irParaPista(n) {
+  const q = new URLSearchParams(location.search);
+  q.set("pista", n);
+  location.replace(`${location.pathname}?${q}`);
+}
+{
+  const medalhas = lerMedalhas();
+  PISTAS.forEach((p, i) => {
+    const n = i + 1, m = medalhas[n];
+    const b = document.createElement("button");
+    b.className = `pista ${n === PISTA.numero ? "atual" : ""}`;
+    b.setAttribute("aria-label", `Pista ${n}: ${p.nome}${m ? `, chegou em ${m}º` : ""}`);
+    b.innerHTML = `<span class="em">${p.emoji}</span><b>${n}</b>${m ? `<span class="medalha">${["🥇", "🥈", "🥉", "🏁"][m - 1]}</span>` : ""}`;
+    b.addEventListener("click", () => { if (n !== PISTA.numero) irParaPista(n); });
+    $("pistas").append(b);
+  });
+}
+$("proxima-pista").hidden = PISTA.numero >= PISTAS.length;
+$("proxima-pista").addEventListener("click", () => irParaPista(PISTA.numero + 1));
+document.querySelector("#abertura .sub").textContent = `${MODO.sub} · ${PISTA.emoji} ${PISTA.nome}`;
 for (const s of document.querySelectorAll(".dica-modo")) s.textContent = MODO.dica;
 if (MODO.amigos) $("amigos").hidden = false;
 const entrada = { esq: false, dir: false, eixo: 0 }; // eixo: alavanca do controle, de -1 a 1
@@ -900,6 +935,8 @@ function terminar() {
   $("hud").classList.add("escondido");
   setTimeout(() => {
     $("res-lugar").textContent = `${lugar}º lugar!`;
+    const med = lerMedalhas();
+    if (!med[PISTA.numero] || lugar < med[PISTA.numero]) { med[PISTA.numero] = lugar; try { localStorage.setItem(CHAVE_MEDALHAS, JSON.stringify(med)); } catch { /* sem armazenamento */ } }
     $("res-trofeu").textContent = ["🏆", "🥈", "🥉", "🏁"][lugar - 1];
     $("res-acertos").textContent = MODO.amigos ? `Você levou ${amigos} amigos para a escola!` : `Você acertou ${acertos} de ${perguntasFeitas} ${MODO.unidade}!`;
     $("resultado").classList.remove("escondido");

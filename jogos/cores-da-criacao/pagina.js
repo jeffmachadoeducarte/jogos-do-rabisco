@@ -1,10 +1,12 @@
-// Página 1 do Livro da Criação: o Jardim. Monta o cenário de artesanato (feltro com costura, caixas
-// de papelão), as colisões e as coisas com que o Rabisco interage: ovelhinhas perdidas, sementes do
-// portão, botão vermelho da ponte de flores, estrelas escondidas, bandeirinhas e o Lápis Verde pastor.
+// Uma página do Livro da Criação (ver paginas.js). Monta o cenário de artesanato (feltro com costura, caixas
+// de papelão), as colisões e as coisas com que o Rabisco interage: bichinhos perdidos, objetos do
+// portão, botão colorido da ponte de flores, estrelas escondidas, bandeirinhas e o personagem do fim.
 // Unidade: o Rabisco tem 1,8 de altura. Ele anda para +z (para longe da câmera).
 
 import { THREE, toon, peca, texturaCanvas, COR3D, aleatorio, carregarTextura } from "../../src/motor3d/toon.js";
 import { arvore3D, nuvem3D, morro3D, flor3D, cerca3D, pilotoLapis, borracha3D, escola3D } from "../../src/motor3d/objetos.js";
+import { decoracao } from "../rabisco-kart/pistas.js";
+import { PAGINAS, CORES } from "./paginas.js";
 
 export const LIMITES = { x0: -12, x1: 12, z0: -6, z1: 94 };
 export const RIO = { z0: 36, z1: 42 };
@@ -77,6 +79,72 @@ function ovelha() {
   g.userData = { corpo, cabeca, pernas };
   return g;
 }
+// Bichinhos das páginas: corpo, cabeça e detalhes simples no traço do Rabisco
+function bichinho(tipo) {
+  if (tipo === "ovelha") return ovelha();
+  const T = {
+    pato: { corpo: 0xffffff, cabeca: 0xffffff, bico: COR3D.laranja, escala: 0.9 },
+    pintinho: { corpo: COR3D.amarelo, cabeca: COR3D.amarelo, bico: COR3D.laranja, escala: 0.7 },
+    coelho: { corpo: 0xf2f2f2, cabeca: 0xf2f2f2, orelhas: "longas", escala: 0.9 },
+    porco: { corpo: 0xffb3c8, cabeca: 0xffb3c8, focinho: 0xff8fb0, escala: 1 },
+    passaro: { corpo: COR3D.ciano, cabeca: COR3D.ciano, bico: COR3D.amarelo, escala: 0.75 },
+    pinguim: { corpo: 0x2b2b2b, barriga: 0xffffff, cabeca: 0x2b2b2b, bico: COR3D.laranja, escala: 0.95, empe: true },
+    camelo: { corpo: 0xd9a65a, cabeca: 0xd9a65a, corcova: true, escala: 1.05 },
+    coruja: { corpo: 0x9a6232, barriga: 0xf3d9a4, cabeca: 0x9a6232, bico: COR3D.amarelo, olhosGrandes: true, escala: 0.85, empe: true },
+  }[tipo];
+  const g = new THREE.Group(), corpo = new THREE.Group();
+  const tronco = peca(new THREE.SphereGeometry(0.42, 16, 12), T.corpo, { contorno: 0.05 });
+  tronco.scale.set(T.empe ? 0.85 : 1, T.empe ? 1.2 : 0.85, T.empe ? 0.85 : 1.2);
+  tronco.position.y = T.empe ? 0.55 : 0.5;
+  corpo.add(tronco);
+  if (T.barriga) { const b = peca(new THREE.SphereGeometry(0.3, 14, 10), T.barriga, { contorno: 0 }); b.position.set(0, 0.5, 0.18); b.scale.set(1, 1.3, 0.6); corpo.add(b); }
+  if (T.corcova) { const c = peca(new THREE.SphereGeometry(0.25, 12, 10), T.corpo, { contorno: 0.04 }); c.position.set(0, 0.88, -0.05); corpo.add(c); }
+  const cabeca = peca(new THREE.SphereGeometry(0.26, 14, 10), T.cabeca, { contorno: 0.04 });
+  cabeca.position.set(0, T.empe ? 1.05 : 0.85, T.empe ? 0.05 : 0.42);
+  for (const x of [-0.1, 0.1]) {
+    const olho = new THREE.Mesh(new THREE.SphereGeometry(T.olhosGrandes ? 0.1 : 0.06, 10, 8), toon(0xffffff));
+    olho.position.set(x, 0.06, 0.21);
+    const pupila = new THREE.Mesh(new THREE.SphereGeometry(T.olhosGrandes ? 0.05 : 0.03, 8, 6), toon(COR3D.tinta));
+    pupila.position.z = T.olhosGrandes ? 0.07 : 0.04;
+    olho.add(pupila);
+    cabeca.add(olho);
+  }
+  if (T.bico) { const b = peca(new THREE.ConeGeometry(0.08, 0.2, 8), T.bico, { contorno: 0.02 }); b.rotation.x = Math.PI / 2; b.position.set(0, -0.03, 0.3); cabeca.add(b); }
+  if (T.focinho) { const f = peca(new THREE.CylinderGeometry(0.1, 0.1, 0.08, 12), T.focinho, { contorno: 0.02 }); f.rotation.x = Math.PI / 2; f.position.set(0, -0.04, 0.26); cabeca.add(f); }
+  if (T.orelhas === "longas") for (const x of [-0.09, 0.09]) { const o = peca(new THREE.CapsuleGeometry(0.06, 0.32, 4, 8), T.cabeca, { contorno: 0.02 }); o.position.set(x, 0.36, -0.02); cabeca.add(o); }
+  const pernas = [];
+  for (const [x, z] of T.empe ? [[-0.15, 0.05], [0.15, 0.05]] : [[-0.2, 0.22], [0.2, 0.22], [-0.2, -0.22], [0.2, -0.22]]) {
+    const p = peca(new THREE.CylinderGeometry(0.05, 0.05, 0.3, 6), T.bico ?? 0x2b2b2b, { contorno: 0.02 });
+    p.position.set(x, 0.15, z);
+    corpo.add(p);
+    pernas.push(p);
+  }
+  corpo.add(cabeca);
+  g.add(corpo);
+  g.scale.setScalar(T.escala);
+  g.userData = { corpo, cabeca, pernas };
+  return g;
+}
+
+// Objetos do portão (no lugar das sementes do Jardim)
+function itemDoPortao(tipo) {
+  if (tipo === "semente") return semente();
+  const g = new THREE.Group();
+  const T = {
+    concha: [new THREE.ConeGeometry(0.25, 0.4, 10), 0xffb3c8], maca: [new THREE.SphereGeometry(0.24, 14, 10), COR3D.vermelho],
+    noz: [new THREE.SphereGeometry(0.22, 12, 10), 0x9a6232], cenoura: [new THREE.ConeGeometry(0.14, 0.5, 10), COR3D.laranja],
+    pena: [new THREE.CapsuleGeometry(0.07, 0.4, 4, 8), COR3D.ciano], floco: [new THREE.IcosahedronGeometry(0.24, 0), 0xffffff],
+    gota: [new THREE.SphereGeometry(0.22, 14, 10), 0x3aa7f0], estrelinha: [new THREE.OctahedronGeometry(0.26, 0), COR3D.amarelo],
+    livro: [new THREE.BoxGeometry(0.4, 0.5, 0.14), COR3D.rosa],
+  }[tipo];
+  const m = peca(T[0], T[1], { contorno: 0.04 });
+  if (tipo === "cenoura") m.rotation.z = Math.PI;
+  if (tipo === "pena") m.rotation.z = 0.6;
+  g.add(m);
+  if (tipo === "maca" || tipo === "cenoura") { const f = peca(new THREE.SphereGeometry(0.08, 8, 6), COR3D.verde, { contorno: 0.02 }); f.scale.set(1.6, 0.5, 0.8); f.position.y = tipo === "maca" ? 0.26 : 0.3; g.add(f); }
+  return g;
+}
+
 function semente() {
   const g = new THREE.Group();
   const s = peca(new THREE.SphereGeometry(0.22, 14, 10), 0x9a6232, { contorno: 0.04 });
@@ -109,14 +177,14 @@ function bandeira() {
   return g;
 }
 
-export function montarJardim(cena, cores) {
+export function montarPagina(cena, cores, P = PAGINAS[0]) {
   const caixas = [];     // colisores: { x0, x1, y0, y1, z0, z1, ativo }
   const cilindros = [];  // árvores e pedras: { x, z, r }
   const solido = (x0, x1, y0, y1, z0, z1) => { const c = { x0, x1, y0, y1, z0, z1, ativo: true }; caixas.push(c); return c; };
   const r = aleatorio(31);
 
   // ---------- chão de feltro em ladrilhos (o caminho é bege, a grama verde)
-  const texGrama = feltro("#62c845"), texCaminho = feltro("#f3d9a4"), texMargem = feltro("#7fd36a", { costura: false });
+  const texGrama = feltro(P.chao.grama), texCaminho = feltro(P.chao.caminho), texMargem = feltro(P.chao.margem, { costura: false });
   for (let z = LIMITES.z0; z < LIMITES.z1; z += 4) {
     if (z + 4 > RIO.z0 && z < RIO.z1) continue;
     for (let x = LIMITES.x0; x < LIMITES.x1; x += 4) {
@@ -134,7 +202,7 @@ export function montarJardim(cena, cores) {
   texMargem.wrapS = texMargem.wrapT = THREE.RepeatWrapping; texMargem.repeat.set(30, 30);
   cena.add(margem);
   for (let i = 0; i < 14; i++) {
-    const m = morro3D(14 + r() * 10, i % 2 ? 0x7dd36a : 0x9fe08a);
+    const m = morro3D(14 + r() * 10, P.morros[i % 2]);
     const lado = i % 2 ? 1 : -1;
     m.position.set(lado * (30 + r() * 16), -0.6, -10 + i * 9);
     cena.add(m);
@@ -161,9 +229,18 @@ export function montarJardim(cena, cores) {
 
   // ---------- natureza: árvores, flores e pedras
   const arvores = []; // a câmera esconde a árvore que ficar na frente do Rabisco
-  const arvore = (x, z, e = 0.32) => { const a = arvore3D(e); a.position.set(x, 0, z); a.rotation.y = r() * 6; cena.add(a); cores.registrar(a, { raio: 7.5 }); cilindros.push({ x, z, r: 0.9 * e / 0.32 }); arvores.push(a); return a; };
+  // árvore de cada página (as dos outros temas vêm da decoração do Kart, em escala menor)
+  const novaArvore = (e) => {
+    if (P.arvore === "arvore") return arvore3D(e);
+    if (P.arvore === "nuvem") { const n = new THREE.Group(); const nv = nuvem3D(0.16 * e / 0.32); nv.position.y = 2.6; const haste = peca(new THREE.CylinderGeometry(0.08, 0.08, 2.6, 6), 0xffffff, { contorno: 0.03 }); haste.position.y = 1.3; n.add(haste, nv); return n; }
+    const d = decoracao(P.arvore, r);
+    d.scale.setScalar(0.27 * e / 0.32);
+    return d;
+  };
+  const arvore = (x, z, e = 0.32) => { const a = novaArvore(e);
+    if (P.frutas && P.arvore === "arvore") for (let k = 0; k < 6; k++) { const f = peca(new THREE.SphereGeometry(0.75, 10, 8), k % 2 ? COR3D.vermelho : COR3D.laranja, { contorno: 0.15 }); f.position.set((r() - 0.5) * 6, 6.5 + r() * 3, (r() - 0.5) * 6); a.add(f); } a.position.set(x, 0, z); a.rotation.y = r() * 6; cena.add(a); cores.registrar(a, { raio: 7.5 }); cilindros.push({ x, z, r: 0.9 * e / 0.32 }); arvores.push(a); return a; };
   const flores = (x, z, n = 7, cor = null) => {
-    const coresFlor = [COR3D.rosa, COR3D.amarelo, 0xffffff, COR3D.roxo, COR3D.laranja, COR3D.ciano];
+    const coresFlor = P.flores.map((c) => CORES[c]);
     for (let i = 0; i < n; i++) {
       const f = flor3D(cor ?? coresFlor[Math.floor(r() * coresFlor.length)]);
       f.scale.setScalar(1.6 + r() * 0.8);
@@ -246,7 +323,7 @@ export function montarJardim(cena, cores) {
   const botao = new THREE.Group();
   const baseBotao = peca(new THREE.CylinderGeometry(0.7, 0.8, 0.2, 20), 0x9aa3ad, { contorno: 0.04 });
   baseBotao.position.y = 0.1;
-  const capa = peca(new THREE.CylinderGeometry(0.5, 0.55, 0.3, 20), COR3D.vermelho, { contorno: 0.04 });
+  const capa = peca(new THREE.CylinderGeometry(0.5, 0.55, 0.3, 20), CORES[P.botao], { contorno: 0.04 });
   capa.position.y = 0.3;
   botao.add(baseBotao, capa);
   botao.position.set(-6, 0, 33.5);
@@ -260,7 +337,7 @@ export function montarJardim(cena, cores) {
     const folha = peca(new THREE.CylinderGeometry(1.5, 1.5, 0.18, 18), COR3D.verde, { contorno: 0.05 });
     vitoria.add(folha);
     for (let k = 0; k < 6; k++) {
-      const pet = peca(new THREE.SphereGeometry(0.42, 10, 8), COR3D.vermelho, { contorno: 0.04 });
+      const pet = peca(new THREE.SphereGeometry(0.42, 10, 8), CORES[P.botao], { contorno: 0.04 });
       const a = (k / 6) * Math.PI * 2;
       pet.scale.set(1, 0.4, 1.6);
       pet.position.set(Math.cos(a) * 0.7, 0.2, Math.sin(a) * 0.7);
@@ -279,18 +356,18 @@ export function montarJardim(cena, cores) {
   const caixaPonte = solido(-7.6, -4.4, -1, 0, RIO.z0 - 0.2, RIO.z1 + 0.2);
   caixaPonte.ativo = false;
   // botões e flores vermelhas pequenas na margem, para a criança ligar a cor
-  flores(-6, 34.8, 4, COR3D.vermelho);
+  flores(-6, 34.8, 4, CORES[P.botao]);
 
   // ---------- coisas para achar
   const ovelhas = [[-9, 0, 13], [-9.5, 0, 50.5], [-8, 2.4, 69.5]].map(([x, y, z]) => {
-    const g = ovelha();
+    const g = bichinho(P.bicho);
     g.scale.setScalar(0.85);
     g.position.set(x, y, z);
     g.rotation.y = Math.PI * (0.5 + r());
     cena.add(g);
     return { g, estado: "perdida", base: new THREE.Vector3(x, y, z), fase: r() * 6 };
   });
-  const sementes = [[6, 0.6, 8], [-7, 0.6, 22], [4, 2.0, 18]].map(([x, y, z]) => { const g = semente(); g.position.set(x, y, z); cena.add(g); return { g, y0: y, pega: false }; });
+  const sementes = [[6, 0.6, 8], [-7, 0.6, 22], [4, 2.0, 18]].map(([x, y, z]) => { const g = itemDoPortao(P.item); g.position.set(x, y, z); cena.add(g); return { g, y0: y, pega: false }; });
   const estrelas = [[10.6, 0.9, 27.5], [9, 4.5, 53], [10.5, 0.9, 82]].map(([x, y, z]) => { const g = estrela3D(); g.position.set(x, y, z); cena.add(g); return { g, y0: y, pega: false }; });
   const bandeiras = [[2.5, 0, 1], [2.5, 0, 32.5], [2.5, 0, 56], [2.5, 0, 74]].map(([x, y, z], i) => {
     const g = bandeira();
@@ -299,7 +376,8 @@ export function montarJardim(cena, cores) {
     cores.registrar(g, { raio: 4, som: false });
     return { g, ponto: new THREE.Vector3(0, 0, z), ativa: i === 0 };
   });
-  const borrachas = [[62, -6, 6], [70, -6, 4], [80, -5, 7]].map(([z, x0, x1], i) => {
+  // borrachas: 3 no Jardim e mais a cada página (sempre nos trechos depois da ponte)
+  const borrachas = [[62, -6, 6], [70, -6, 4], [80, -5, 7], [58, -8, 2], [75, -2, 8], [48, -9, -3], [54, -8, -1]].slice(0, P.borrachas).map(([z, x0, x1], i) => {
     const g = borracha3D();
     g.scale.setScalar(0.85);
     g.position.set(x0, 0, z);
@@ -308,7 +386,7 @@ export function montarJardim(cena, cores) {
   });
 
   // ---------- fim: o Lápis Verde pastor, o cercado e a escola ao fundo
-  const pastor = pilotoLapis(COR3D.verde);
+  const pastor = pilotoLapis(CORES[P.personagem.cor]);
   pastor.scale.setScalar(0.85);
   pastor.position.set(-3, 0, 85);
   pastor.rotation.y = Math.PI * 0.85;
@@ -336,6 +414,6 @@ export function montarJardim(cena, cores) {
     botao: { g: botao, apertado: false }, ponte: { petalas, caixa: caixaPonte },
     agua: { tex: texAgua },
     inicio: new THREE.Vector3(0, 0, 0),
-    montarSemente: semente,
+    montarSemente: () => itemDoPortao(P.item),
   };
 }

@@ -287,3 +287,26 @@ body:has(.tela:not(.escondido)) #som { bottom: auto; top: calc(env(safe-area-ins
 .pergunta .amigos { letter-spacing: -0.1em; font-size: 0.8em; }
 .pergunta .frase { color: var(--tinta); font-size: 0.62em; }
 @media (max-height: 520px) { #amigos { font-size: clamp(24px, 9vh, 40px); top: calc(clamp(90px, 22vh, 140px) + 26px); } }
+
+/* ---------- Pistas (pistas.js) ---------- */
+.pistas { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; max-width: 560px; width: auto !important; }
+.pista {
+  position: relative; display: flex; align-items: center; gap: 4px; padding: 4px 12px 6px; cursor: pointer;
+  background: rgba(255, 255, 255, 0.92); border: 4px solid var(--tinta); border-radius: 16px; box-shadow: 0 4px 0 var(--tinta);
+  font: 800 20px "Baloo 2", sans-serif;
+}
+.pista .em { font-size: 22px; }
+.pista.atual { background: var(--amarelo); transform: translateY(-3px); }
+.pista .medalha { position: absolute; top: -12px; right: -10px; font-size: 20px; }
+.botao.branco { background: #fff; color: var(--tinta); border: 3px solid var(--tinta); }
+@media (max-height: 520px) { .pistas { margin-top: 6px; gap: 5px; max-width: 520px; } .pista { font-size: 15px; padding: 1px 8px 3px; border-width: 3px; } .pista .em { font-size: 16px; } }
+@media (max-height: 760px) and (min-height: 521px) {
+  #abertura .logo { width: clamp(110px, 14vw, 160px); }
+  #abertura h1 { font-size: clamp(48px, 11vh, 92px); }
+  #abertura .sub { margin: 2px 0 12px; font-size: clamp(22px, 4vh, 34px); }
+  #abertura .dica { margin-top: 10px; }
+  .pistas { margin-top: 10px; }
+}
+/* com a escolha de pistas, a abertura não cabe inteira em telas baixas: sai a logo pequena (a marca segue no cenário) */
+@media (max-height: 620px) { #abertura .logo { display: none; } }
+@media (max-height: 520px) { #abertura .dica { display: none; } }

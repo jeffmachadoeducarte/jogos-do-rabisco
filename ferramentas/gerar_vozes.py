@@ -260,18 +260,38 @@ falas.update({"rr-titulo": "Rabisco Robô! Programe o caminho até a escola!", "
     "rr-nivel-3": "Use o bloco repetir para fazer programas mais curtos!",
     "rr-bateu": "Ops! Vamos tentar de novo?", "rr-faltou": "Quase! O Rabisco ainda não chegou na escola."})
 
-# --- Rabisco e as Cores da Criação (página 1: o Jardim) ---
+# --- Rabisco e as Cores da Criação: 10 páginas (../jogos/cores-da-criacao/paginas.js) ---
 falas.update({
     "cc-titulo": "Rabisco e as Cores da Criação!",
-    "cc-intro": "Oh, não! A Borracha Apagona apagou as cores do Jardim! Ande por tudo para pintar de novo!",
-    "cc-pastor": "Oi, Rabisco! Minhas ovelhinhas se perderam. Você me ajuda a encontrar?",
-    "cc-ovelha-1": "Uma ovelhinha!", "cc-ovelha-2": "Duas ovelhinhas!", "cc-ovelha-3": "Três ovelhinhas!",
-    "cc-entregou": "Obrigado, Rabisco! Ainda falta alguma ovelhinha...",
-    "cc-portao": "O portão abriu!", "cc-portao-fechado": "Hmm, o portão quer sementes.",
-    "cc-vermelho": "Vermelho!", "cc-ponte": "As flores vermelhas viraram uma ponte!",
-    "cc-estrela": "Uma estrela escondida!", "cc-caiu": "Ops! Vamos de novo!",
-    "cc-final": "Você achou todas! E Deus viu que tudo era muito bom!",
+    "cc-entregou": "Obrigado, Rabisco! Ainda falta alguém...",
+    "cc-portao": "O portão abriu!", "cc-estrela": "Uma estrela escondida!", "cc-caiu": "Ops! Vamos de novo!",
 })
+# página: (personagem, bichos no singular/plural e gênero, o que o portão pede, fala do fim)
+PAGINAS_CC = {
+    "jardim": ("Lápis Verde", "ovelhinha", "ovelhinhas", "a", "sementes", "Oh, não! A Borracha Apagona apagou as cores do Jardim! Ande por tudo para pintar de novo!", "Você achou todas! E Deus viu que tudo era muito bom!"),
+    "mar": ("Lápis Azul", "patinho", "patinhos", "o", "conchas", "Agora é o Mar! A Borracha apagou a praia. Vamos pintar tudo de novo!", "Deus fez os peixes do mar e as aves do céu!"),
+    "pomar": ("Lápis Laranja", "pintinho", "pintinhos", "o", "maçãs", "Que pomar cinzento! Vamos pintar as árvores e as frutas!", "Deus fez as árvores que dão frutos. Que delícia!"),
+    "floresta": ("Lápis Marrom", "coelhinho", "coelhinhos", "o", "nozes", "A Floresta dos Bichos perdeu as cores! Vamos colorir!", "Deus fez os animais, cada um do seu jeitinho!"),
+    "fazenda": ("Lápis Amarelo", "porquinho", "porquinhos", "o", "cenouras", "Bem-vindo à Fazenda! Vamos pintar tudo de novo!", "Deus cuida de cada um dos seus bichinhos!"),
+    "ceu": ("Lápis Ciano", "passarinho", "passarinhos", "o", "penas", "Subimos até o Céu! Vamos pintar as nuvens!", "Deus fez o céu bem grande e lindo!"),
+    "neve": ("Lápis Branco", "pinguinzinho", "pinguinzinhos", "o", "flocos de neve", "Que frio! A Montanha de Neve está sem cor. Vamos pintar!", "Deus manda a neve branquinha cair sobre a terra!"),
+    "deserto": ("Lápis Vermelho", "camelinho", "camelinhos", "o", "gotas de água", "Chegamos ao Oásis no deserto! Vamos colorir!", "Deus faz brotar água até no deserto!"),
+    "noite": ("Lápis Roxo", "corujinha", "corujinhas", "a", "estrelinhas", "Já é noite! Vamos pintar a noite estrelada!", "Deus conhece cada estrela pelo nome!"),
+    "descanso": ("Lápis Rosa", "ovelhinha", "ovelhinhas", "a", "livros", "A última página! Vamos pintar a escola e o jardim!", "No sétimo dia, Deus descansou. E tudo ficou muito bom! Parabéns, você coloriu o livro inteiro!"),
+}
+UM = {"o": ["Um", "Dois", "Três"], "a": ["Uma", "Duas", "Três"]}
+for pid, (pers, sing, plur, gen, itens, intro, fim) in PAGINAS_CC.items():
+    falas[f"cc-intro-{pid}"] = intro
+    falas[f"cc-pastor-{pid}"] = f"Oi, Rabisco! Eu sou o {pers}. Meus {plur} se perderam. Você me ajuda a encontrar?" if gen == "o" else f"Oi, Rabisco! Eu sou o {pers}. Minhas {plur} se perderam. Você me ajuda a encontrar?"
+    for k in range(3):
+        falas[f"cc-bicho-{pid}-{k + 1}"] = f"{UM[gen][k]} {sing if k == 0 else plur}!"
+    falas[f"cc-portao-fechado-{pid}"] = f"Hmm, o portão quer {itens}."
+    falas[f"cc-final-{pid}"] = fim
+COR_FALA = {"vermelho": ("Vermelho", "vermelhas"), "azul": ("Azul", "azuis"), "amarelo": ("Amarelo", "amarelas"), "verde": ("Verde", "verdes"),
+            "laranja": ("Laranja", "laranja"), "rosa": ("Rosa", "cor-de-rosa"), "roxo": ("Roxo", "roxas"), "branco": ("Branco", "brancas"), "ciano": ("Azul-claro", "azul-claras")}
+for cor, (nome, adj) in COR_FALA.items():
+    falas[f"cc-cor-{cor}"] = f"{nome}!"
+    falas[f"cc-ponte-{cor}"] = f"As flores {adj} viraram uma ponte!"
 
 # Falas em inglês (voz americana): chave -> texto
 VOZ_EN = "en-US-AnaNeural"

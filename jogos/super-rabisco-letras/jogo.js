@@ -15,6 +15,7 @@ import { criarPausa } from "../../src/motor/pausa.js";
 import { ligarControle } from "../../src/motor/controle.js";
 import { prepararCelular } from "../../src/motor/celular.js";
 import { modoAtual } from "./modos.js";
+import { faseAtual } from "./fases.js";
 import { botaoVoltar } from "../../src/motor/voltar.js";
 
 const RAIZ = "../..";
@@ -30,12 +31,6 @@ const NOME_FASE = MODO.nome === "letras" || MODO.nome === "silabas" ? "Palavra" 
 
 // Lugares possíveis das letras na fase (coluna, altura); a palavra usa tantos quantas letras tiver,
 // espalhados do começo ao fim e sempre na ordem da palavra
-const LUGARES_LETRA = [
-  // todas alcançáveis: andando, com um pulo do chão ou em cima da pirâmide do fim
-  [13, 0.9], [16, 0.9], [20, 2.0], [24, 0.9], [30, 0.9], [33, 2.6], [49, 0.9], [54, 2.6],
-  [61, 2.0], [66, 2.4], [70, 0.9], [75, 2.6], [79, 2.0], [88, 0.9], [96, 2.4], [103, 4.4],
-];
-
 // Física (o Rabisco tem 2,4 blocos de altura, como o "Mario grande")
 const GRAVIDADE = 36;
 const VEL_PULO = 16.5;
@@ -44,31 +39,10 @@ const ALTURA_RABISCO = 2.4;
 const LARG_J = 0.8, ALT_J = 2.3;
 
 // ---------- Fase (colunas = blocos; a = altura em blocos acima do chão) ----------
-const FASE = {
-  inicio: 7,
-  blocos: [
-    [14, 4, "q"],
-    [18, 4, "t"], [19, 4, "q"], [20, 4, "t"], [21, 4, "q"], [22, 4, "t"], [20, 8, "q"],
-    [58, 4, "t"], [59, 4, "t"], [60, 4, "q"], [61, 4, "t"], [62, 4, "t"], [63, 4, "t"], [60, 8, "q"],
-    [78, 4, "q"], [79, 4, "q"],
-  ],
-  canos: [[27, 2], [36, 3], [45, 2], [83, 3]],        // [coluna da esquerda, altura]
-  // cano 36 leva para a sala secreta; a saída da sala devolve o Rabisco pelo cano 45
-  sala: { x0: 300, x1: 322, entrada: 302, saida: 316 },
-  moedas: [
-    [9, 1], [10, 1], [11, 1], [12, 1],
-    [36.5, 4.3], [37.5, 4.3],
-    [58, 6], [59, 6], [61, 6], [62, 6], [63, 6],
-    [72, 1], [73, 1], [74, 1],
-    [101, 2.4], [102, 3.4], [103, 5.6], [104, 3.4], [105, 2.4],
-  ],
-  // inimigos: [coluna, mínimo, máximo, tipo] — borracha anda; manchinha de tinta pula
-  inimigos: [[32, 29, 35, "b"], [51, 47, 55, "m"], [71, 67, 76, "b"], [94, 90, 97, "m"], [56, 47, 57, "b"]],
-  piramide: [100, 4],                              // sobe 4 degraus a partir da coluna 100 e desce do outro lado
-  mastro: 114,
-  castelo: 121,
-  fim: 128,
-};
+const FASE = faseAtual(); // 1 a 10 (ver fases.js): blocos, canos, inimigos, letras e o céu de cada fase
+const TEMA = FASE.tema;
+// lugares possíveis das letras (coluna, altura), sempre alcançáveis; a palavra usa tantos quantas letras tiver
+const LUGARES_LETRA = FASE.letras;
 
 // ------------------------------------------------------------------ Render
 const renderer = new THREE.WebGLRenderer({ canvas: $("cena"), antialias: true, powerPreference: "high-performance" });
@@ -78,7 +52,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const cena = new THREE.Scene();
-cena.fog = new THREE.Fog(0xb8ecff, 70, 190);
+cena.fog = new THREE.Fog(TEMA.neblina, 70, 190);
 const camera = new THREE.PerspectiveCamera(36, 16 / 9, 0.3, 600);
 function ajustarTela() {
   renderer.setSize(innerWidth, innerHeight, false);
@@ -92,19 +66,29 @@ const ceu = new THREE.Mesh(
   new THREE.SphereGeometry(400, 32, 16),
   new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
-    uniforms: { topo: { value: new THREE.Color(0x3fa6ff) }, horizonte: { value: new THREE.Color(0xc4efff) } },
+    uniforms: { topo: { value: new THREE.Color(TEMA.ceu[0]) }, horizonte: { value: new THREE.Color(TEMA.ceu[1]) } },
     vertexShader: "varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
     fragmentShader: "uniform vec3 topo; uniform vec3 horizonte; varying vec3 vP; void main(){ float h = clamp(vP.y*1.8, 0.0, 1.0); gl_FragColor = vec4(mix(horizonte, topo, pow(h,0.7)), 1.0); }",
   }),
 );
 cena.add(ceu);
-const sol = new THREE.DirectionalLight(0xffffff, 2.4);
+const sol = new THREE.DirectionalLight(TEMA.corLuz ?? 0xffffff, TEMA.luz);
 sol.castShadow = true;
 sol.shadow.mapSize.set(2048, 2048);
 Object.assign(sol.shadow.camera, { left: -24, right: 24, top: 16, bottom: -8, near: 1, far: 90 });
 sol.shadow.bias = -0.0005;
 sol.shadow.normalBias = 0.03;
-cena.add(sol, sol.target, new THREE.HemisphereLight(0xd6f3ff, 0x5aa83a, 1.6));
+cena.add(sol, sol.target, new THREE.HemisphereLight(TEMA.corLuz ?? 0xd6f3ff, 0x5aa83a, TEMA.ambiente ?? 1.6));
+if (TEMA.estrelas) {
+  // noite: estrelinhas e a lua atrás dos morros
+  const n = 400, pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) pos.set([-60 + Math.random() * 260, 8 + Math.random() * 40, -40 - Math.random() * 30], i * 3);
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  cena.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 2.5, sizeAttenuation: false, fog: false })));
+  const lua = new THREE.Mesh(new THREE.SphereGeometry(4, 20, 14), new THREE.MeshBasicMaterial({ color: 0xfff6d0, fog: false }));
+  lua.position.set(40, 26, -50);
+  cena.add(lua);
+}
 
 // ------------------------------------------------------------------ Mundo
 const solidos = [];   // { x0, x1, y0, y1, bloco }
@@ -133,7 +117,7 @@ function construirMundo(tex) {
 
   // fundo: morros, arbustos e nuvens
   [[2, 7, "g"], [16, 4.5, "p"], [30, 7, "g"], [47, 4.5, "p"], [62, 7, "g"], [78, 4.5, "p"], [92, 7, "g"], [108, 4.5, "p"]].forEach(([x, r, t]) => {
-    const m = morroMario(r, t === "g" ? 0x5cc13a : 0x79d24f, t === "g" ? 0x3a9227 : 0x4ea533);
+    const m = morroMario(r, t === "g" ? TEMA.morros[0] : TEMA.morros[1], TEMA.morros[2]);
     m.position.set(x, 0, -6 - r * 0.6);
     cena.add(m);
   });
@@ -157,9 +141,10 @@ function construirMundo(tex) {
 
   // blocos "?" e tijolos
   for (const [col, alt, tipo] of FASE.blocos) {
-    const b = blocoMario(tipo === "t" ? "tijolo" : "pergunta");
+    const b = blocoMario(tipo === "t" ? "tijolo" : tipo === "d" ? "duro" : "pergunta");
     b.position.set(col + 0.5, alt + 0.5, 0);
     cena.add(b);
+    if (tipo === "d") { solidos.push({ x0: col, x1: col + 1, y0: alt, y1: alt + 1 }); continue; } // degrau: bloco duro, não dá moeda
     solidos.push({ x0: col, x1: col + 1, y0: alt, y1: alt + 1, bloco: { malha: b, temMoeda: tipo !== "t", tinhaMoeda: tipo !== "t", base: alt + 0.5, empurrao: 0 } });
   }
   // canos (2 blocos de largura)
@@ -239,7 +224,8 @@ function construirSala() {
   volta.position.set(saida + 1, 0, 0);
   cena.add(volta);
   solidos.push({ x0: saida, x1: saida + 2, y0: 0, y1: 2 });
-  CANOS_ENTRADA.push({ x: saida + 1, topo: 2, destino: { x: 46, topo: 2 } });
+  const [sx, sh] = FASE.salaCanos.saida;
+  CANOS_ENTRADA.push({ x: saida + 1, topo: 2, destino: { x: sx + 1, topo: sh } });
   // selos em fileiras (a recompensa da sala)
   for (let lin = 0; lin < 3; lin++) {
     for (let c = 0; c < 9; c++) {
@@ -251,7 +237,7 @@ function construirSala() {
     }
   }
 }
-CANOS_ENTRADA.push({ x: 37, topo: 3, destino: "sala" });
+CANOS_ENTRADA.push({ x: FASE.salaCanos.entrada[0] + 1, topo: FASE.salaCanos.entrada[1], destino: "sala" });
 
 // Seta "entre aqui" pulando em cima dos canos que levam a algum lugar
 const setas = [];
@@ -402,6 +388,40 @@ document.body.classList.add(`modo-${MODO.nome}`);
 document.title = MODO.sub && MODO.nome === "letras" ? `${MODO.titulo}: ${MODO.sub}` : MODO.titulo;
 document.querySelector("#abertura h1").textContent = MODO.titulo;
 $("abertura").append(botaoVoltar({ raiz: RAIZ, faixa: MODO.faixa }));
+
+// ------------------------------------------------------------------ Fases (10 por modo)
+const CHAVE_FASES = `${MODO.chave}-fases`;
+const lerFases = () => { try { return JSON.parse(localStorage.getItem(CHAVE_FASES) || "{}"); } catch { return {}; } };
+function irParaFase(n) {
+  const q = new URLSearchParams(location.search);
+  q.set("fase", n);
+  q.delete("palavra");
+  location.replace(`${location.pathname}?${q}`);
+}
+{
+  const feitas = lerFases();
+  const caixa = document.createElement("div");
+  caixa.className = "fases";
+  caixa.setAttribute("role", "group");
+  caixa.setAttribute("aria-label", "Escolha a fase");
+  caixa.innerHTML = `<span class="rotulo">Fase:</span>`;
+  for (let n = 1; n <= 10; n++) {
+    const b = document.createElement("button");
+    b.className = `fase ${n === FASE.numero ? "atual" : ""} ${feitas[n] ? "feita" : ""}`;
+    b.textContent = n;
+    b.setAttribute("aria-label", `Fase ${n}${feitas[n] ? ", já passou" : ""}`);
+    b.addEventListener("click", () => { if (n !== FASE.numero) irParaFase(n); });
+    caixa.append(b);
+  }
+  document.querySelector("#abertura .niveis").after(caixa);
+  const prox = document.createElement("button");
+  prox.className = "botao rosa";
+  prox.id = "proxima-fase";
+  prox.textContent = "Próxima fase ▶";
+  prox.hidden = FASE.numero >= 10;
+  prox.addEventListener("click", () => irParaFase(FASE.numero + 1));
+  $("proximo").before(prox);
+}
 document.querySelector("#abertura .sub").textContent = MODO.sub;
 for (const b of document.querySelectorAll("[data-nivel]")) {
   const n = NIVEIS[Number(b.dataset.nivel) - 1];
@@ -878,7 +898,8 @@ function vitoria() {
   if (fimDoNivel) {
     try { const g = JSON.parse(localStorage.getItem(MODO.chave) || "{}"); g[nivel] = true; localStorage.setItem(MODO.chave, JSON.stringify(g)); } catch { /* sem armazenamento: tudo bem */ }
   }
-  $("vit-selos").textContent = `+ ${moedasPegas} selos`;
+  $("vit-selos").textContent = `+ ${moedasPegas} selos · Fase ${FASE.numero}: ${TEMA.nome}`;
+  { const f = lerFases(); f[FASE.numero] = true; try { localStorage.setItem(CHAVE_FASES, JSON.stringify(f)); } catch { /* sem armazenamento */ } }
   $("vitoria").classList.remove("escondido");
   const INICIO = 1200;
   const spans = [...$("vit-palavra").children].filter((s) => !s.classList.contains("hifen"));

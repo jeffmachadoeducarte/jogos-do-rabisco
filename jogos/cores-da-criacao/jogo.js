@@ -1,7 +1,7 @@
 // Rabisco e as Cores da Criação: aventura 3D de plataforma no estilo dos jogos de artesanato.
 // A Borracha Apagona apagou as cores do Livro da Criação; o Rabisco entra nas páginas e tudo que ele
-// chega perto ganha cor de novo. Página 1: o Jardim — achar as 3 ovelhinhas perdidas do Lápis Verde
-// pastor, abrir o portão das sementes e fazer as flores vermelhas virarem ponte.
+// chega perto ganha cor de novo. São 10 páginas (paginas.js), do Jardim ao Descanso: em cada uma, achar
+// os 3 bichinhos perdidos do personagem, abrir o portão com 3 objetos e fazer as flores virarem ponte.
 // O conteúdo é sutil: contar ovelhas pela voz, encaixar sementes, ligar a cor ao nome, e a parábola
 // da ovelha perdida (Lucas 15) e "Deus viu que tudo era muito bom" (Gênesis 1:31) na história.
 // Sem morte: cair no rio volta para a última bandeirinha.
@@ -12,7 +12,13 @@ import { criarCasca, el } from "../../src/motor/casca.js";
 import { sons, musica } from "../../src/motor/sons.js";
 import { falar, preCarregarFalas } from "../../src/motor/voz.js";
 import { criarCores } from "./cores.js";
-import { montarJardim, RIO } from "./jardim.js";
+import { montarPagina, RIO } from "./pagina.js";
+import { PAGINAS, paginaAtual } from "./paginas.js";
+
+// ícones do placar e nomes (no plural, para os avisos) de cada página
+const EMOJI = { ovelha: "🐑", pato: "🦆", pintinho: "🐥", coelho: "🐰", porco: "🐷", passaro: "🐦", pinguim: "🐧", camelo: "🐫", coruja: "🦉" };
+const ITEM = { semente: ["🌰", "sementes"], concha: ["🐚", "conchas"], maca: ["🍎", "maçãs"], noz: ["🌰", "nozes"], cenoura: ["🥕", "cenouras"], pena: ["🪶", "penas"], floco: ["❄️", "flocos de neve"], gota: ["💧", "gotas de água"], estrelinha: ["✨", "estrelinhas"], livro: ["📘", "livros"] };
+let PG = PAGINAS[0]; // a página que está sendo jogada
 
 const VEL = 6.2, PULO = 9.6, GRAV = 25, LARG = 0.35, ALT = 1.7;
 const params = new URLSearchParams(location.search);
@@ -23,7 +29,7 @@ const jogo = criarCasca({
   faixa: "alfabetizacao",
   cor: "#00B5F0",
   pose: "apresentando",
-  niveis: [{ nome: "O Jardim", desc: "Página 1" }],
+  niveis: PAGINAS.map((p) => ({ nome: p.nome, desc: p.desc })),
   deitado: true,
   menuNoJogo: false,
   teclado: false,
@@ -39,7 +45,7 @@ const jogo = criarCasca({
   aoContinuar: () => musica.tocar("fase"),
   aoControle: lerControle,
 });
-preCarregarFalas(["cc-intro", "cc-pastor", "cc-ovelha-1", "cc-ovelha-2", "cc-ovelha-3", "cc-entregou", "cc-portao", "cc-portao-fechado", "cc-vermelho", "cc-ponte", "cc-estrela", "cc-caiu", "cc-final"]);
+preCarregarFalas(["cc-entregou", "cc-portao", "cc-estrela", "cc-caiu"]);
 
 // ------------------------------------------------------------------ Entrada (teclado, controle e toque)
 const teclas = new Set();
@@ -100,8 +106,11 @@ const j = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), noChao: true, co
 const trilha = [];
 let ponto = new THREE.Vector3(), seguindo = [], entregues = 0, achadas = 0, sementes = 0, estrelas = 0, fim = false, tTrilha = 0;
 
-function iniciar() {
+function iniciar(n = 1) {
   parar();
+  PG = paginaAtual(n);
+  const id = PG.id;
+  preCarregarFalas([`cc-intro-${id}`, `cc-pastor-${id}`, `cc-bicho-${id}-1`, `cc-bicho-${id}-2`, `cc-bicho-${id}-3`, `cc-portao-fechado-${id}`, `cc-cor-${PG.botao}`, `cc-ponte-${PG.botao}`, `cc-final-${id}`]);
   const caixa = el("div", { class: "cena-aventura" });
   jogo.palco.append(caixa);
   r3 = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -111,18 +120,24 @@ function iniciar() {
   r3.shadowMap.type = THREE.PCFSoftShadowMap;
   caixa.append(r3.domElement);
   cena = new THREE.Scene();
-  cena.background = new THREE.Color(0xa8dcff);
-  cena.fog = new THREE.Fog(0xcdeeff, 45, 120);
+  cena.background = new THREE.Color(PG.ceu[0]);
+  cena.fog = new THREE.Fog(PG.ceu[1], 45, 120);
   cam = new THREE.PerspectiveCamera(52, 16 / 9, 0.1, 300);
-  sol = new THREE.DirectionalLight(0xffffff, 2.3);
+  sol = new THREE.DirectionalLight(PG.noite ? 0xaecbff : 0xffffff, PG.noite ? 1.3 : 2.3);
   sol.castShadow = true;
   sol.shadow.mapSize.set(2048, 2048);
   Object.assign(sol.shadow.camera, { left: -18, right: 18, top: 18, bottom: -18, near: 1, far: 70 });
   sol.shadow.bias = -0.0006; sol.shadow.normalBias = 0.04;
-  cena.add(sol, sol.target, new THREE.HemisphereLight(0xd6f3ff, 0x5aa83a, 1.5));
+  cena.add(sol, sol.target, new THREE.HemisphereLight(PG.noite ? 0x8fa8ff : 0xd6f3ff, 0x5aa83a, PG.noite ? 1.0 : 1.5));
+  if (PG.noite) {
+    const n = 500, pos = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) pos.set([-120 + Math.random() * 240, 20 + Math.random() * 60, -20 + Math.random() * 160], i * 3);
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    cena.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 2.5, sizeAttenuation: false, fog: false })));
+  }
 
   cores = criarCores(cena);
-  mundo = montarJardim(cena, cores);
+  mundo = montarPagina(cena, cores, PG);
   rabisco = new Rabisco3D({ raiz: "../..", altura: 1.8 });
   cena.add(rabisco.grupo);
 
@@ -148,7 +163,7 @@ function iniciar() {
   vivo = true;
   requestAnimationFrame(quadro);
   musica.tocar("fase");
-  setTimeout(() => { falar("cc-intro"); jogo.aviso("Ande para pintar o Jardim!", "bom", 2600); }, 600);
+  setTimeout(() => { falar(`cc-intro-${id}`); jogo.aviso(`${PG.nome}: ande para pintar!`, "bom", 2600); }, 600);
 }
 function parar() {
   vivo = false;
@@ -260,8 +275,8 @@ function regras(dt, t) {
         seguindo.push(o);
         achadas++;
         sons.letra();
-        falar(`cc-ovelha-${achadas}`);
-        jogo.aviso("🐑", "bom", 1200);
+        falar(`cc-bicho-${PG.id}-${achadas}`);
+        jogo.aviso(EMOJI[PG.bicho], "bom", 1200);
         atualizarHud();
       }
     } else if (o.estado === "seguindo") {
@@ -307,7 +322,7 @@ function regras(dt, t) {
       else { falar("cc-entregou"); jogo.aviso("Obrigado!", "bom", 1600); }
     } else if (t - fala.pastor > 9) {
       fala.pastor = t;
-      falar("cc-pastor");
+      falar(`cc-pastor-${PG.id}`);
     }
   }
 
@@ -337,8 +352,8 @@ function regras(dt, t) {
       }
     } else if (t - fala.portao > 7) {
       fala.portao = t;
-      falar("cc-portao-fechado");
-      jogo.aviso("O portão quer sementes!", "", 2000);
+      falar(`cc-portao-fechado-${PG.id}`);
+      jogo.aviso(`O portão quer ${ITEM[PG.item][1]}!`, "", 2000);
     }
   }
   if (P.abrindo != null && P.abrindo < 1) {
@@ -352,10 +367,10 @@ function regras(dt, t) {
     B.apertado = true;
     B.g.userData.capa.position.y = 0.16;
     sons.pisao();
-    falar("cc-vermelho");
-    jogo.aviso("Vermelho!", "bom", 1500);
+    falar(`cc-cor-${PG.botao}`);
+    jogo.aviso(`${PG.botao[0].toUpperCase()}${PG.botao.slice(1)}!`, "bom", 1500);
     mundo.ponte.petalas.forEach((p, i) => setTimeout(() => { p.userData.cresce = 0.001; sons.nota(i + 2); }, 900 + i * 350));
-    setTimeout(() => { mundo.ponte.caixa.ativo = true; falar("cc-ponte"); }, 900 + 4 * 350);
+    setTimeout(() => { mundo.ponte.caixa.ativo = true; falar(`cc-ponte-${PG.botao}`); }, 900 + 4 * 350);
   }
   for (const p of mundo.ponte.petalas) {
     if (p.userData.cresce > 0 && p.userData.cresce < 1) {
@@ -426,16 +441,16 @@ function final() {
   const crescer = () => { const k = Math.min(1, (performance.now() - t0) / 1800); arco.scale.setScalar(0.01 + k * 0.99); if (k < 1 && vivo) requestAnimationFrame(crescer); };
   crescer();
   cores.colorirTudo(mundo.pastor.position);
-  setTimeout(() => falar("cc-final"), 1400);
-  setTimeout(() => jogo.vencer({ titulo: "Tudo colorido!", estrelas, texto: estrelas === 3 ? "Você achou todas as estrelas escondidas!" : "Ainda tem estrelas escondidas no Jardim...", proximo: false }), 6500);
+  setTimeout(() => falar(`cc-final-${PG.id}`), 1400);
+  setTimeout(() => jogo.vencer({ titulo: "Tudo colorido!", estrelas, texto: estrelas === 3 ? "Você achou todas as estrelas escondidas!" : `Ainda tem estrelas escondidas em ${PG.nome}...`, proximo: true }), 6500);
 }
 
-// HUD sem números: ovelhinhas, sementes (até o portão abrir) e estrelas
+// HUD sem números: bichinhos, objetos do portão (até ele abrir) e estrelas
 function atualizarHud() {
   if (!hud) return;
   const icones = (ic, n, total) => Array.from({ length: total }, (_, i) => `<span class="${i < n ? "tem" : "falta"}">${ic}</span>`).join("");
-  hud.innerHTML = `<div class="grupo">${icones("🐑", achadas, 3)}</div>` +
-    (mundo.portao.aberto ? "" : `<div class="grupo">${icones("🌰", sementes, 3)}</div>`) +
+  hud.innerHTML = `<div class="grupo">${icones(EMOJI[PG.bicho], achadas, 3)}</div>` +
+    (mundo.portao.aberto ? "" : `<div class="grupo">${icones(ITEM[PG.item][0], sementes, 3)}</div>`) +
     `<div class="grupo">${icones("⭐", estrelas, 3)}</div>`;
 }
 

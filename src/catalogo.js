@@ -69,7 +69,7 @@ export const faixas = [
     emoji: "🚀",
     jogos: [
       { id: "super-rabisco", estilo: "plataforma", nome: "Super Rabisco", desc: "Aventura pela escola: pegue as bolhas das sílabas da palavra e fuja das sílabas intrusas para abrir o castelo.", habilidade: "Sílabas e palavras", status: "pronto" },
-      { id: "cores-da-criacao", estilo: "plataforma", nome: "Rabisco e as Cores da Criação", desc: "Aventura 3D: a Borracha Apagona apagou as cores do Livro da Criação. Por onde o Rabisco passa, o Jardim ganha cor! Ache as ovelhinhas perdidas do pastor.", habilidade: "Aventura e exploração", status: "pronto" },
+      { id: "cores-da-criacao", estilo: "plataforma", nome: "Rabisco e as Cores da Criação", desc: "Aventura 3D em 10 páginas: a Borracha Apagona apagou as cores do Livro da Criação. Por onde o Rabisco passa, tudo ganha cor! Ache os bichinhos perdidos.", habilidade: "Aventura e exploração", status: "pronto" },
       { id: "rabisco-kart", estilo: "corrida", nome: "Rabisco Kart", desc: "Corrida 3D contra os amigos lápis de cor. Passe pelo número certo da conta e o Rabisco ganha turbo!", habilidade: "Adição e subtração", status: "pronto" },
       { id: "colorir-numeros", estilo: "colorir", nome: "Pinte pelos Números", desc: "Resolva a continha de cada pedaço para saber a cor e revelar a figura.", habilidade: "Cálculo mental", status: "pronto" },
       { id: "loja-camarim", estilo: "vestir", nome: "Lojinha do Camarim", desc: "Compre roupas novas para o Rabisco: pague o preço certinho e descubra quanto é o troco.", habilidade: "Dinheiro e troco", status: "pronto" },
@@ -85,7 +85,7 @@ export const faixas = [
     emoji: "🏆",
     jogos: [
       { id: "super-rabisco-2", estilo: "plataforma", nome: "Super Rabisco 2", desc: "Fases com perguntas de ciências e história no caminho: pegue a bolha da resposta certa para abrir o mastro.", habilidade: "Ciências e história", status: "pronto" },
-      { id: "cores-da-criacao", estilo: "plataforma", nome: "Rabisco e as Cores da Criação", desc: "Aventura 3D: a Borracha Apagona apagou as cores do Livro da Criação. Por onde o Rabisco passa, o Jardim ganha cor! Ache as ovelhinhas perdidas do pastor.", habilidade: "Aventura e exploração", status: "pronto" },
+      { id: "cores-da-criacao", estilo: "plataforma", nome: "Rabisco e as Cores da Criação", desc: "Aventura 3D em 10 páginas: a Borracha Apagona apagou as cores do Livro da Criação. Por onde o Rabisco passa, tudo ganha cor! Ache os bichinhos perdidos.", habilidade: "Aventura e exploração", status: "pronto" },
       { id: "rabisco-kart-gp", estilo: "corrida", nome: "Rabisco Kart GP", desc: "Campeonato pelo Brasil: tabuada e capitais dos estados dão turbo.", habilidade: "Tabuada e capitais", status: "pronto" },
       { id: "pixel-art", estilo: "colorir", nome: "Pixel Art do Rabisco", desc: "Monte desenhos em grade usando coordenadas, como batalha naval.", habilidade: "Plano cartesiano", status: "pronto" },
       { id: "estilista", estilo: "vestir", nome: "Rabisco Estilista", desc: "Crie uniformes para o time com orçamento limitado e porcentagem de desconto.", habilidade: "Porcentagem e orçamento", status: "pronto" },
