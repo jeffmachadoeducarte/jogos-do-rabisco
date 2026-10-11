@@ -9,6 +9,7 @@
 import { THREE } from "../../src/motor3d/toon.js";
 import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
 import { criarCasca, el } from "../../src/motor/casca.js";
+import { criarJoystick } from "../../src/motor/joystick.js";
 import { sons, musica } from "../../src/motor/sons.js";
 import { falar, preCarregarFalas } from "../../src/motor/voz.js";
 import { criarCores } from "./cores.js";
@@ -50,7 +51,7 @@ preCarregarFalas(["cc-entregou", "cc-portao", "cc-estrela", "cc-caiu"]);
 // ------------------------------------------------------------------ Entrada (teclado, controle e toque)
 const teclas = new Set();
 const entrada = { x: 0, z: 0, pulo: false, puloNovo: false };
-const soltarEntrada = () => { teclas.clear(); Object.assign(entrada, { x: 0, z: 0, pulo: false, puloNovo: false }); joy.x = joy.z = 0; };
+const soltarEntrada = () => { teclas.clear(); Object.assign(entrada, { x: 0, z: 0, pulo: false, puloNovo: false }); joy.zerar(); };
 addEventListener("keydown", (e) => {
   if (jogo.estado !== "jogando" || jogo.pausado) return;
   teclas.add(e.code);
@@ -66,35 +67,13 @@ function lerControle({ segura, apertou, eixoX, eixoY }) {
   padPulo = segura.pulo;
 }
 let padPulo = false;
-const joy = { x: 0, z: 0, id: null, ox: 0, oy: 0 };
-function montarToque() {
-  const base = el("div", { class: "joystick", "aria-hidden": "true" }, [el("div", { class: "pino" })]);
-  const pulo = el("button", { class: "botao-pulo", "aria-label": "Pular", texto: "⤒" });
-  const zona = el("div", { class: "zona-joystick" }, [base]);
-  zona.addEventListener("pointerdown", (e) => {
-    joy.id = e.pointerId; zona.setPointerCapture(e.pointerId);
-    const r = base.getBoundingClientRect(); joy.ox = r.left + r.width / 2; joy.oy = r.top + r.height / 2;
-    mover(e);
-  });
-  const mover = (e) => {
-    if (e.pointerId !== joy.id) return;
-    const dx = e.clientX - joy.ox, dy = e.clientY - joy.oy, raio = base.clientWidth / 2;
-    const d = Math.min(1, Math.hypot(dx, dy) / raio), a = Math.atan2(dy, dx);
-    joy.x = Math.cos(a) * d; joy.z = -Math.sin(a) * d;
-    base.firstChild.style.transform = `translate(${Math.cos(a) * d * raio * 0.6}px, ${Math.sin(a) * d * raio * 0.6}px)`;
-  };
-  zona.addEventListener("pointermove", mover);
-  const fim = (e) => { if (e.pointerId !== joy.id) return; joy.id = null; joy.x = joy.z = 0; base.firstChild.style.transform = ""; };
-  zona.addEventListener("pointerup", fim); zona.addEventListener("pointercancel", fim);
-  pulo.addEventListener("pointerdown", (e) => { e.preventDefault(); if (!entrada.pulo) entrada.puloNovo = true; entrada.pulo = true; pulo.classList.add("apertado"); });
-  for (const ev of ["pointerup", "pointercancel", "pointerleave"]) pulo.addEventListener(ev, () => { entrada.pulo = false; pulo.classList.remove("apertado"); });
-  return el("div", { class: "controles-toque" }, [zona, pulo]);
-}
+let joy = { x: 0, y: 0, pulo: false, puloNovo: false, zerar() {} }; // joystick dinâmico (src/motor/joystick.js), criado ao começar
 function direcaoEntrada() {
   // a câmera olha para +z: para a direita na tela é -x
   let x = (teclas.has("ArrowLeft") || teclas.has("KeyA") ? 1 : 0) - (teclas.has("ArrowRight") || teclas.has("KeyD") ? 1 : 0);
   let z = (teclas.has("ArrowUp") || teclas.has("KeyW") ? 1 : 0) - (teclas.has("ArrowDown") || teclas.has("KeyS") ? 1 : 0);
-  x += -pad.x - joy.x; z += pad.z + joy.z;
+  x += -pad.x - joy.x; z += pad.z + joy.y;
+  if (joy.puloNovo) { entrada.puloNovo = true; joy.puloNovo = false; }
   const m = Math.hypot(x, z);
   return m > 1 ? [x / m, z / m] : [x, z];
 }
@@ -114,7 +93,8 @@ function iniciar(n = 1) {
   const caixa = el("div", { class: "cena-aventura" });
   jogo.palco.append(caixa);
   r3 = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-  r3.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+  const leve = navigator.maxTouchPoints > 0; // tablet e celular: um pouco menos de resolução para rodar liso
+  r3.setPixelRatio(Math.min(devicePixelRatio, leve ? 1.3 : 1.75));
   r3.outputColorSpace = THREE.SRGBColorSpace;
   r3.shadowMap.enabled = true;
   r3.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -125,7 +105,7 @@ function iniciar(n = 1) {
   cam = new THREE.PerspectiveCamera(52, 16 / 9, 0.1, 300);
   sol = new THREE.DirectionalLight(PG.noite ? 0xaecbff : 0xffffff, PG.noite ? 1.3 : 2.3);
   sol.castShadow = true;
-  sol.shadow.mapSize.set(2048, 2048);
+  sol.shadow.mapSize.set(leve ? 1024 : 2048, leve ? 1024 : 2048);
   Object.assign(sol.shadow.camera, { left: -18, right: 18, top: 18, bottom: -18, near: 1, far: 70 });
   sol.shadow.bias = -0.0006; sol.shadow.normalBias = 0.04;
   cena.add(sol, sol.target, new THREE.HemisphereLight(PG.noite ? 0x8fa8ff : 0xd6f3ff, 0x5aa83a, PG.noite ? 1.0 : 1.5));
@@ -148,7 +128,8 @@ function iniciar(n = 1) {
   trilha.length = 0; seguindo = []; entregues = 0; achadas = 0; sementes = 0; estrelas = 0; fim = false;
   fala = { pastor: 0, portao: 0 };
   hud = el("div", { class: "hud-aventura", "aria-live": "polite" });
-  caixa.append(hud, montarToque());
+  caixa.append(hud);
+  joy = criarJoystick(caixa);
   atualizarHud();
 
   const ajustar = () => {
@@ -194,7 +175,7 @@ function moverJogador(dt) {
     j.vel.z += (iz * VEL - j.vel.z) * k;
   }
   if (j.buffer > 0 && j.coyote > 0) { j.vel.y = PULO; j.buffer = j.coyote = 0; j.noChao = false; sons.pulo(); }
-  if (!(entrada.pulo || padPulo) && j.vel.y > 4) j.vel.y = 4; // pulo curto se soltar o botão
+  if (!(entrada.pulo || padPulo || joy.pulo) && j.vel.y > 4) j.vel.y = 4; // pulo curto se soltar o botão
   j.vel.y -= GRAV * dt;
 
   // anda em x e depois em z, parando nas caixas e nas árvores

@@ -62,6 +62,19 @@ Jogos que são variações de outro: as pastas só redirecionam com `?modo=`.
 Rabisco e as Cores da Criação (`jogos/cores-da-criacao`): aventura 3D; `cores.js` faz o mundo a lápis ganhar cor perto do
 Rabisco e `jardim.js` monta a primeira página. Para uma página nova, crie outro arquivo como `jardim.js`.
 
+Fases: Rabisco Kart tem 10 pistas (`jogos/rabisco-kart/pistas.js`, `?pista=N`), Super Rabisco tem 10 fases
+(`jogos/super-rabisco-letras/fases.js`, `?fase=N`, geradas com semente), Cores da Criação tem 10 páginas
+(`jogos/cores-da-criacao/paginas.js`) e os jogos dos bebês têm 10 fases cada.
+
+Cidade do Rabisco (`jogos/cidade-do-rabisco`): mundo livre 3D com visual mais realista (materiais PBR); `cidade.js`
+monta ruas, semáforos e lugares, `jogo.js` cuida do trânsito, moradores e missões. `src/motor/joystick.js` é o
+joystick dinâmico dos jogos 3D de andar livre.
+
+App instalável (PWA): `manifest.webmanifest`, `sw.js` (funciona sem internet) e `src/motor/instalar.js` (pede para
+instalar ao entrar no portal). Ícones: `ferramentas/icones_app.py`.
+
+Testes automáticos (Chrome sem janela, controle e toque simulados): `node --experimental-websocket ferramentas/teste/todos.mjs`.
+
 Testar: `?jogar` (ou `?nivel=2`) começa direto; `?teste` expõe `window.teste` nos jogos. Laboratório de roupas: `jogos/laboratorio/camarim.html`.
 As falas novas ficam em `ferramentas/gerar_vozes.py` (voz em português e, para os jogos de inglês, `falas_en`).
 

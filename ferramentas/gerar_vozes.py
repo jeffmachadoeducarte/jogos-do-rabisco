@@ -294,6 +294,22 @@ for cor, (nome, adj) in COR_FALA.items():
     falas[f"cc-cor-{cor}"] = f"{nome}!"
     falas[f"cc-ponte-{cor}"] = f"As flores {adj} viraram uma ponte!"
 
+# --- Cidade do Rabisco ---
+falas.update({
+    "cid-titulo": "Cidade do Rabisco!",
+    "cid-intro": "Que cidade bonita! Vamos passear? Converse com quem tem um ponto de exclamação em cima.",
+    "cid-carteiro": "Oi, Rabisco! Leve estas cartas: a vermelha, a azul e a amarela. Cada uma vai na caixa de correio da casa da mesma cor!",
+    "cid-gatos": "Meus três gatinhos fugiram! Um foi para trás da igreja, outro para o parque e outro para perto do hospital.",
+    "cid-padeiro": "Pão quentinho! Você leva para a escola? As crianças vão adorar o lanche!",
+    "cid-guarda": "Olá! Atravesse a rua na faixa de pedestre, mas só quando o bonequinho do semáforo ficar verde. Três vezes!",
+    "cid-carta-ok": "Carta entregue!", "cid-gato-ok": "Achei um gatinho! Miau!", "cid-pao-ok": "Que cheirinho bom! Obrigado pelo pão, Rabisco!",
+    "cid-faixa-ok": "Muito bem! Atravessou certinho!", "cid-espere": "Espere o bonequinho verde para atravessar!",
+    "cid-missao-ok": "Missão cumprida!", "cid-final": "Você ajudou todo mundo! Você é um amigo da cidade!",
+})
+for k, nome in {"escola": "Escola Educarte", "igreja": "Igreja", "praca": "Praça", "parque": "Parque", "biblioteca": "Biblioteca", "padaria": "Padaria",
+                "hospital": "Hospital", "bombeiros": "Bombeiros", "correio": "Correio", "mercado": "Mercado", "casas": "Rua das Casas Coloridas", "casas2": "Vila"}.items():
+    falas[f"cid-lugar-{k}"] = f"{nome}!"
+
 # Falas em inglês (voz americana): chave -> texto
 VOZ_EN = "en-US-AnaNeural"
 falas_en = {}
