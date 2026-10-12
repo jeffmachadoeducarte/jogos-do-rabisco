@@ -914,6 +914,32 @@ function animarKart(k, dt, t) {
 }
 
 // ------------------------------------------------------------------ Câmera
+// Fade do adversário: os materiais dele são clonados só na primeira vez (cada kart com os seus) e só ficam
+// transparentes enquanto ele está esmaecido; de volta a 100%, voltam a ser opacos (sem custo extra no celular).
+function esmaecer(o, alvo, dt) {
+  o.opacidade ??= 1;
+  o.opacidade += (alvo - o.opacidade) * Math.min(1, dt * 8);
+  if (Math.abs(o.opacidade - 1) < 0.01) o.opacidade = 1;
+  if (o.opacidade === 1 && !o.esmaecido) return;
+  if (!o.mats) {
+    o.mats = [];
+    o.g.traverse((m) => {
+      if (!m.material || Array.isArray(m.material)) return;
+      m.material = m.material.clone();
+      o.mats.push({ m: m.material, base: m.material.opacity, transp: m.material.transparent, depth: m.material.depthWrite });
+    });
+  }
+  const opaco = o.opacidade === 1;
+  for (const q of o.mats) {
+    const transp = q.transp || !opaco;
+    if (q.m.transparent !== transp) { q.m.transparent = transp; q.m.needsUpdate = true; }
+    q.m.opacity = q.base * o.opacidade;
+    q.m.depthWrite = opaco ? q.depth : false;
+  }
+  o.esmaecido = !opaco;
+}
+
+// ------------------------------------------------------------------ Câmera (posição)
 const camPos = new THREE.Vector3();
 const camAlvo = new THREE.Vector3();
 let anguloOrbita = 0, anguloTeste = null;
@@ -952,8 +978,16 @@ function atualizarCamera(dt, t) {
   camera.fov += (fov - camera.fov) * Math.min(1, dt * 4);
   camera.updateProjectionMatrix();
 
-  // adversário colado na câmera (ex.: no turbo) some para não tapar a tela
-  for (const o of karts) if (o !== k) o.g.visible = camera.position.distanceTo(o.pos) > 3.2;
+  // adversário entre a câmera e o Rabisco (ou colado na câmera) fica semitransparente, com fade suave
+  const cx = camera.position.x, cz = camera.position.z, ax = k.pos.x - cx, az = k.pos.z - cz, L2 = ax * ax + az * az || 1;
+  for (const o of karts) {
+    if (o === k) continue;
+    const ox = o.pos.x - cx, oz = o.pos.z - cz, d = Math.hypot(ox, oz);
+    const ao = (ox * ax + oz * az) / L2, lat = Math.abs(ox * az - oz * ax) / Math.sqrt(L2);
+    const tapa = (ao > -0.2 && ao < 0.95 && lat < 3.2) || d < 5.5;
+    esmaecer(o, tapa ? 0.25 : 1, dt);
+    o.g.visible = d > 1.2; // dentro da câmera: some de vez
+  }
 
   sol.position.copy(k.pos).add(new THREE.Vector3(60, 110, 30));
   sol.target.position.copy(k.pos);
