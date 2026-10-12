@@ -1,0 +1,385 @@
+{
+  "name": "Jogos do Rabisco - cadastro da familia",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jogos-rabisco-familia",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "https://educarte-jogos.zz51dl.easypanel.host,http://localhost:8080"
+        }
+      },
+      "id": "n1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "jogos-rabisco-familia"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Valida e achata o cadastro da familia. Nunca repassa campos extras.\nconst out = [];\nfor (const item of $input.all()) {\n  const b = (item.json && item.json.body) || item.json || {};\n  const erro = (msg) => out.push({ json: { ok: false, erro: msg } });\n  const o = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});\n  const s = (v) => (typeof v === 'string' ? v.trim() : (typeof v === 'number' ? String(v) : ''));\n\n  if (typeof b !== 'object' || Array.isArray(b)) { erro('corpo invalido'); continue; }\n\n  // Rejeita qualquer string grande em qualquer lugar (ex.: foto em dataURL)\n  let grande = false;\n  const varre = (v, n) => {\n    if (grande || n > 6) return;\n    if (typeof v === 'string') { if (v.length > 500) grande = true; }\n    else if (Array.isArray(v)) v.forEach((x) => varre(x, n + 1));\n    else if (v && typeof v === 'object') Object.values(v).forEach((x) => varre(x, n + 1));\n  };\n  varre(b, 0);\n  if (grande) { erro('campo grande demais'); continue; }\n\n  const r = o(b.responsavel), c = o(b.crianca), k = o(b.consentimento);\n  const nomeResp = s(r.nome), nomeCri = s(c.nome);\n  const email = s(r.email).toLowerCase();\n  let zap = s(r.whatsapp).replace(/\\D/g, '');\n  if (zap && !zap.startsWith('55')) zap = '55' + zap;\n  if (zap && (zap.length < 12 || zap.length > 13)) zap = '';\n\n  if (!nomeResp) { erro('falta nome do responsavel'); continue; }\n  if (!nomeCri) { erro('falta nome da crianca'); continue; }\n  if (!email && !zap) { erro('falta email ou whatsapp'); continue; }\n\n  const semAcento = (t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\\s+/g, ' ').trim();\n  const chave = (zap || email) + '|' + semAcento(nomeCri);\n\n  const nasc = /^\\d{4}-\\d{2}-\\d{2}$/.test(s(c.nascimento)) ? s(c.nascimento) : '';\n  let idade = '';\n  if (nasc) {\n    const [y, m, d] = nasc.split('-').map(Number);\n    const h = new Date();\n    let i = h.getUTCFullYear() - y;\n    if (h.getUTCMonth() + 1 < m || (h.getUTCMonth() + 1 === m && h.getUTCDate() < d)) i--;\n    if (i >= 0 && i < 120) idade = i;\n  }\n\n  out.push({ json: {\n    ok: true,\n    chave,\n    atualizado_em: new Date().toISOString(),\n    responsavel: nomeResp,\n    email,\n    whatsapp: zap,\n    cidade: s(r.cidade),\n    uf: s(r.uf).toUpperCase().slice(0, 2),\n    crianca: nomeCri,\n    nascimento: nasc,\n    idade,\n    genero: s(c.genero),\n    tem_foto: c.temFoto === true ? 'sim' : 'nao',\n    aceita_novidades: k.novidades === true ? 'sim' : 'nao',\n    consentimento_em: s(k.em),\n    versao_app: s(b.versao),\n    aparelho: s(b.userAgent).slice(0, 200),\n  } });\n}\nreturn out;\n"
+      },
+      "id": "n2",
+      "name": "Validar e achatar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "n3",
+      "name": "Valido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chave": "={{ $json.chave }}",
+            "atualizado_em": "={{ $json.atualizado_em }}",
+            "responsavel": "={{ $json.responsavel }}",
+            "email": "={{ $json.email }}",
+            "whatsapp": "={{ $json.whatsapp }}",
+            "cidade": "={{ $json.cidade }}",
+            "uf": "={{ $json.uf }}",
+            "crianca": "={{ $json.crianca }}",
+            "nascimento": "={{ $json.nascimento }}",
+            "idade": "={{ $json.idade }}",
+            "genero": "={{ $json.genero }}",
+            "tem_foto": "={{ $json.tem_foto }}",
+            "aceita_novidades": "={{ $json.aceita_novidades }}",
+            "consentimento_em": "={{ $json.consentimento_em }}",
+            "versao_app": "={{ $json.versao_app }}",
+            "aparelho": "={{ $json.aparelho }}"
+          },
+          "matchingColumns": [
+            "chave"
+          ],
+          "schema": [
+            {
+              "id": "chave",
+              "displayName": "chave",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "primeiro_cadastro_em",
+              "displayName": "primeiro_cadastro_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "responsavel",
+              "displayName": "responsavel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "whatsapp",
+              "displayName": "whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cidade",
+              "displayName": "cidade",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "uf",
+              "displayName": "uf",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "crianca",
+              "displayName": "crianca",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nascimento",
+              "displayName": "nascimento",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "idade",
+              "displayName": "idade",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "genero",
+              "displayName": "genero",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tem_foto",
+              "displayName": "tem_foto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "aceita_novidades",
+              "displayName": "aceita_novidades",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "consentimento_em",
+              "displayName": "consentimento_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "versao_app",
+              "displayName": "versao_app",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "aparelho",
+              "displayName": "aparelho",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "n4",
+      "name": "Gravar na planilha (ESCOLHER documento e aba)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        680,
+        -100
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"ok\":true}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://educarte-jogos.zz51dl.easypanel.host"
+              }
+            ]
+          }
+        }
+      },
+      "id": "n5",
+      "name": "Responder 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        920,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ok:false, erro:$json.erro}) }}",
+        "options": {
+          "responseCode": 400,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://educarte-jogos.zz51dl.easypanel.host"
+              }
+            ]
+          }
+        }
+      },
+      "id": "n6",
+      "name": "Responder 400",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        680,
+        120
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validar e achatar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar e achatar": {
+      "main": [
+        [
+          {
+            "node": "Valido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valido?": {
+      "main": [
+        [
+          {
+            "node": "Gravar na planilha (ESCOLHER documento e aba)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder 400",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gravar na planilha (ESCOLHER documento e aba)": {
+      "main": [
+        [
+          {
+            "node": "Responder 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

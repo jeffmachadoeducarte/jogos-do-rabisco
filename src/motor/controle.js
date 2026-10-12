@@ -10,8 +10,18 @@
 const CSS = `.controle-foco { outline: 6px solid #ffcc1f !important; outline-offset: 4px; }`;
 
 // Layout "standard" do Gamepad API: 0 A/✕, 1 B/◯, 2 X/▢, 3 Y/△, 8 Select, 9 Start, 12–15 direcional
-// no jogo A e B pulam; nos menus A confirma e B volta
-const BOTOES = { pulo: [0, 1], confirma: [0], voltar: [1], cima: [12], baixo: [13], esq: [14], dir: [15], start: [9], select: [8] };
+// no jogo A e B pulam; nos menus A confirma e B volta; X e Y são a "ação" do jogo (ex.: entrar no carro)
+const BOTOES = { pulo: [0, 1], confirma: [0], voltar: [1], cima: [12], baixo: [13], esq: [14], dir: [15], start: [9], select: [8], acao: [2, 3] };
+// Botões trocados pela criança na tela de configurações (src/motor/remapear.js): { pulo: [2], ... }
+const trocados = {};
+export function definirBotoes(parcial = {}) {
+  for (const k of Object.keys(trocados)) delete trocados[k];
+  Object.assign(trocados, parcial);
+}
+export const botoesPadrao = (nome) => [...(BOTOES[nome] || [])];
+// Enquanto a tela de configurações está aberta, o jogo não recebe nada do controle
+let bloqueado = false;
+export function bloquearControle(v) { bloqueado = Boolean(v); }
 const ZONA_MORTA = 0.5;
 
 export function criarControle({ aoConectar = () => {}, aoDesconectar = () => {} } = {}) {
@@ -19,7 +29,7 @@ export function criarControle({ aoConectar = () => {}, aoDesconectar = () => {} 
   estilo.textContent = CSS;
   document.head.appendChild(estilo);
 
-  const vazio = () => ({ pulo: false, confirma: false, voltar: false, cima: false, baixo: false, esq: false, dir: false, start: false, select: false });
+  const vazio = () => ({ pulo: false, confirma: false, voltar: false, cima: false, baixo: false, esq: false, dir: false, start: false, select: false, acao: false });
   let antes = vazio();
 
   // body.com-controle: o CSS do jogo pode trocar as dicas de toque pelas do controle
@@ -35,7 +45,7 @@ export function criarControle({ aoConectar = () => {}, aoDesconectar = () => {} 
       let eixoX = 0, eixoY = 0; // alavanca esquerda de -1 a 1 (kart vira aos poucos; aventura 3D anda em qualquer direção)
       for (const g of navigator.getGamepads?.() ?? []) {
         if (!g) continue;
-        for (const [nome, idx] of Object.entries(BOTOES)) {
+        for (const [nome, idx] of Object.entries({ ...BOTOES, ...trocados })) {
           if (idx.some((i) => g.buttons[i]?.pressed)) segura[nome] = true;
         }
         const [x = 0, y = 0] = g.axes; // alavanca esquerda
@@ -153,6 +163,7 @@ export function ligarControle({ entrada = {}, mapa = { esq: "esq", dir: "dir", b
     controle,
     atualizar() {
       const leitura = controle.ler();
+      if (bloqueado) { soltarTudo(); return { segura: {}, apertou: {}, soltou: {}, eixoX: 0, eixoY: 0 }; }
       const { apertou, soltou } = leitura;
       // só mexe na entrada quando o botão muda, para não apagar o que vem do teclado ou do toque
       const emMenu = pausa?.ativa || Boolean(menu()); // apertos no menu não viram pulo quando o jogo volta

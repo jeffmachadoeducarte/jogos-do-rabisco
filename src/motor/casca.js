@@ -17,6 +17,7 @@ import { criarPausa } from "./pausa.js";
 import { ligarControle, navegarComTeclado, moverFoco } from "./controle.js";
 import { prepararCelular } from "./celular.js";
 import { botaoVoltar, linkPortal } from "./voltar.js";
+import { criarRemapear } from "./remapear.js";
 
 const RAIZ = "../..";
 const el = (tag, props = {}, filhos = []) => {
@@ -40,6 +41,7 @@ export function criarCasca({
   pose = "apresentando", falas = {}, teclado = true, menuNoJogo = true,
   aoComecar = () => {}, aoSair = () => {}, aoPausar = () => {}, aoContinuar = () => {}, aoVoltar = () => {},
   aoControle = null, // (leitura) a cada quadro durante o jogo: para jogos que usam os botões direto
+  controles = null,  // opcional: ações que a criança pode remapear (ver src/motor/remapear.js); cria o botão ⚙️ no topo
 }) {
   if (cor) document.documentElement.style.setProperty("--cor", cor);
   document.title = titulo;
@@ -52,7 +54,15 @@ export function criarCasca({
   const placar = el("div", { class: "casca-placar", "aria-live": "polite" });
   const btnSair = el("button", { class: "casca-redondo", "aria-label": "Sair do jogo", texto: "✕", onclick: () => sair() });
   const btnSom = el("button", { class: "casca-redondo", "aria-label": "Ligar ou desligar o som", texto: sons.mudo ? "🔇" : "🔊", onclick: () => { btnSom.textContent = sons.alternarMudo() ? "🔇" : "🔊"; } });
-  const topo = el("div", { class: "casca-topo" }, [el("div", { style: "display:flex;gap:10px;align-items:center" }, [btnSair, placar]), btnSom]);
+  // configurações de teclas/botões (só computador/TV; no toque o botão não existe)
+  let pausouPeloRemap = false;
+  const remap = controles ? criarRemapear({
+    id, acoes: controles,
+    aoAbrir: () => { if (estado === "jogando" && !pausa.ativa && pausa.podePausar()) { pausa.pausar(); pausouPeloRemap = true; } },
+    aoFechar: () => { if (pausouPeloRemap) { pausouPeloRemap = false; pausa.continuar(); } },
+  }) : null;
+  const ladoDireito = remap?.botao ? el("div", { style: "display:flex;gap:10px;align-items:center" }, [remap.botao, btnSom]) : btnSom;
+  const topo = el("div", { class: "casca-topo" }, [el("div", { style: "display:flex;gap:10px;align-items:center" }, [btnSair, placar]), ladoDireito]);
   const avisoEl = el("div", { class: "casca-aviso", "aria-live": "assertive" });
 
   const conteudoAbertura = el("div", { class: "conteudo" }, [
@@ -191,6 +201,7 @@ export function criarCasca({
     aoRecomecar: () => comecar(nivel),
     aoSair: () => irParaAbertura(),
   });
+  remap?.naPausa();
   const telaDoMenu = () => (estado === "abertura" ? abertura : estado === "vitoria" ? vitoria : menuNoJogo ? palco : null);
   const controle = ligarControle({
     mapa: {},
@@ -219,7 +230,7 @@ export function criarCasca({
   if (params.has("nivel") || params.has("jogar")) queueMicrotask(() => comecar(Number(params.get("nivel")) || 1));
 
   return {
-    palco, pausa, controle,
+    palco, pausa, controle, remap,
     get estado() { return estado; },
     get nivel() { return nivel; },
     get pausado() { return pausa.ativa; },

@@ -22,17 +22,47 @@ function radial({ R = 165, ondas, ex = 1, ez = 1, n = 22 }) {
   return pts;
 }
 
+// traçado de "ruas": cantos retos arredondados (raio r), como quarteirões de cidade. Cada canto é [x, z, raio];
+// raio 0 = ponto de passagem (o primeiro é sempre no meio de uma reta: é a largada).
+function ruas(cantos, raioPadrao = 30) {
+  const pts = [];
+  const n = cantos.length;
+  for (let i = 0; i < n; i++) {
+    const [x, z, r0] = cantos[i];
+    const r = r0 ?? raioPadrao;
+    if (!r) { pts.push([x, z]); continue; }
+    const [ax, az] = cantos[(i - 1 + n) % n], [bx, bz] = cantos[(i + 1) % n];
+    const la = Math.hypot(ax - x, az - z), lb = Math.hypot(bx - x, bz - z);
+    const ra = Math.min(r, la * 0.45), rb = Math.min(r, lb * 0.45);
+    const p0 = [x + ((ax - x) / la) * ra, z + ((az - z) / la) * ra], p2 = [x + ((bx - x) / lb) * rb, z + ((bz - z) / lb) * rb];
+    for (let k = 0; k <= 4; k++) { // curva de Bézier quadrática com o canto como controle
+      const t = k / 4, u = 1 - t;
+      pts.push([u * u * p0[0] + 2 * u * t * x + t * t * p2[0], u * u * p0[1] + 2 * u * t * z + t * t * p2[1]]);
+    }
+  }
+  // pontos intermediários nas retas longas: a curva suave não "barriga" entre cantos distantes
+  const out = [];
+  for (let i = 0; i < pts.length; i++) {
+    const [ax, az] = pts[i], [bx, bz] = pts[(i + 1) % pts.length];
+    const k = Math.max(1, Math.floor(Math.hypot(bx - ax, bz - az) / 45));
+    for (let s = 0; s < k; s++) out.push([ax + ((bx - ax) * s) / k, az + ((bz - az) * s) / k]);
+  }
+  return out;
+}
+
+// Pista 1: o circuito original da escola. Pistas 2 a 10: traçados novos de ruas (ferradura, L, chicane,
+// grampo, quarteirões, T...), cada uma com o seu tema. Os de antes (radiais) continuam em radial() acima.
 export const PISTAS = [
   { nome: "Escola", emoji: "🏫", pontos: ORIGINAL, tema: "escola" },
-  { nome: "Parque", emoji: "🌳", pontos: radial({ ondas: [[3, 0.18, 0.4]], ex: 1.1 }), tema: "parque" },
-  { nome: "Praia", emoji: "🏖️", pontos: radial({ ondas: [[2, 0.22, 1.2], [5, 0.05, 0]], ex: 1.25, ez: 0.85 }), tema: "praia" },
-  { nome: "Floresta", emoji: "🌲", pontos: radial({ ondas: [[4, 0.14, 0.3], [2, 0.1, 2]], ez: 1.1 }), tema: "floresta" },
-  { nome: "Fazenda", emoji: "🐮", pontos: radial({ ondas: [[3, 0.2, 2.2], [1, 0.12, 0.5]] }), tema: "fazenda" },
-  { nome: "Cidade", emoji: "🏙️", pontos: radial({ ondas: [[4, 0.16, 0.8]], ex: 1.15, ez: 1.05 }), tema: "cidade" },
-  { nome: "Montanha de Neve", emoji: "⛄", pontos: radial({ ondas: [[5, 0.1, 0.2], [2, 0.18, 1]], ex: 0.95, ez: 1.2 }), tema: "neve" },
-  { nome: "Deserto", emoji: "🌵", pontos: radial({ ondas: [[3, 0.24, 1.7], [6, 0.04, 0]], ex: 1.3 }), tema: "deserto" },
-  { nome: "Pôr do Sol", emoji: "🌅", pontos: radial({ ondas: [[2, 0.26, 0.2], [4, 0.08, 1]], ex: 1.05, ez: 1.15 }), tema: "por-do-sol" },
-  { nome: "Noite Estrelada", emoji: "🌙", pontos: radial({ ondas: [[5, 0.12, 0.9], [3, 0.12, 0.1]], R: 175 }), tema: "noite" },
+  { nome: "Parque", emoji: "🌳", tema: "parque", pontos: ruas([[0, -90, 0], [220, -90], [220, 300], [110, 300], [110, 120], [-70, 120], [-70, 300], [-200, 300], [-200, -90]]) },
+  { nome: "Praia", emoji: "🏖️", tema: "praia", pontos: ruas([[0, -80, 0], [240, -80], [240, 80], [60, 80, 40], [60, 320], [-200, 320, 50], [-200, -80, 50]]) },
+  { nome: "Floresta", emoji: "🌲", tema: "floresta", pontos: ruas([[0, -90, 0], [220, -90], [220, 20, 26], [80, 20, 26], [80, 120, 26], [220, 120, 26], [220, 320], [-190, 320, 45], [-190, -90, 45]]) },
+  { nome: "Fazenda", emoji: "🐮", tema: "fazenda", pontos: ruas([[0, -90, 0], [230, -90], [230, 330], [140, 330, 30], [140, 110, 28], [40, 110, 28], [40, 330, 30], [-200, 330], [-200, -90]]) },
+  { nome: "Cidade", emoji: "🏙️", tema: "cidade", pontos: ruas([[0, -90, 0], [120, -90, 24], [120, -20, 24], [240, -20], [240, 200, 26], [150, 200, 26], [150, 330], [-80, 330], [-80, 200, 26], [-200, 200, 26], [-200, -90]]) },
+  { nome: "Montanha de Neve", emoji: "⛄", tema: "neve", pontos: ruas([[0, -90, 0], [220, -60, 50], [150, 320, 60], [-60, 330, 50], [-210, 120, 60], [-150, -90, 50]]) },
+  { nome: "Deserto", emoji: "🌵", tema: "deserto", pontos: ruas([[0, -90, 0], [250, -90], [250, 30, 30], [80, 30, 30], [80, 320], [-40, 320], [-40, 30, 30], [-210, 30, 30], [-210, -90]]) },
+  { nome: "Pôr do Sol", emoji: "🌅", tema: "por-do-sol", pontos: ruas([[0, -90, 0], [220, -90, 40], [250, 60, 40], [140, 150, 36], [240, 250, 40], [150, 340, 40], [-120, 330, 50], [-220, 170, 45], [-120, 60, 40], [-210, -60, 40]]) },
+  { nome: "Noite Estrelada", emoji: "🌙", tema: "noite", pontos: ruas([[0, -90, 0], [120, -90, 20], [150, -50, 20], [240, -50], [240, 300], [60, 300, 22], [30, 260, 22], [-60, 260, 22], [-90, 300, 22], [-210, 300], [-210, -90]]) },
 ];
 
 // cores e decoração de cada tema

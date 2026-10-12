@@ -1,0 +1,37 @@
+/* Configurações de controles (src/motor/remapear.js): botão ⚙️ e a tela de trocar teclas/botões.
+   Só no computador/TV: em celular e tablet o módulo nem cria os elementos. */
+.remap-botao {
+  width: 54px; height: 54px; flex: none; border-radius: 50%; font-size: 24px; line-height: 1; cursor: pointer;
+  background: rgba(255, 255, 255, 0.9); border: 4px solid #151515; box-shadow: 0 4px 0 #151515; font-family: inherit;
+}
+.remap-botao:active { transform: translateY(3px); box-shadow: 0 1px 0 #151515; }
+.remap-tela {
+  position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px;
+  background: rgba(10, 42, 74, 0.6); font-family: "Baloo 2", system-ui, sans-serif; color: #151515;
+}
+.remap-tela[hidden] { display: none; }
+.remap-cartao {
+  background: #fff; border: 5px solid #151515; border-radius: 30px; box-shadow: 8px 10px 0 #151515;
+  padding: 16px 24px 20px; max-width: min(720px, 96vw); max-height: 92vh; overflow: auto;
+}
+.remap-cartao h2 { margin: 0; font-size: clamp(26px, 3.4vw, 38px); color: #00b5f0; text-shadow: 3px 3px 0 #ec2e8c; }
+.remap-aviso { margin: 2px 0 10px; font-weight: 700; min-height: 1.4em; }
+.remap-tabela { display: grid; grid-template-columns: minmax(150px, auto) 1fr 1fr; gap: 6px 10px; align-items: center; }
+.remap-cab { font-weight: 800; font-size: 15px; opacity: 0.7; }
+.remap-nome { font-weight: 800; font-size: 18px; }
+.remap-tecla {
+  font: 800 17px "Baloo 2", system-ui, sans-serif; min-width: 110px; padding: 2px 12px 4px; cursor: pointer;
+  background: #f4fbff; border: 3px solid #151515; border-radius: 12px; box-shadow: 0 3px 0 #151515;
+}
+.remap-tecla.esperando { background: #ffcc1f; animation: remap-pisca 0.7s ease-in-out infinite alternate; }
+.remap-fixo { font-weight: 700; opacity: 0.55; text-align: center; }
+@keyframes remap-pisca { to { background: #fff3b8; } }
+.remap-rodape { display: flex; gap: 12px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+.remap-rodape button, .remap-na-pausa {
+  font: 800 20px "Baloo 2", system-ui, sans-serif; border-radius: 999px; padding: 4px 22px 6px; cursor: pointer;
+  border: 3px solid #151515; box-shadow: 0 5px 0 #151515;
+}
+.remap-padrao { background: #fff; }
+.remap-fechar { background: #ec2e8c; color: #fff; }
+.pausa-cartao .remap-na-pausa { background: #ffcc1f; color: #151515; min-width: 240px; border: 3px solid #151515; }
+.remap-tela .controle-foco, .remap-tecla:focus-visible { outline: 6px solid #ffcc1f; outline-offset: 3px; }

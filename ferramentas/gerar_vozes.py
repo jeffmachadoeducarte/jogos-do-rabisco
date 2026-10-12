@@ -385,6 +385,31 @@ for k, nome in {"escola": "Escola Educarte", "igreja": "Igreja", "praca": "Praç
                 "hospital": "Hospital", "bombeiros": "Bombeiros", "correio": "Correio", "mercado": "Mercado", "casas": "Rua das Casas Coloridas", "casas2": "Vila"}.items():
     falas[f"cid-lugar-{k}"] = f"{nome}!"
 
+# --- Cidade do Rabisco: carro, missões novas e números da corrida ---
+falas.update({
+    "cid-carro": "Cinto de segurança afivelado! Para a frente acelera, para trás freia.",
+    "cid-corrida": "Oi, Rabisco! Pegue o carro e passe pelas bandeiras na ordem: um, dois, três, quatro e cinco! O relógio começa na bandeira um.",
+    "cid-corrida-ok": "Que corrida! Você passou por todas as bandeiras!",
+    "cid-corrida-tempo": "Acabou o tempo! Vamos de novo? Comece pela bandeira um.",
+    "cid-encomenda": "Esta caixa de frutas é grande demais para levar a pé! Venha de carro e leve para a casa da Vovó Lápis.",
+    "cid-caixa-carro": "A caixa de frutas está no carro! Agora, para a casa da Vovó.",
+    "cid-caixa-pe": "A caixa é pesada! Volte aqui de carro.",
+    "cid-encomenda-ok": "Obrigada, Rabisco! Cinco laranjas e três bananas! Deus abençoe você!",
+    "cid-bombeiro": "Socorro! Tem quatro foguinhos na cidade. Chegue pertinho e aperte o botão da água!",
+    "cid-fogo-ok": "Fogo apagado!",
+    "cid-bombeiro-ok": "A cidade está segura! Obrigado, Deus, por cuidar de nós!",
+    "cid-tesouro": "Vamos fazer uma caça ao tesouro? Primeira pista: procure onde o sino toca e a gente agradece a Deus!",
+    "cid-pista-2": "Achou! Próxima pista: onde a água dança no meio da cidade.",
+    "cid-pista-3": "Muito bem! Agora vá ao playground, onde tem balanço e escorregador.",
+    "cid-pista-4": "Quase lá! A última pista: onde se faz o pão quentinho.",
+    "cid-tesouro-ok": "Você achou o tesouro: um livro de histórias e dez selos! Mas o maior tesouro é o amor de Deus.",
+    "cid-patos": "Quantos patinhos estão nadando no lago? Conte bem e pise no número certo!",
+    "cid-patos-erro": "Hmm, conte de novo, devagarinho.",
+    "cid-patos-ok": "Isso mesmo! Em inglês, pato é duck! Quack, quack!",
+})
+for n in range(1, 11):
+    falas[f"cid-num-{n}"] = f"{NUMEROS[n].capitalize()}!"
+
 # Falas em inglês (voz americana): chave -> texto
 VOZ_EN = "en-US-AnaNeural"
 falas_en = {}

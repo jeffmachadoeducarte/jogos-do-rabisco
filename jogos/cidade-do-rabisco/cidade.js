@@ -1,15 +1,15 @@
-// A Cidade do Rabisco: ruas em grade com faixas de pedestre e semáforos, quarteirões com prédios,
-// casas coloridas e os lugares da cidade (escola, igreja, praça, biblioteca, padaria, hospital,
-// bombeiros, correio, mercado, parque). Visual mais realista: materiais com luz física (PBR) e texturas
-// desenhadas na hora; o Rabisco continua no traço de desenho animado, como um brinquedo na cidade.
-// Unidade: o Rabisco tem 1,8 de altura. Ruas a cada 46 unidades; quarteirões de 34 × 34.
+// A Cidade do Rabisco em 3D, montada a partir do traçado de mapa.js: avenida com canteiro e rotatória
+// (praça com chafariz no meio), ruas retas e uma rua de curvas, semáforos com faixa de pedestre, os lugares
+// da cidade (escola, igreja, biblioteca, padaria, hospital, bombeiros, correio, mercado, parque com lago e
+// roda-gigante), casas coloridas e prédios de morar preenchendo o resto. Materiais com luz física (PBR) e
+// texturas desenhadas na hora; o Rabisco continua no traço de desenho animado, como um brinquedo na cidade.
+// Unidade: o Rabisco tem 1,8 de altura.
 
 import { THREE, texturaCanvas, aleatorio, carregarTextura } from "../../src/motor3d/toon.js";
 import { escolaEducarte3D, pilotoLapis } from "../../src/motor3d/objetos.js";
+import { RUAS, CALCADA, distRua, LUGARES, CASAS, SEMAFOROS, PARQUE, LAGO, PLAYGROUND, PRACA, VAGAS, LARGADA } from "./mapa.js";
 
-export const PASSO = 46, RUA = 12, QUART = PASSO - RUA; // 34
-export const RUAS = [-92, -46, 0, 46, 92];              // centro das ruas (x e z)
-export const BORDA = 98;
+export { BORDA } from "./mapa.js";
 const r = aleatorio(2026);
 const std = (cor, extra = {}) => new THREE.MeshStandardMaterial({ color: cor, roughness: 0.85, metalness: 0, ...extra });
 
@@ -33,7 +33,15 @@ const texGrama = texturaCanvas(256, 256, (c, w, h) => {
   c.fillStyle = "#5fa83f"; c.fillRect(0, 0, w, h);
   ruido(c, w, h, 6000, ["#4f9433", "#6cb84a", "#7cc456", "#57a03a"]);
 }, { repetir: true });
+const fachadas = new Map();
 function texFachada(cor, { andares = 6, colunas = 4, luzes = 0.15 } = {}) {
+  const chave = `${cor}|${andares}|${colunas}|${luzes}`;
+  if (!fachadas.has(chave)) fachadas.set(chave, desenharFachada(cor, { andares, colunas, luzes }));
+  const t = fachadas.get(chave).clone(); // mesma imagem; só a repetição muda
+  t.needsUpdate = true;
+  return t;
+}
+function desenharFachada(cor, { andares, colunas, luzes }) {
   return texturaCanvas(256, 256, (c, w, h) => {
     c.fillStyle = cor; c.fillRect(0, 0, w, h);
     ruido(c, w, h, 1200, ["rgba(0,0,0,0.05)", "rgba(255,255,255,0.06)"]);
@@ -227,191 +235,360 @@ export function carro(cor) {
   return g;
 }
 
+// Carro aberto (conversível) que o Rabisco dirige: motorista à esquerda, carona à direita (mão brasileira).
+// Sem capota, para o Rabisco e a criança aparecerem de qualquer ângulo. Frente do carro = +z local.
+export function carroAberto(cor) {
+  const g = new THREE.Group();
+  const lata = std(cor, { metalness: 0.35, roughness: 0.35 });
+  const preto = std(0x1d1d1d, { roughness: 0.9 });
+  const banco = std(0xf4efe4, { roughness: 0.7 });
+  const corpo = caixa(2.3, 0.8, 4.6, lata); corpo.position.y = 0.75;
+  const capo = caixa(2.2, 0.25, 1.5, lata); capo.position.set(0, 1.25, 1.45);
+  const porta = caixa(2.3, 0.3, 0.9, lata); porta.position.set(0, 1.27, -1.75); // porta-malas
+  g.add(corpo, capo, porta);
+  // laterais um pouco mais altas (as portas) e o vidro da frente transparente
+  for (const s of [-1, 1]) { const l = caixa(0.18, 0.35, 2.2, lata); l.position.set(s * 1.06, 1.3, -0.25); g.add(l); }
+  const vidro = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.42), std(0xbfe6ff, { transparent: true, opacity: 0.35, roughness: 0.1, side: THREE.DoubleSide }));
+  vidro.position.set(0, 1.55, 0.7); vidro.rotation.x = -0.35; g.add(vidro);
+  const moldura = caixa(2.1, 0.08, 0.08, preto); moldura.position.set(0, 1.75, 0.63); g.add(moldura);
+  // dois bancos (assento + encosto)
+  const assentos = [];
+  for (const x of [0.5, -0.5]) {
+    const a = caixa(0.8, 0.22, 0.8, banco); a.position.set(x, 1.05, -0.45);
+    const e = caixa(0.8, 0.42, 0.2, banco); e.position.set(x, 1.3, -0.95); // encosto baixo: os dois aparecem de trás
+    g.add(a, e);
+    assentos.push(new THREE.Vector3(x, 1.16, -0.38));
+  }
+  // volante do lado do motorista (esquerda = +x)
+  const volante = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.05, 8, 16), preto);
+  volante.position.set(0.5, 1.55, 0.25); volante.rotation.x = -1.0;
+  g.add(volante);
+  g.userData.rodas = [];
+  for (const [x, z] of [[-1.1, 1.45], [1.1, 1.45], [-1.1, -1.45], [1.1, -1.45]]) {
+    const roda = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.32, 16), preto);
+    roda.rotation.z = Math.PI / 2; roda.position.set(x, 0.44, z); roda.castShadow = true;
+    g.add(roda); g.userData.rodas.push(roda);
+    const calota = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.34, 12), std(0xdddddd, { metalness: 0.6, roughness: 0.3 }));
+    calota.rotation.z = Math.PI / 2; calota.position.set(x, 0.44, z); g.add(calota);
+  }
+  for (const x of [-0.75, 0.75]) {
+    const farol = new THREE.Mesh(new THREE.CircleGeometry(0.2, 12), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff2c0, emissiveIntensity: 0.7 }));
+    farol.position.set(x, 0.95, 2.31); g.add(farol);
+    const lanterna = new THREE.Mesh(new THREE.CircleGeometry(0.15, 12), new THREE.MeshStandardMaterial({ color: 0xaa0000, emissive: 0xff2020, emissiveIntensity: 0.4 }));
+    lanterna.position.set(x, 0.95, -2.31); lanterna.rotation.y = Math.PI; g.add(lanterna);
+  }
+  // seta flutuante "entre aqui" (o jogo mostra quando o Rabisco está a pé)
+  const seta = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.9, 4), new THREE.MeshBasicMaterial({ color: 0xffcc1f }));
+  seta.rotation.x = Math.PI; seta.position.y = 3.2;
+  g.add(seta);
+  Object.assign(g.userData, { motorista: assentos[0], carona: assentos[1], volante, seta });
+  return g;
+}
+
 // ---------- montagem
+// Fita ao longo de uma linha (asfalto, calçada, faixa amarela): de "a" até "b" de distância lateral.
+// pular(x, z): não desenha aquele pedacinho (ex.: calçada em cima de outra rua).
+function densificar(pts, fechada, passo = 4) {
+  const out = [];
+  const n = pts.length;
+  for (let i = 0; i < (fechada ? n : n - 1); i++) {
+    const [ax, az] = pts[i], [bx, bz] = pts[(i + 1) % n];
+    const k = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / passo));
+    for (let s = 0; s < k; s++) out.push([ax + ((bx - ax) * s) / k, az + ((bz - az) * s) / k]);
+  }
+  if (!fechada) out.push(pts[n - 1]);
+  return out;
+}
+function normais(pts, fechada) {
+  const n = pts.length, ns = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[fechada ? (i - 1 + n) % n : Math.max(0, i - 1)], b = pts[fechada ? (i + 1) % n : Math.min(n - 1, i + 1)];
+    const dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz) || 1;
+    ns.push([-dz / l, dx / l]); // direita de quem anda no sentido da linha
+  }
+  return ns;
+}
+function fita(cena, pts, fechada, a, b, y, mat, repV, pular = null) {
+  const p = densificar(pts, fechada), ns = normais(p, fechada);
+  const pos = [], uv = [], ind = [];
+  let v = 0, n = 0;
+  const total = fechada ? p.length : p.length - 1;
+  for (let i = 0; i < total; i++) {
+    const j = (i + 1) % p.length;
+    const seg = Math.hypot(p[j][0] - p[i][0], p[j][1] - p[i][1]);
+    const mx = (p[i][0] + p[j][0]) / 2 + ns[i][0] * (a + b) / 2, mz = (p[i][1] + p[j][1]) / 2 + ns[i][1] * (a + b) / 2;
+    if (!pular || !pular(mx, mz)) {
+      for (const [k, vv] of [[i, v], [j, v + seg / repV]]) {
+        pos.push(p[k][0] + ns[k][0] * a, y, p[k][1] + ns[k][1] * a, p[k][0] + ns[k][0] * b, y, p[k][1] + ns[k][1] * b);
+        uv.push(0, vv, 1, vv);
+      }
+      ind.push(n, n + 2, n + 1, n + 1, n + 2, n + 3);
+      n += 4;
+    }
+    v += seg / repV;
+  }
+  if (!n) return null;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+  geo.setIndex(ind);
+  geo.computeVertexNormals();
+  // a ordem dos vértices pode virar a face para baixo: desenha dos dois lados
+  const m = new THREE.Mesh(geo, mat);
+  m.receiveShadow = true;
+  cena.add(m);
+  return m;
+}
+
+// roda-gigante do parque: ponto de referência que aparece de longe
+function rodaGigante() {
+  const g = new THREE.Group();
+  const metal = std(0xffffff, { metalness: 0.3, roughness: 0.4 });
+  for (const s of [-1, 1]) for (const k of [-1, 1]) {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 12.5, 8), metal);
+    p.position.set(k * 3.2, 6, s * 1.4); p.rotation.z = -k * 0.26; p.castShadow = true; g.add(p);
+  }
+  const roda = new THREE.Group();
+  roda.position.y = 11.6;
+  const aro = new THREE.Mesh(new THREE.TorusGeometry(8, 0.22, 8, 40), std(0xec2e8c, { metalness: 0.3, roughness: 0.4 }));
+  roda.add(aro);
+  const cores = [0x00b5f0, 0xffcc1f, 0xff7a00, 0x58c43a, 0x8e6cff, 0xec2e8c, 0xe63946, 0x1fc08e];
+  const cabines = [];
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const raio = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 8, 6), metal);
+    raio.rotation.z = a; roda.add(raio);
+    const cab = caixa(1.3, 1.2, 1.3, std(cores[i], { roughness: 0.5 }));
+    cab.position.set(Math.cos(a) * 8, Math.sin(a) * 8 - 0.7, 0);
+    roda.add(cab); cabines.push(cab);
+  }
+  g.add(roda);
+  g.userData = { roda, cabines };
+  return g;
+}
+
 export function montarCidade(cena) {
   const solidos = [];     // { x0, x1, z0, z1, y1 } — prédios, muros e coisas grandes
-  const lugares = [];     // { id, nome, x, z, raio } — para o passaporte e o mapa
-  const casas = [];       // { cor, nome, correio, x, z }
-  const semaforos = [];   // { x, z, grupo (4 postes), fase }
-  const faixas = [];      // { x0, x1, z0, z1, eixo: "x"|"z", cruzamento }
+  const circulos = [];    // { x, z, r } — lago e chafariz (não dá para entrar)
+  const lugares = [];     // { id, nome, x, z, raio, dir } — para o passaporte e o mapa
+  const casas = [];       // { cor, numero, correio, x, z, vovo }
+  const semaforos = [];   // { x, z, postes, fase, wX, wZ }
+  const faixas = [];      // { x0, x1, z0, z1, atravessa, cruz, largura }
+  const arvores = [];
   const tex = { logo: carregarTextura("../../assets/marca/logos/azul-icone-rosa.png"), icone: carregarTextura("../../assets/marca/logos/icone-branco.png") };
   const solido = (cx, cz, w, d, h = 20) => solidos.push({ x0: cx - w / 2, x1: cx + w / 2, z0: cz - d / 2, z1: cz + d / 2, y1: h });
+  const ocupado = (x, z, folga = 0) => solidos.some((s) => x > s.x0 - folga && x < s.x1 + folga && z > s.z0 - folga && z < s.z1 + folga);
+  // local (lx, lz) de um grupo girado em rot (múltiplos de 90°) → mundo
+  const mundoDe = (ox, oz, rot, lx, lz) => [ox + lx * Math.cos(rot) + lz * Math.sin(rot), oz - lx * Math.sin(rot) + lz * Math.cos(rot)];
+  const solidoGirado = (ox, oz, rot, lx, lz, w, d, h = 20) => {
+    const [x, z] = mundoDe(ox, oz, rot, lx, lz);
+    const deitado = Math.abs(Math.sin(rot)) > 0.5;
+    solido(x, z, deitado ? d : w, deitado ? w : d, h);
+  };
 
-  // chão: grama nos quarteirões, calçadas e ruas
-  const chao = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), std(0xffffff, { map: texGrama }));
-  texGrama.repeat.set(120, 120);
+  // ---------- chão
+  const chao = new THREE.Mesh(new THREE.PlaneGeometry(700, 700), std(0xffffff, { map: texGrama }));
+  texGrama.repeat.set(140, 140);
   chao.rotation.x = -Math.PI / 2; chao.position.y = -0.02; chao.receiveShadow = true;
   cena.add(chao);
-  const matAsfalto = std(0xffffff, { map: texAsfalto, roughness: 0.95 });
-  texAsfalto.repeat.set(1, 30);
+
+  // ---------- ruas: calçada (embaixo), asfalto e faixa amarela (só fora dos cruzamentos)
+  texAsfalto.repeat.set(1, 1);
+  const matAsfalto = std(0xffffff, { map: texAsfalto, roughness: 0.95, side: THREE.DoubleSide });
+  const matCalcada = std(0xffffff, { map: texCalcada, roughness: 0.9, side: THREE.DoubleSide });
+  texCalcada.repeat.set(1, 1);
   const linhas = texturaCanvas(64, 512, (c, w, h) => {
     c.clearRect(0, 0, w, h);
-    c.fillStyle = "#f2c230"; for (let y = 0; y < h; y += 64) c.fillRect(w / 2 - 3, y, 6, 36);
+    c.fillStyle = "#f2c230"; for (let y = 0; y < h; y += 64) c.fillRect(0, y, w, 36);
   }, { repetir: true });
-  linhas.repeat.set(1, 18);
-  const matLinhas = new THREE.MeshStandardMaterial({ map: linhas, transparent: true, roughness: 0.6 });
-  const total = BORDA * 2 + RUA;
-  for (const v of RUAS) {
-    for (const eixo of ["x", "z"]) {
-      const rua = new THREE.Mesh(new THREE.PlaneGeometry(RUA, total), matAsfalto);
-      rua.rotation.x = -Math.PI / 2;
-      if (eixo === "x") { rua.rotation.z = Math.PI / 2; rua.position.set(0, 0.01, v); } else rua.position.set(v, 0.012, 0);
-      rua.receiveShadow = true;
-      cena.add(rua);
-      const faixaCentro = new THREE.Mesh(new THREE.PlaneGeometry(0.6, total), matLinhas);
-      faixaCentro.rotation.x = -Math.PI / 2;
-      if (eixo === "x") { faixaCentro.rotation.z = Math.PI / 2; faixaCentro.position.set(0, 0.03, v); } else faixaCentro.position.set(v, 0.031, 0);
-      cena.add(faixaCentro);
+  const matLinhas = new THREE.MeshStandardMaterial({ map: linhas, transparent: true, roughness: 0.6, side: THREE.DoubleSide });
+  const dentroDeOutra = (rua, folga) => (x, z) => distRua(x, z, rua).d < folga;
+  RUAS.forEach((rua, i) => {
+    for (const s of [1, -1]) fita(cena, rua.pts, rua.fechada, s * rua.w / 2, s * (rua.w / 2 + CALCADA), 0.03, matCalcada, 3, dentroDeOutra(rua, 0.4));
+    fita(cena, rua.pts, rua.fechada, -rua.w / 2, rua.w / 2, 0.04 + i * 0.002, matAsfalto, 7);
+    if (!rua.canteiro && rua.id !== "rotatoria") fita(cena, rua.pts, rua.fechada, -0.25, 0.25, 0.08, matLinhas, 11.5, dentroDeOutra(rua, 1.5));
+  });
+  // canteiro da avenida: ilha verde com árvores (baixinho: dá para pisar)
+  const matCanteiro = std(0xffffff, { map: texGrama });
+  for (const rua of RUAS.filter((r) => r.canteiro)) {
+    const [[ax], [bx]] = rua.pts;
+    const ini = Math.min(ax, bx), fim = Math.max(ax, bx);
+    for (let x = ini; x < fim; x += 2) {
+      const meio = x + 1;
+      if (SEMAFOROS.some((s) => Math.abs(s.x - meio) < s.wZ / 2 + 5) || Math.abs(meio) > 116 || Math.abs(meio) < 24) continue;
+      const c = new THREE.Mesh(new THREE.BoxGeometry(2, 0.25, 2.2), matCanteiro);
+      c.position.set(meio, 0.12, 0); c.receiveShadow = true; cena.add(c);
+      if (Math.round(meio) % 12 === 0) { const a = arvoreReal(0.85); a.position.set(meio, 0.2, 0); cena.add(a); arvores.push(a); solido(meio, 0, 0.8, 0.8, 6); }
     }
   }
-  // calçadas (um degrau baixinho em volta de cada quarteirão) e faixas de pedestre
-  const matCalcada = std(0xffffff, { map: texCalcada, roughness: 0.9 });
-  texCalcada.repeat.set(9, 9);
+
+  // ---------- cruzamentos com semáforo: faixas de pedestre nos 4 braços e um poste em cada esquina
   const matFaixa = std(0xf4f4f4, { roughness: 0.6 });
-  const blocos = [];
-  for (let i = 0; i < 4; i++) for (let k = 0; k < 4; k++) {
-    const cx = RUAS[i] + PASSO / 2, cz = RUAS[k] + PASSO / 2;
-    blocos.push({ cx, cz, i, k });
-    const anel = new THREE.Mesh(new THREE.BoxGeometry(QUART, 0.18, QUART), matCalcada);
-    anel.position.set(cx, 0.09, cz); anel.receiveShadow = true;
-    cena.add(anel);
-    const miolo = new THREE.Mesh(new THREE.PlaneGeometry(QUART - 6, QUART - 6), std(0xffffff, { map: texGrama }));
-    miolo.rotation.x = -Math.PI / 2; miolo.position.set(cx, 0.19, cz); miolo.receiveShadow = true;
-    cena.add(miolo);
-  }
-  // cruzamentos do meio: faixa de pedestre nos 4 lados e semáforo nas esquinas
-  for (const x of [-46, 0, 46]) for (const z of [-46, 0, 46]) {
+  for (const s of SEMAFOROS) {
     const grupo = new THREE.Group();
-    for (const [dx, dz, eixo] of [[0, -RUA / 2 - 1.6, "x"], [0, RUA / 2 + 1.6, "x"], [-RUA / 2 - 1.6, 0, "z"], [RUA / 2 + 1.6, 0, "z"]]) {
-      for (let s = -4; s <= 4; s++) {
-        const listra = new THREE.Mesh(new THREE.PlaneGeometry(eixo === "x" ? 0.8 : 3, eixo === "x" ? 3 : 0.8), matFaixa);
-        listra.rotation.x = -Math.PI / 2;
-        listra.position.set(x + dx + (eixo === "x" ? s * 1.35 : 0), 0.04, z + dz + (eixo === "z" ? s * 1.35 : 0));
-        listra.receiveShadow = true;
-        cena.add(listra);
+    // faixas na rua que corre em z (atravessa andando em x)
+    for (const lado of [-1, 1]) {
+      const zc = s.z + lado * (s.wX / 2 + 1.8);
+      for (let x = -s.wZ / 2 + 0.8; x <= s.wZ / 2 - 0.6; x += 1.35) {
+        const listra = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 3), matFaixa);
+        listra.rotation.x = -Math.PI / 2; listra.position.set(s.x + x, 0.09, zc); cena.add(listra);
       }
-      // a faixa "eixo x" atravessa uma rua que corre em z, e vice-versa
-      faixas.push({ x0: x + dx - (eixo === "x" ? RUA / 2 : 1.6), x1: x + dx + (eixo === "x" ? RUA / 2 : 1.6), z0: z + dz - (eixo === "z" ? RUA / 2 : 1.6), z1: z + dz + (eixo === "z" ? RUA / 2 : 1.6), atravessa: eixo === "x" ? "z" : "x", cruz: { x, z } });
+      faixas.push({ x0: s.x - s.wZ / 2, x1: s.x + s.wZ / 2, z0: zc - 1.6, z1: zc + 1.6, atravessa: "z", cruz: s, largura: s.wZ });
+      const xc = s.x + lado * (s.wZ / 2 + 1.8);
+      for (let z = -s.wX / 2 + 0.8; z <= s.wX / 2 - 0.6; z += 1.35) {
+        if (Math.abs(z) < 1.3 && s.wX > 14) continue; // canteiro da avenida
+        const listra = new THREE.Mesh(new THREE.PlaneGeometry(3, 0.8), matFaixa);
+        listra.rotation.x = -Math.PI / 2; listra.position.set(xc, 0.09, s.z + z); cena.add(listra);
+      }
+      faixas.push({ x0: xc - 1.6, x1: xc + 1.6, z0: s.z - s.wX / 2, z1: s.z + s.wX / 2, atravessa: "x", cruz: s, largura: s.wX });
     }
     const postes = [];
     for (const [sx, sz, rot] of [[1, 1, Math.PI], [-1, -1, 0], [1, -1, -Math.PI / 2], [-1, 1, Math.PI / 2]]) {
-      const s = semaforo();
-      s.position.set(x + sx * (RUA / 2 + 0.8), 0.18, z + sz * (RUA / 2 + 0.8));
-      s.rotation.y = rot;
-      s.userData.eixo = rot === 0 || rot === Math.PI ? "z" : "x"; // de frente para os carros que andam neste eixo
-      grupo.add(s);
-      postes.push(s);
+      const p = semaforo();
+      p.position.set(s.x + sx * (s.wZ / 2 + 0.8), 0.03, s.z + sz * (s.wX / 2 + 0.8));
+      p.rotation.y = rot;
+      p.userData.eixo = rot === 0 || rot === Math.PI ? "z" : "x";
+      grupo.add(p);
+      postes.push(p);
+      solido(p.position.x, p.position.z, 0.4, 0.4, 5);
     }
     cena.add(grupo);
-    semaforos.push({ x, z, postes, fase: (x + z) % 92 === 0 ? 0 : 6 });
+    semaforos.push({ ...s, postes, fase: (s.x + s.z) % 2 ? 0 : 6 });
   }
 
-  // ---------- quarteirões: o que fica em cada um
-  const usos = {
-    "1,1": "escola", "2,1": "praca", "1,2": "igreja", "2,2": "parque",
-    "0,1": "biblioteca", "3,1": "padaria", "0,2": "hospital", "3,2": "bombeiros",
-    "1,0": "correio", "2,0": "mercado", "1,3": "casas", "2,3": "casas2",
-    "0,0": "predios", "3,0": "predios", "0,3": "predios", "3,3": "predios",
+  // ---------- os lugares da cidade
+  const info = {
+    biblioteca: ["Biblioteca", "#c9b28a", 3, "#8e6cff"], padaria: ["Padaria", "#f2d0a4", 2, "#ff7a00"], hospital: ["Hospital", "#f4f4f4", 4, "#e63946"],
+    bombeiros: ["Bombeiros", "#d94a3d", 2, "#e63946"], correio: ["Correio", "#f2d34c", 2, "#1d6fe0"], mercado: ["Mercado", "#cfe3c9", 2, "#2bb24c"],
   };
-  const coresPredio = ["#d9c7a8", "#c9d6e3", "#e3c9c9", "#cfe3c9", "#e8dcc4", "#d4cce6", "#f0e0c0"];
-  const coresCasa = [["vermelha", 0xd94a3d], ["azul", 0x3d7ad9], ["amarela", 0xf2c94c], ["verde", 0x4cae5a]];
-  for (const { cx, cz, i, k } of blocos) {
-    const uso = usos[`${i},${k}`];
+  for (const l of LUGARES) {
+    lugares.push({ ...l });
+    if (!["escola", "igreja", ...Object.keys(info)].includes(l.id)) continue;
+    const ox = l.x - l.dir[0] * l.recuo, oz = l.z - l.dir[1] * l.recuo;
     const grupo = new THREE.Group();
-    grupo.position.set(cx, 0.18, cz);
+    grupo.position.set(ox, 0.03, oz);
+    grupo.rotation.y = l.rot;
     cena.add(grupo);
-    // fachada principal virada para a rua de baixo (z menor) ou de cima, conforme o quarteirão
-    const frente = k <= 1 ? 1 : -1;  // 1: porta para +z
-    grupo.rotation.y = frente === 1 ? 0 : Math.PI;
-    const lugar = (id, nome, raio = 12) => lugares.push({ id, nome, x: cx, z: cz + frente * 9, raio, cx, cz, frente });
-    if (uso === "escola") {
+    if (l.id === "escola") {
       const e = escolaEducarte3D(tex.logo, tex.icone);
-      e.scale.setScalar(0.42);
-      e.position.z = -2;
-      grupo.add(e);
-      solido(cx, cz - 2 * frente, 24, 12);
-      lugar("escola", "Escola Educarte");
-    } else if (uso === "igreja") {
+      e.scale.setScalar(0.42); e.position.z = -2; grupo.add(e);
+      solidoGirado(ox, oz, l.rot, 0, -2, 24, 12);
+    } else if (l.id === "igreja") {
       const ig = igreja(); ig.position.z = -6; grupo.add(ig);
-      solido(cx, cz - 6 * frente, 10.5, 16.5); solido(cx, cz + 3 * frente, 4.5, 4.5);
-      lugar("igreja", "Igreja");
-    } else if (uso === "praca") {
-      const ch = chafariz(); grupo.add(ch); grupo.userData.agua = ch.userData.agua;
-      solidos.push({ x0: cx - 4.3, x1: cx + 4.3, z0: cz - 4.3, z1: cz + 4.3, y1: 0.9 });
-      for (const [x, z, rot] of [[-8, 0, Math.PI / 2], [8, 0, -Math.PI / 2], [0, -8, 0], [0, 8, Math.PI]]) { const b = banco(); b.position.set(x, 0, z); b.rotation.y = rot; grupo.add(b); }
-      for (const [x, z] of [[-11, -11], [11, -11], [-11, 11], [11, 11]]) { const a = arvoreReal(1.3); a.position.set(x, 0, z); grupo.add(a); solidos.push({ x0: cx + x - 0.5, x1: cx + x + 0.5, z0: cz + x * 0 + z * frente - 0.5, z1: cz + z * frente + 0.5, y1: 6 }); }
-      lugar("praca", "Praça", 13);
-    } else if (uso === "parque") {
-      const pg = playground(); pg.position.set(-3, 0, 0); grupo.add(pg);
-      for (let n = 0; n < 7; n++) { const a = arvoreReal(1 + r() * 0.5); a.position.set(-13 + r() * 26, 0, -13 + r() * 6); grupo.add(a); }
-      lugar("parque", "Parque", 13);
-    } else if (uso === "casas" || uso === "casas2") {
-      coresCasa.forEach(([nome, cor], n) => {
-        if (uso === "casas2" && n > 1) return;
-        const lado = uso === "casas" ? n : n + 4;
-        const h = casa(cor, n % 2 ? 0x7a3a2a : 0x5a4a3a, lado + 1);
-        const x = uso === "casas" ? -12 + n * 8 : -8 + n * 16;
-        h.position.set(x, 0, -4);
-        grupo.add(h);
-        solido(cx + x * frente, cz - 4 * frente, 7.4, 7.4, 7);
-        if (uso === "casas") casas.push({ cor: nome, numero: lado + 1, correio: h.userData.correio, x: cx + (x + 2.8) * frente, z: cz + (-4 + 5.4) * frente });
-      });
-      if (uso === "casas2") { const pg = arvoreReal(1.4); pg.position.set(0, 0, 6); grupo.add(pg); }
-      lugar(uso, uso === "casas" ? "Rua das Casas Coloridas" : "Vila", 14);
+      solidoGirado(ox, oz, l.rot, 0, -6, 10.5, 16.5); solidoGirado(ox, oz, l.rot, 0, 3, 4.5, 4.5);
     } else {
-      // prédios com letreiro: biblioteca, padaria, hospital, bombeiros, correio, mercado e prédios de morar
-      const info = {
-        biblioteca: ["Biblioteca", "#c9b28a", 3, "#8e6cff"], padaria: ["Padaria", "#f2d0a4", 2, "#ff7a00"], hospital: ["Hospital", "#f4f4f4", 4, "#e63946"],
-        bombeiros: ["Bombeiros", "#d94a3d", 2, "#e63946"], correio: ["Correio", "#f2d34c", 2, "#1d6fe0"], mercado: ["Mercado", "#cfe3c9", 2, "#2bb24c"],
-      }[uso];
-      if (info) {
-        const [nome, cor, andares, corPlaca] = info;
-        const { g: pr, h } = predio(20, 14, andares, cor, 0.1);
-        pr.position.z = -4;
-        grupo.add(pr);
-        letreiro(grupo, nome, { y: Math.min(h - 1, 5.2), z: 3.08, largura: 10, cor: corPlaca });
-        porta(grupo, { z: 3.08, w: 3, h: 3.4, cor: 0x5a3a20 });
-        solido(cx, cz - 4 * frente, 20.4, 14.4);
-        lugar(uso, nome);
-        if (uso === "hospital") { const cruz1 = caixa(3, 0.9, 0.2, std(0xe63946)); const cruz2 = caixa(0.9, 3, 0.2, std(0xe63946)); cruz1.position.set(0, h - 2, 3.1); cruz2.position.set(0, h - 2, 3.1); grupo.add(cruz1, cruz2); }
-        if (uso === "bombeiros") { const garagem = caixa(6, 4, 0.3, std(0xeeeeee, { metalness: 0.3, roughness: 0.4 })); garagem.position.set(5.5, 2, 3.1); grupo.add(garagem); }
-      } else {
-        // prédios de morar: dois ou três de alturas diferentes
-        const n = 2 + Math.floor(r() * 2);
-        for (let q = 0; q < n; q++) {
-          const w = QUART / n - 3, andares = 4 + Math.floor(r() * 8);
-          const { g: pr } = predio(w, 14, andares, coresPredio[Math.floor(r() * coresPredio.length)], 0.2);
-          const x = -QUART / 2 + 1.5 + w / 2 + q * (w + 3);
-          pr.position.set(x, 0, -3);
-          grupo.add(pr);
-          solido(cx + x * frente, cz - 3 * frente, w + 0.4, 14.4);
-        }
-      }
-    }
-    // árvores nas calçadas (em volta do quarteirão)
-    for (const [x, z] of [[-14, 14.5], [14, 14.5], [-14, -14.5], [14, -14.5]]) {
-      if (uso === "praca") continue;
-      const a = arvoreReal(0.9 + r() * 0.3);
-      a.position.set(x, 0, z);
-      grupo.add(a);
-      solidos.push({ x0: cx + x * frente - 0.45, x1: cx + x * frente + 0.45, z0: cz + z * frente - 0.45, z1: cz + z * frente + 0.45, y1: 6 });
+      const [nome, cor, andares, corPlaca] = info[l.id];
+      const { g: pr, h } = predio(20, 14, andares, cor, 0.1);
+      pr.position.z = -4; grupo.add(pr);
+      letreiro(grupo, nome, { y: Math.min(h - 1, 5.2), z: 3.08, largura: 10, cor: corPlaca });
+      porta(grupo, { z: 3.08, w: 3, h: 3.4, cor: 0x5a3a20 });
+      solidoGirado(ox, oz, l.rot, 0, -4, 20.4, 14.4);
+      if (l.id === "hospital") { const c1 = caixa(3, 0.9, 0.2, std(0xe63946)); const c2 = caixa(0.9, 3, 0.2, std(0xe63946)); c1.position.set(0, h - 2, 3.1); c2.position.set(0, h - 2, 3.1); grupo.add(c1, c2); }
+      if (l.id === "bombeiros") { const gar = caixa(6, 4, 0.3, std(0xeeeeee, { metalness: 0.3, roughness: 0.4 })); gar.position.set(5.5, 2, 3.1); grupo.add(gar); }
     }
   }
-  // morros e árvores fora da cidade, para não acabar "no nada"
-  for (let n = 0; n < 60; n++) {
+
+  // ---------- casas coloridas (com caixa de correio da cor da casa) e a casa da Vovó
+  for (const c of CASAS) {
+    const ox = c.x - c.dir[0] * 5.5, oz = c.z - c.dir[1] * 5.5, rot = Math.atan2(c.dir[0], c.dir[1]);
+    const h = casa(c.hex, c.numero % 2 ? 0x7a3a2a : 0x5a4a3a, c.numero);
+    h.position.set(ox, 0.03, oz); h.rotation.y = rot;
+    cena.add(h);
+    solido(ox, oz, 7.4, 7.4, 7);
+    const [mx, mz] = mundoDe(ox, oz, rot, 2.8, 5.4);
+    casas.push({ cor: c.cor, numero: c.numero, correio: h.userData.correio, x: mx, z: mz, vovo: Boolean(c.vovo), porta: [c.x, c.z] });
+  }
+
+  // ---------- praça na ilha da rotatória: piso, chafariz, bancos e árvores
+  const piso = new THREE.Mesh(new THREE.CircleGeometry(PRACA.r, 40), std(0xffffff, { map: texCalcada, roughness: 0.9 }));
+  piso.rotation.x = -Math.PI / 2; piso.position.set(PRACA.x, 0.05, PRACA.z); piso.receiveShadow = true; cena.add(piso);
+  const ch = chafariz(); ch.position.set(PRACA.x, 0.05, PRACA.z); cena.add(ch);
+  circulos.push({ x: PRACA.x, z: PRACA.z, r: 4.4 });
+  for (const a of [0, 1, 2, 3]) {
+    const ang = a * Math.PI / 2 + Math.PI / 4;
+    const b = banco(); b.position.set(Math.sin(ang) * 8, 0.05, Math.cos(ang) * 8); b.rotation.y = ang + Math.PI; cena.add(b);
+    const t = arvoreReal(1.1); t.position.set(Math.sin(ang + Math.PI / 4) * 10, 0.05, Math.cos(ang + Math.PI / 4) * 10); cena.add(t); arvores.push(t);
+    solido(t.position.x, t.position.z, 0.8, 0.8, 6);
+  }
+
+  // ---------- parque: lago com patos, playground, roda-gigante e bosque
+  const lago = new THREE.Mesh(new THREE.CircleGeometry(LAGO.r, 40), std(0x3aa7f0, { roughness: 0.15, metalness: 0.1 }));
+  lago.rotation.x = -Math.PI / 2; lago.position.set(LAGO.x, 0.06, LAGO.z); cena.add(lago);
+  const areia = new THREE.Mesh(new THREE.RingGeometry(LAGO.r, LAGO.r + 1.4, 40), std(0xe8d9a8, { roughness: 1 }));
+  areia.rotation.x = -Math.PI / 2; areia.position.set(LAGO.x, 0.05, LAGO.z); cena.add(areia);
+  circulos.push({ x: LAGO.x, z: LAGO.z, r: LAGO.r - 0.3 });
+  const pg = playground(); pg.position.set(PLAYGROUND.x, 0.03, PLAYGROUND.z); pg.rotation.y = Math.PI; cena.add(pg);
+  const roda = rodaGigante(); roda.position.set(58, 0, 104); roda.rotation.y = Math.PI / 2; cena.add(roda);
+  solido(58, 104, 4.5, 9, 13);
+  for (let n = 0; n < 16; n++) {
+    const x = PARQUE.x0 + 3 + r() * (PARQUE.x1 - PARQUE.x0 - 6), z = PARQUE.z0 + 3 + r() * (PARQUE.z1 - PARQUE.z0 - 6);
+    if (Math.hypot(x - LAGO.x, z - LAGO.z) < LAGO.r + 3 || Math.hypot(x - PLAYGROUND.x, z - PLAYGROUND.z) < 8 || Math.hypot(x - 58, z - 104) < 9 || distRua(x, z).d < CALCADA + 1) continue;
+    const a = arvoreReal(1 + r() * 0.5); a.position.set(x, 0, z); cena.add(a); arvores.push(a);
+    solido(x, z, 0.8, 0.8, 6);
+  }
+  for (const [x, z, rot] of [[LAGO.x - 13, LAGO.z, Math.PI / 2], [LAGO.x, LAGO.z - 13, 0]]) { const b = banco(); b.position.set(x, 0.03, z); b.rotation.y = rot; cena.add(b); }
+
+  // ---------- prédios de morar e casinhas preenchendo o resto (sempre iguais, pela semente)
+  const coresPredio = ["#d9c7a8", "#c9d6e3", "#e3c9c9", "#cfe3c9", "#e8dcc4", "#d4cce6", "#f0e0c0"];
+  const coresCasa = [0xd9a3c9, 0x9fd0e8, 0xf2d49b, 0xb6dba0, 0xf0b49a];
+  const reservado = (x, z) =>
+    (x > PARQUE.x0 - 4 && x < PARQUE.x1 + 4 && z > PARQUE.z0 - 6 && z < PARQUE.z1 + 4) || Math.hypot(x, z) < 34 ||
+    LUGARES.some((l) => Math.hypot(x - (l.x - l.dir[0] * (l.recuo + 6)), z - (l.z - l.dir[1] * (l.recuo + 6))) < 20) ||
+    CASAS.some((c) => Math.hypot(x - c.x, z - c.z) < 12) || VAGAS.some((v) => Math.hypot(x - v.x, z - v.z) < 9) || Math.hypot(x - LARGADA.x, z - LARGADA.z) < 9;
+  for (let gx = -114; gx <= 114; gx += 15) for (let gz = -114; gz <= 114; gz += 15) {
+    const x = gx + (r() - 0.5) * 3, z = gz + (r() - 0.5) * 3;
+    if (reservado(x, z)) continue;
+    // fachada para a rua mais perto
+    const d0 = distRua(x, z).d;
+    if (d0 < CALCADA + 7) continue;
+    const gxR = distRua(x + 1, z).d - distRua(x - 1, z).d, gzR = distRua(x, z + 1).d - distRua(x, z - 1).d;
+    const dir = Math.abs(gxR) > Math.abs(gzR) ? [-Math.sign(gxR), 0] : [0, -Math.sign(gzR)];
+    const rot = Math.atan2(dir[0], dir[1]);
+    const ehCasa = z > 20 && r() < 0.5;
+    const w = ehCasa ? 7.4 : 10 + r() * 3, d = ehCasa ? 7.4 : 10 + r() * 2;
+    const cantos = [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(([lx, lz]) => mundoDe(x, z, rot, lx, lz));
+    if (cantos.some(([cx, cz]) => distRua(cx, cz).d < CALCADA + 1.5 || ocupado(cx, cz, 1.5) || Math.abs(cx) > 118 || Math.abs(cz) > 118)) continue;
+    if (ocupado(x, z, 2)) continue;
+    let g;
+    if (ehCasa) g = casa(coresCasa[Math.floor(r() * coresCasa.length)], r() < 0.5 ? 0x7a3a2a : 0x5a4a3a, 10 + Math.floor(r() * 80));
+    else g = predio(w, d, 3 + Math.floor(r() * 7), coresPredio[Math.floor(r() * coresPredio.length)], 0.2).g;
+    g.position.set(x, 0.03, z); g.rotation.y = rot;
+    cena.add(g);
+    const deitado = Math.abs(Math.sin(rot)) > 0.5;
+    solido(x, z, (deitado ? d : w) + 0.4, (deitado ? w : d) + 0.4, ehCasa ? 7 : 30);
+  }
+
+  // ---------- árvores nas calçadas
+  for (const rua of RUAS) {
+    if (rua.id === "rotatoria" || rua.canteiro) continue;
+    const pts = densificar(rua.pts, rua.fechada, 15), ns = normais(pts, rua.fechada);
+    pts.forEach(([x, z], i) => {
+      for (const s of [1, -1]) {
+        const ax = x + ns[i][0] * s * (rua.w / 2 + CALCADA - 0.7), az = z + ns[i][1] * s * (rua.w / 2 + CALCADA - 0.7);
+        if (distRua(ax, az, rua).d < 2.5 || ocupado(ax, az, 1) || SEMAFOROS.some((q) => Math.hypot(q.x - ax, q.z - az) < 14) || Math.hypot(ax, az) < 30) continue;
+        if (VAGAS.some((v) => Math.hypot(v.x - ax, v.z - az) < 5) || LUGARES.some((l) => Math.hypot(l.x - ax, l.z - az) < 6) || CASAS.some((c) => Math.hypot(c.x - ax, c.z - az) < 4)) continue;
+        if (Math.hypot(ax - LARGADA.x, az - LARGADA.z) < 6) continue;
+        const a = arvoreReal(0.9 + r() * 0.3); a.position.set(ax, 0.03, az); cena.add(a); arvores.push(a);
+        solido(ax, az, 0.9, 0.9, 6);
+      }
+    });
+  }
+
+  // ---------- morros e árvores fora da cidade
+  for (let n = 0; n < 70; n++) {
     const a = arvoreReal(1.2 + r());
-    const ang = r() * Math.PI * 2, dist = 112 + r() * 60;
+    const ang = r() * Math.PI * 2, dist = 142 + r() * 60;
     a.position.set(Math.cos(ang) * dist, 0, Math.sin(ang) * dist);
     cena.add(a);
   }
-  for (let n = 0; n < 14; n++) {
-    const m = new THREE.Mesh(new THREE.SphereGeometry(40 + r() * 30, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), std(0x6fae4f, { roughness: 1 }));
-    const ang = (n / 14) * Math.PI * 2;
-    m.position.set(Math.cos(ang) * 230, -6, Math.sin(ang) * 230);
+  for (let n = 0; n < 16; n++) {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(45 + r() * 30, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), std(0x6fae4f, { roughness: 1 }));
+    const ang = (n / 16) * Math.PI * 2;
+    m.position.set(Math.cos(ang) * 270, -6, Math.sin(ang) * 270);
     m.scale.y = 0.45;
     cena.add(m);
   }
-  return { solidos, lugares, casas, semaforos, faixas, blocos };
+  return { solidos, circulos, lugares, casas, semaforos, faixas, arvores, roda };
 }
 
 export function morador(cor) {

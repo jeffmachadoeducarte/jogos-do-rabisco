@@ -15,6 +15,7 @@ import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
 import { modoAtual } from "./modos.js";
 import { pistaAtual, PISTAS, decoracao, estrelas } from "./pistas.js";
 import { botaoVoltar } from "../../src/motor/voltar.js";
+import { criarRemapear } from "../../src/motor/remapear.js";
 
 const RAIZ = "../..";
 const MEIA_PISTA = 9;          // metade da largura do asfalto
@@ -449,7 +450,8 @@ function naLargada(kart) {
     pos: centro[k0].clone().addScaledVector(lado[k0], kart.colunaLargada ? -3.4 : 3.4),
     ang: anguloDe(tangente[k0]), vel: 0, virar: 0,
     amostra: k0, volta: 0, passouMeio: false, progresso: 0, terminou: false, tempoFinal: 0,
-    turbo: 0, foraDaPista: false, giroRoda: 0, habilidade: 0.88 + PISTA.numero * 0.007 + Math.random() * 0.06, // pistas mais adiante: amigos um pouco mais rápidos faixaAlvo: (Math.random() - 0.5) * 8,
+    turbo: 0, foraDaPista: false, giroRoda: 0, habilidade: 0.88 + PISTA.numero * 0.007 + Math.random() * 0.06, // pistas mais adiante: amigos um pouco mais rápidos
+    faixaAlvo: (Math.random() - 0.5) * 8, // (estava dentro do comentário acima: virava NaN e os adversários sumiam)
     proximoPortico: 0, cooldownBatida: 0,
   });
 }
@@ -575,14 +577,30 @@ for (const s of document.querySelectorAll(".dica-modo")) s.textContent = MODO.di
 if (MODO.amigos) $("amigos").hidden = false;
 const entrada = { esq: false, dir: false, eixo: 0 }; // eixo: alavanca do controle, de -1 a 1
 
+// teclas e botões que a criança pode trocar (⚙️ na abertura e na pausa; no celular/tablet não aparece)
+const remap = criarRemapear({
+  id: "rabisco-kart",
+  acoes: [
+    { id: "esq", nome: "Virar à esquerda", teclas: ["ArrowLeft", "KeyA"], botoes: [14], controle: "esq" },
+    { id: "dir", nome: "Virar à direita", teclas: ["ArrowRight", "KeyD"], botoes: [15], controle: "dir" },
+    { id: "buzina", nome: "Buzina", teclas: ["KeyH"], botoes: [2, 3], controle: "acao" },
+  ],
+  aoAbrir: () => { entrada.esq = entrada.dir = false; if (estado === "corrida" && !pausa.ativa) pausa.pausar(); },
+});
+if (remap.botao) { remap.botao.classList.add("remap-kart"); $("abertura").append(remap.botao); }
+let buzinaEspera = 0;
+function buzinar() { if (estado !== "corrida" || buzinaEspera > 0) return; buzinaEspera = 0.8; sons.buzina(); }
 addEventListener("keydown", (e) => {
-  if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") entrada.esq = true;
-  if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") entrada.dir = true;
+  const acao = remap.acaoDaTecla(e.code);
+  if (acao === "esq") entrada.esq = true;
+  if (acao === "dir") entrada.dir = true;
+  if (acao === "buzina" && !e.repeat) buzinar();
   if ((e.key === "Enter" || e.key === " ") && estado === "abertura") comecar();
 });
 addEventListener("keyup", (e) => {
-  if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") entrada.esq = false;
-  if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") entrada.dir = false;
+  const acao = remap.acaoDaTecla(e.code);
+  if (acao === "esq") entrada.esq = false;
+  if (acao === "dir") entrada.dir = false;
 });
 prepararCelular({ deitado: true }); // toque, tela cheia e "gire o celular"
 for (const [id, chave] of [["btn-esq", "esq"], ["btn-dir", "dir"]]) {
@@ -661,7 +679,16 @@ function dirigir(k, dt) {
   } else {
     const alvo = idx(k.amostra + 26);
     k.faixaAlvo += (Math.random() - 0.5) * dt * 3;
-    k.faixaAlvo = THREE.MathUtils.clamp(k.faixaAlvo, -6, 6);
+    // tem kart logo à frente na mesma faixa? passa para o lado com mais espaço (ultrapassagem, sem atravessar)
+    for (const o of karts) {
+      if (o === k) continue;
+      const frente = idx(o.amostra - k.amostra);
+      if (frente > 0 && frente < 14 / PASSO && o.vel < k.vel + 2) {
+        const latO = lateral(o.pos, o.amostra), latK = lateral(k.pos, k.amostra);
+        if (Math.abs(latO - latK) < 3) k.faixaAlvo += (latO > 0 ? -1 : 1) * dt * 9;
+      }
+    }
+    k.faixaAlvo = THREE.MathUtils.clamp(k.faixaAlvo, -6.5, 6.5);
     const ponto = centro[alvo].clone().addScaledVector(lado[alvo], k.faixaAlvo);
     const desejado = Math.atan2(ponto.x - k.pos.x, ponto.z - k.pos.z);
     virar = THREE.MathUtils.clamp(difAngulo(desejado, k.ang) * 2.5, -1, 1);
@@ -770,21 +797,58 @@ function perguntar(dt) {
   void dt;
 }
 
+// Colisão entre karts: cada kart é uma cápsula (dois círculos, frente e trás). Ninguém atravessa ninguém:
+// os dois são afastados até encostar; quem bate por trás perde velocidade e o da frente ganha um empurrãozinho;
+// de lado é uma raspada (cada um gira um pouquinho para fora). Faíscas e "tuc" quando o Rabisco está na batida.
+const R_KART = 1.15, MEIO_KART = 0.85;
+let menorDistancia = Infinity; // ?teste: menor distância entre centros depois de resolver (nunca < 2·R_KART)
 function colisoes() {
-  for (let a = 0; a < karts.length; a++) {
-    for (let b = a + 1; b < karts.length; b++) {
-      const A = karts[a], B = karts[b];
-      const dx = B.pos.x - A.pos.x, dz = B.pos.z - A.pos.z;
-      const d = Math.hypot(dx, dz);
-      if (d < 2.6 && d > 0.001) {
-        const empurra = (2.6 - d) / 2;
-        A.pos.x -= (dx / d) * empurra; A.pos.z -= (dz / d) * empurra;
-        B.pos.x += (dx / d) * empurra; B.pos.z += (dz / d) * empurra;
-        if ((A.ehJogador || B.ehJogador) && (A.cooldownBatida ?? 0) <= 0) { sons.batida(); A.cooldownBatida = 0.5; }
+  for (let passe = 0; passe < 8; passe++) {
+    for (let a = 0; a < karts.length; a++) {
+      for (let b = a + 1; b < karts.length; b++) {
+        const A = karts[a], B = karts[b];
+        if (Math.abs(A.pos.x - B.pos.x) > 6 || Math.abs(A.pos.z - B.pos.z) > 6) continue;
+        // pares de círculos: o mais fundo manda
+        let pior = null;
+        for (const sa of [-1, 1]) for (const sb of [-1, 1]) {
+          const ax = A.pos.x + Math.sin(A.ang) * sa * MEIO_KART, az = A.pos.z + Math.cos(A.ang) * sa * MEIO_KART;
+          const bx = B.pos.x + Math.sin(B.ang) * sb * MEIO_KART, bz = B.pos.z + Math.cos(B.ang) * sb * MEIO_KART;
+          const dx = bx - ax, dz = bz - az, d = Math.hypot(dx, dz);
+          const fundo = 2 * R_KART - d;
+          if (fundo > 0 && (!pior || fundo > pior.fundo)) pior = { fundo, nx: d > 1e-4 ? dx / d : 1, nz: d > 1e-4 ? dz / d : 0, px: (ax + bx) / 2, pz: (az + bz) / 2 };
+        }
+        if (!pior) continue;
+        const { fundo, nx, nz } = pior;
+        A.pos.x -= nx * fundo / 2; A.pos.z -= nz * fundo / 2;
+        B.pos.x += nx * fundo / 2; B.pos.z += nz * fundo / 2;
+        if (passe) continue;
+        // velocidades ao longo da batida
+        const vA = (Math.sin(A.ang) * nx + Math.cos(A.ang) * nz) * A.vel, vB = (Math.sin(B.ang) * nx + Math.cos(B.ang) * nz) * B.vel;
+        const aproxima = vA - vB;
+        if (aproxima > 0.5) {
+          const frontal = Math.abs(Math.sin(A.ang) * nx + Math.cos(A.ang) * nz) > 0.7; // por trás/frente ou de lado
+          if (frontal) {
+            const atras = idx(B.amostra - A.amostra) < AMOSTRAS / 2 ? A : B, frente = atras === A ? B : A;
+            atras.vel *= 0.72; frente.vel = Math.min(VMAX * 1.15, frente.vel + aproxima * 0.35);
+          } else {
+            A.vel *= 0.93; B.vel *= 0.93;
+          }
+          // raspada: cada um gira um pouquinho para longe do outro
+          const lado = (k, sx, sz) => Math.sign(Math.cos(k.ang) * sx - Math.sin(k.ang) * sz) || 1;
+          A.ang += 0.06 * lado(A, -nx, -nz); B.ang += 0.06 * lado(B, nx, nz);
+          if (A.ehJogador || B.ehJogador) {
+            const eu = A.ehJogador ? A : B;
+            if ((eu.cooldownBatida ?? 0) <= 0) { sons.batida(); eu.cooldownBatida = 0.45; navigator.vibrate?.(25); }
+            for (let n = 0; n < 6; n++) soltar(new THREE.Vector3(pior.px, 0.9, pior.pz), { cor: n % 2 ? 0xffe14a : 0xffffff, aditivo: true, vel: new THREE.Vector3((Math.random() - 0.5) * 8, 3 + Math.random() * 4, (Math.random() - 0.5) * 8), vida: 0.35, tam: 0.7, gravidade: 12 });
+          }
+          batidas++;
+        }
       }
     }
   }
+  for (let a = 0; a < karts.length; a++) for (let b = a + 1; b < karts.length; b++) menorDistancia = Math.min(menorDistancia, karts[a].pos.distanceTo(karts[b].pos));
 }
+let batidas = 0;
 
 // ------------------------------------------------------------------ Visual dos karts
 function animarKart(k, dt, t) {
@@ -889,7 +953,7 @@ function atualizarCamera(dt, t) {
   camera.updateProjectionMatrix();
 
   // adversário colado na câmera (ex.: no turbo) some para não tapar a tela
-  for (const o of karts) if (o !== k) o.g.visible = camera.position.distanceTo(o.pos) > 5;
+  for (const o of karts) if (o !== k) o.g.visible = camera.position.distanceTo(o.pos) > 3.2;
 
   sol.position.copy(k.pos).add(new THREE.Vector3(60, 110, 30));
   sol.target.position.copy(k.pos);
@@ -981,6 +1045,8 @@ const pausa = criarPausa({
   lugar: { top: "calc(env(safe-area-inset-top, 0px) + 150px)", left: "18px" }, // abaixo da posição (o meio é da conta)
 });
 
+remap.naPausa();
+
 // ------------------------------------------------------------------ Controle
 // Direcional ou alavanca vira (a alavanca vira aos poucos), Start pausa; nas telas o direcional escolhe e A confirma
 const controle = ligarControle({
@@ -996,7 +1062,10 @@ const controle = ligarControle({
 const relogio = new THREE.Clock();
 function quadro() {
   const dt = Math.min(relogio.getDelta(), 1 / 20);
-  entrada.eixo = controle.atualizar().eixoX;
+  const leitura = controle.atualizar();
+  entrada.eixo = leitura.eixoX;
+  if (leitura.apertou.acao) buzinar();
+  buzinaEspera -= dt;
   pausa.atualizar();
   if (pausa.ativa) { renderer.render(cena, camera); requestAnimationFrame(quadro); return; }
   const t = relogio.elapsedTime;
@@ -1044,7 +1113,9 @@ async function iniciar() {
   if (params.has("auto")) comecar();
   if (params.has("fim")) { comecar(); setTimeout(() => { jogador.volta = VOLTAS; jogador.terminou = true; terminar(); }, 5000); }
   if (params.has("porticos")) { const k = jogador; const i = idx(POSICOES_PORTICO[Number(params.get("porticos"))] - 60); k.pos.copy(centro[i]); k.amostra = i; k.ang = anguloDe(tangente[i]); }
-  if (params.has("teste")) window.teste = { get jogador() { return jogador; }, karts, porticos, get estado() { return estado; }, renderer, set angulo(a) { anguloTeste = a; } };
+  if (params.has("teste")) window.teste = { get jogador() { return jogador; }, karts, porticos, get estado() { return estado; }, renderer, set angulo(a) { anguloTeste = a; },
+    get menorDistancia() { return menorDistancia; }, zerarDistancia() { menorDistancia = Infinity; }, get batidas() { return batidas; }, idx, centro, lado, tangente, AMOSTRAS, PASSO,
+    colocar(k, i, lat, vel = 0) { const a = idx(i); k.pos.copy(centro[a]).addScaledVector(lado[a], lat); k.amostra = a; k.ang = anguloDe(tangente[a]); k.vel = vel; } };
 }
 
 function createGrid(img) {
