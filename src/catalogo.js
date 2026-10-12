@@ -61,6 +61,7 @@ export const faixas = [
       { id: "cidade-do-rabisco", estilo: "extra", nome: "Cidade do Rabisco", desc: "Mundo livre em 3D: passeie pela cidade, entregue cartas, ache gatinhos, atravesse na faixa e conheça a escola, a igreja e a praça.", habilidade: "Exploração e cidadania", status: "pronto" },
       { id: "memoria", estilo: "extra", nome: "Memória da Turma", desc: "Jogo da memória com Rabisco, escola, materiais e amigos.", habilidade: "Memória e atenção", status: "pronto" },
       { id: "viagem-do-rabisco", estilo: "extra", nome: "Viagem do Rabisco", desc: "Viaje pelo mundo levando presentes aos amigos: paisagens, transportes, mapa do Brasil e pontos cardeais.", habilidade: "Geografia: lugares e mapa", status: "pronto" },
+      { id: "horta-do-rabisco", estilo: "extra", nome: "Horta do Rabisco", desc: "Horta em 3D: dê água, sol e terra boa e veja a plantinha crescer da semente ao tomate. Dia e noite, estações e cuidar da natureza.", habilidade: "Ciências: plantas e natureza", status: "pronto" },
       { id: "rabisco-says", estilo: "extra", nome: "Rabisco Says", desc: "\"Rabisco says: jump on the red!\" Siga as ordens em inglês.", habilidade: "Inglês: comandos e cores", status: "pronto", ingles: true },
     ],
   },

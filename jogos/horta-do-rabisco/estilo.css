@@ -1,0 +1,42 @@
+/* Horta do Rabisco: cena 3D na tela toda (céu em CSS atrás do canvas transparente),
+   alvos com aro tracejado sobre os objetos e o balão do pedido embaixo */
+.cena3d { transition: background 0.8s; }
+.alvo3d {
+  padding: 0; cursor: pointer;
+  background: transparent; /* só o aro: o objeto 3D aparece inteiro dentro dele */
+  border: 4px dashed rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 2px rgba(21, 21, 21, 0.25), inset 0 0 0 2px rgba(21, 21, 21, 0.25);
+  transition: transform 0.15s;
+}
+.alvo3d:active { transform: translate(-50%, -50%) scale(0.92) !important; }
+
+.ht-pedido {
+  position: absolute; z-index: 4; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 12px; max-width: calc(100% - 24px);
+  background: #fff; border: 5px solid var(--tinta); border-radius: 28px; box-shadow: 0 6px 0 var(--tinta);
+  padding: 6px 8px 6px 22px; font: 800 clamp(20px, 3.2vw, 34px) var(--texto); white-space: nowrap;
+  animation: ht-entra 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ht-pedido.escondido { display: none; }
+.ht-ouvir {
+  flex: none; width: 54px; height: 54px; border-radius: 50%; border: 4px solid var(--tinta); background: var(--amarelo);
+  box-shadow: 0 4px 0 var(--tinta); font-size: 24px; cursor: pointer; padding: 0;
+}
+@keyframes ht-entra { from { transform: translateX(-50%) scale(0.6); opacity: 0; } }
+
+.ht-faisca {
+  position: fixed; z-index: 8; pointer-events: none; font-size: 30px; transform: translate(-50%, -50%);
+  animation: ht-faisca 0.85s ease-out forwards;
+}
+@keyframes ht-faisca {
+  to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.4); opacity: 0; }
+}
+
+@media (orientation: portrait) {
+  .ht-pedido { white-space: normal; text-align: center; font-size: 20px; padding-left: 16px; }
+  .ht-ouvir { width: 46px; height: 46px; font-size: 20px; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .ht-pedido { font-size: 18px; border-width: 4px; padding: 3px 6px 3px 14px; bottom: 8px; }
+  .ht-ouvir { width: 40px; height: 40px; font-size: 18px; }
+}

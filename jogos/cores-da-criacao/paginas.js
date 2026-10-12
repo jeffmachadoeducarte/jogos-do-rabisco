@@ -1,7 +1,8 @@
-// As 10 páginas do Livro da Criação. Todas têm a mesma estrutura (que sempre dá para completar):
+// As 10 páginas do Livro da Criação. Todas têm os mesmos objetivos (que sempre dá para completar):
 // achar 3 bichinhos perdidos e levar ao personagem do fim, encaixar 3 objetos no portão, apertar o
-// botão da cor para as flores virarem ponte e achar 3 estrelas escondidas. Muda o cenário, os bichos,
-// o objeto do portão, a cor do botão e a dificuldade (mais borrachas a cada página).
+// botão da cor para as flores virarem ponte e achar 3 estrelas escondidas. Aqui ficam as cores, o céu,
+// os bichos e o objeto de cada página; o layout e as mecânicas de cada uma (ilhas, túnel, terraços,
+// labirinto, plataformas que andam...) ficam em cenarios.js. A dificuldade sobe com mais borrachas.
 // A fala do fim lembra, de leve, uma passagem da Bíblia sobre aquela parte da Criação.
 //
 // bicho/item: modelos em pagina.js · arvore: "arvore" | "pinheiro" | "palmeira" | "pinheiro-neve" | "cacto"

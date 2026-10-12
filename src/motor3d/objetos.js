@@ -904,3 +904,206 @@ export function escolaEducarte3D(texLogo, texIcone) {
   }
   return g;
 }
+
+// ---------------------------------------------------------------------------
+// Extras de cenário (opt-in): céu, nuvens, chão, sombra, água, vento e partículas.
+// Todos baratos: sem luzes novas, sem sombras novas, sem pós-processamento.
+// ---------------------------------------------------------------------------
+import { aleatorio as aleatorioExtra } from "./toon.js"; // import hoisted: vale para o arquivo todo
+
+// Céu em degradê: esfera vista por dentro, não sofre neblina nem escreve profundidade
+export function ceuGradiente({ topo = 0x5fb8ff, horizonte = 0xe8f8ff, raio = 170, sol = null } = {}) {
+  const grupo = new G.Group();
+  grupo.renderOrder = -10;
+  const cTopo = "#" + new G.Color(topo).getHexString();
+  const cHor = "#" + new G.Color(horizonte).getHexString();
+  // 2x256 basta: o filtro linear faz o degradê. Topo do canvas = topo da esfera.
+  const tex = texturaCanvas(2, 256, (ctx, w, h) => {
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, cTopo);
+    g.addColorStop(0.5, cHor);
+    g.addColorStop(1, cHor);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+  }, { anisotropia: 1 });
+  tex.colorSpace = G.SRGBColorSpace;
+  const esfera = new G.Mesh(
+    new G.SphereGeometry(raio, 24, 12),
+    new G.MeshBasicMaterial({ map: tex, side: G.BackSide, fog: false, depthWrite: false }),
+  );
+  esfera.renderOrder = -10;
+  esfera.frustumCulled = false; // nunca some, mesmo com a câmera longe da origem
+  esfera.raycast = () => {};
+  grupo.add(esfera);
+  if (sol) {
+    const { cor = 0xfff1a8, posicao = [0, 0, 0], raio: rs = 8 } = sol;
+    const halo = new G.Mesh(
+      new G.CircleGeometry(rs * 1.9, 24),
+      new G.MeshBasicMaterial({ color: cor, transparent: true, opacity: 0.35, fog: false, depthWrite: false }),
+    );
+    const disco = new G.Mesh(new G.CircleGeometry(rs, 24), new G.MeshBasicMaterial({ color: cor, fog: false, depthWrite: false }));
+    disco.position.z = 0.05; // à frente do halo
+    const astro = new G.Group();
+    astro.add(halo, disco);
+    astro.position.set(posicao[0], posicao[1], posicao[2]);
+    astro.renderOrder = -9;
+    halo.renderOrder = -9;
+    disco.renderOrder = -8;
+    for (const m of [halo, disco]) { m.frustumCulled = false; m.raycast = () => {}; }
+    // Disco sempre de frente para a origem (onde fica o jogador/câmera, em geral)
+    astro.lookAt(0, 0, 0);
+    grupo.add(astro);
+  }
+  return grupo;
+}
+
+// Nuvens leves: um único InstancedMesh (uma chamada de desenho) com ~5 bolas por nuvem
+export function nuvensLeves(n = 8, { raio = 90, altura = [16, 26], escala = 1, semente = 3 } = {}) {
+  const grupo = new G.Group();
+  const POR_NUVEM = 5;
+  const malha = new G.InstancedMesh(
+    new G.IcosahedronGeometry(1, 1),
+    toon(0xffffff, { transparent: true, opacity: 0.95, fog: true }),
+    n * POR_NUVEM,
+  );
+  const rnd = aleatorioExtra(semente);
+  const obj = new G.Object3D();
+  let i = 0;
+  for (let k = 0; k < n; k++) {
+    const ang = rnd() * Math.PI * 2;
+    const dist = raio * (0.4 + rnd() * 0.6);
+    const cx = Math.cos(ang) * dist;
+    const cz = Math.sin(ang) * dist;
+    const cy = altura[0] + rnd() * (altura[1] - altura[0]);
+    const e = escala * (0.8 + rnd() * 0.6);
+    for (let b = 0; b < POR_NUVEM; b++) {
+      const r = (b === 0 ? 3.2 : 1.8 + rnd() * 1.4) * e;
+      obj.position.set(cx + (b - 2) * 2.2 * e, cy + (b === 0 ? 0.8 : rnd() * 0.8) * e, cz + (rnd() - 0.5) * 2 * e);
+      obj.scale.set(r, r * 0.7, r); // achatadas, parecem nuvem
+      obj.updateMatrix();
+      malha.setMatrixAt(i++, obj.matrix);
+    }
+  }
+  malha.instanceMatrix.needsUpdate = true;
+  malha.frustumCulled = false; // a caixa de contorno padrão fica na origem
+  malha.raycast = () => {};
+  grupo.add(malha);
+  grupo.userData.atualizar = (dt) => { grupo.rotation.y += dt * 0.004; };
+  return grupo;
+}
+
+// Chão com cor variada por vértice (e relevo opcional), sem textura
+export function chaoVariado(largura, profundidade, { cor = 0x62c845, variacao = 0.08, segmentos = 24, semente = 5, relevo = 0 } = {}) {
+  const geo = new G.PlaneGeometry(largura, profundidade, segmentos, segmentos);
+  geo.rotateX(-Math.PI / 2); // deita na geometria, assim o y do relevo é a altura de verdade
+  const pos = geo.attributes.position;
+  const cores = new Float32Array(pos.count * 3);
+  const base = new G.Color(cor);
+  const rnd = aleatorioExtra(semente);
+  const fx = rnd() * 50 + 1;
+  const fz = rnd() * 50 + 1;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const z = pos.getZ(i);
+    // ruído suave (senos) + um pouco de aleatório por vértice, tudo determinístico
+    const r = Math.sin(x * 0.21 + fx) * Math.cos(z * 0.17 + fz) * 0.7 + (rnd() - 0.5) * 0.6;
+    const f = 1 + Math.max(-1, Math.min(1, r)) * variacao;
+    cores[i * 3] = Math.min(1, base.r * f);
+    cores[i * 3 + 1] = Math.min(1, base.g * f);
+    cores[i * 3 + 2] = Math.min(1, base.b * f);
+    if (relevo > 0) pos.setY(i, r * relevo);
+  }
+  geo.setAttribute("color", new G.BufferAttribute(cores, 3));
+  if (relevo > 0) { pos.needsUpdate = true; geo.computeVertexNormals(); }
+  const m = new G.Mesh(geo, toon(0xffffff, { vertexColors: true }));
+  m.receiveShadow = true;
+  return m;
+}
+
+// Sombra falsa (blob) macia sob personagens e objetos: custa quase nada
+let _texSombraBlob = null;
+export function sombraBlob(raio = 0.6, opacidade = 0.35) {
+  if (!_texSombraBlob) {
+    _texSombraBlob = texturaCanvas(64, 64, (ctx, w, h) => {
+      const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+      g.addColorStop(0, "rgba(0,0,0,1)");
+      g.addColorStop(0.5, "rgba(0,0,0,0.6)");
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    }, { anisotropia: 1 });
+  }
+  const m = new G.Mesh(
+    new G.CircleGeometry(raio, 16),
+    new G.MeshBasicMaterial({ map: _texSombraBlob, color: 0x000000, transparent: true, opacity: opacidade, depthWrite: false }),
+  );
+  m.rotation.x = -Math.PI / 2;
+  m.position.y = 0.02; // logo acima do chão para não brigar com ele
+  m.renderOrder = 1;
+  m.raycast = () => {};
+  return m;
+}
+
+// Água com ondas: dois senos no y dos vértices; normais recalculadas só a cada 2 chamadas
+export function aguaOndulante(largura, profundidade, { cor = 0x3aa7f0, segmentos = 16, amplitude = 0.08, textura = null } = {}) {
+  const geo = new G.PlaneGeometry(largura, profundidade, segmentos, segmentos);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  const xs = new Float32Array(pos.count); // posições originais: evitam acumular erro
+  const zs = new Float32Array(pos.count);
+  for (let i = 0; i < pos.count; i++) { xs[i] = pos.getX(i); zs[i] = pos.getZ(i); }
+  const extra = { transparent: true, opacity: 0.92 };
+  if (textura) extra.map = textura;
+  const m = new G.Mesh(geo, toon(cor, extra));
+  m.receiveShadow = true;
+  let quadro = 0;
+  m.userData.atualizar = (t) => {
+    for (let i = 0; i < pos.count; i++) {
+      pos.setY(i, (Math.sin(xs[i] * 0.8 + t * 1.6) + Math.sin(zs[i] * 0.6 + t * 1.1)) * 0.5 * amplitude);
+    }
+    pos.needsUpdate = true;
+    if ((quadro++ & 1) === 0) geo.computeVertexNormals();
+    if (textura) textura.offset.x = t * 0.05;
+  };
+  return m;
+}
+
+// Balanço leve (vento) em vários objetos; fase por posição, sem alocar nada
+export function balancar(objetos, t, { forca = 0.03, velocidade = 1.2 } = {}) {
+  for (let i = 0; i < objetos.length; i++) {
+    const o = objetos[i];
+    if (o.userData.semBalanco) continue;
+    const fase = o.position.x * 0.7 + o.position.z * 0.5;
+    o.rotation.z = Math.sin(t * velocidade + fase) * forca;
+    o.rotation.x = Math.cos(t * velocidade * 0.8 + fase) * forca * 0.6;
+  }
+}
+
+// Partículas ambiente (neve, pólen, vagalumes): um só Points, atualizado num Float32Array
+export function particulasAmbiente(n = 60, { cor = 0xffffff, tamanho = 0.12, area = [40, 10, 100], semente = 9, velocidade = 0.4 } = {}) {
+  const rnd = aleatorioExtra(semente);
+  const dados = new Float32Array(n * 3);
+  const fases = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    dados[i * 3] = (rnd() - 0.5) * area[0];
+    dados[i * 3 + 1] = rnd() * area[1];
+    dados[i * 3 + 2] = rnd() * area[2];
+    fases[i] = rnd() * Math.PI * 2;
+  }
+  const geo = new G.BufferGeometry();
+  geo.setAttribute("position", new G.BufferAttribute(dados, 3));
+  const pontos = new G.Points(geo, new G.PointsMaterial({ color: cor, size: tamanho, transparent: true, opacity: 0.8, depthWrite: false, sizeAttenuation: true }));
+  pontos.frustumCulled = false; // a caixa muda enquanto flutuam
+  let tempo = 0;
+  pontos.userData.atualizar = (dt) => {
+    tempo += dt;
+    for (let i = 0; i < n; i++) {
+      const k = i * 3;
+      dados[k + 1] -= velocidade * dt;
+      dados[k] += Math.sin(tempo * 0.8 + fases[i]) * 0.3 * dt; // deriva lateral
+      if (dados[k + 1] < 0) dados[k + 1] += area[1]; // volta ao topo
+    }
+    geo.attributes.position.needsUpdate = true;
+  };
+  return pontos;
+}

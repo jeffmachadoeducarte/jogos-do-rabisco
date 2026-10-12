@@ -13,11 +13,15 @@ import { criarJoystick } from "../../src/motor/joystick.js";
 import { sons, musica } from "../../src/motor/sons.js";
 import { falar, preCarregarFalas } from "../../src/motor/voz.js";
 import { criarCores } from "./cores.js";
-import { montarPagina, RIO } from "./pagina.js";
+import { montarPagina } from "./pagina.js";
 import { PAGINAS, paginaAtual } from "./paginas.js";
 
 // ícones do placar e nomes (no plural, para os avisos) de cada página
 const EMOJI = { ovelha: "🐑", pato: "🦆", pintinho: "🐥", coelho: "🐰", porco: "🐷", passaro: "🐦", pinguim: "🐧", camelo: "🐫", coruja: "🦉" };
+// contagem falada de leve (matemática) e o nome do bicho em inglês (um pingo de outra língua, sem pesar)
+const NUMERO = ["Um", "Dois", "Três"];
+const INGLES = { ovelha: "sheep", pato: "duck", pintinho: "chick", coelho: "rabbit", porco: "pig", passaro: "bird", pinguim: "penguin", camelo: "camel", coruja: "owl" };
+const GRATIDAO = ["Deus viu que tudo era muito bom!", "Que alegria! Obrigado, Deus, por este dia!", "Tudo colorido de novo. Que lindo mundo!"];
 const ITEM = { semente: ["🌰", "sementes"], concha: ["🐚", "conchas"], maca: ["🍎", "maçãs"], noz: ["🌰", "nozes"], cenoura: ["🥕", "cenouras"], pena: ["🪶", "penas"], floco: ["❄️", "flocos de neve"], gota: ["💧", "gotas de água"], estrelinha: ["✨", "estrelinhas"], livro: ["📘", "livros"] };
 let PG = PAGINAS[0]; // a página que está sendo jogada
 
@@ -155,7 +159,7 @@ function parar() {
 // ------------------------------------------------------------------ Física do Rabisco
 const sobre = (c, x, z, folga = 0) => x > c.x0 - LARG - folga && x < c.x1 + LARG + folga && z > c.z0 - LARG - folga && z < c.z1 + LARG + folga;
 function chaoEm(x, z, yAtual) {
-  let y = z > RIO.z0 && z < RIO.z1 ? -Infinity : 0; // no rio não tem chão
+  let y = mundo.aguaEm(x, z) ? -Infinity : 0; // na água (ou no vazio do Céu) não tem chão
   for (const c of mundo.caixas) if (c.ativo && sobre(c, x, z) && c.y1 <= yAtual + 0.35 && c.y1 > y) y = c.y1;
   return y;
 }
@@ -178,11 +182,15 @@ function moverJogador(dt) {
   if (!(entrada.pulo || padPulo || joy.pulo) && j.vel.y > 4) j.vel.y = 4; // pulo curto se soltar o botão
   j.vel.y -= GRAV * dt;
 
-  // anda em x e depois em z, parando nas caixas e nas árvores
+  // anda em x e depois em z, parando nas caixas e nas árvores (caixa de empurrar vai junto, mais devagar)
   const nx = j.pos.x + j.vel.x * dt;
-  if (!bateuEmCaixa(nx, j.pos.z, j.pos.y)) j.pos.x = nx; else j.vel.x = 0;
+  if (!bateuEmCaixa(nx, j.pos.z, j.pos.y)) j.pos.x = nx;
+  else if (empurrar(nx, j.pos.z, j.vel.x * dt * 0.55, 0)) j.pos.x += j.vel.x * dt * 0.55;
+  else j.vel.x = 0;
   const nz = j.pos.z + j.vel.z * dt;
-  if (!bateuEmCaixa(j.pos.x, nz, j.pos.y)) j.pos.z = nz; else j.vel.z = 0;
+  if (!bateuEmCaixa(j.pos.x, nz, j.pos.y)) j.pos.z = nz;
+  else if (empurrar(j.pos.x, nz, 0, j.vel.z * dt * 0.55)) j.pos.z += j.vel.z * dt * 0.55;
+  else j.vel.z = 0;
   for (const c of mundo.cilindros) {
     const dx = j.pos.x - c.x, dz = j.pos.z - c.z, d = Math.hypot(dx, dz), min = c.r + LARG;
     if (d < min && d > 0.0001 && j.pos.y < 2.5) { j.pos.x = c.x + (dx / d) * min; j.pos.z = c.z + (dz / d) * min; }
@@ -209,17 +217,37 @@ function moverJogador(dt) {
   j.invul -= dt;
   rabisco.grupo.visible = j.invul <= 0 || Math.floor(j.invul * 12) % 2 === 0;
 }
+// a caixa de empurrar que está em (x, z) anda dx/dz se o lugar novo estiver livre (sem outra caixa, água ou borda)
+function empurrar(x, z, dx, dz) {
+  const e = mundo.empurraveis.find((e) => sobre(e.caixa, x, z) && j.pos.y < e.caixa.y1 - 0.05 && j.pos.y + ALT > e.caixa.y0);
+  if (!e || !j.noChao) return false;
+  const c = e.caixa, L = mundo.cenario.limites;
+  const n = { x0: c.x0 + dx, x1: c.x1 + dx, z0: c.z0 + dz, z1: c.z1 + dz };
+  if (n.x0 < L.x0 + 0.3 || n.x1 > L.x1 - 0.3 || n.z0 < L.z0 + 0.3 || n.z1 > L.z1 - 0.3) return false;
+  if (mundo.aguaEm((n.x0 + n.x1) / 2 + Math.sign(dx) * e.s / 2, (n.z0 + n.z1) / 2 + Math.sign(dz) * e.s / 2)) return false;
+  for (const o of mundo.caixas) if (o !== c && o.ativo && o.y1 > c.y0 + 0.05 && o.y0 < c.y1 - 0.05 && n.x0 < o.x1 && n.x1 > o.x0 && n.z0 < o.z1 && n.z1 > o.z0) return false;
+  Object.assign(c, n);
+  e.g.position.x += dx; e.g.position.z += dz;
+  return true;
+}
 function caiu() {
   sons.dano();
   falar("cc-caiu");
-  j.pos.copy(ponto).setY(0.5); j.vel.set(0, 0, 0);
+  j.pos.copy(ponto).add(new THREE.Vector3(0, 0.5, 0)); j.vel.set(0, 0, 0);
   trilha.length = 0;
   seguindo.forEach((o, i) => o.g.position.copy(ponto).add(new THREE.Vector3(1 + i, 0, -1.5)));
 }
 
 // ------------------------------------------------------------------ Câmera
 const alvoCam = new THREE.Vector3(), posCam = new THREE.Vector3();
+let vistaFixa = null; // só nos testes: câmera parada para fotografar o cenário
 function posicionarCamera(k) {
+  if (vistaFixa) {
+    cam.position.copy(vistaFixa.pos); cam.lookAt(vistaFixa.alvo);
+    for (const a of mundo.arvores) a.visible = true;
+    sol.position.set(j.pos.x + 8, 22, j.pos.z - 4); sol.target.position.set(j.pos.x, 0, j.pos.z + 4);
+    return;
+  }
   const longe = cam.aspect < 1.2 ? 1.25 : 1;
   // perto e um pouco acima, olhando adiante: o Rabisco aparece grande, como nos jogos de aventura
   alvoCam.lerp(new THREE.Vector3(j.pos.x * 0.9, j.pos.y + 1.2, j.pos.z + 2.6), k);
@@ -257,8 +285,16 @@ function regras(dt, t) {
         achadas++;
         sons.letra();
         falar(`cc-bicho-${PG.id}-${achadas}`);
-        jogo.aviso(EMOJI[PG.bicho], "bom", 1200);
+        const nome = achadas === 1 ? PG.bichos.replace(/s$/, "") : PG.bichos;
+        jogo.aviso(`${NUMERO[achadas - 1]} ${nome}! ${EMOJI[PG.bicho]} <small>${INGLES[PG.bicho]}</small>`, "bom", 1600);
         atualizarHud();
+      } else if (o.passeio) {
+        // bichinhos que passeiam (Fazenda, Oásis): dão uns passos perto de onde estavam
+        const ps = o.passeio;
+        ps.espera -= dt;
+        if (ps.espera <= 0) { ps.espera = 2 + Math.random() * 3; const nx = o.base.x + (Math.random() - 0.5) * 5, nz = o.base.z + (Math.random() - 0.5) * 5; if (!mundo.aguaEm(nx, nz) && mundo.alt(nx, nz) === o.base.y) ps.alvo.set(nx, o.base.y, nz); }
+        const d = ps.alvo.clone().sub(o.g.position), dist = Math.hypot(d.x, d.z);
+        if (dist > 0.2) { o.g.position.x += (d.x / dist) * dt * 1.2; o.g.position.z += (d.z / dist) * dt * 1.2; o.g.rotation.y = Math.atan2(d.x, d.z); u.pernas.forEach((p, i) => { p.rotation.x = Math.sin(t * 9 + i * Math.PI) * 0.45; }); }
       }
     } else if (o.estado === "seguindo") {
       const k = seguindo.indexOf(o);
@@ -307,16 +343,18 @@ function regras(dt, t) {
     }
   }
 
-  // sementes
-  for (const s of mundo.sementes) {
-    if (s.pega) continue;
-    s.g.rotation.y = t * 2;
-    s.g.position.y = s.y0 + Math.sin(t * 3) * 0.12;
-    if (perto(j.pos, s.g.position, 1.2, 2)) { s.pega = true; s.g.visible = false; sementes++; sons.moeda(); atualizarHud(); }
-  }
+  // sementes (no Pomar, em ordem: só a próxima está grande e girando)
+  mundo.sementes.forEach((s, i) => {
+    if (s.pega) return;
+    const vez = !mundo.itensEmOrdem || i === sementes;
+    s.g.scale.setScalar(vez ? 1 : 0.55);
+    s.g.rotation.y = vez ? t * 2 : 0;
+    s.g.position.y = s.y0 + (vez ? Math.sin(t * 3) * 0.12 : 0);
+    if (vez && perto(j.pos, s.g.position, 1.2, 2)) { s.pega = true; s.g.visible = false; sementes++; sons.moeda(); atualizarHud(); }
+  });
   // portão: perto dele, as sementes voam para os encaixes
   const P = mundo.portao;
-  if (!P.aberto && Math.abs(j.pos.x) < 5 && j.pos.z > P.z - 4 && j.pos.z < P.z) {
+  if (!P.aberto && Math.abs(j.pos.x - P.x) < 5 && j.pos.z > P.z - 4 && j.pos.z < P.z) {
     if (sementes > P.colocadas) {
       const enc = P.encaixes[P.colocadas];
       const s = mundo.montarSemente();
@@ -390,20 +428,80 @@ function regras(dt, t) {
     const u = b.g.userData;
     if (u.corpo) u.corpo.rotation.z = Math.sin(b.t * 8) * 0.08;
     if (u.pes) u.pes.forEach((p, i) => { p.position.y = Math.max(0, Math.sin(b.t * 10 + i * Math.PI)) * 0.12; });
-    const dx = j.pos.x - b.g.position.x, dz = j.pos.z - b.g.position.z;
-    if (Math.hypot(dx, dz) < 0.95 && j.pos.y < 1.3) {
-      if (j.vel.y < -1 && j.pos.y > 0.45) {
+    const dx = j.pos.x - b.g.position.x, dz = j.pos.z - b.g.position.z, dy = j.pos.y - b.y;
+    if (Math.hypot(dx, dz) < 0.95 && dy < 1.3) {
+      if (j.vel.y < -1 && dy > 0.45) {
         b.viva = false; b.morte = 0.9; sons.pisao(); j.vel.y = 8;
-      } else if (j.invul <= 0) {
-        j.invul = 1.3; j.empurrao = 0.35; sons.dano();
-        const d = Math.hypot(dx, dz) || 1;
-        j.vel.set((dx / d) * 7, 6, (dz / d) * 7);
-      }
+      } else if (j.invul <= 0) empurrao(dx, dz);
     }
   }
 
+  mecanicas(dt, t);
+  mundo.ambiente.atualizar(dt, t);
   mundo.agua.tex.offset.x = t * 0.05;
   mundo.agua.tex.offset.y = Math.sin(t * 0.7) * 0.03;
+}
+// esbarrão (borracha, pedra que rola): empurra o Rabisco para trás, sem tirar nada
+function empurrao(dx, dz) {
+  j.invul = 1.3; j.empurrao = 0.35; sons.dano();
+  const d = Math.hypot(dx, dz) || 1;
+  j.vel.set((dx / d) * 7, 6, (dz / d) * 7);
+}
+
+// ------------------------------------------------------------------ Mecânicas próprias de cada página
+function mecanicas(dt, t) {
+  // plataformas que andam (Céu, Descanso): levam o Rabisco junto quando ele está em cima
+  for (const m of mundo.moveis) {
+    const c = m.caixa, desl = Math.sin(t * m.vel + m.fase) * m.amp;
+    const novo = (m.eixo === "x" ? m.x : m.z) + desl, atual = m.eixo === "x" ? m.g.position.x : m.g.position.z, delta = novo - atual;
+    const emCima = j.noChao && sobre(c, j.pos.x, j.pos.z) && Math.abs(j.pos.y - c.y1) < 0.1;
+    if (m.eixo === "x") { c.x0 += delta; c.x1 += delta; m.g.position.x = novo; if (emCima) j.pos.x += delta; }
+    else { c.z0 += delta; c.z1 += delta; m.g.position.z = novo; if (emCima) j.pos.z += delta; }
+  }
+  // pedras e bolas de neve que rolam de um lado para o outro: esbarrou, voltou um pouco
+  for (const o of mundo.rolantes) {
+    const p = o.g.position;
+    const eixo = o.eixo === "x" ? "x" : "z";
+    p[eixo] += o.dir * o.vel * dt;
+    if (p[eixo] > o.a1) { p[eixo] = o.a1; o.dir = -1; } else if (p[eixo] < o.a0) { p[eixo] = o.a0; o.dir = 1; }
+    o.g.rotation[o.eixo === "x" ? "z" : "x"] += (o.eixo === "x" ? -1 : 1) * o.dir * o.vel * dt / o.r;
+    const dx = j.pos.x - p.x, dz = j.pos.z - p.z;
+    if (Math.hypot(dx, dz) < o.r + 0.5 && Math.abs(j.pos.y - (o.y - o.r)) < 1.6 && j.invul <= 0) empurrao(dx, dz);
+  }
+  // placas verdes abrem as cancelas (Fazenda, Noite, Descanso)
+  for (const i of mundo.interruptores) {
+    if (!i.apertado && perto(j.pos, i.g.position, 1.1, 0.8)) {
+      i.apertado = true; i.g.userData.capa.position.y = 0.16;
+      sons.bloco(); jogo.aviso("Abriu!", "bom", 1200);
+      if (i.cancela) { i.cancela.aberta = true; i.cancela.caixa.ativo = false; setTimeout(() => sons.porta(), 200); }
+    }
+  }
+  for (const k of mundo.cancelas) if (k.aberta && k.abrindo < 1) { k.abrindo = Math.min(1, k.abrindo + dt); k.g.position.y = k.y - k.abrindo * 2.4; }
+  // maré (Mar): o banco de areia some embaixo da água por alguns segundos; quem estiver lá volta para a bandeira
+  const M = mundo.mare;
+  if (M) {
+    M.nivel = 0.5 + 0.5 * Math.sin((t * Math.PI * 2) / M.periodo);
+    const alta = M.nivel > 0.62;
+    if (alta && !M.alta) sons.volta();
+    M.alta = alta;
+    for (const a of M.malhas) a.position.y = -0.5 + M.nivel * 0.75;
+    if (alta && j.pos.y < 0.3 && M.rects.some((q) => j.pos.x >= q.x0 && j.pos.x < q.x1 && j.pos.z >= q.z0 && j.pos.z < q.z1)) caiu();
+  }
+  // bicho guia (Floresta): anda na frente mostrando o caminho enquanto o Rabisco vem atrás
+  const G = mundo.guia;
+  if (G && !G.fim) {
+    const d = j.pos.distanceTo(G.g.position);
+    const u = G.g.userData;
+    if (d < 5 && G.i < G.trajeto.length - 1) {
+      const alvo = G.trajeto[G.i + 1], v = alvo.clone().sub(G.g.position), dist = Math.hypot(v.x, v.z);
+      if (dist < 0.3) { G.i++; if (G.i === G.trajeto.length - 1) G.fim = true; }
+      else { G.g.position.x += (v.x / dist) * dt * 3.2; G.g.position.z += (v.z / dist) * dt * 3.2; G.g.rotation.y = Math.atan2(v.x, v.z); u.pernas.forEach((p, i) => { p.rotation.x = Math.sin(t * 14 + i * Math.PI) * 0.5; }); }
+      u.corpo.position.y = Math.abs(Math.sin(t * 10)) * 0.1;
+    } else {
+      u.corpo.position.y = Math.abs(Math.sin(t * 3)) * 0.08;
+      G.g.rotation.y = Math.atan2(j.pos.x - G.g.position.x, j.pos.z - G.g.position.z); // olha para o Rabisco: "vem!"
+    }
+  }
 }
 
 // fim da página: arco-íris, tudo ganha cor e o versículo
@@ -423,7 +521,8 @@ function final() {
   crescer();
   cores.colorirTudo(mundo.pastor.position);
   setTimeout(() => falar(`cc-final-${PG.id}`), 1400);
-  setTimeout(() => jogo.vencer({ titulo: "Tudo colorido!", estrelas, texto: estrelas === 3 ? "Você achou todas as estrelas escondidas!" : `Ainda tem estrelas escondidas em ${PG.nome}...`, proximo: true }), 6500);
+  const gratidao = GRATIDAO[(PG.numero ?? 1) % GRATIDAO.length];
+  setTimeout(() => jogo.vencer({ titulo: "Tudo colorido!", estrelas, texto: estrelas === 3 ? `Você achou todas as estrelas escondidas! ${gratidao}` : `Ainda tem estrelas escondidas em ${PG.nome}...`, proximo: true }), 6500);
 }
 
 // HUD sem números: bichinhos, objetos do portão (até ele abrir) e estrelas
@@ -454,4 +553,10 @@ if (params.has("teste")) window.teste = {
   jogo, j, get mundo() { return mundo; }, get cores() { return cores; },
   get estado() { return { achadas, entregues, sementes, estrelas, fim, seguindo: seguindo.length, progresso: cores?.progresso() }; },
   ir(x, z, y = 0) { j.pos.set(x, y, z); j.vel.set(0, 0, 0); trilha.length = 0; posicionarCamera(1); },
+  // câmera parada para fotografar o cenário (vista(null) volta a seguir o Rabisco)
+  vista(x, y, z, ax = 0, ay = 0, az = 40) {
+    vistaFixa = x == null ? null : { pos: new THREE.Vector3(x, y, z), alvo: new THREE.Vector3(ax, ay, az) };
+    cena.fog.near = vistaFixa ? 400 : 45; cena.fog.far = vistaFixa ? 500 : 120; // sem névoa na foto aérea
+    posicionarCamera(1);
+  },
 };
