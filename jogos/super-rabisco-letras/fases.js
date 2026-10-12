@@ -119,7 +119,35 @@ function gerar(n) {
   return f;
 }
 
+// A fileira de blocos fica na altura 4 (o topo, 5, é mais alto que o pulo: ~3,7 blocos); em cima dela há moedas ou uma caixa "?".
+// Para dar para subir em qualquer uma, cada fileira ganha uma escadinha de blocos duros ao lado (alturas 2 e 3, cada degrau < 85% do pulo),
+// do lado onde houver espaço livre (sem cano, bloco ou a parede do início); o passeio dos inimigos é encurtado para não atravessar a escadinha.
+function escadinhas(f) {
+  const cols = [...new Set(f.blocos.filter(([, a]) => a === 4).map(([c]) => c))].sort((x, y) => x - y);
+  const fileiras = [];
+  for (const c of cols) { const u = fileiras[fileiras.length - 1]; if (u && c === u[1] + 1) u[1] = c; else fileiras.push([c, c]); }
+  const ocupa = (c0, c1) => c0 < 3 || f.canos.some(([cx]) => cx < c1 + 1 && cx + 2 > c0) || f.blocos.some(([bx]) => bx < c1 + 1 && bx + 1 > c0)
+    || (c1 + 1 > f.piramide[0] - 1);
+  for (const [a, b] of fileiras) {
+    const esq = !ocupa(a - 2, a - 1), dir = !ocupa(b + 1, b + 2);
+    if (!esq && !dir) continue;
+    const lado = esq ? [[a - 2, 2], [a - 1, 3]] : [[b + 2, 2], [b + 1, 3]];
+    for (const [col, h] of lado) for (let y = 0; y < h; y++) f.blocos.push([col, y, "d"]);
+    const c0 = Math.min(lado[0][0], lado[1][0]), c1 = c0 + 2;
+    f.moedas = f.moedas.filter(([mx, my]) => !(mx > c0 - 0.3 && mx < c1 + 0.3 && my < 4.5));
+    f.inimigos = f.inimigos.map(([ic, ia, ib, it]) => {
+      if (!(ia < c1 && ib > c0)) return [ic, ia, ib, it];
+      const na = esq ? Math.max(ia, c1 + 0.5) : ia, nb = esq ? ib : Math.min(ib, c0 - 0.5);
+      return nb - na < 2 ? null : [Math.min(nb, Math.max(na, ic)), na, nb, it];
+    }).filter(Boolean);
+    // letras que cairiam dentro da escadinha vão para a primeira coluna livre ao lado dela
+    f.letras = f.letras.map(([lx, ly]) => (lx > c0 - 0.3 && lx < c1 + 0.3 && ly < 4 ? [esq ? c0 - 0.6 : c1 + 0.6, ly] : [lx, ly]));
+    f.letras.sort((p, q) => p[0] - q[0]);
+  }
+  return f;
+}
+
 export function faseAtual() {
   const n = Math.min(10, Math.max(1, Number(new URLSearchParams(location.search).get("fase")) || 1));
-  return { numero: n, tema: TEMAS[n - 1], ...(n === 1 ? ORIGINAL : gerar(n)) };
+  return { numero: n, tema: TEMAS[n - 1], ...escadinhas(n === 1 ? structuredClone(ORIGINAL) : gerar(n)) };
 }

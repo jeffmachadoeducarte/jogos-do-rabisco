@@ -37,6 +37,11 @@ const VEL_PULO = 16.5;
 const VEL_CORRIDA = 7.5;
 const ALTURA_RABISCO = 2.4;
 const LARG_J = 0.8, ALT_J = 2.3;
+// Pulo: altura máxima ≈ VEL_PULO² / (2·GRAVIDADE) = 3,78 blocos (3,71 no passo fixo); toda caixa que precisa ser escalada fica
+// abaixo de 85% disso (3,15). O pulo curto (soltar o botão) só corta depois de PULO_MIN s e deixa ~3,1 blocos: um toquinho já sobe.
+const PASSO = 1 / 120;       // a física roda em passo fixo: a altura do pulo não depende da taxa de quadros
+const PULO_MIN = 0.1, VEL_CORTE = 12.2;
+const DEGRAU_BORDA = 0.4;    // se o pé passou do "ombro" da caixa por pouco, o Rabisco sobe nela em vez de bater e cair
 
 // ---------- Fase (colunas = blocos; a = altura em blocos acima do chão) ----------
 const FASE = faseAtual(); // 1 a 10 (ver fases.js): blocos, canos, inimigos, letras e o céu de cada fase
@@ -564,6 +569,7 @@ function moverJogador(dt) {
     if (c) return entrarNoCano(c);
   }
 
+  j.tPulo = (j.tPulo ?? 99) + dt;
   j.coyote = j.noChao ? 0.1 : j.coyote - dt;
   j.buffer = pulou ? 0.14 : j.buffer - dt;
   if (j.empurrao > 0) j.empurrao -= dt;
@@ -575,16 +581,24 @@ function moverJogador(dt) {
   if (j.buffer > 0 && j.coyote > 0) {
     j.vy = VEL_PULO;
     j.buffer = j.coyote = 0;
+    j.tPulo = 0;
     j.quicando = false;
     sons.pulo();
   }
-  if (!segurando && j.vy > 7 && !j.quicando && estado === "jogando") j.vy = 7;
+  if (!segurando && j.vy > VEL_CORTE && j.tPulo >= PULO_MIN && !j.quicando && estado === "jogando") j.vy = VEL_CORTE;
   j.vy = Math.max(j.vy - GRAVIDADE * dt, -24);
 
   j.x += j.vx * dt;
   for (const s of ativos()) {
     if (sobrepoe(caixaJ(), s)) {
       if (s === MURO_MASTRO) avisarMastro();
+      // bateu de lado com o pé quase no topo: sobe na caixa (se não houver teto no caminho)
+      const sobra = s.y1 - j.y;
+      if (sobra > 0 && sobra <= DEGRAU_BORDA && estado === "jogando") {
+        const y0 = j.y; j.y = s.y1;
+        if (!ativos().some((o) => o !== s && sobrepoe(caixaJ(), o))) { if (j.vy < 0) j.vy = 0; continue; }
+        j.y = y0;
+      }
       if (j.vx > 0) j.x = s.x0 - LARG_J / 2 - 0.001;
       else if (j.vx < 0) j.x = s.x1 + LARG_J / 2 + 0.001;
       j.vx = 0;
@@ -945,13 +959,15 @@ const controle = ligarControle({
 
 // ------------------------------------------------------------------ Laço
 const relogio = new THREE.Clock();
+let acumulado = 0;
 function quadro() {
   const dt = Math.min(relogio.getDelta(), 1 / 30);
   controle.atualizar();
   pausa.atualizar();
   if (pausa.ativa) { renderer.render(cena, camera); requestAnimationFrame(quadro); return; }
   const t = relogio.elapsedTime;
-  moverJogador(dt);
+  acumulado += dt;
+  while (acumulado >= PASSO) { moverJogador(PASSO); acumulado -= PASSO; }
   j.invul -= dt;
   atualizarMundo(dt, t);
   atualizarParticulas(dt);
@@ -1007,6 +1023,6 @@ async function iniciar() {
     j.x = FASE.mastro - 1.5;
     j.y = 5;
   }
-  if (params.has("teste")) window.teste = { j, letras, get coletadas() { return coletadas; }, get desafio() { return desafio; }, pegar: pegarLetra, get estado() { return estado; }, renderer, get indice() { return indice; }, set indice(v) { indice = v; }, ganhar() { coletadas.fill(true); palavraFeita = true; MURO_MASTRO.ligado = false; j.x = FASE.mastro - 1.5; j.y = 5; } };
+  if (params.has("teste")) window.teste = { j, letras, solidos, FASE, entrada, mover: moverJogador, PASSO, get coletadas() { return coletadas; }, get desafio() { return desafio; }, pegar: pegarLetra, get estado() { return estado; }, renderer, get indice() { return indice; }, set indice(v) { indice = v; }, ganhar() { coletadas.fill(true); palavraFeita = true; MURO_MASTRO.ligado = false; j.x = FASE.mastro - 1.5; j.y = 5; } };
 }
 iniciar();
