@@ -16,11 +16,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+  <!-- foto da cena (pré-renderizada) aparece na hora; a cena 3D viva entra por cima depois -->
+  <link rel="preload" as="image" href="assets/portal-entrada-paisagem.webp" media="(orientation: landscape)" fetchpriority="high">
+  <link rel="preload" as="image" href="assets/portal-entrada-retrato.webp" media="(orientation: portrait)" fetchpriority="high">
   <link rel="stylesheet" href="src/style.css">
   <link rel="stylesheet" href="src/motor/familia.css">
 </head>
 <body>
   <canvas id="cena" aria-hidden="true"></canvas>
+  <div class="veu" aria-hidden="true"></div>
 
   <header class="topo">
     <img class="logo" src="assets/marca/logos/azul-icone-rosa.png" alt="Educarte Escola Cristã">
@@ -43,7 +47,7 @@
     <div class="painel-topo">
       <div>
         <h2 id="painel-titulo"></h2>
-        <p id="painel-idade"></p>
+        <p><span id="painel-idade"></span> <span class="painel-contagem" id="painel-contagem"></span></p>
       </div>
       <button class="fechar" id="fechar" aria-label="Voltar para as idades">✕</button>
     </div>

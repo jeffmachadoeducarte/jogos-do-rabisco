@@ -1,10 +1,12 @@
-// Painel de entrada: a escola Educarte em 3D com o Rabisco acenando na frente.
-// Por cima, os cartões de idade; cada um abre a lista de jogos daquela faixa (src/catalogo.js).
+// Painel de entrada: a escola Educarte com o Rabisco acenando na frente (cena 3D "ultra realista"
+// em src/portal3d.js). Por cima, os cartões de idade; cada um abre a grade de jogos daquela faixa
+// (src/catalogo.js), com capa, selos e profundidade 3D (inclina ao passar o mouse ou tocar).
+//
+// Abertura rápida: a foto pré-renderizada da cena (assets/portal-entrada-*.webp) aparece na hora;
+// a cena viva (three.js) só carrega depois que a página abriu e entra com um esmaecer suave.
 
 import { faixas, estilos } from "./catalogo.js";
-import { THREE, COR3D, toon, carregarTextura, aleatorio } from "./motor3d/toon.js";
-import { escolaEducarte3D, arvore3D, nuvem3D, morro3D, onibus3D, lapis3D } from "./motor3d/objetos.js";
-import { Rabisco3D } from "./motor3d/rabisco3d.js";
+import { CAPAS } from "./portal-capas.js";
 import { falar, preCarregarFalas, saudar } from "./motor/voz.js";
 import { Familia } from "./motor/familia.js";
 import { sons } from "./motor/sons.js";
@@ -13,112 +15,39 @@ import { registrarApp, pedirInstalacao, jaInstalado } from "./motor/instalar.js"
 
 const RAIZ = ".";
 const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const reduzido = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// ------------------------------------------------------------------ Cena 3D
-const renderer = new THREE.WebGLRenderer({ canvas: $("cena"), antialias: true, powerPreference: "high-performance" });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-const cena = new THREE.Scene();
-cena.fog = new THREE.Fog(0xcdeeff, 70, 200);
-const camera = new THREE.PerspectiveCamera(40, 16 / 9, 0.3, 600);
-
-const ceu = new THREE.Mesh(
-  new THREE.SphereGeometry(400, 32, 16),
-  new THREE.ShaderMaterial({
-    side: THREE.BackSide, depthWrite: false, fog: false,
-    uniforms: { topo: { value: new THREE.Color(0x2f9bff) }, horizonte: { value: new THREE.Color(0xd6f3ff) } },
-    vertexShader: "varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
-    fragmentShader: "uniform vec3 topo; uniform vec3 horizonte; varying vec3 vP; void main(){ float h = clamp(vP.y*1.7, 0.0, 1.0); gl_FragColor = vec4(mix(horizonte, topo, pow(h,0.75)), 1.0); }",
-  }),
-);
-cena.add(ceu);
-const sol = new THREE.DirectionalLight(0xffffff, 2.5);
-sol.position.set(18, 30, 22);
-sol.castShadow = true;
-sol.shadow.mapSize.set(2048, 2048);
-Object.assign(sol.shadow.camera, { left: -30, right: 30, top: 25, bottom: -15, near: 1, far: 120 });
-sol.shadow.bias = -0.0005;
-sol.shadow.normalBias = 0.04;
-cena.add(sol, new THREE.HemisphereLight(0xd6f3ff, 0x5aa83a, 1.6));
-
-const texLogo = carregarTextura(`${RAIZ}/assets/marca/logos/azul-icone-rosa.png`);
-const texIcone = carregarTextura(`${RAIZ}/assets/marca/logos/icone-branco.png`);
-
-// gramado, morros, nuvens, árvores e lápis gigantes
-const grama = new THREE.Mesh(new THREE.CircleGeometry(160, 64), toon(0x62c845));
-grama.rotation.x = -Math.PI / 2;
-grama.receiveShadow = true;
-cena.add(grama);
-const rnd = aleatorio(9);
-for (let i = 0; i < 9; i++) {
-  const m = morro3D(30 + rnd() * 25, i % 2 ? 0x7dd36a : 0x9fe08a);
-  m.position.set(-90 + i * 24, 0, -60 - rnd() * 20);
-  cena.add(m);
+// ------------------------------------------------------------------ Cena 3D (sob demanda)
+// "leve": celular/tablet ou aparelho modesto (menos grama, sombra menor, resolução 1,5x)
+const leve = matchMedia("(max-width: 900px), (pointer: coarse)").matches
+  || (navigator.deviceMemory || 8) <= 4 || (navigator.hardwareConcurrency || 8) <= 4;
+const economia = navigator.connection?.saveData && !params.has("foto-cena");
+let cena = null;
+if (params.has("foto-cena")) document.body.classList.add("foto-cena");
+function carregarCena() {
+  import("./portal3d.js").then(({ iniciarCena }) => {
+    cena = iniciarCena($("cena"), {
+      raiz: RAIZ, leve: leve && !params.has("foto-cena"), quieto: reduzido, foto: params.has("foto-cena"),
+      aoPronto: () => document.body.classList.add("cena-viva"),
+    });
+    ajustarRitmo();
+  }).catch((e) => { console.warn("Cena 3D indisponível; fica a foto da escola.", e); });
 }
-for (let i = 0; i < 10; i++) {
-  const n = nuvem3D(0.8 + rnd() * 0.6);
-  n.position.set(-60 + i * 13 + rnd() * 6, 22 + rnd() * 10, -35 - rnd() * 15);
-  cena.add(n);
+if (!economia) {
+  const ir = () => ("requestIdleCallback" in window ? requestIdleCallback(carregarCena, { timeout: 1200 }) : setTimeout(carregarCena, 150));
+  if (document.readyState === "complete") ir(); else addEventListener("load", ir, { once: true });
 }
-for (const [x, z, e] of [[-24, -4, 0.7], [-20, 6, 0.6], [22, -3, 0.75], [26, 7, 0.6], [-30, 12, 0.55], [31, 14, 0.5]]) {
-  const a = arvore3D(e);
-  a.position.set(x, 0, z);
-  cena.add(a);
+const comemorar = () => cena?.comemorar();
+// painel de jogos aberto: no celular ele cobre a cena (pausa); no computador, meio ritmo (rola mais liso)
+function ajustarRitmo() {
+  if (!cena) return;
+  const cobre = !!faixaAberta && innerWidth <= 560;
+  cena.pausar(cobre || document.hidden);
+  cena.lento(!!faixaAberta);
 }
-const coresLapis = [COR3D.roxo, COR3D.vermelho, COR3D.amarelo, 0x2f7de1, COR3D.verde, COR3D.laranja, COR3D.rosa];
-for (let i = 0; i < 9; i++) {
-  const l = lapis3D(coresLapis[i % coresLapis.length], 10 + rnd() * 8, 1);
-  l.position.set(-44 + i * 11, 0, -22 - rnd() * 6);
-  l.rotation.z = (rnd() - 0.5) * 0.2;
-  cena.add(l);
-}
-
-const escola = escolaEducarte3D(texLogo, texIcone);
-escola.position.set(3, 0, -6);
-cena.add(escola);
-const bus = onibus3D(texLogo);
-bus.scale.setScalar(0.75);
-bus.rotation.y = -1.1;
-bus.position.set(-14, 0, 9);
-cena.add(bus);
-
-// Rabisco na frente da escola, acenando
-const rabisco = new Rabisco3D({ raiz: RAIZ, altura: 4.6 });
-rabisco.grupo.position.set(-4.5, 0, 12.5);
-rabisco.grupo.rotation.y = 0.35;
-cena.add(rabisco.grupo);
-
-const alvoCam = new THREE.Vector3(-1, 2.6, 4);
-function ajustarTela() {
-  renderer.setSize(innerWidth, innerHeight, false);
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-}
-addEventListener("resize", ajustarTela);
-ajustarTela();
-
-const relogio = new THREE.Clock();
-let modoRabisco = "acenar", modoAte = 0;
-function quadro() {
-  const dt = Math.min(relogio.getDelta(), 1 / 30);
-  controle.atualizar();
-  const t = relogio.elapsedTime;
-  // câmera passeando bem devagar na frente da escola (celular: mais longe para caber tudo)
-  const longe = camera.aspect < 0.9 ? 1.6 : 1;
-  camera.position.set(-3 + Math.sin(t * 0.12) * 4, 5.2 + Math.sin(t * 0.2) * 0.3, 4 + 25 * longe);
-  camera.lookAt(alvoCam);
-  if (t > modoAte) modoRabisco = "acenar";
-  rabisco.atualizar(dt, { modo: modoRabisco });
-  rabisco.grupo.rotation.y = 0.35 + Math.sin(t * 0.5) * 0.08;
-  escola.userData.balanco.rotation.x = Math.sin(t * 1.6) * 0.35;
-  escola.userData.bandeira.rotation.y = Math.sin(t * 2) * 0.12;
-  renderer.render(cena, camera);
-  requestAnimationFrame(quadro);
-}
-requestAnimationFrame(quadro);
-const comemorar = () => { modoRabisco = "comemorar"; modoAte = relogio.elapsedTime + 1.6; };
+addEventListener("resize", ajustarRitmo);
+document.addEventListener("visibilitychange", ajustarRitmo);
 
 // ------------------------------------------------------------------ Cartões de idade e jogos
 const soIngles = $("so-ingles");
@@ -137,6 +66,77 @@ function desenharFaixas() {
   }).join("");
 }
 
+// Cartão de jogo: capa (foto do jogo ou arte com o ícone do estilo), selos de estilo/idade/inglês,
+// botão de jogar sobre a capa, nome, descrição curta e a habilidade trabalhada.
+// Qualquer jogo novo do catálogo funciona: sem capa em assets/portal-capas/, entra a arte de reserva.
+const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function cartaoJogo(j, f, i) {
+  const pronto = j.status === "pronto";
+  const est = estilos[j.estilo] || estilos.extra;
+  const temCapa = CAPAS.has(j.id);
+  const capa = temCapa
+    ? `<img class="capa-foto" src="assets/portal-capas/${j.id}.webp?v=${CAPAS.versao}" alt="" width="640" height="400" loading="${i < 2 ? "eager" : "lazy"}" decoding="async">`
+    : `<span class="capa-arte" aria-hidden="true">${est.icone}</span>`;
+  const conteudo = `
+    <div class="capa ${temCapa ? "" : "sem-foto"}" data-estilo="${esc(j.estilo)}">
+      ${capa}
+      <span class="capa-luz" aria-hidden="true"></span>
+      <div class="selos">
+        <span class="selo estilo">${est.icone} ${esc(est.nome)}</span>
+        ${j.ingles ? '<span class="selo ingles">English</span>' : ""}
+      </div>
+      <span class="selo idade">${esc(f.idade)}</span>
+      <span class="selo ${pronto ? "pronto" : "breve"}">${pronto ? "Jogar ▶" : "Em breve"}</span>
+    </div>
+    <div class="corpo">
+      <h3>${esc(j.nome)}</h3>
+      <p>${esc(j.desc)}</p>
+      <span class="habilidade">${esc(j.habilidade)}</span>
+    </div>`;
+  const estilo = `style="--i:${Math.min(i, 8)}"`;
+  return pronto
+    ? `<a class="jogo pronto" href="jogos/${j.id}/" ${estilo} aria-label="${esc(j.nome)}: ${esc(j.habilidade)}">${conteudo}</a>`
+    : `<div class="jogo breve" ${estilo}>${conteudo}</div>`;
+}
+
+// Profundidade 3D: o cartão inclina na direção do ponteiro (mouse) ou do dedo (ao tocar), com um
+// brilho que acompanha. Um cartão por vez, atualizado no máximo uma vez por quadro.
+function ligarInclinacao(lista) {
+  if (reduzido) return;
+  let ativo = null, px = 0, py = 0, pedido = 0;
+  const aplicar = () => {
+    pedido = 0;
+    if (!ativo) return;
+    const r = ativo.getBoundingClientRect();
+    const x = Math.min(1, Math.max(0, (px - r.left) / r.width)), y = Math.min(1, Math.max(0, (py - r.top) / r.height));
+    const s = ativo.style;
+    s.setProperty("--rx", `${((0.5 - y) * 9).toFixed(2)}deg`);
+    s.setProperty("--ry", `${((x - 0.5) * 11).toFixed(2)}deg`);
+    s.setProperty("--mx", `${(x * 100).toFixed(1)}%`);
+    s.setProperty("--my", `${(y * 100).toFixed(1)}%`);
+    s.setProperty("--dx", `${((0.5 - x) * 10).toFixed(1)}px`);
+    s.setProperty("--dy", `${((0.5 - y) * 8).toFixed(1)}px`);
+  };
+  const soltar = () => {
+    if (!ativo) return;
+    ativo.classList.remove("inclinado");
+    for (const v of ["--rx", "--ry", "--mx", "--my", "--dx", "--dy"]) ativo.style.removeProperty(v);
+    ativo = null;
+  };
+  const mirar = (e) => {
+    const c = e.target.closest?.(".jogo");
+    if (c !== ativo) { soltar(); ativo = c; ativo?.classList.add("inclinado"); }
+    px = e.clientX; py = e.clientY;
+    if (ativo && !pedido) pedido = requestAnimationFrame(aplicar);
+  };
+  lista.addEventListener("pointermove", (e) => { if (e.pointerType !== "touch") mirar(e); });
+  lista.addEventListener("pointerdown", mirar);
+  lista.addEventListener("pointerleave", soltar);
+  for (const fim of ["pointerup", "pointercancel"]) lista.addEventListener(fim, (e) => { if (e.pointerType === "touch") soltar(); });
+  lista.addEventListener("scroll", soltar, { passive: true });
+}
+ligarInclinacao($("jogos"));
+
 function abrirFaixa(id) {
   const f = faixas.find((x) => x.id === id);
   if (!f) return;
@@ -147,28 +147,16 @@ function abrirFaixa(id) {
   $("painel-nota").hidden = !f.nota;
   $("painel-nota").textContent = f.nota || "";
   const jogos = filtrar(f.jogos);
-  $("jogos").innerHTML = jogos.length ? jogos.map((j) => {
-    const pronto = j.status === "pronto";
-    const est = estilos[j.estilo];
-    const conteudo = `
-      <div class="selos">
-        <span class="selo estilo">${est.icone} ${est.nome}</span>
-        ${j.ingles ? '<span class="selo ingles">English</span>' : ""}
-        <span class="selo ${pronto ? "pronto" : "breve"}">${pronto ? "Jogar ▶" : "Em breve"}</span>
-      </div>
-      <h3>${j.nome}</h3>
-      <p>${j.desc}</p>
-      <span class="habilidade">${j.habilidade}</span>`;
-    return pronto
-      ? `<a class="jogo pronto" href="jogos/${j.id}/">${conteudo}</a>`
-      : `<div class="jogo">${conteudo}</div>`;
-  }).join("") : '<p class="vazio">Ainda não tem jogo de inglês nesta idade.</p>';
+  $("painel-contagem").textContent = `${jogos.length} ${jogos.length === 1 ? "jogo" : "jogos"}`;
+  $("jogos").innerHTML = jogos.length ? jogos.map((j, i) => cartaoJogo(j, f, i)).join("") : '<p class="vazio">Ainda não tem jogo de inglês nesta idade.</p>';
+  $("jogos").scrollTop = 0;
   $("painel").hidden = false;
   $("boas-vindas").classList.add("recolhida");
   desenharFaixas();
   comemorar();
   sons.destravar();
   falar("portal-idade");
+  ajustarRitmo();
 }
 
 function fecharPainel() {
@@ -176,6 +164,7 @@ function fecharPainel() {
   $("painel").hidden = true;
   $("boas-vindas").classList.remove("recolhida");
   desenharFaixas();
+  ajustarRitmo();
 }
 
 $("faixas").addEventListener("click", (e) => {
@@ -216,7 +205,6 @@ $("jogos").addEventListener("click", async (e) => {
   const salvou = await Familia.abrirCadastro({ obrigatorio: true });
   if (salvou) { comemorar(); setTimeout(() => { location.href = a.href; }, 350); }
 });
-const params = new URLSearchParams(location.search);
 if (params.has("cadastro")) Familia.abrirCadastro({ obrigatorio: params.get("cadastro") !== "editar" });
 
 // Controle: direcional escolhe a idade ou o jogo, A abre, B volta para as idades
@@ -225,6 +213,9 @@ const controle = ligarControle({
   aoVoltar: () => { if (faixaAberta) { const id = faixaAberta; fecharPainel(); const b = document.querySelector(`[data-faixa="${id}"]`); if (b) controle.controle.focar(b); } },
   aoConectar: () => { sons.destravar(); },
 });
+
+// o controle (gamepad) é lido a cada quadro, com ou sem a cena 3D
+(function lerControle() { controle.atualizar(); requestAnimationFrame(lerControle); })();
 
 desenharFaixas();
 // voltando de um jogo (index.html#/faixa/pequenos), o painel daquela idade já abre

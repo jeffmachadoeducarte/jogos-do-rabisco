@@ -1,9 +1,13 @@
-/* Painel de entrada: a cena 3D ocupa a tela; título à esquerda (o Rabisco acena logo abaixo),
-   cartões de idade numa fileira embaixo e a lista de jogos abre como painel à direita. */
+/* Painel de entrada: a cena 3D da escola ocupa a tela (com a foto pré-renderizada por baixo, que aparece
+   na hora); título à esquerda (o Rabisco acena logo abaixo), cartões de idade numa fileira embaixo e a
+   grade de jogos abre como painel à direita (no celular, por cima de tudo, abaixo do cabeçalho).
+   Desempenho: nada de blur/backdrop-filter na lista; sombras em camadas só com box-shadow; a inclinação
+   3D liga will-change apenas no cartão ativo; content-visibility nos cartões fora da tela. */
 @font-face {
   font-family: "Neulis Cursive";
   src: url("../assets/fontes/NeulisCursive-Black.otf") format("opentype");
   font-weight: 900;
+  font-display: swap;
 }
 :root {
   --ciano: #00b5f0;
@@ -12,32 +16,48 @@
   --amarelo: #ffcc1f;
   --tinta: #151515;
   --branco: #ffffff;
-  --papel: #f4fbff;
-  --raio: 26px;
+  --papel: #f6fbff;
+  --raio: 24px;
   --texto: "Baloo 2", system-ui, sans-serif;
   --titulo: "Neulis Cursive", "Baloo 2", system-ui, sans-serif;
+  --mola: cubic-bezier(0.2, 0.8, 0.2, 1);
   color-scheme: light;
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body {
   margin: 0; overflow: hidden;
-  background: #9fdcff;
+  /* foto da cena: aparece antes do 3D carregar (e fica, se o aparelho não tiver WebGL) */
+  background: #bfe3fb url("../assets/portal-entrada-paisagem.webp") center 62% / cover no-repeat;
   color: var(--tinta);
   font-family: var(--texto);
+  -webkit-tap-highlight-color: transparent;
 }
-#cena { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+@media (orientation: portrait) {
+  body { background-image: url("../assets/portal-entrada-retrato.webp"); background-position: center 70%; }
+}
+#cena { position: fixed; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity 0.9s ease; }
+.cena-viva #cena { opacity: 1; }
+/* véu: escurece de leve as bordas e o pé da tela (profundidade, e o texto lê melhor sobre a cena) */
+.veu {
+  position: fixed; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(8, 30, 52, 0.28) 100%),
+    linear-gradient(to top, rgba(8, 30, 52, 0.38), transparent 30%);
+}
 [hidden] { display: none !important; }
+.foto-cena .topo, .foto-cena .boas-vindas, .foto-cena .faixas, .foto-cena .som, .foto-cena .veu, .foto-cena .instalar-app { display: none !important; }
 
+/* ------------------------------------------------------------------ cabeçalho */
 .topo {
-  position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 16px; right: 16px;
+  position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 16px; right: 16px; z-index: 3;
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
   pointer-events: none;
 }
 .topo .logo {
   height: clamp(44px, 7vw, 70px);
-  background: rgba(255, 255, 255, 0.85); border-radius: 18px; padding: 6px 12px;
-  box-shadow: 0 5px 0 rgba(21, 21, 21, 0.18);
+  background: rgba(255, 255, 255, 0.94); border-radius: 18px; padding: 6px 12px;
+  box-shadow: 0 1px 1px rgba(10, 40, 70, 0.12), 0 6px 14px -4px rgba(10, 40, 70, 0.35), 0 16px 30px -18px rgba(10, 40, 70, 0.5);
 }
 .filtro-ingles {
   pointer-events: auto;
@@ -53,6 +73,7 @@ body {
 .instalar[hidden] { display: none; }
 .filtro-ingles input { width: 20px; height: 20px; accent-color: var(--rosa); }
 
+/* ------------------------------------------------------------------ título */
 .boas-vindas {
   position: fixed; top: clamp(90px, 15vh, 140px); left: clamp(16px, 5vw, 70px);
   max-width: min(560px, 90vw);
@@ -65,7 +86,7 @@ body {
   font-size: clamp(46px, 8vw, 104px); line-height: 0.95;
   color: var(--ciano);
   -webkit-text-stroke: 4px var(--branco); paint-order: stroke fill;
-  text-shadow: 5px 7px 0 var(--rosa);
+  text-shadow: 5px 7px 0 var(--rosa), 0 14px 30px rgba(8, 30, 52, 0.35);
   text-wrap: balance;
 }
 .boas-vindas h1 span { color: var(--laranja); }
@@ -73,99 +94,212 @@ body {
   display: inline-block; margin: 14px 0 0;
   background: var(--branco); border-radius: 999px; padding: 4px 18px;
   font-size: clamp(18px, 2.4vw, 26px); font-weight: 700;
-  box-shadow: 0 5px 0 rgba(21, 21, 21, 0.2);
+  box-shadow: 0 1px 1px rgba(10, 40, 70, 0.12), 0 8px 20px -6px rgba(10, 40, 70, 0.45);
 }
 .boas-vindas.recolhida { opacity: 0; transform: translateY(-16px); }
 
-/* fileira de idades */
+/* ------------------------------------------------------------------ cartões de idade */
 .faixas {
   position: fixed; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
-  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px;
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px;
   max-width: 1180px; margin: 0 auto;
 }
 .faixa {
+  --borda: color-mix(in srgb, var(--cor) 62%, #0a1f33);
+  position: relative; overflow: hidden;
   font-family: inherit; text-align: left; cursor: pointer;
   display: flex; flex-direction: column; align-items: flex-start; gap: 0;
   min-width: 0; padding: 12px 16px 14px;
-  background: var(--cor); color: var(--branco);
-  border: 4px solid var(--tinta); border-radius: var(--raio);
-  box-shadow: 0 8px 0 var(--tinta);
-  transition: transform 0.15s;
+  color: var(--branco);
+  background:
+    radial-gradient(130% 90% at 0% 0%, rgba(255, 255, 255, 0.38), transparent 55%),
+    linear-gradient(160deg, color-mix(in srgb, var(--cor) 82%, white), var(--cor) 55%, color-mix(in srgb, var(--cor) 80%, #0a1f33));
+  border: 0; border-radius: var(--raio);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.45), inset 0 -3px 0 rgba(0, 0, 0, 0.12),
+    0 6px 0 var(--borda),
+    0 10px 14px -4px rgba(8, 30, 52, 0.35), 0 22px 36px -18px rgba(8, 30, 52, 0.55);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+  transition: transform 0.25s var(--mola), box-shadow 0.25s var(--mola);
 }
-.faixa:hover, .faixa:focus-visible { transform: translateY(-5px) rotate(-1deg); outline: none; }
-.faixa:active { transform: translateY(4px); box-shadow: 0 4px 0 var(--tinta); }
-.faixa.aberta { transform: translateY(-10px); outline: 4px solid var(--branco); outline-offset: -10px; }
-.faixa .emoji { font-size: clamp(26px, 3vw, 38px); line-height: 1.1; }
+.faixa:hover, .faixa:focus-visible { transform: translateY(-6px); outline: none; }
+.faixa:focus-visible { box-shadow: 0 0 0 4px var(--amarelo), 0 6px 0 var(--borda), 0 18px 30px -10px rgba(8, 30, 52, 0.6); }
+.faixa:active { transform: translateY(3px); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.45), 0 2px 0 var(--borda), 0 6px 10px -4px rgba(8, 30, 52, 0.4); }
+.faixa.aberta {
+  transform: translateY(-10px);
+  box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.95), 0 6px 0 var(--borda), 0 22px 34px -12px rgba(8, 30, 52, 0.65);
+}
+.faixa .emoji { font-size: clamp(26px, 3vw, 38px); line-height: 1.1; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.25)); }
 .faixa strong { font-size: clamp(18px, 2vw, 26px); line-height: 1.05; text-wrap: balance; }
 .faixa .idade { font-size: clamp(13px, 1.3vw, 16px); font-weight: 600; opacity: 0.95; }
 .faixa .contagem {
-  margin-top: 6px; background: rgba(255, 255, 255, 0.28);
+  margin-top: 6px; background: rgba(255, 255, 255, 0.26);
   border-radius: 999px; padding: 0 10px; font-weight: 800; font-size: 14px;
 }
 
-/* painel de jogos */
+/* ------------------------------------------------------------------ painel de jogos */
 .painel-jogos {
-  position: fixed; top: calc(env(safe-area-inset-top, 0px) + 96px); right: 16px;
+  --sombra-cor: color-mix(in srgb, var(--cor) 40%, #0a2340);
+  position: fixed; top: calc(env(safe-area-inset-top, 0px) + 96px); right: 16px; z-index: 2;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 170px);
-  width: min(520px, calc(100vw - 32px));
+  width: min(700px, calc(100vw - 32px));
   display: flex; flex-direction: column; gap: 10px;
-  background: var(--papel);
-  border: 5px solid var(--tinta); border-radius: 30px;
-  box-shadow: 8px 10px 0 var(--tinta);
-  padding: 14px 16px 16px;
-  animation: entra 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cor) 16%, white) 0, var(--papel) 120px);
+  border-radius: 30px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.8),
+    0 2px 4px rgba(8, 30, 52, 0.12), 0 18px 40px -12px rgba(8, 30, 52, 0.45), 0 40px 80px -40px rgba(8, 30, 52, 0.6);
+  padding: 14px 10px 0 18px;
+  animation: entra 0.35s var(--mola);
 }
 @keyframes entra { from { transform: translateX(40px); opacity: 0; } }
-.painel-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-.painel-topo h2 { margin: 0; font-size: clamp(26px, 3vw, 34px); line-height: 1.05; color: var(--cor); -webkit-text-stroke: 1px var(--tinta); }
-.painel-topo p { margin: 0; font-weight: 700; }
+.painel-topo { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-right: 8px; }
+.painel-topo h2 { margin: 0; font-size: clamp(26px, 3vw, 34px); line-height: 1.05; color: color-mix(in srgb, var(--cor) 78%, #0a1f33); }
+.painel-topo p { margin: 0; font-weight: 700; color: #36485a; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.painel-contagem { background: var(--cor); color: #fff; border-radius: 999px; padding: 0 10px; font-size: 14px; font-weight: 800; }
 .fechar {
-  font: 800 22px var(--texto); width: 44px; height: 44px; flex: none;
-  border: 3px solid var(--tinta); border-radius: 50%; background: var(--branco); cursor: pointer;
+  font: 800 22px var(--texto); width: 46px; height: 46px; flex: none; color: var(--tinta);
+  border: 0; border-radius: 50%; background: var(--branco); cursor: pointer;
+  box-shadow: 0 1px 2px rgba(8, 30, 52, 0.2), 0 6px 14px -4px rgba(8, 30, 52, 0.4);
 }
-.nota { margin: 0; background: color-mix(in srgb, var(--cor) 18%, white); border-radius: 14px; padding: 8px 12px; font-weight: 600; }
-.jogos { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding: 4px 4px 8px; min-height: 0; }
+.fechar:focus-visible { outline: 4px solid var(--amarelo); outline-offset: 2px; }
+.nota { margin: 0 8px 0 0; background: color-mix(in srgb, var(--cor) 16%, white); border-radius: 14px; padding: 8px 12px; font-weight: 600; }
+
+/* grade de cartões (2 colunas no computador e tablet, 1 no celular em pé) */
+.jogos {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); align-content: start;
+  gap: 18px 16px; overflow-y: auto; overscroll-behavior: contain; min-height: 0;
+  padding: 8px 8px 22px 2px; scroll-padding: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ------------------------------------------------------------------ cartão de jogo com profundidade 3D */
 .jogo {
-  display: flex; flex-direction: column; gap: 2px;
+  --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 0%; --dx: 0px; --dy: 0px;
+  position: relative; display: flex; flex-direction: column;
   background: var(--branco); color: var(--tinta); text-decoration: none;
-  border: 3px solid color-mix(in srgb, var(--cor) 60%, white); border-radius: 20px;
-  padding: 12px 14px;
+  border-radius: 22px;
+  box-shadow:
+    0 0 0 1px rgba(10, 31, 51, 0.06),
+    0 5px 0 color-mix(in srgb, var(--cor) 70%, white),
+    0 8px 12px -4px rgba(10, 31, 51, 0.18),
+    0 22px 34px -18px color-mix(in srgb, var(--sombra-cor) 80%, transparent);
+  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 0.45s var(--mola), box-shadow 0.45s var(--mola);
+  content-visibility: auto; contain-intrinsic-size: auto 330px;
+  animation: cartao-entra 0.5s var(--mola) both;
+  animation-delay: calc(var(--i, 0) * 50ms);
+  -webkit-touch-callout: none;
 }
-.jogo.pronto { border-color: var(--tinta); box-shadow: 0 6px 0 var(--cor); }
-.jogo.pronto:hover, .jogo.pronto:focus-visible { transform: translateY(-3px); outline: none; }
-.jogo h3 { margin: 4px 0 0; font-size: 22px; line-height: 1.1; }
-.jogo p { margin: 0 0 6px; font-size: 16px; line-height: 1.35; }
-.habilidade {
-  align-self: flex-start; font-weight: 800; font-size: 14px;
-  background: color-mix(in srgb, var(--cor) 20%, white); border-radius: 999px; padding: 1px 12px;
+@keyframes cartao-entra { from { opacity: 0; transform: perspective(900px) translateY(18px) rotateX(8deg); } }
+.jogo.inclinado, .jogo.pronto:focus-visible {
+  transform: perspective(900px) translateY(-6px) rotateX(var(--rx)) rotateY(var(--ry)) scale(1.02);
+  box-shadow:
+    0 0 0 1px rgba(10, 31, 51, 0.06),
+    0 7px 0 color-mix(in srgb, var(--cor) 70%, white),
+    0 18px 22px -8px rgba(10, 31, 51, 0.25),
+    0 40px 50px -24px color-mix(in srgb, var(--sombra-cor) 90%, transparent);
+  z-index: 1;
 }
-.selos { display: flex; flex-wrap: wrap; gap: 6px; }
-.selo { font-size: 13px; font-weight: 800; color: var(--branco); border-radius: 999px; padding: 1px 10px; }
-.selo.estilo { background: var(--tinta); }
+.jogo.inclinado { transition: transform 0.12s linear, box-shadow 0.3s var(--mola); will-change: transform; }
+.jogo.pronto:focus-visible { outline: 4px solid var(--amarelo); outline-offset: 3px; }
+.jogo.pronto:active { transform: perspective(900px) translateY(2px) scale(0.985); transition-duration: 0.08s; }
+/* brilho que segue o dedo/ponteiro */
+.jogo::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(circle at var(--mx) var(--my), rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 45%);
+  opacity: 0; transition: opacity 0.3s;
+  mix-blend-mode: soft-light;
+}
+.jogo.inclinado::after { opacity: 1; }
+
+/* capa em destaque (foto do jogo) com selos por cima */
+.capa {
+  position: relative; aspect-ratio: 16 / 10; overflow: hidden;
+  border-radius: 18px 18px 14px 14px; margin: 6px 6px 0;
+  background:
+    radial-gradient(90% 80% at 30% 20%, rgba(255, 255, 255, 0.5), transparent 60%),
+    linear-gradient(150deg, color-mix(in srgb, var(--cor) 55%, white), var(--cor));
+  isolation: isolate;
+}
+.capa-foto {
+  position: absolute; inset: -6px; width: calc(100% + 12px); height: calc(100% + 12px); object-fit: cover; display: block;
+  transform: translate(var(--dx), var(--dy)) scale(1.02);
+  transition: transform 0.45s var(--mola);
+}
+.jogo.inclinado .capa-foto { transform: translate(var(--dx), var(--dy)) scale(1.07); transition: transform 0.12s linear; }
+/* sombra interna e degradê no pé da capa (o selo de idade e o "Jogar" leem bem em qualquer foto) */
+.capa-luz {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(to top, rgba(6, 20, 36, 0.55), rgba(6, 20, 36, 0) 42%), linear-gradient(to bottom, rgba(6, 20, 36, 0.25), transparent 30%);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08), inset 0 -10px 24px -10px rgba(0, 0, 0, 0.25);
+}
+/* arte de reserva: jogo novo ainda sem foto */
+.capa-arte {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: clamp(56px, 9vw, 84px); filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.25));
+  background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0 14px, transparent 14px 28px);
+}
+.selos { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+.selo {
+  font-size: 13px; font-weight: 800; color: var(--branco); border-radius: 999px; padding: 2px 10px; line-height: 1.5;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+.selo.estilo { background: rgba(15, 20, 28, 0.82); }
 .selo.ingles { background: var(--rosa); }
-.selo.breve { background: #9aa3ad; }
-.selo.pronto { background: var(--laranja); }
-.vazio { font-weight: 700; }
+.selo.idade {
+  position: absolute; left: 10px; bottom: 10px;
+  background: var(--cor); color: #fff; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+.selo.pronto, .selo.breve { position: absolute; right: 10px; bottom: 10px; font-size: 15px; padding: 4px 14px; }
+.selo.pronto { background: linear-gradient(180deg, #ff9a2e, var(--laranja)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 3px 0 #c45800, 0 6px 12px rgba(0, 0, 0, 0.3); }
+.selo.breve { background: #7d8792; }
+.jogo.breve .capa { filter: grayscale(0.8) brightness(1.05); }
+.jogo.breve { cursor: default; }
 
+.corpo { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px 14px; flex: 1; }
+.jogo h3 { margin: 0; font-size: 21px; line-height: 1.12; text-wrap: balance; }
+.jogo p {
+  margin: 2px 0 8px; font-size: 15px; line-height: 1.35; color: #3c4a57;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.habilidade {
+  margin-top: auto; align-self: flex-start; font-weight: 800; font-size: 13px;
+  color: color-mix(in srgb, var(--cor) 60%, #0a1f33);
+  background: color-mix(in srgb, var(--cor) 16%, white); border-radius: 999px; padding: 1px 12px;
+}
+.habilidade::before { content: "✦ "; }
+.vazio { font-weight: 700; grid-column: 1 / -1; }
+
+/* botão de som: canto direito, logo abaixo do cabeçalho (nunca no meio da tela) */
 .som {
-  position: fixed; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 74px);
+  position: fixed; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 74px); z-index: 3;
   width: 48px; height: 48px; font-size: 22px;
-  background: rgba(255, 255, 255, 0.85); border: 3px solid var(--tinta); border-radius: 50%; cursor: pointer;
+  background: rgba(255, 255, 255, 0.92); border: 3px solid var(--tinta); border-radius: 50%; cursor: pointer;
+  box-shadow: 0 6px 14px -4px rgba(8, 30, 52, 0.4);
 }
 
+/* ------------------------------------------------------------------ telas menores */
+@media (max-width: 1100px) {
+  .painel-jogos { width: min(560px, calc(100vw - 32px)); }
+}
 @media (max-width: 900px) {
   .faixas { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .painel-jogos { top: calc(env(safe-area-inset-top, 0px) + 134px); bottom: calc(env(safe-area-inset-bottom, 0px) + 270px); }
+  .painel-jogos { width: auto; left: 16px; top: calc(env(safe-area-inset-top, 0px) + 134px); bottom: calc(env(safe-area-inset-bottom, 0px) + 300px); }
 }
 @media (max-width: 560px) {
-  .faixas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .faixa { padding: 8px 12px 10px; }
+  .faixas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .faixa { padding: 8px 12px 10px; border-radius: 20px; }
   .faixa .contagem { display: none; }
-  .painel-jogos { top: 80px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); z-index: 2; }
+  .painel-jogos {
+    top: calc(env(safe-area-inset-top, 0px) + 68px); left: 8px; right: 8px; bottom: 0; z-index: 2;
+    border-radius: 26px 26px 0 0; padding: 12px 4px 0 12px;
+  }
+  .jogos { grid-template-columns: 1fr; gap: 16px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); }
+  .jogo h3 { font-size: 20px; }
+  .jogo p { -webkit-line-clamp: 2; }
   .boas-vindas { top: 84px; }
-}
-/* celular deitado: idades numa fileira baixa, título pequeno, painel por cima de tudo */
-@media (max-width: 560px) {
   /* cabeçalho compacto: logo, Família, Instalar e Só inglês cabem numa linha só */
   .topo { gap: 6px; left: 10px; right: 10px; }
   .topo .logo { height: 40px; padding: 4px 8px; border-radius: 12px; }
@@ -176,6 +310,7 @@ body {
   .filtro-ingles { font-size: 13px; padding: 5px 9px; gap: 5px; white-space: nowrap; }
   .filtro-ingles input { width: 16px; height: 16px; }
 }
+/* celular deitado: idades numa fileira baixa, título pequeno, painel por cima de tudo */
 @media (max-height: 520px) and (orientation: landscape) {
   .topo .logo { height: 40px; padding: 4px 10px; }
   .familia-botao-portal { font-size: 14px; padding: 3px 10px 3px 4px; }
@@ -185,16 +320,18 @@ body {
   .boas-vindas h1 { font-size: clamp(34px, 11vh, 56px); }
   .boas-vindas p { margin-top: 8px; font-size: 16px; }
   .faixas { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); }
-  .faixa { padding: 6px 10px 8px; border-width: 3px; box-shadow: 0 5px 0 var(--tinta); border-radius: 18px; }
+  .faixa { padding: 6px 10px 8px; border-radius: 16px; box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.45), 0 4px 0 var(--borda), 0 8px 12px -6px rgba(8, 30, 52, 0.5); }
   .faixa .emoji { font-size: 22px; }
   .faixa strong { font-size: 16px; }
   .faixa .idade { font-size: 12px; line-height: 1.15; }
   .faixa .contagem { display: none; }
-  .painel-jogos { top: 10px; bottom: 10px; right: 10px; width: min(480px, 62vw); z-index: 2; padding: 10px 12px; gap: 6px; }
+  .painel-jogos { top: 10px; bottom: 10px; left: auto; right: 10px; width: min(560px, 64vw); z-index: 4; padding: 10px 4px 0 12px; gap: 6px; border-radius: 24px; }
+  .jogos { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
   .painel-topo h2 { font-size: 24px; }
-  .jogo h3 { font-size: 19px; }
-  .jogo p { font-size: 14px; }
+  .jogo h3 { font-size: 18px; }
+  .jogo p { font-size: 14px; -webkit-line-clamp: 2; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .faixa, .painel-jogos, .boas-vindas { transition: none; animation: none; }
+  .faixa, .painel-jogos, .boas-vindas, .jogo, .capa-foto, #cena { transition: none; animation: none; }
+  .jogo.inclinado, .jogo.pronto:focus-visible { transform: translateY(-4px); }
 }
