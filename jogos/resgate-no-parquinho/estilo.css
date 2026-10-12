@@ -1,0 +1,107 @@
+/* Resgate no Parquinho: céu e prédio da escola em CSS atrás do canvas transparente do Phaser */
+.rg-cena {
+  --ceu1: #3aa7ff; --ceu2: #dff5ff; --predio: #fff4d6; --telhado: #ec2e8c; --janela: #bfeaff; --grama: #5cc13a;
+  position: fixed; inset: 0; z-index: 0; overflow: hidden;
+  background: linear-gradient(var(--ceu1), var(--ceu2) 75%);
+}
+.rg-cena.tema-tarde { --ceu1: #ff9f5a; --ceu2: #ffe9c2; --predio: #fff0d9; --janela: #ffe08a; }
+.rg-cena.tema-noite { --ceu1: #0b1b4a; --ceu2: #2a3f86; --predio: #4a4f7a; --telhado: #8e3a6c; --janela: #ffe36b; --grama: #2f7a3a; }
+.rg-cena.tema-chuva { --ceu1: #6f86a3; --ceu2: #c9d6e3; --predio: #e9eef3; --telhado: #b23a76; --janela: #d9e8f5; }
+.rg-cena.tema-por-do-sol { --ceu1: #8e6cff; --ceu2: #ffc27a; --predio: #fff0e0; --janela: #ffe08a; }
+
+/* sol (ou lua) e nuvens */
+.rg-astro {
+  position: absolute; top: 12%; right: 7%; width: 13vh; height: 13vh; border-radius: 50%;
+  background: #ffe14d; box-shadow: 0 0 0 12px rgba(255, 225, 77, 0.3), 0 0 60px rgba(255, 225, 77, 0.6);
+}
+.tema-tarde .rg-astro, .tema-por-do-sol .rg-astro { top: 46%; background: #ff9a3d; box-shadow: 0 0 80px rgba(255, 140, 50, 0.7); }
+.tema-noite .rg-astro { background: #fff6d0; box-shadow: 0 0 40px rgba(255, 246, 208, 0.6); }
+.tema-noite .rg-astro::after { content: ""; position: absolute; inset: -8% -30% 18% 30%; border-radius: 50%; background: var(--ceu1); }
+.tema-chuva .rg-astro { display: none; }
+.tema-noite::before {
+  content: ""; position: absolute; inset: 0 0 40% 0; opacity: 0.9;
+  background-image: radial-gradient(2px 2px at 10% 20%, #fff 50%, transparent 51%), radial-gradient(2px 2px at 30% 8%, #fff 50%, transparent 51%),
+    radial-gradient(2px 2px at 55% 25%, #fff 50%, transparent 51%), radial-gradient(2px 2px at 75% 12%, #fff 50%, transparent 51%),
+    radial-gradient(2px 2px at 90% 30%, #fff 50%, transparent 51%), radial-gradient(2px 2px at 20% 40%, #fff 50%, transparent 51%),
+    radial-gradient(2px 2px at 65% 45%, #fff 50%, transparent 51%), radial-gradient(2px 2px at 42% 15%, #fff 50%, transparent 51%);
+}
+.rg-nuvens i {
+  position: absolute; width: 18vh; height: 6vh; border-radius: 999px; background: #fff; opacity: 0.9;
+  animation: rg-nuvem 60s linear infinite;
+}
+.rg-nuvens i::before { content: ""; position: absolute; left: 22%; top: -55%; width: 45%; height: 120%; border-radius: 50%; background: inherit; }
+.rg-nuvens i:nth-child(1) { top: 14%; animation-delay: -10s; }
+.rg-nuvens i:nth-child(2) { top: 28%; animation-delay: -32s; transform: scale(0.7); }
+.rg-nuvens i:nth-child(3) { top: 8%; animation-delay: -50s; }
+.tema-noite .rg-nuvens i { opacity: 0.15; }
+.tema-chuva .rg-nuvens i { background: #8a9bb0; opacity: 1; animation-duration: 14s; }
+@keyframes rg-nuvem { from { left: -25vh; } to { left: 110vw; } }
+
+/* prédio da escola em reforma, atrás dos andaimes */
+.rg-escola { position: absolute; left: 50%; bottom: 0; width: min(110vh, 96vw); height: 72vh; transform: translateX(-50%); }
+.rg-escola .telhado {
+  position: absolute; left: 4%; right: 4%; top: 0; height: 16%;
+  background: var(--telhado); clip-path: polygon(8% 100%, 50% 0, 92% 100%); filter: brightness(0.95);
+}
+.rg-escola .fachada {
+  position: absolute; left: 10%; right: 10%; top: 15%; bottom: 0;
+  background: var(--predio); border: 4px solid rgba(21, 21, 21, 0.35); border-bottom: 0; border-radius: 10px 10px 0 0;
+}
+.rg-escola .placa {
+  position: absolute; left: 50%; top: -9%; transform: translateX(-50%); background: #fff; border: 4px solid var(--tinta);
+  border-radius: 14px; padding: 4px 12px; box-shadow: 0 4px 0 var(--tinta);
+}
+.rg-escola .placa img { display: block; height: 5.5vh; }
+.rg-escola .janelas { position: absolute; left: 6%; right: 6%; top: 10%; height: 62%; display: grid; grid-template-columns: repeat(6, 1fr); gap: 7% 4%; opacity: 0.75; }
+.rg-escola .janelas i { background: var(--janela); border: 3px solid rgba(21, 21, 21, 0.35); border-radius: 6px; }
+.rg-escola .porta { position: absolute; left: 50%; bottom: 0; width: 12%; height: 18%; transform: translateX(-50%); background: #00b5f0; border: 3px solid rgba(21, 21, 21, 0.4); border-bottom: 0; border-radius: 30px 30px 0 0; opacity: 0.8; }
+
+/* arbustos no pé da tela */
+.rg-arbustos { position: absolute; left: 0; right: 0; bottom: 0; height: 8vh; display: flex; justify-content: space-between; }
+.rg-arbustos i { width: 16vh; height: 9vh; margin-bottom: -3vh; border-radius: 50% 50% 0 0; background: var(--grama); filter: brightness(0.85); }
+
+/* chuva leve */
+.rg-chuva {
+  position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0.55;
+  background-image: repeating-linear-gradient(105deg, transparent 0 22px, rgba(255, 255, 255, 0.8) 22px 24px, transparent 24px 60px);
+  background-size: 120px 120px; animation: rg-chuva 0.5s linear infinite;
+}
+@keyframes rg-chuva { from { background-position: 0 0; } to { background-position: -30px 120px; } }
+
+/* área do mundo (Phaser escala para caber inteiro, sem rolagem) */
+.rg-mundo {
+  position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
+  top: calc(env(safe-area-inset-top, 0px) + 70px); z-index: 2;
+}
+.rg-mundo canvas { display: block; }
+
+/* placar: corações, letras/números e pontos */
+.casca-placar .rg-coleta { display: inline-flex; gap: 3px; }
+.rg-slot {
+  display: inline-grid; place-items: center; min-width: 1.15em; padding: 0 2px; border-radius: 8px;
+  background: #eef3f7; color: #9aa6b2; font-weight: 800;
+}
+.rg-slot.ok { background: var(--rosa); color: #fff; }
+
+/* botões de toque: ◀ ▶ à esquerda; ▲ ▼ e pulo à direita */
+.rg-toque { display: none; position: fixed; inset: auto 0 0 0; z-index: 6; pointer-events: none; }
+body.touch .rg-toque { display: block; }
+body.com-controle .rg-toque { display: none; }
+.rg-lado { position: absolute; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); display: flex; gap: 10px; align-items: flex-end; pointer-events: auto; }
+.rg-lado.esq { left: calc(env(safe-area-inset-left, 0px) + 12px); }
+.rg-lado.dir { right: calc(env(safe-area-inset-right, 0px) + 12px); }
+.rg-coluna { display: flex; flex-direction: column; gap: 10px; }
+.rg-bt {
+  width: 68px; height: 68px; border-radius: 22px; font-size: 30px; line-height: 1; cursor: pointer; touch-action: none;
+  background: rgba(255, 255, 255, 0.72); border: 4px solid var(--tinta); box-shadow: 0 5px 0 var(--tinta);
+  -webkit-user-select: none; user-select: none;
+}
+.rg-bt.pulo { width: 92px; height: 92px; border-radius: 50%; font-size: 42px; background: rgba(255, 204, 31, 0.85); }
+.rg-bt.apertado { transform: translateY(4px); box-shadow: 0 1px 0 var(--tinta); background: #fff; }
+.rg-bt.pulo.apertado { background: var(--amarelo); }
+@media (max-height: 520px) {
+  .rg-bt { width: 54px; height: 54px; font-size: 24px; border-radius: 16px; }
+  .rg-bt.pulo { width: 72px; height: 72px; font-size: 34px; }
+  .rg-coluna, .rg-lado { gap: 6px; }
+  .casca-placar { font-size: 16px; }
+}

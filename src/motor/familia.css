@@ -1,0 +1,88 @@
+/* Cadastro da família (src/motor/familia.js): cartão no estilo do portal, pensado para o celular em pé. */
+.familia-tela {
+  position: fixed; inset: 0; z-index: 90; display: flex; align-items: flex-start; justify-content: center;
+  padding: max(12px, env(safe-area-inset-top, 0px)) 12px max(12px, env(safe-area-inset-bottom, 0px));
+  background: rgba(10, 42, 74, 0.6); overflow: auto; -webkit-overflow-scrolling: touch;
+  font-family: "Baloo 2", system-ui, sans-serif; color: #151515;
+  --f-ciano: #00b5f0; --f-rosa: #ec2e8c; --f-laranja: #ff7a00; --f-amarelo: #ffcc1f; --f-tinta: #151515;
+}
+.familia-tela[hidden] { display: none; }
+.familia-cartao {
+  width: min(560px, 100%); margin: auto 0;
+  background: #fff; border: 5px solid var(--f-tinta); border-radius: 30px; box-shadow: 8px 10px 0 var(--f-tinta);
+  padding: 18px 18px 22px;
+}
+.familia-cartao .familia-topo { display: flex; align-items: center; gap: 12px; }
+.familia-cartao .familia-topo img.logo { height: 40px; }
+.familia-cartao .familia-topo img.rabisco { height: 84px; margin-left: auto; }
+.familia-cartao h2 {
+  margin: 8px 0 2px; font-family: "Neulis Cursive", "Baloo 2", system-ui, sans-serif; font-weight: 900;
+  font-size: clamp(30px, 7vw, 42px); line-height: 1; color: var(--f-ciano); text-shadow: 3px 3px 0 var(--f-rosa);
+}
+.familia-cartao .intro { margin: 0 0 10px; font-weight: 600; font-size: 15px; color: #444; }
+.familia-cartao fieldset { border: 3px solid #e3eef5; border-radius: 20px; padding: 8px 14px 12px; margin: 0 0 12px; }
+.familia-cartao legend { font-weight: 800; font-size: 17px; color: var(--f-rosa); padding: 0 8px; }
+.familia-cartao legend.crianca { color: var(--f-laranja); }
+.familia-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+.familia-campos .largo { grid-column: 1 / -1; }
+.familia-cartao label { display: flex; flex-direction: column; gap: 3px; font-weight: 700; font-size: 14px; }
+.familia-cartao label small { font-weight: 600; color: #777; }
+.familia-cartao input:not([type=checkbox]):not([type=file]), .familia-cartao select {
+  font: 600 17px "Baloo 2", system-ui, sans-serif; color: var(--f-tinta);
+  border: 3px solid #cfdde6; border-radius: 14px; padding: 8px 12px; background: #f7fbfe; min-width: 0; width: 100%;
+}
+.familia-cartao input:focus-visible, .familia-cartao select:focus-visible, .familia-cartao button:focus-visible, .familia-cartao .familia-check:focus-within {
+  outline: 5px solid var(--f-amarelo); outline-offset: 2px;
+}
+.familia-cartao input[aria-invalid="true"], .familia-cartao select[aria-invalid="true"] { border-color: var(--f-rosa); background: #fff3f8; }
+.familia-cartao .erro { grid-column: 1 / -1; margin: 0; min-height: 0; font-weight: 800; font-size: 14px; color: var(--f-rosa); }
+.familia-cartao .erro:empty { display: none; }
+.familia-cartao .aviso-nome { grid-column: 1 / -1; margin: -2px 0 0; font-size: 13px; font-weight: 800; color: var(--f-ciano); }
+.familia-cartao .aviso-nome:empty { display: none; }
+.familia-local { display: flex; gap: 8px; align-items: end; grid-column: 1 / -1; }
+.familia-local label { flex: 1; }
+.familia-local label.uf { flex: 0 0 92px; }
+.familia-local .pequeno {
+  flex: 0 0 auto; height: 46px; width: 46px; border-radius: 14px; border: 3px solid var(--f-tinta); background: #fff; font-size: 20px; cursor: pointer;
+  box-shadow: 0 3px 0 var(--f-tinta);
+}
+.familia-foto { display: flex; gap: 12px; align-items: center; grid-column: 1 / -1; }
+.familia-foto .roda {
+  width: 84px; height: 84px; border-radius: 50%; border: 4px solid var(--f-tinta); background: #e9f6fd center/cover no-repeat;
+  display: grid; place-items: center; font-size: 34px; flex: 0 0 auto; overflow: hidden;
+}
+.familia-foto .roda img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.familia-foto .botoes { display: flex; flex-wrap: wrap; gap: 6px; }
+.familia-foto .botoes button, .familia-foto .botoes label.botao-arquivo {
+  font: 800 14px "Baloo 2", system-ui, sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+  background: #fff; color: var(--f-tinta); border: 3px solid var(--f-tinta); border-radius: 999px; padding: 4px 12px; box-shadow: 0 3px 0 var(--f-tinta);
+}
+.familia-foto .botoes label.botao-arquivo input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.familia-foto .botoes label.botao-arquivo:focus-within { outline: 5px solid var(--f-amarelo); outline-offset: 2px; }
+.familia-foto .nota-foto { grid-column: 1 / -1; margin: 6px 0 0; font-size: 13px; font-weight: 600; color: #666; }
+.familia-check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; font-weight: 600; margin: 4px 0 12px; border-radius: 12px; padding: 2px; }
+.familia-check input { width: 24px; height: 24px; flex: 0 0 auto; accent-color: var(--f-rosa); margin-top: 1px; }
+.familia-check b { font-weight: 800; }
+.familia-acoes { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+.familia-acoes .botao {
+  font: 800 clamp(18px, 4.5vw, 24px) "Baloo 2", system-ui, sans-serif; cursor: pointer; color: #fff;
+  background: var(--f-rosa); border: none; border-radius: 999px; padding: 6px 26px 9px; box-shadow: 0 6px 0 var(--f-tinta);
+}
+.familia-acoes .botao:active { transform: translateY(3px); box-shadow: 0 3px 0 var(--f-tinta); }
+.familia-acoes .botao.branco { background: #fff; color: var(--f-tinta); border: 3px solid var(--f-tinta); }
+.familia-acoes .status { margin-right: auto; font-size: 13px; font-weight: 700; color: #777; }
+.familia-botao-portal {
+  pointer-events: auto; display: inline-flex; align-items: center; gap: 8px; font: 800 16px "Baloo 2", system-ui, sans-serif; cursor: pointer; white-space: nowrap;
+  background: #fff; color: #151515; border: 3px solid #151515; border-radius: 999px; padding: 5px 12px 5px 6px; box-shadow: 0 4px 0 #151515;
+}
+.familia-botao-portal .roda { width: 28px; height: 28px; border-radius: 50%; background: #e9f6fd center/cover no-repeat; border: 2px solid #151515; display: grid; place-items: center; font-size: 15px; overflow: hidden; }
+.familia-botao-portal .roda img { width: 100%; height: 100%; object-fit: cover; display: block; }
+@media (max-width: 420px) {
+  .familia-campos { grid-template-columns: 1fr; }
+  .familia-cartao { padding: 14px 12px 18px; border-radius: 24px; }
+  .familia-cartao .familia-topo img.rabisco { height: 66px; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .familia-cartao { width: min(760px, 100%); }
+  .familia-cartao .familia-topo img.rabisco { height: 56px; }
+}

@@ -9,7 +9,8 @@ import { moeda3D, pilotoLapis } from "../../src/motor3d/objetos.js";
 import { carregarTextura } from "../../src/motor3d/toon.js";
 import { criarCasca, el } from "../../src/motor/casca.js";
 import { sons, musica } from "../../src/motor/sons.js";
-import { falar, preCarregarFalas } from "../../src/motor/voz.js";
+import { falar, preCarregarFalas, falarNome, parabenizar } from "../../src/motor/voz.js";
+import { criarCompanheiro3D } from "../../src/motor3d/companheiro3d.js";
 import { criarJoystick } from "../../src/motor/joystick.js";
 import { montarCidade, carro, RUAS, BORDA, RUA } from "./cidade.js";
 
@@ -62,6 +63,8 @@ function lerControle({ segura, apertou, eixoX, eixoY }) {
 
 // ------------------------------------------------------------------ Cena
 let r3, cena, cam, sol, mundo, rabisco, relogio, vivo = false, hud, mapa, balao;
+let companheiro = null; // a criança cadastrada passeando junto (src/motor3d/companheiro3d.js)
+const amigo = { pos: new THREE.Vector3(), dir: 0, vel: 0, fase: 0 };
 const j = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), noChao: true, coyote: 0, buffer: 0, dir: 0 };
 let camYaw = 0, camManual = 0;
 const carros = [], moradores = [], selos = [], npcs = [];
@@ -102,6 +105,12 @@ function iniciar() {
   rabisco = new Rabisco3D({ raiz: "../..", altura: 1.8 });
   cena.add(rabisco.grupo);
   j.pos.set(0, 0.18, 30); j.vel.set(0, 0, 0); j.dir = Math.PI; camYaw = Math.PI;
+  companheiro = criarCompanheiro3D({ raiz: "../..", altura: 1.55, cracha: true });
+  if (companheiro) {
+    amigo.pos.set(1.4, 0.18, 31.4); amigo.dir = Math.PI; amigo.vel = 0;
+    companheiro.grupo.position.copy(amigo.pos);
+    cena.add(companheiro.grupo);
+  }
   criarCarros();
   criarMoradores();
   criarSelos();
@@ -170,7 +179,38 @@ function moverJogador(dt) {
   rabisco.grupo.position.copy(j.pos);
   rabisco.grupo.rotation.y = j.dir;
   rabisco.atualizar(dt, { modo: fim ? "comemorar" : !j.noChao ? "pular" : v > 0.6 ? "andar" : "parado", vel: v, vmax: VEL });
+  if (companheiro) moverCompanheiro(dt, v);
   return { andando: m > 0.2 && iy > -0.3 };
+}
+
+// A criança acompanha o Rabisco: vai para um ponto atrás e ao lado dele, com atraso suave, sem atravessá-lo,
+// anda/para com a mesma animação e olha para onde está indo (ou para o Rabisco, quando parada).
+function moverCompanheiro(dt, velRabisco) {
+  const ATRAS = 1.7, LADO = 0.9, MIN = 1.25;
+  const alvoX = j.pos.x - Math.sin(j.dir) * ATRAS + Math.cos(j.dir) * LADO;
+  const alvoZ = j.pos.z - Math.cos(j.dir) * ATRAS - Math.sin(j.dir) * LADO;
+  let dx = alvoX - amigo.pos.x, dz = alvoZ - amigo.pos.z;
+  const dist = Math.hypot(dx, dz);
+  // só sai do lugar quando o Rabisco se afasta; chega devagar perto do ponto (sem tremer)
+  const quer = dist > 0.35 ? Math.min(VEL * 1.05, dist * 2.2) : 0;
+  amigo.vel += (quer - amigo.vel) * Math.min(1, dt * 6);
+  if (dist > 1e-3) { dx /= dist; dz /= dist; }
+  let nx = amigo.pos.x + dx * amigo.vel * dt, nz = amigo.pos.z + dz * amigo.vel * dt;
+  // nunca atravessa o Rabisco: se ficar perto demais, é empurrada para fora
+  const ex = nx - j.pos.x, ez = nz - j.pos.z, d2 = Math.hypot(ex, ez);
+  if (d2 < MIN && d2 > 1e-3) { nx = j.pos.x + (ex / d2) * MIN; nz = j.pos.z + (ez / d2) * MIN; }
+  if (!bate(nx, amigo.pos.z, amigo.pos.y) && Math.abs(nx) < BORDA + 4) amigo.pos.x = nx;
+  if (!bate(amigo.pos.x, nz, amigo.pos.y) && Math.abs(nz) < BORDA + 4) amigo.pos.z = nz;
+  const chao = chaoEm(amigo.pos.x, amigo.pos.z, amigo.pos.y);
+  amigo.pos.y += (chao - amigo.pos.y) * Math.min(1, dt * 10);
+  const andando = amigo.vel > 0.5;
+  // olha para onde vai; parada, vira para o Rabisco
+  const alvoDir = andando ? Math.atan2(dx, dz) : Math.atan2(j.pos.x - amigo.pos.x, j.pos.z - amigo.pos.z);
+  let d = alvoDir - amigo.dir; d = Math.atan2(Math.sin(d), Math.cos(d));
+  amigo.dir += d * Math.min(1, dt * (andando ? 10 : 4));
+  companheiro.grupo.position.copy(amigo.pos);
+  companheiro.grupo.rotation.y = amigo.dir;
+  companheiro.atualizar(dt, { modo: fim ? "comemorar" : andando ? "andar" : velRabisco > 0.6 ? "parado" : "acenar", vel: amigo.vel, vmax: VEL });
 }
 
 // ------------------------------------------------------------------ Câmera (acompanha e gira)
@@ -422,6 +462,11 @@ function regras(dt, t) {
     sons.volta();
     jogo.aviso(`📍 ${l.nome}`, "bom", 1800);
     falar(`cid-lugar-${l.id}`);
+    // a criança comenta pelo nome (balão + voz do navegador, depois da fala gravada)
+    if (companheiro) {
+      const texto = FRASES_LUGAR[Math.floor(Math.random() * FRASES_LUGAR.length)].replaceAll("{lugar}", l.nome);
+      setTimeout(() => { dizer(companheiro.crianca.nome, texto.replaceAll("{nome}", companheiro.crianca.nome), 3200); falarNome("lug-pre", "lug-pos"); }, 2200);
+    }
     if (visitados.size === mundo.lugares.length) concluir(missoes.passaporte);
     atualizarHud();
   }
@@ -454,9 +499,11 @@ function conversar(n) {
     dizer(n.nome, "Obrigado pela ajuda, Rabisco!", 2400);
   }
 }
+const FRASES_LUGAR = ["Olha, {nome}! Chegamos: {lugar}!", "{nome}, que legal! Esse lugar é {lugar}!", "Uau, {nome}! Vamos conhecer: {lugar}!"];
 function concluir(M) {
   if (M.estado === "feita") return;
   M.estado = "feita";
+  if (companheiro) setTimeout(() => parabenizar({ gravada: false }), 900);
   if (M.npc) M.npc.marca.visible = false;
   sons.porta();
   setTimeout(() => { jogo.aviso(`${M.icone} Missão cumprida!`, "bom", 2200); falar("cid-missao-ok"); }, 600);
@@ -513,6 +560,6 @@ function quadro() {
 }
 
 if (params.has("teste")) window.teste = {
-  jogo, j, get missoes() { return missoes; }, get mundo() { return mundo; }, get selos() { return selosPegos; }, get visitados() { return visitados.size; }, carros,
+  jogo, j, get companheiro() { return companheiro; }, get missoes() { return missoes; }, get mundo() { return mundo; }, get selos() { return selosPegos; }, get visitados() { return visitados.size; }, carros,
   ir(x, z, y = 0.18) { j.pos.set(x, y, z); j.vel.set(0, 0, 0); posicionarCamera(1, 0); }, olhar(yaw) { camYaw = yaw; camManual = 5; posicionarCamera(1, 0); },
 };

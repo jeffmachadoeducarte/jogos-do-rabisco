@@ -1,0 +1,155 @@
+/* Viagem do Rabisco: pedido no alto, cartão postal da paisagem à esquerda e opções à direita.
+   Cada fase troca o fundo (--f1/--f2 no body); cada paisagem troca o céu e o chão do postal. */
+body.vg {
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255,255,255,0.35) 0 60px, transparent 61px),
+    radial-gradient(circle at 88% 82%, rgba(255,255,255,0.25) 0 90px, transparent 91px),
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.08) 0 18px, transparent 18px 36px),
+    linear-gradient(var(--f1, #38b6ff), var(--f2, #d6f3ff));
+}
+.cena-vg { width: 100%; max-width: 1240px; height: 100%; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.pedido {
+  flex: none; align-self: center; max-width: 100%; position: relative;
+  background: #fff; border: 5px solid var(--tinta); border-radius: 28px; box-shadow: 0 6px 0 var(--tinta);
+  padding: 6px 24px 8px; font: 800 clamp(20px, 3vw, 34px)/1.15 var(--texto); text-align: center;
+}
+.meio { flex: 1 1 0; min-height: 0; display: flex; gap: 16px; align-items: stretch; }
+
+/* ---------- Cartão postal */
+.postal {
+  flex: 1 1 50%; min-width: 0; position: relative; overflow: hidden;
+  border: 5px solid var(--tinta); border-radius: 28px; box-shadow: 0 6px 0 var(--tinta);
+  background: #fff;
+}
+.postal::after { /* moldura de cartão postal */
+  content: ""; position: absolute; inset: 8px; border: 3px dashed rgba(255,255,255,0.8); border-radius: 20px; pointer-events: none; z-index: 6;
+}
+.postal .ceu::before, .postal .ceu::after { content: "☁️"; position: absolute; font-size: clamp(34px, 7vmin, 70px); opacity: 0.95; animation: vg-nuvem 9s ease-in-out infinite alternate; }
+.postal .ceu::before { left: 10%; top: 22%; }
+.postal .ceu::after { left: 58%; top: 38%; font-size: clamp(26px, 5vmin, 52px); animation-delay: -4s; }
+@keyframes vg-nuvem { to { translate: 30px 0; } }
+.postal .ceu { position: absolute; inset: 0; background: linear-gradient(var(--ceu1), var(--ceu2)); transition: background 0.6s; }
+.postal .chao {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 30%; background: var(--chao);
+  border-top: 4px solid var(--tinta); border-radius: 50% 50% 0 0 / 18% 18% 0 0;
+}
+.postal .agua { position: absolute; left: 0; right: 0; bottom: 22%; height: 22%; background: var(--agua); display: none; }
+.postal.tem-mar .agua {
+  display: block; border-top: 4px solid var(--tinta);
+  background: radial-gradient(circle at 14px 0, transparent 10px, rgba(255,255,255,0.45) 11px 13px, transparent 14px) 0 10px / 28px 18px repeat-x, var(--agua);
+}
+.postal.tem-mar .chao { height: 24%; }
+.postal.tem-rio .agua { display: block; left: 30%; right: 30%; bottom: 0; height: 30%; z-index: 1; border-left: 4px solid var(--tinta); border-right: 4px solid var(--tinta); clip-path: polygon(30% 0, 70% 0, 100% 100%, 0 100%); }
+.postal .decor { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.postal .decor span {
+  position: absolute; line-height: 1; font-size: calc(var(--t) * clamp(34px, 7vmin, 70px));
+  filter: drop-shadow(0 3px 0 rgba(0,0,0,0.18));
+}
+.postal.troca .decor span, .postal.troca .ceu { animation: vg-surge 0.6s ease backwards; }
+@keyframes vg-surge { from { opacity: 0; transform: translateY(12px) scale(0.9); } }
+
+.rabisco-vg {
+  position: absolute; z-index: 4; left: 8%; bottom: 6%; height: min(52%, 70vw);
+  filter: drop-shadow(5px 6px 0 rgba(0,0,0,0.18));
+  transition: left 1.1s ease-in-out;
+}
+.rabisco-vg.anda { left: 52%; transform: scaleX(-1); animation: vg-passo 0.28s ease-in-out infinite alternate; }
+@keyframes vg-passo { from { translate: 0 0; } to { translate: 0 -10px; } }
+.amigo {
+  position: absolute; z-index: 3; right: 7%; bottom: 8%; display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.amigo .cara { font-size: clamp(40px, 9vmin, 84px); line-height: 1; filter: drop-shadow(0 3px 0 rgba(0,0,0,0.2)); }
+.amigo .nome { background: #fff; border: 3px solid var(--tinta); border-radius: 999px; padding: 0 10px 2px; font-weight: 800; font-size: clamp(13px, 1.8vw, 18px); white-space: nowrap; }
+.amigo.feliz .cara { animation: vg-pula 0.5s ease 2; }
+@keyframes vg-pula { 50% { transform: translateY(-16px) scale(1.1); } }
+.presente {
+  position: absolute; z-index: 5; left: 26%; bottom: 7%; font-size: clamp(26px, 5vmin, 44px); line-height: 1;
+  transition: left 1.1s ease-in-out, bottom 0.4s, opacity 0.4s;
+}
+.rabisco-vg.anda ~ .presente { left: 66%; }
+.presente.entregue { left: 82% !important; bottom: 30%; opacity: 0; transform: scale(1.4); }
+.item-grande {
+  position: absolute; z-index: 5; left: 50%; top: 16%; translate: -50% 0;
+  font-size: clamp(54px, 13vmin, 120px); line-height: 1; padding: 10px 16px;
+  background: #fff; border: 5px solid var(--tinta); border-radius: 50%; box-shadow: 0 6px 0 var(--tinta);
+  animation: vg-surge 0.5s ease backwards;
+}
+.item-grande[hidden] { display: none; }
+.trilha { position: absolute; z-index: 7; top: 16px; left: 50%; translate: -50% 0; display: flex; gap: 6px; background: rgba(255,255,255,0.9); border: 3px solid var(--tinta); border-radius: 999px; padding: 4px 10px; }
+.trilha .ponto { width: 18px; height: 18px; border-radius: 50%; background: #e4e4e4; border: 3px solid var(--tinta); position: relative; }
+.trilha .ponto.feito { background: var(--verde); }
+.trilha .ponto.feito::after { content: "🚩"; position: absolute; left: 4px; bottom: 6px; font-size: 16px; }
+.trilha .ponto.agora { background: var(--amarelo); animation: vg-pisca 0.9s ease-in-out infinite alternate; }
+@keyframes vg-pisca { to { transform: scale(1.25); } }
+.logo-jogo { position: absolute; z-index: 7; right: 14px; top: 12px; width: clamp(60px, 9vmin, 96px); background: rgba(255,255,255,0.92); border-radius: 12px; padding: 3px 6px; }
+.item-grande:not([hidden]) ~ .trilha { top: 16px; }
+
+/* ---------- Painel de opções */
+.painel { flex: 1 1 50%; min-width: 0; min-height: 0; display: grid; place-items: center; }
+.grade-vg { justify-content: center; align-content: center; }
+.op {
+  position: relative; width: var(--lado); aspect-ratio: 0.92; padding: 4px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  background: #fff; border: 5px solid var(--tinta); border-radius: 26px; box-shadow: 0 6px 0 var(--tinta);
+  transition: transform 0.15s;
+}
+.op .emoji { font-size: calc(var(--lado) * 0.46); line-height: 1.05; }
+.op .nome { font-weight: 800; font-size: clamp(14px, calc(var(--lado) * 0.13), 26px); line-height: 1.1; }
+.op:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--tinta); }
+.op.certo { background: var(--amarelo); animation: vg-certo 0.6s ease; }
+.op.feito { background: #d9f7e9; opacity: 0.85; cursor: default; }
+.op .numero { position: absolute; top: -12px; right: -10px; background: var(--verde); color: #fff; -webkit-text-stroke: 1px var(--tinta); border: 3px solid var(--tinta); border-radius: 999px; padding: 0 8px 2px; font-weight: 800; font-size: 20px; }
+.balanca { animation: vg-nao 0.45s ease; }
+@keyframes vg-nao { 25% { transform: translateX(-9px) rotate(-6deg); } 75% { transform: translateX(9px) rotate(6deg); } }
+@keyframes vg-certo { 40% { transform: scale(1.14) rotate(-5deg); } }
+
+/* mapa do Brasil */
+.mapa-brasil { height: 100%; width: 100%; max-height: 100%; overflow: visible; }
+.mapa-brasil .mar-mapa { fill: #bfe8ff; stroke: var(--tinta); stroke-width: 4; }
+.mapa-brasil .regiao { stroke: var(--tinta); stroke-width: 4; stroke-linejoin: round; cursor: pointer; transition: filter 0.15s; outline: none; }
+.mapa-brasil .regiao:hover, .mapa-brasil .regiao.controle-foco, .mapa-brasil .regiao:focus { filter: brightness(1.15) drop-shadow(0 0 6px #fff); stroke-width: 6; }
+.mapa-brasil .regiao.certo { filter: brightness(1.25) drop-shadow(0 0 10px #fff); }
+.mapa-brasil .regiao.balanca { animation: vg-pisca-erro 0.45s ease; }
+@keyframes vg-pisca-erro { 50% { opacity: 0.4; } }
+.mapa-brasil .rotulo { font: 800 17px var(--texto); fill: var(--tinta); stroke: #fff; stroke-width: 5px; paint-order: stroke; text-anchor: middle; pointer-events: none; }
+.mapa-brasil .enfeite { font-size: 26px; text-anchor: middle; pointer-events: none; }
+
+/* rosa dos ventos */
+.rosa { position: relative; width: min(100%, 100cqh, 520px); aspect-ratio: 1; }
+.painel-bussola { container-type: size; width: 100%; height: 100%; }
+.rosa::before { content: ""; position: absolute; inset: 14%; border-radius: 50%; background: #fff7dc; border: 5px solid var(--tinta); box-shadow: 0 6px 0 var(--tinta); }
+.estrela-rosa { position: absolute; inset: 22%; background: var(--laranja); border: 0; clip-path: polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%); }
+.miolo { position: absolute; left: 50%; top: 50%; translate: -50% -50%; font-size: clamp(30px, 8cqh, 60px); }
+.cardeal {
+  position: absolute; width: 30%; aspect-ratio: 1; translate: -50% -50%; cursor: pointer; padding: 2px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: #fff; border: 5px solid var(--tinta); border-radius: 50%; box-shadow: 0 6px 0 var(--tinta);
+}
+.cardeal .seta { font-size: clamp(26px, 8cqh, 60px); line-height: 1; }
+.cardeal .nome { font-weight: 800; font-size: clamp(13px, 3.4cqh, 24px); white-space: nowrap; }
+.c-norte { left: 50%; top: 15%; }
+.c-sul { left: 50%; top: 85%; }
+.c-leste { left: 85%; top: 50%; }
+.c-oeste { left: 15%; top: 50%; }
+.cardeal.certo { background: var(--amarelo); }
+
+.vg-criacao { margin: 4px 0 0; font-weight: 800; font-size: clamp(16px, 2.4vw, 22px); color: var(--tinta); }
+
+/* ---------- Celular em pé: postal em cima, opções embaixo */
+@media (orientation: portrait) {
+  .meio { flex-direction: column; gap: 10px; }
+  .postal { flex: 0 0 34%; }
+  .painel { flex: 1 1 0; }
+  .pedido { padding: 4px 14px 6px; font-size: clamp(17px, 4.8vw, 26px); border-width: 4px; }
+  .rabisco-vg { height: 64%; }
+  .presente { left: 24%; }
+  .item-grande { top: 22%; font-size: clamp(40px, 11vmin, 80px); padding: 6px 10px; border-width: 4px; }
+  .trilha { top: 10px; padding: 2px 8px; }
+  .trilha .ponto { width: 14px; height: 14px; border-width: 2px; }
+  .logo-jogo { width: 54px; top: 8px; right: 8px; }
+  .amigo .nome { font-size: 12px; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .pedido { font-size: 18px; padding: 2px 14px 4px; border-width: 4px; }
+  .cena-vg { gap: 6px; }
+}

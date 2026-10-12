@@ -11,7 +11,8 @@
 //   jogo.placar("⭐ 3");  jogo.aviso("Muito bem!", "bom");  jogo.vencer({ estrelas: 3, texto: "Você achou todos!" });
 
 import { sons, musica } from "./sons.js";
-import { falar, preCarregarFalas } from "./voz.js";
+import { falar, preCarregarFalas, saudar, parabenizar } from "./voz.js";
+import "./familia.js"; // window.Familia: nome e foto da criança para a voz e os companheiros
 import { criarPausa } from "./pausa.js";
 import { ligarControle, navegarComTeclado, moverFoco } from "./controle.js";
 import { prepararCelular } from "./celular.js";
@@ -118,7 +119,10 @@ export function criarCasca({
     placar.textContent = "";
     if (musicaFundo) musica.tocar(musicaFundo);
     aoComecar(n);
+    // a narradora dá "oi" pelo nome da criança uma vez por visita (gancho único para os 31 jogos)
+    if (!saudou) { saudou = true; setTimeout(() => saudar({ gravada: !falas.titulo }), 600); }
   }
+  let saudou = false;
   function esconderVitoria() { vitoria.classList.add("escondido"); }
   function irParaAbertura() {
     estado = "abertura";
@@ -173,6 +177,8 @@ export function criarCasca({
       sons.vitoria();
       confete();
       if (fala) setTimeout(() => falar(fala), 400);
+      // "Parabéns, {nome}!" pela narradora: com nome, espera o MP3 da vitória acabar; sem nome, só toca o MP3 neutro se o jogo não tiver fala própria
+      setTimeout(() => parabenizar({ gravada: !fala }), 450);
       (btnProximo.hidden ? btnDeNovo : btnProximo).focus({ preventScroll: true });
     }, 700);
   }

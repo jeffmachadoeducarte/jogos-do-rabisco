@@ -2,3 +2,5 @@
 referencias/
 .DS_Store
 __pycache__/
+# rascunhos, fotos e relatórios das sessões do Claude
+.claude/

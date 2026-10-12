@@ -54,8 +54,83 @@ falas["nivel-3"] = "Nível três! Palavras compostas, feitas de duas palavras ju
 falas["sala-secreta"] = "Uau! Uma sala secreta!"
 falas["nivel-completo"] = "Parabéns! Você completou o nível!"
 # portal (painel de entrada)
-falas["portal-oi"] = "Oi! Eu sou o Rabisco! Escolha a sua idade e vamos brincar!"
+# A voz Francisca é a narradora/anfitriã dos jogos (não "é" o Rabisco). Decisão do Jefferson em 11/10/2026.
+falas["portal-oi"] = "Bem-vindos aos Jogos do Rabisco! Escolha a sua idade e vamos brincar?"
 falas["portal-idade"] = "Escolha um jogo!"
+# Saudações e parabéns da narradora SEM o nome da criança (quando o nome não está no banco de nomes).
+# Neutras de gênero; uma em cada grupo tem um toque leve de fé e gratidão.
+falas["saudacao-1"] = "Que bom ter você aqui! A aventura de hoje já vai começar!"
+falas["saudacao-2"] = "Oi! Vamos para mais uma aventura?"
+falas["saudacao-3"] = "Que alegria! Deus abençoe a sua aventura de hoje!"
+falas["parabens-1"] = "Parabéns! Você mandou muito bem!"
+falas["parabens-2"] = "Muito bem! Que orgulho de você!"
+falas["parabens-3"] = "Parabéns! Que presente lindo Deus nos deu: aprender brincando!"
+# Frases COM o nome, em partes emendáveis (src/motor/voz.js toca pre + nome + pos sem intervalo, via Web Audio).
+# O nome vem sempre no fim da primeira parte ("Parabéns, Alice!"), que é onde a emenda soa natural.
+# Nada de voz do navegador: se o nome não estiver em assets/voz/nomes, vale a frase neutra acima.
+falas["sau-pre-1"] = "Oi! Que bom ter você aqui,"
+falas["sau-pre-2"] = "Que alegria ver você,"
+falas["sau-pre-3"] = "Deus abençoe a sua aventura de hoje,"
+falas["sau-pos-1"] = "A aventura de hoje já vai começar!"
+falas["sau-pos-2"] = "Vamos para mais uma aventura?"
+falas["sau-pos-pronta"] = "Está pronta para a aventura?"
+falas["sau-pos-pronto"] = "Está pronto para a aventura?"
+falas["par-pre-1"] = "Parabéns,"
+falas["par-pre-2"] = "Muito bem,"
+falas["par-pre-3"] = "Isso aí,"
+falas["par-pos-1"] = "Você mandou muito bem!"
+falas["par-pos-2"] = "Que orgulho de você!"
+falas["par-pos-3"] = "Deus abençoe a sua aventura!"
+falas["par-pos-4"] = "Que presente lindo Deus nos deu: aprender brincando!"
+falas["cor-pre"] = "Boa corrida,"
+falas["cor-pos"] = "Vamos tentar de novo?"
+falas["lug-pre"] = "Olha só,"
+falas["lug-pos"] = "Chegamos num lugar novo!"
+
+# Banco de nomes (assets/voz/nomes/<nome-sem-acento>.mp3), falados como chamada: "Alice!".
+# Só gera com --nomes (são ~300 arquivos). Para acrescentar um nome: coloque aqui e rode com --nomes.
+# O jogo baixa só o MP3 do nome da criança cadastrada (src/motor/voz.js, audioDoNome).
+NOMES = """
+Miguel Arthur Gael Théo Heitor Ravi Davi Bernardo Noah Gabriel Samuel Pedro Anthony Isaac Benício Benjamin Matteo
+Lucas Joaquim Nicolas Lorenzo Rafael Henrique Murilo Levi Guilherme Vicente Felipe Bryan Matheus Daniel Enzo Caleb
+Pietro Antônio Ryan Leonardo Bento Eduardo Thomas João Vitor Yuri Caio Breno Luan Otávio Augusto Cauã Kauê Emanuel
+Ícaro Nathan Thiago Diego Luiz Luís André Vinícius Francisco Bruno Tomás Gustavo Erick Victor Danilo Fernando Igor
+Alexandre Josué Elias Jonas Rodrigo Mateus Ruan Davi Lucca Apollo Zion Asafe Oliver Liam Noé Raul Hugo Léo Ravi Kaique
+Kaio Kauan Ícaro Santiago Ângelo Iago Ian Isaque Jorge Júlio Marcelo Marcos Mário Renan Ricardo Saulo Sérgio Vitor
+Wesley Yago Filipe Fábio Carlos Cristiano Fabrício Giovanni Giovani Heitor Heloís Jean José Juan Kevin Lúcio Luiz Nicolas
+Otto Paulo Pablo Ronaldo Rubens Téo Theo Tiago Vinicius William Nathanael Natan Davi Luca Abner Arthur Benjamim Benicio
+Helena Alice Laura Maria Sophia Sofia Valentina Heloísa Cecília Júlia Julia Isabella Isabela Manuela Lívia Maitê Lorena
+Ana Luísa Ayla Eloá Antonella Elisa Beatriz Maya Maya Isis Mariana Aurora Esther Ester Melissa Yasmin Olívia Lara Agatha
+Ágatha Liz Clara Emanuelly Emanuelle Marina Catarina Rafaela Giovanna Giovana Luna Alícia Alicia Isadora Pietra Nicole
+Bianca Gabriela Larissa Letícia Vitória Ana Clara Ana Júlia Ana Laura Ana Beatriz Ana Luiza Maria Clara Maria Eduarda
+Maria Luísa Maria Júlia Maria Cecília Maria Alice Maria Helena Maria Fernanda Maria Vitória Maria Flor João Pedro
+João Miguel João Lucas João Gabriel João Vitor João Guilherme Pedro Henrique Pedro Lucas Luiz Miguel Luiz Felipe
+Luiz Henrique Carlos Eduardo Davi Lucca Davi Luiz Enzo Gabriel Arthur Miguel Lívia Stella Stella Mirella Melina Eva
+Amanda Alana Bruna Camila Carolina Débora Duda Eduarda Emily Fernanda Flávia Gabrielly Hadassa Hanna Jade Joana
+Josefina Kyara Kiara Lavínia Leticia Luana Luiza Luísa Louise Malu Marcela Maria Milena Mirela Natália Nina Paloma
+Paula Rebeca Renata Sara Sarah Serena Tainá Talita Taís Thaís Vanessa Yara Zoe Zoé Ísis Íris Iris Aline Alessandra
+Andressa Bela Brenda Caroline Cléo Dani Elena Ellen Ellie Flora Francisca Gabi Heloise Ingrid Iara Jéssica Júlia
+Lala Lia Lola Lorena Lua Mel Mia Nana Nanda Nicolly Pérola Rafa Sophie Sofie Tati Vivi Vitória Antonela Antônia
+Benedita Celina Dalila Dandara Domitila Dora Eloah Gabriele Gaia Glória Jasmine Judite Kaylane Kethlyn Lais Laís
+Lilian Lis Luara Luma Mabel Madalena Maísa Maisa Manu Maria Isis Melinda Micaela Nair Noemi Noêmi Pilar Rita Rute
+Ruth Samara Samira Tereza Teresa Valentine Vera Yasmim Alberto Adriel Alan Alex Allan Anderson Ângelo Arthur Gabriel
+Benjamin Bernardo Bruno Caíque Cauê Cauan Cristian Davi Miguel Dominic Edson Eliseu Enrico Enzo Miguel Estevão Ezequiel
+Gael Henrique Gil Heitor Miguel Henri Henry Ivan Jairo Joel Jonatas Jonathan Julian Kalel Kael Kalebe Lauro Lázaro
+Leandro Lívio Lorenzo Miguel Luan Miguel Marcus Martin Martim Maurício Max Moisés Nicholas Nicolau Nelson Pedro Miguel
+Rafael Miguel Rael Rian Roberto Rômulo Ruben Rui Simão Sidney Tales Tadeu Teodoro Timóteo Túlio Valentim Vicente Miguel
+Vítor Vitor Hugo Wagner Walter Wilson Zaqueu Zeca Zé Dudu Cacá Bia Kiko Lulu Nico Rafinha Tetê Tico Totó
+""".split("\n")
+import re as _re
+_lista = []
+for _linha in NOMES:
+    _linha = _linha.strip()
+    if not _linha: continue
+    # nomes compostos (Maria Clara, João Pedro...) ficam juntos; o resto é um nome por palavra
+    _partes = _re.findall(r"(?:Maria|Ana|João|Pedro|Luiz|Carlos|Davi|Enzo|Arthur|Heitor|Lívia|Gael|Rafael|Vitor|Vicente|Lorenzo|Luan) [A-ZÁÂÃÉÊÍÓÔÚÇ][a-záâãéêíóôúç]+|[A-ZÁÂÃÉÊÍÓÔÚÇ][a-záâãéêíóôúç]+", _linha)
+    _lista += _partes
+NOMES = sorted(set(_lista))
+nomes_voz = {f"nomes/{slug(n).lower().replace(' ', '-')}": f"{n}!" for n in NOMES}
+GERAR_NOMES = "--nomes" in args
 falas["dica-letra"] = "Ainda falta uma letra. Volte para procurar!"
 
 # --- Rabisco Kart ---
@@ -362,12 +437,15 @@ async def main():
                     await asyncio.sleep(1)
 
     tarefas = [uma(k, t) for k, t in falas.items()]
+    if GERAR_NOMES:
+        os.makedirs(os.path.join(SAIDA, "nomes"), exist_ok=True)
+        tarefas += [uma(k, t) for k, t in nomes_voz.items()]
     tarefas += [uma(k, t, n) for k, (t, n) in soletrar.items()]
     tarefas += [uma(k, t, voz=VOZ_EN) for k, t in falas_en.items()]
     await asyncio.gather(*tarefas)
     with open(os.path.join(SAIDA, "soletrar.json"), "w") as f:
         json.dump(tempos, f, indent=1, sort_keys=True)
-    print(f"{len(falas) + len(soletrar)} falas em {os.path.abspath(SAIDA)} com {VOZ}")
+    print(f"{len(falas) + len(soletrar)} falas{' + ' + str(len(nomes_voz)) + ' nomes' if GERAR_NOMES else ''} em {os.path.abspath(SAIDA)} com {VOZ}")
 
 
 asyncio.run(main())

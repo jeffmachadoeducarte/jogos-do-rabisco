@@ -165,8 +165,20 @@ body {
   .boas-vindas { top: 84px; }
 }
 /* celular deitado: idades numa fileira baixa, título pequeno, painel por cima de tudo */
+@media (max-width: 560px) {
+  /* cabeçalho compacto: logo, Família, Instalar e Só inglês cabem numa linha só */
+  .topo { gap: 6px; left: 10px; right: 10px; }
+  .topo .logo { height: 40px; padding: 4px 8px; border-radius: 12px; }
+  .familia-botao-portal span:not(.roda) { display: none; }
+  .familia-botao-portal { padding: 3px; }
+  .familia-botao-portal .roda { width: 30px; height: 30px; }
+  .instalar { font-size: 13px; padding: 5px 9px; }
+  .filtro-ingles { font-size: 13px; padding: 5px 9px; gap: 5px; white-space: nowrap; }
+  .filtro-ingles input { width: 16px; height: 16px; }
+}
 @media (max-height: 520px) and (orientation: landscape) {
   .topo .logo { height: 40px; padding: 4px 10px; }
+  .familia-botao-portal { font-size: 14px; padding: 3px 10px 3px 4px; }
   .filtro-ingles { padding: 3px 12px; font-size: 14px; }
   .som { top: calc(env(safe-area-inset-top, 0px) + 60px); width: 42px; height: 42px; font-size: 18px; }
   .boas-vindas { top: 64px; }

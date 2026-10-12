@@ -5,7 +5,8 @@ import { faixas, estilos } from "./catalogo.js";
 import { THREE, COR3D, toon, carregarTextura, aleatorio } from "./motor3d/toon.js";
 import { escolaEducarte3D, arvore3D, nuvem3D, morro3D, onibus3D, lapis3D } from "./motor3d/objetos.js";
 import { Rabisco3D } from "./motor3d/rabisco3d.js";
-import { falar, preCarregarFalas } from "./motor/voz.js";
+import { falar, preCarregarFalas, saudar } from "./motor/voz.js";
+import { Familia } from "./motor/familia.js";
 import { sons } from "./motor/sons.js";
 import { ligarControle } from "./motor/controle.js";
 import { registrarApp, pedirInstalacao, jaInstalado } from "./motor/instalar.js";
@@ -186,15 +187,37 @@ addEventListener("keydown", (e) => { if (e.key === "Escape") fecharPainel(); });
 soIngles.addEventListener("change", () => { desenharFaixas(); if (faixaAberta) abrirFaixa(faixaAberta); });
 $("som").addEventListener("click", () => { $("som").textContent = sons.alternarMudo() ? "🔇" : "🔊"; });
 
-// O Rabisco dá "oi" no primeiro toque (o navegador só deixa tocar som depois de um toque)
+// A narradora dá "oi" no primeiro toque (o navegador só deixa tocar som depois de um toque):
+// com a criança cadastrada, chama pelo nome; antes do cadastro, boas-vindas neutras gravadas.
 preCarregarFalas(["portal-oi", "portal-idade"]);
 let cumprimentou = false;
 addEventListener("pointerdown", (e) => {
-  if (cumprimentou || e.target.closest("[data-faixa]")) return;
+  if (cumprimentou || e.target.closest("[data-faixa], .familia-tela, #familia")) return;
   cumprimentou = true;
   sons.destravar();
-  falar("portal-oi");
+  if (!saudar({ gravada: false })) falar("portal-oi");
 });
+
+// ------------------------------------------------------------------ Família (cadastro antes do primeiro jogo)
+const btnFamilia = $("familia");
+function desenharFamilia() {
+  const c = Familia.crianca();
+  btnFamilia.innerHTML = `<span class="roda">${c?.foto ? `<img src="${c.foto}" alt="">` : "🧒"}</span><span>${c ? c.nome : "Família"}</span>`;
+  btnFamilia.setAttribute("aria-label", c ? `Família: ${c.nome}. Editar cadastro` : "Cadastrar a família");
+}
+desenharFamilia();
+Familia.aoMudar(desenharFamilia);
+btnFamilia.addEventListener("click", () => Familia.abrirCadastro({ obrigatorio: false, titulo: "Nossa família" }));
+// um jogo só abre depois do cadastro (uma vez por aparelho); o link segue depois de salvar
+$("jogos").addEventListener("click", async (e) => {
+  const a = e.target.closest("a.jogo.pronto");
+  if (!a || Familia.completo() || params.has("semcadastro")) return;
+  e.preventDefault();
+  const salvou = await Familia.abrirCadastro({ obrigatorio: true });
+  if (salvou) { comemorar(); setTimeout(() => { location.href = a.href; }, 350); }
+});
+const params = new URLSearchParams(location.search);
+if (params.has("cadastro")) Familia.abrirCadastro({ obrigatorio: params.get("cadastro") !== "editar" });
 
 // Controle: direcional escolhe a idade ou o jogo, A abre, B volta para as idades
 const controle = ligarControle({

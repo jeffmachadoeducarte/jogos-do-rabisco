@@ -5,7 +5,9 @@
 import { THREE, COR3D, toon, peca, texturaCanvas, aleatorio } from "../../src/motor3d/toon.js";
 import { lapis3D, arvore3D, nuvem3D, morro3D, escola3D, onibus3D, livros3D, kart3D, pilotoLapis, texturaNumero, barreiraGiz } from "../../src/motor3d/objetos.js";
 import { sons, musica, motor } from "../../src/motor/sons.js";
-import { falar, preCarregarFalas } from "../../src/motor/voz.js";
+import { falar, preCarregarFalas, saudar, parabenizar, falarNome } from "../../src/motor/voz.js";
+import "../../src/motor/familia.js"; // window.Familia: nome e foto da criança
+import { criarCompanheiro3D } from "../../src/motor3d/companheiro3d.js";
 import { criarPausa } from "../../src/motor/pausa.js";
 import { ligarControle } from "../../src/motor/controle.js";
 import { prepararCelular } from "../../src/motor/celular.js";
@@ -413,12 +415,20 @@ const karts = [];
 function criarKart({ nome, corKart, piloto, ehJogador, linhaLargada, colunaLargada, img, cores }) {
   const g = kart3D(corKart, ehJogador ? img.texIcone : null, cores);
   const chassi = g.userData.chassi;
-  let rabisco = null;
+  let rabisco = null, companheiro = null;
   if (ehJogador) {
     // Rabisco 3D oficial sentado no banco, mãos no volante
     rabisco = new Rabisco3D({ raiz: RAIZ, altura: ALTURA_RABISCO });
     rabisco.grupo.position.set(0, 1.0 - 2.0 * rabisco.escala, -0.55); // quadril (y 2,0 do modelo) no banco
     chassi.add(rabisco.grupo);
+    // kart de dois lugares: a criança cadastrada vai sentada ao lado, um pouco atrás (sem cadastro, nada muda)
+    companheiro = criarCompanheiro3D({ raiz: RAIZ, altura: ALTURA_RABISCO * 0.84 });
+    if (companheiro) {
+      rabisco.grupo.position.x = -0.42;
+      companheiro.grupo.position.set(0.6, 1.0 - 2.0 * companheiro.escala, -0.95);
+      companheiro.grupo.rotation.y = -0.12;
+      chassi.add(companheiro.grupo);
+    }
   } else {
     const p = pilotoLapis(piloto);
     p.position.set(0, 0.9, -0.7);
@@ -426,7 +436,7 @@ function criarKart({ nome, corKart, piloto, ehJogador, linhaLargada, colunaLarga
     chassi.add(p);
   }
   cena.add(g);
-  const kart = { nome, g, chassi, rabisco, ehJogador, cor: piloto ?? corKart, linhaLargada, colunaLargada };
+  const kart = { nome, g, chassi, rabisco, companheiro, ehJogador, cor: piloto ?? corKart, linhaLargada, colunaLargada };
   naLargada(kart);
   karts.push(kart);
   return kart;
@@ -618,6 +628,7 @@ function comecar() {
   $("abertura").classList.add("escondido");
   $("hud").classList.remove("escondido");
   motor.ligar();
+  if (!saudou) { saudou = true; saudar({ gravada: false }); } // a narradora chama a criança pelo nome (só com cadastro)
   const passos = [["3", "contagem-3"], ["2", "contagem-2"], ["1", "contagem-1"], ["JÁ!", "contagem-ja"]];
   passos.forEach(([txt, fala], n) => setTimeout(() => {
     const c = $("contagem");
@@ -809,6 +820,14 @@ function animarKart(k, dt, t) {
       vol.rotation.set(-1.05, 0, k.virar * 0.6);
     }
   }
+  if (k.companheiro) {
+    // a criança segura na beirada do kart; no turbo e na chegada, levanta os braços; nas curvas, inclina junto
+    const c = k.companheiro, festa = estado === "fim" || k.turbo > 0;
+    c.atualizar(dt, { modo: festa ? "comemorarSentado" : "dirigir", virar: k.virar });
+    if (!festa) c.bracos(-0.35, 0.55, -1.25);
+    c.rabisco.tronco.rotation.z += -k.virar * 0.12;
+    c.rabisco.tronco.rotation.x += k.turbo > 0 ? -0.12 : 0;
+  }
   // fogo do turbo (e o rabisco na pista, se for o Rabisco)
   if (k.turbo > 0 && k.ehJogador) riscar(k, dt);
   if (k.turbo > 0) {
@@ -833,13 +852,18 @@ function animarKart(k, dt, t) {
 // ------------------------------------------------------------------ Câmera
 const camPos = new THREE.Vector3();
 const camAlvo = new THREE.Vector3();
-let anguloOrbita = 0;
+let anguloOrbita = 0, anguloTeste = null;
 
 function atualizarCamera(dt, t) {
   const k = jogador;
   const frente = new THREE.Vector3(Math.sin(k.ang), 0, Math.cos(k.ang));
   let desejoPos, desejoAlvo;
-  if (estado === "abertura" || estado === "fim") {
+  if (anguloTeste != null) {
+    // ?teste: `teste.angulo = rad` gira a câmera em volta do kart (fotos de vários lados)
+    const a2 = k.ang + anguloTeste;
+    desejoPos = k.pos.clone().add(new THREE.Vector3(Math.sin(a2) * 7, 2.6, Math.cos(a2) * 7));
+    desejoAlvo = k.pos.clone().setY(1.8);
+  } else if (estado === "abertura" || estado === "fim") {
     // de frente, para mostrar o rosto do Rabisco e a logo no peito
     anguloOrbita += dt * 0.3;
     const a2 = k.ang + Math.sin(anguloOrbita) * (estado === "fim" ? 0.35 : 0.6);
@@ -855,7 +879,7 @@ function atualizarCamera(dt, t) {
     desejoPos = k.pos.clone().addScaledVector(frente, -7).setY(3.3);
     desejoAlvo = k.pos.clone().addScaledVector(frente, 6).setY(1.9);
   }
-  const s = estado === "contagem" ? 2.2 : estado === "corrida" ? 12 : 4;
+  const s = anguloTeste != null ? 30 : estado === "contagem" ? 2.2 : estado === "corrida" ? 12 : 4;
   camPos.lerp(desejoPos, 1 - Math.exp(-dt * s));
   camAlvo.lerp(desejoAlvo, 1 - Math.exp(-dt * s * 1.4));
   camera.position.copy(camPos);
@@ -926,6 +950,7 @@ function atualizarHud(dt) {
 }
 
 // ------------------------------------------------------------------ Fim
+let saudou = false;
 function terminar() {
   estado = "fim";
   const lugar = lugarDoJogador();
@@ -941,6 +966,8 @@ function terminar() {
     $("res-acertos").textContent = MODO.amigos ? `Você levou ${amigos} amigos para a escola!` : `Você acertou ${acertos} de ${perguntasFeitas} ${MODO.unidade}!`;
     $("resultado").classList.remove("escondido");
     falar(`chegada-${lugar}`);
+    // narradora com o nome da criança, depois da fala da chegada (fila da voz)
+    if (lugar <= 3) parabenizar({ gravada: false }); else falarNome("cor-pre", "cor-pos");
   }, 900);
 }
 
@@ -1017,7 +1044,7 @@ async function iniciar() {
   if (params.has("auto")) comecar();
   if (params.has("fim")) { comecar(); setTimeout(() => { jogador.volta = VOLTAS; jogador.terminou = true; terminar(); }, 5000); }
   if (params.has("porticos")) { const k = jogador; const i = idx(POSICOES_PORTICO[Number(params.get("porticos"))] - 60); k.pos.copy(centro[i]); k.amostra = i; k.ang = anguloDe(tangente[i]); }
-  if (params.has("teste")) window.teste = { get jogador() { return jogador; }, karts, porticos, get estado() { return estado; }, renderer };
+  if (params.has("teste")) window.teste = { get jogador() { return jogador; }, karts, porticos, get estado() { return estado; }, renderer, set angulo(a) { anguloTeste = a; } };
 }
 
 function createGrid(img) {

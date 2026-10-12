@@ -138,16 +138,18 @@ body.touch .toque { display: flex; }
   100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0; }
 }
 
+/* botão de som: canto direito, logo abaixo do mapa (fora do meio da tela, longe do kart e dos botões de toque) */
 #som {
-  position: fixed; bottom: 16px; right: 50%;
-  transform: translateX(50%);
+  position: fixed; top: calc(env(safe-area-inset-top, 0px) + clamp(120px, 16vw, 200px) + 32px); right: 20px;
   z-index: 20;
-  font-size: 30px;
-  background: rgba(255, 255, 255, 0.7);
+  font-size: 24px;
+  background: rgba(255, 255, 255, 0.85);
   border: 4px solid var(--tinta);
   border-radius: 999px;
-  width: 62px; height: 62px;
+  width: 54px; height: 54px;
+  box-shadow: 0 4px 0 var(--tinta);
 }
+body:has(#amigos:not([hidden])) #som { top: calc(env(safe-area-inset-top, 0px) + clamp(120px, 16vw, 200px) + 96px); }
 
 /* ---------- Telas ---------- */
 .tela {
@@ -254,7 +256,7 @@ body.touch .so-toque { display: inline; }
 body.com-controle .so-teclado { display: inline; }
 body.com-controle .so-toque { display: none; }
 /* nas telas de menu o som vai para o canto, longe do botão principal */
-body:has(.tela:not(.escondido)) #som { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 12px); right: 12px; transform: none; }
+body:has(.tela:not(.escondido)) #som { top: calc(env(safe-area-inset-top, 0px) + 12px); right: 12px; }
 @media (max-height: 520px) {
   #abertura .logo { width: clamp(90px, 14vh, 130px); margin-bottom: 0; }
   #abertura h1 { font-size: clamp(40px, 15vh, 78px); }

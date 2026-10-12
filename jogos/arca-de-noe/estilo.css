@@ -16,3 +16,8 @@
 @keyframes an-boia { 30% { transform: rotate(-4deg); } 70% { transform: rotate(3deg); } }
 .arca.arco-iris::after { content: "🌈"; position: absolute; left: 50%; top: -30%; font-size: 120px; transform: translateX(-50%); animation: casca-estrela 0.8s ease backwards; }
 @media (orientation: portrait) { .cena-arca { flex-direction: column; } .arca { width: 60vw; height: 24vh; } }
+/* feedback: faíscas no par certo, ondas sob a arca e brilho no animal escolhido */
+.faisca { position: fixed; z-index: 60; width: 12px; height: 12px; margin: -6px; border-radius: 50%; pointer-events: none; animation: an-faisca 0.55s ease-out forwards; }
+@keyframes an-faisca { to { transform: translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; } }
+.animal.escolhido { box-shadow: 0 6px 0 var(--tinta), 0 0 0 8px rgba(255, 210, 63, 0.55); }
+.arca::before { content: ""; position: absolute; left: -12%; right: -12%; bottom: -6%; height: 16%; background: radial-gradient(circle at 12px 0, transparent 11px, #2fa8ff 12px) 0 0 / 24px 14px repeat-x; filter: drop-shadow(0 2px 0 #0a6fb8); }

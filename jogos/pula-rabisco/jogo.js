@@ -21,6 +21,7 @@ const FASES = [
 const META = 8;
 let F = FASES[0];
 let estrelas = 0, ocupado = false, rabisco = null, estrela = null, xRabisco = 50;
+let cena = null, camadaNuvens = null, camadaMorros = null, bufferAte = 0; // bufferAte: toque dado com o Rabisco ocupado ainda vale por 350 ms
 
 const jogo = criarCasca({
   titulo: "Pula, Rabisco!",
@@ -40,16 +41,38 @@ const jogo = criarCasca({
 function montar(n) {
   F = FASES[n - 1];
   estrelas = 0; ocupado = false; xRabisco = 50;
-  const cena = el("div", { class: "cena-pulo", style: `--ceu1:${F.ceu[0]}; --ceu2:${F.ceu[1]}; --chao:${F.chao}` });
+  cena = el("div", { class: "cena-pulo", style: `--ceu1:${F.ceu[0]}; --ceu2:${F.ceu[1]}; --chao:${F.chao}` });
   rabisco = el("img", { class: "rabisco-pulo", src: "../../assets/rabisco/poses/frente.png", alt: "Rabisco" });
   estrela = el("div", { class: "estrela-alvo", texto: F.pega });
-  cena.append(el("div", { class: "chao-blocos" }), rabisco, estrela);
+  // parallax: nuvens (andam pouco) e morros (andam mais) deslizam ao contrário do Rabisco
+  camadaNuvens = el("div", { class: "camada nuvens", html: "<i>☁️</i><i>☁️</i><i>☁️</i>" });
+  camadaMorros = el("div", { class: "camada morros", html: "<i></i><i></i><i></i>" });
+  cena.append(camadaNuvens, camadaMorros, el("div", { class: "chao-blocos" }), rabisco, estrela);
   jogo.palco.append(cena);
+  bufferAte = 0;
   posicionar();
   novaEstrela();
   jogo.placar(`${F.pega} 0/${META}`);
+  jogo.aviso(`Pegue ${META} ${F.pega}!`, "bom", 1800); // objetivo da fase, grande e curto
 }
-const posicionar = () => { rabisco.style.left = `${xRabisco}%`; };
+const posicionar = () => {
+  rabisco.style.left = `${xRabisco}%`;
+  const d = xRabisco - 50;
+  camadaNuvens.style.transform = `translate3d(${-d * 0.25}vw,0,0)`;
+  camadaMorros.style.transform = `translate3d(${-d * 0.6}vw,0,0)`;
+};
+// confete + "+1" onde a estrela foi pega (partículas leves, somem sozinhas)
+function festa() {
+  const cores = ["#ffd23f", "#ff5fa2", "#00b5f0", "#7be04a", "#fff"];
+  const x = Number(estrela.dataset.x);
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2, r = 9 + Math.random() * 9;
+    const c = el("i", { class: "confete", style: `left:${x}%; background:${cores[i % cores.length]}; --dx:${Math.cos(a) * r}vmin; --dy:${Math.sin(a) * r}vmin` });
+    cena.append(c); setTimeout(() => c.remove(), 700);
+  }
+  const mais = el("b", { class: "mais-um", style: `left:${x}%`, texto: "+1" });
+  cena.append(mais); setTimeout(() => mais.remove(), 900);
+}
 function novaEstrela() {
   const x = 15 + Math.random() * 70;
   estrela.style.left = `${x}%`;
@@ -61,8 +84,9 @@ addEventListener("pointerdown", (e) => { if (!e.target.closest("button")) pular(
 addEventListener("keydown", (e) => { if (!e.repeat && !["p", "P", "Escape"].includes(e.key)) pular(); });
 
 function pular() {
-  if (jogo.estado !== "jogando" || jogo.pausado || ocupado) return;
-  ocupado = true;
+  if (jogo.estado !== "jogando" || jogo.pausado) return;
+  if (ocupado) { bufferAte = performance.now() + 350; return; } // buffer: o toque cedo demais não se perde
+  ocupado = true; bufferAte = 0;
   // anda até embaixo da estrela e pula
   xRabisco = Number(estrela.dataset.x);
   rabisco.classList.add("andando");
@@ -71,20 +95,21 @@ function pular() {
     rabisco.classList.remove("andando");
     rabisco.classList.add("pulando");
     sons.pulo();
-  }, 500);
+  }, 380);
   setTimeout(() => {
     estrela.classList.remove("aparece"); estrela.classList.add("pega");
+    festa();
     sons.moeda();
     estrelas++;
     jogo.placar(`${F.pega} ${estrelas}/${META}`);
     if (estrelas % 3 === 0) falar("pr-eba");
-  }, 780);
+  }, 700);
   setTimeout(() => {
     rabisco.classList.remove("pulando");
     ocupado = false;
     if (estrelas >= META) jogo.vencer({ titulo: "Eba!", estrelas: null, texto: `${F.nome}: o Rabisco pegou tudo!`, proximo: true });
-    else novaEstrela();
-  }, 1250);
+    else { novaEstrela(); if (performance.now() < bufferAte) pular(); }
+  }, 1130);
 }
 
 if (new URLSearchParams(location.search).has("teste")) window.teste = { jogo, pular, get estrelas() { return estrelas; } };

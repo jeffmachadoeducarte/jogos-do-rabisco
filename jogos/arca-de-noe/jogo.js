@@ -42,6 +42,16 @@ function montar(n) {
   falar("an-inicio");
 }
 
+// faíscas ao redor do animal quando o par é certo (partículas leves que somem sozinhas)
+function brilhar(b) {
+  const r = b.getBoundingClientRect(), cores = ["#ffd23f", "#ff5fa2", "#00b5f0", "#fff"];
+  for (let i = 0; i < 8; i++) {
+    const ang = (i / 8) * Math.PI * 2, d = r.width * 0.9;
+    const f = el("i", { class: "faisca", style: `left:${r.left + r.width / 2}px; top:${r.top + r.height / 2}px; background:${cores[i % 4]}; --dx:${Math.cos(ang) * d}px; --dy:${Math.sin(ang) * d}px` });
+    document.body.append(f); setTimeout(() => f.remove(), 600);
+  }
+}
+
 function tocar(b) {
   if (jogo.pausado || b.classList.contains("embarcou")) return;
   falar(`an-${b.dataset.id}`);
@@ -59,6 +69,7 @@ function tocar(b) {
   // o casal anda até a arca
   for (const x of [a, b]) { x.classList.add("embarcou"); x.disabled = true; }
   sons.moeda();
+  brilhar(a); brilhar(b);
   dentro++;
   jogo.placar(`🚢 ${dentro}/${total}`);
   setTimeout(() => { arca.querySelector(".dentro").append(el("span", { texto: a.textContent + a.textContent })); arca.classList.remove("balanca"); void arca.offsetWidth; arca.classList.add("balanca"); }, 600);
