@@ -13,7 +13,7 @@ export const VERSAO_APP = "2026.10.11";
 // Teste sem mexer neste arquivo: abrir o jogo com `?sala=ws://localhost:8090` na URL (vale só para aquela página;
 // o QR leva o mesmo endereço para o celular) ou gravar no aparelho `localStorage.setItem("rabisco.salaTeste", "ws://...")`
 // (apagar com `localStorage.removeItem("rabisco.salaTeste")`). Só aceita endereços ws:// ou wss://.
-export const SALA_JOGOS = "" || salaDeTeste();
+export const SALA_JOGOS = salaDeTeste() || "wss://sala.educarte.qzz.io";
 
 // DETECTOR_ROSTO: módulo opcional (caminho a partir da raiz do site, ex.: "vendor/pico/rosto.mjs") que exporta
 // `detectar(canvas) → Promise<[{ x, y, width, height }]>`, para achar o rosto na foto da criança 100% no aparelho
