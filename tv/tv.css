@@ -1,0 +1,94 @@
+/* Tela da TV: vista de 2 a 3 metros. Letras enormes, alto contraste, nada de toque.
+   Tamanhos em vh/vw para caber igual em 720p, 1080p e 4K (sem rolagem). */
+@font-face { font-family: "Neulis Cursive"; src: url("../assets/fontes/NeulisCursive-Black.otf") format("opentype"); font-weight: 900; font-display: swap; }
+:root {
+  --ciano: #00b5f0; --rosa: #ec2e8c; --laranja: #ff7a00; --amarelo: #ffcc1f; --verde: #1fc08e; --tinta: #151515;
+  --texto: "Baloo 2", ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
+  --u: min(1vw, 1.78vh); /* "unidade da TV": 1% da largura numa tela 16:9 */
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: var(--texto); color: var(--tinta); overflow: hidden; cursor: none;
+  background: radial-gradient(circle at 50% 115%, #7fdcff 0, var(--ciano) 50%, #0089ba 100%);
+  display: flex; flex-direction: column;
+}
+
+/* ------------------------------------------------------------ topo */
+.topo { display: flex; align-items: center; gap: calc(var(--u) * 2); padding: calc(var(--u) * 1.4) calc(var(--u) * 2.4) 0; flex: none; }
+.logo { height: calc(var(--u) * 6); width: auto; background: #fff; border-radius: calc(var(--u) * 1.2); padding: calc(var(--u) * 0.4) calc(var(--u) * 0.8); border: calc(var(--u) * 0.35) solid var(--tinta); box-shadow: 0 calc(var(--u) * 0.5) 0 var(--tinta); }
+.topo h1 {
+  margin: 0; font-family: "Neulis Cursive", var(--texto); font-weight: 900; font-size: calc(var(--u) * 4.6); line-height: 1; color: #fff;
+  text-shadow: calc(var(--u) * 0.3) calc(var(--u) * 0.35) 0 var(--tinta);
+}
+.topo h1 span { color: var(--amarelo); }
+.topo h1 small { font-family: var(--texto); font-weight: 800; font-size: 0.6em; color: #fff; }
+.estado-sala { margin-left: auto; font-weight: 800; font-size: calc(var(--u) * 1.7); background: #fff; border: calc(var(--u) * 0.3) solid var(--tinta); border-radius: 999px; padding: 0 calc(var(--u) * 1.4); }
+.estado-sala:empty { display: none; }
+
+/* ------------------------------------------------------------ grade principal: QR | vagas, e os jogos embaixo */
+main {
+  flex: 1; min-height: 0; display: grid; gap: calc(var(--u) * 1.8); padding: calc(var(--u) * 1.6) calc(var(--u) * 2.4) calc(var(--u) * 2);
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr); grid-template-rows: minmax(0, 1.05fr) minmax(0, 1fr);
+  grid-template-areas: "entrar vagas" "entrar jogos";
+}
+.painel { background: #fff; border: calc(var(--u) * 0.45) solid var(--tinta); border-radius: calc(var(--u) * 2.6); box-shadow: calc(var(--u) * 0.6) calc(var(--u) * 0.7) 0 var(--tinta); padding: calc(var(--u) * 1.2) calc(var(--u) * 1.8); min-height: 0; display: flex; flex-direction: column; }
+.painel h2 { margin: 0 0 calc(var(--u) * 0.4); font-size: calc(var(--u) * 2.5); line-height: 1.1; font-weight: 800; }
+.entrar { grid-area: entrar; align-items: center; justify-content: space-evenly; text-align: center; gap: calc(var(--u) * 0.6); overflow: hidden; }
+.entrar h2 { margin: 0; }
+.vagas { grid-area: vagas; gap: calc(var(--u) * 1); }
+.jogos { grid-area: jogos; }
+
+/* QR grande e o código gigante */
+.qr { width: min(100%, calc(var(--u) * 21)); aspect-ratio: 1; border: calc(var(--u) * 0.45) solid var(--tinta); border-radius: calc(var(--u) * 1.4); overflow: hidden; background: #fff; display: grid; place-items: center; flex: none; }
+.qr svg { display: block; width: 100%; height: 100%; }
+.qr .sem { font-weight: 800; font-size: calc(var(--u) * 1.8); color: #666; padding: calc(var(--u) * 1.5); line-height: 1.25; }
+.codigo { font-weight: 800; font-size: calc(var(--u) * 7.4); letter-spacing: calc(var(--u) * 1.6); line-height: 1; padding-left: calc(var(--u) * 1.6); color: var(--tinta);
+  background: #fff8d6; border: calc(var(--u) * 0.45) solid var(--tinta); border-radius: calc(var(--u) * 1.6); padding: calc(var(--u) * 0.3) calc(var(--u) * 0.6) calc(var(--u) * 0.6) calc(var(--u) * 2.2); }
+.endereco { margin: 0; font-weight: 700; font-size: calc(var(--u) * 1.8); line-height: 1.25; }
+.endereco b { font-size: 1.25em; color: var(--rosa); white-space: nowrap; }
+
+/* vagas: "1 · Rabisco" e "2 · <criança>" com o jeito de cada um entrar */
+.vaga { display: flex; align-items: center; gap: calc(var(--u) * 1.4); border: calc(var(--u) * 0.45) solid var(--cor); border-radius: calc(var(--u) * 2); padding: calc(var(--u) * 0.6) calc(var(--u) * 1.4) calc(var(--u) * 0.6) calc(var(--u) * 0.6); flex: 1; min-height: 0; background: color-mix(in srgb, var(--cor) 9%, #fff); }
+.vaga.livre { border-style: dashed; background: #fafafa; }
+.vaga .rosto { width: calc(var(--u) * 7.5); height: calc(var(--u) * 7.5); flex: none; border-radius: 50%; border: calc(var(--u) * 0.4) solid var(--cor); background: #e9f6fd center/cover no-repeat; display: grid; place-items: center; font-size: calc(var(--u) * 4.4); }
+.vaga .nome { display: block; font-weight: 800; font-size: calc(var(--u) * 3.4); line-height: 1.05; color: var(--tinta); }
+.vaga .como { display: flex; align-items: center; gap: calc(var(--u) * 0.8); font-weight: 800; font-size: calc(var(--u) * 2.2); line-height: 1.15; color: var(--tinta); }
+.vaga .como .ic { font-size: 1.5em; }
+.vaga.livre .como { color: #666; }
+.vaga.caiu .como { color: var(--rosa); }
+.vaga .selo { margin-left: auto; font-size: calc(var(--u) * 4.4); }
+.dica-controle { margin: 0; font-weight: 800; font-size: calc(var(--u) * 2.3); text-align: center; background: var(--amarelo); border: calc(var(--u) * 0.35) solid var(--tinta); border-radius: 999px; padding: calc(var(--u) * 0.2) calc(var(--u) * 1.4); flex: none; }
+.dica-controle.calma { background: #e9f6fd; }
+
+/* cards dos jogos, no estilo do portal (capa + nome) */
+.cards { flex: 1; min-height: 0; padding-top: calc(var(--u) * 1.3); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: calc(var(--u) * 1.8); }
+.card {
+  position: relative; display: flex; flex-direction: column; padding: 0; margin: 0; cursor: pointer; overflow: hidden; min-height: 0;
+  font: inherit; color: var(--tinta); text-align: left; background: #fff;
+  border: calc(var(--u) * 0.45) solid var(--tinta); border-radius: calc(var(--u) * 2); box-shadow: 0 calc(var(--u) * 0.7) 0 var(--tinta);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.card .capa { flex: 1; min-height: 0; background: var(--ciano) center/cover no-repeat; position: relative; }
+.card .capa .jogar { position: absolute; right: calc(var(--u) * 0.8); bottom: calc(var(--u) * 0.8); font-weight: 800; font-size: calc(var(--u) * 1.9); color: #fff; background: var(--laranja); border: calc(var(--u) * 0.3) solid var(--tinta); border-radius: 999px; padding: 0 calc(var(--u) * 1.4) calc(var(--u) * 0.2); box-shadow: 0 calc(var(--u) * 0.35) 0 var(--tinta); }
+.card .capa .dois { position: absolute; left: calc(var(--u) * 0.8); top: calc(var(--u) * 0.8); font-weight: 800; font-size: calc(var(--u) * 1.6); color: #fff; background: rgba(15, 20, 28, 0.82); border-radius: 999px; padding: 0 calc(var(--u) * 1.2) calc(var(--u) * 0.15); }
+.card b { display: block; font-size: calc(var(--u) * 2.5); line-height: 1.1; padding: calc(var(--u) * 0.4) calc(var(--u) * 1.2) calc(var(--u) * 0.6); font-size: calc(var(--u) * 2.15); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card:focus { outline: none; }
+.card.controle-foco, .card:focus-visible { outline: calc(var(--u) * 0.9) solid var(--amarelo) !important; outline-offset: calc(var(--u) * 0.3); transform: translateY(calc(var(--u) * -0.6)) scale(1.03); box-shadow: 0 calc(var(--u) * 1.3) 0 var(--tinta); z-index: 2; }
+
+/* recado grande (alguém entrou, falta jogador...) */
+.recado {
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 20; max-width: 80vw; text-align: center;
+  font-weight: 800; font-size: calc(var(--u) * 3.6); line-height: 1.15; background: #fff; border: calc(var(--u) * 0.6) solid var(--tinta); border-radius: calc(var(--u) * 2.6);
+  box-shadow: calc(var(--u) * 0.8) calc(var(--u) * 1) 0 var(--tinta); padding: calc(var(--u) * 1.6) calc(var(--u) * 3);
+}
+
+/* tela em pé ou estreita (tablet/celular abrindo /tv por engano): empilha e deixa rolar */
+@media (max-aspect-ratio: 4/3) {
+  :root { --u: min(1.6vw, 1vh); }
+  body { overflow: auto; cursor: auto; }
+  main { grid-template-columns: 1fr; grid-template-rows: auto; grid-template-areas: "entrar" "vagas" "jogos"; }
+  .vaga { min-height: calc(var(--u) * 10); }
+  .cards { min-height: calc(var(--u) * 30); }
+}

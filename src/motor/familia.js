@@ -7,11 +7,16 @@
 //   Familia.temFoto()        → true/false
 //   Familia.completo()       → cadastro mínimo feito neste aparelho
 //   Familia.aoMudar(cb)      → chama cb(perfil) sempre que o cadastro for salvo
-//   await Familia.abrirCadastro({ obrigatorio: true })  → abre a tela; resolve true se salvou
+//   await Familia.abrirCadastro({ obrigatorio: true })  → portão dos pais + tela; resolve true se salvou
 //
 // Privacidade: a foto da criança nunca sai do aparelho (não entra no envio).
+// Segurança: o cadastro e as fotos ficam atrás do "portão dos pais" (uma conta de multiplicar, números sorteados).
+// Foto: até 3 tentativas com orientação; o rosto é achado NO APARELHO (FaceDetector nativa ou o módulo opcional
+// DETECTOR_ROSTO de src/config.js), só vale foto com exatamente 1 rosto de tamanho razoável, e só o rostinho é
+// recortado em círculo (256 px): o resto da imagem é descartado na hora. Sem detector no navegador (ex.: iPhone),
+// o responsável posiciona um círculo sobre o rosto e aprova.
 
-import { WEBHOOK_FAMILIA, VERSAO_APP } from "../config.js";
+import { WEBHOOK_FAMILIA, VERSAO_APP, DETECTOR_ROSTO } from "../config.js";
 import { audioDoNome } from "./voz.js";
 
 const CHAVE = "rabisco.familia";
@@ -143,7 +148,222 @@ const h = (tag, props = {}, filhos = []) => {
 
 let telaAberta = null;
 // obrigatorio: sem "Agora não" (primeiro jogo). titulo/intro: textos do topo. Resolve true se salvou.
-export function abrirCadastro({ obrigatorio = false, titulo = "Quem vai brincar?", intro = null } = {}) {
+// Antes da tela, o portão dos pais (conta simples): se a criança voltar, resolve false e nada abre.
+let portaoEmCurso = null;
+export function abrirCadastro(opcoes = {}) {
+  if (telaAberta) return telaAberta.promessa;
+  if (portaoEmCurso) return portaoEmCurso;
+  portaoEmCurso = portaoDosPais({ texto: opcoes.obrigatorio ? "Antes do primeiro jogo, um adulto faz um cadastro rapidinho." : "O cadastro e a foto da criança ficam aqui." })
+    .then((ok) => { portaoEmCurso = null; return ok ? montarCadastro(opcoes) : false; });
+  return portaoEmCurso;
+}
+
+// ------------------------------------------------------------------ Portão dos pais
+// "Quanto é 7 × 3?" com números sorteados (3 a 9). Errou: outra conta. Teclado numérico no celular.
+export function portaoDosPais({ texto = "Esta parte é para os adultos." } = {}) {
+  garantirCss();
+  return new Promise((resolver) => {
+    let a = 0, b = 0;
+    const conta = h("b", { class: "portao-conta" });
+    const campo = h("input", { id: "portao-resposta", type: "text", inputmode: "numeric", pattern: "[0-9]*", autocomplete: "off", maxlength: "3", enterkeyhint: "done", "aria-label": "Resposta da conta" });
+    const erro = h("p", { class: "erro", role: "alert" });
+    const sortear = () => { a = 3 + Math.floor(Math.random() * 7); b = 3 + Math.floor(Math.random() * 7); conta.textContent = `${a} × ${b}`; campo.value = ""; };
+    const form = h("form", { class: "familia-cartao portao-cartao", novalidate: true }, [
+      h("div", { class: "portao-cadeado", "aria-hidden": "true", texto: "🔒" }),
+      h("h2", { texto: "Área dos pais" }),
+      h("p", { class: "intro", texto }),
+      h("p", { class: "portao-pergunta" }, [document.createTextNode("Quanto é "), conta, document.createTextNode("?")]),
+      campo, erro,
+      h("div", { class: "familia-acoes" }, [
+        h("button", { type: "button", class: "botao branco", texto: "Voltar", onclick: () => fechar(false) }),
+        h("button", { type: "submit", class: "botao", texto: "Entrar ✓" }),
+      ]),
+    ]);
+    const tela = h("div", { class: "familia-tela portao-tela", role: "dialog", "aria-modal": "true", "aria-label": "Área dos pais" }, [form]);
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (Number(campo.value.replace(/\D/g, "")) === a * b && campo.value.trim()) { fechar(true); return; }
+      erro.textContent = "Ops! Essa não é. Peça ajuda a um adulto e tente esta outra:";
+      sortear();
+      campo.focus();
+    });
+    tela.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); fechar(false); } });
+    function fechar(ok) { tela.remove(); resolver(ok); }
+    sortear();
+    document.body.append(tela);
+    setTimeout(() => campo.focus({ preventScroll: true }), 50);
+  });
+}
+
+// ------------------------------------------------------------------ Foto com segurança (detecção de rosto local)
+const paramsFoto = new URLSearchParams(location.search);
+// devolve detectar(canvas) → [{ x, y, width, height }] ou null (sem detector: modo manual)
+async function obterDetector() {
+  if (paramsFoto.get("rosto") === "manual") return null; // testes: força o modo manual
+  if ("FaceDetector" in window) {
+    try { const fd = new window.FaceDetector({ fastMode: false, maxDetectedFaces: 5 }); return async (c) => (await fd.detect(c)).map((f) => f.boundingBox); } catch { /* sem suporte de verdade */ }
+  }
+  if (DETECTOR_ROSTO) {
+    try { const m = await import(new URL(`../../${DETECTOR_ROSTO}`, import.meta.url).href); if (typeof m.detectar === "function") return m.detectar; } catch { /* módulo ausente */ }
+  }
+  return null;
+}
+// arquivo → canvas (lado maior até 1024 px); a URL temporária é revogada na hora
+function imagemEmCanvas(arquivo, max = 1024) {
+  return new Promise((ok, erro) => {
+    const url = URL.createObjectURL(arquivo);
+    const im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, max / Math.max(im.width, im.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+      c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); im.src = "";
+      ok(c);
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); erro(new Error("imagem inválida")); };
+    im.src = url;
+  });
+}
+// só o rosto, em círculo, 256 px (fora do círculo fica branco): o resto da foto não é guardado
+function recortarRosto(c, cx, cy, r, lado = 256) {
+  const o = document.createElement("canvas");
+  o.width = o.height = lado;
+  const x = o.getContext("2d");
+  x.fillStyle = "#fff"; x.fillRect(0, 0, lado, lado);
+  x.save(); x.beginPath(); x.arc(lado / 2, lado / 2, lado / 2, 0, Math.PI * 2); x.clip();
+  x.drawImage(c, cx - r, cy - r, r * 2, r * 2, 0, 0, lado, lado);
+  x.restore();
+  return o.toDataURL("image/jpeg", 0.88);
+}
+const descartar = (c) => { if (c) { c.width = c.height = 0; } };
+// Analisa uma foto: exatamente 1 rosto, de tamanho razoável → { ok, recorte, nota } ; senão { ok: false, motivo }
+async function analisarFoto(c, detectar) {
+  let caixas;
+  try { caixas = (await detectar(c)) || []; } catch { return { ok: false, semDetector: true, motivo: "Não deu para procurar o rosto neste aparelho." }; }
+  const menor = Math.min(c.width, c.height);
+  const visiveis = caixas.filter((b) => Math.max(b.width, b.height) >= Math.max(28, menor * 0.06));
+  if (!visiveis.length) return { ok: false, motivo: "Não achei um rostinho nesta foto. Rosto de frente, num lugar claro, por favor." };
+  if (visiveis.length > 1) return { ok: false, motivo: `Achei ${visiveis.length} rostos. Só a criança na foto, por favor.` };
+  const b = visiveis[0], lado = Math.max(b.width, b.height);
+  if (lado < Math.max(60, menor * 0.15)) return { ok: false, motivo: "O rosto ficou pequeno. Chegue mais perto da criança." };
+  const cx = b.x + b.width / 2, cy = b.y + b.height / 2 - b.height * 0.04, r = lado * 0.78;
+  // nota: rosto maior (até ~35% da foto) e mais centrado é melhor
+  const centro = Math.hypot(cx / c.width - 0.5, cy / c.height - 0.5);
+  const nota = Math.min(1, lado / (menor * 0.35)) * (1 - Math.min(0.6, centro));
+  return { ok: true, recorte: recortarRosto(c, cx, cy, r), nota };
+}
+
+// Etapa da foto: resolve com o recorte aprovado (dataURL), null (avatar genérico) ou undefined (cancelou)
+export function abrirEtapaFoto() {
+  garantirCss();
+  return new Promise((resolver) => {
+    let detectar = null, pronto = false, tentativas = 0;
+    const bons = [];
+    const MAX = 3;
+    const lista = h("ol", { class: "foto-resultados", "aria-live": "polite" });
+    const entrada = h("input", { type: "file", accept: "image/*", onchange: (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) usarArquivo(f); } });
+    const btnArquivo = h("label", { class: "botao-arquivo grande" }, [h("span", { class: "txt", texto: "📷 Tirar ou escolher a foto (1 de 3)" }), entrada]);
+    const previa = h("div", { class: "foto-previa", hidden: true });
+    const recusa = h("div", { class: "foto-recusa", hidden: true });
+    const manual = h("div", { class: "foto-manual", hidden: true });
+    const status = h("p", { class: "foto-status", "aria-live": "polite" });
+    const cartao = h("div", { class: "familia-cartao foto-cartao" }, [
+      h("h2", { texto: "Foto da criança" }),
+      h("ul", { class: "foto-dicas" }, [
+        h("li", { html: "<span>😊</span> Rosto <b>de frente</b>, olhando para a câmera" }),
+        h("li", { html: "<span>💡</span> Lugar <b>claro</b>, com a luz de frente (nada de contraluz)" }),
+        h("li", { html: "<span>🧢</span> <b>Sem boné</b> e sem óculos escuros" }),
+        h("li", { html: "<span>🧒</span> <b>Só a criança</b> na foto" }),
+      ]),
+      h("p", { class: "foto-privacidade", html: "🔒 A foto fica <b>só neste aparelho</b>: recortamos só o rostinho e o resto da imagem é apagado na hora. Nada é enviado." }),
+      btnArquivo, status, lista, manual, previa, recusa,
+      h("div", { class: "familia-acoes" }, [h("button", { type: "button", class: "botao branco", texto: "Cancelar", onclick: () => fechar(undefined) })]),
+    ]);
+    const tela = h("div", { class: "familia-tela foto-tela", role: "dialog", "aria-modal": "true", "aria-label": "Foto da criança" }, [cartao]);
+    tela.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); fechar(undefined); } });
+    document.body.append(tela);
+    obterDetector().then((d) => { detectar = d; pronto = true; if (!d) status.textContent = "Neste aparelho a foto é ajustada à mão: depois de escolher, posicione o círculo sobre o rostinho."; });
+    function fechar(v) { tela.remove(); resolver(v); }
+    const rotuloBotao = () => { btnArquivo.querySelector(".txt").textContent = `📷 Tirar ou escolher a foto (${Math.min(MAX, tentativas + 1)} de ${MAX})`; btnArquivo.hidden = tentativas >= MAX; };
+
+    async function usarArquivo(arquivo) {
+      if (!pronto) detectar = await obterDetector();
+      let c;
+      try { c = await imagemEmCanvas(arquivo); } catch { status.textContent = "Não consegui abrir essa foto. Tente outra."; return; }
+      tentativas++;
+      if (!detectar) { ajustarAMao(c); rotuloBotao(); return; }
+      status.textContent = "Procurando o rostinho…";
+      const r = await analisarFoto(c, detectar);
+      descartar(c); // a foto original não fica guardada
+      if (r.semDetector) { detectar = null; status.textContent = r.motivo; rotuloBotao(); return; }
+      const li = h("li", { class: r.ok ? "bom" : "ruim" }, [
+        r.ok ? h("img", { src: r.recorte, alt: "" }) : h("span", { class: "x", texto: "✕" }),
+        h("span", { texto: r.ok ? "Rostinho encontrado!" : r.motivo }),
+      ]);
+      lista.append(li);
+      status.textContent = "";
+      if (r.ok) bons.push(r);
+      rotuloBotao();
+      if (bons.length) mostrarPrevia();
+      else if (tentativas >= MAX) recusar();
+    }
+    function mostrarPrevia(recorte = null) {
+      const melhor = recorte ?? [...bons].sort((x, y) => y.nota - x.nota)[0].recorte;
+      previa.hidden = false; manual.hidden = true;
+      previa.innerHTML = "";
+      const usar = h("button", { type: "button", class: "botao", texto: "Usar esta foto ✓", onclick: () => fechar(melhor) });
+      previa.append(
+        h("img", { class: "foto-grande", src: melhor, alt: "Prévia do rosto recortado" }),
+        h("div", {}, [
+          h("p", { html: `<b>Ficou bom?</b> É assim que o rostinho vai aparecer nos jogos.${bons.length > 1 ? ` Escolhemos a melhor das ${bons.length} fotos.` : ""}` }),
+          h("div", { class: "familia-acoes" }, [usar]),
+        ]),
+      );
+      setTimeout(() => usar.focus({ preventScroll: true }), 30);
+    }
+    function recusar() {
+      recusa.hidden = false;
+      recusa.innerHTML = "";
+      const ok = h("button", { type: "button", class: "botao", texto: "Usar o bonequinho 🙂", onclick: () => fechar(null) });
+      recusa.append(h("p", { html: "<b>Não encontramos o rostinho nas fotos.</b> Tudo bem! Por enquanto a criança aparece como o bonequinho no estilo do Rabisco. Dá para tentar de novo outro dia, com mais luz. 💛" }), h("div", { class: "familia-acoes" }, [ok]));
+      setTimeout(() => ok.focus({ preventScroll: true }), 30);
+    }
+    // Sem detector: o responsável arrasta o círculo sobre o rosto e ajusta o tamanho; o recorte só sai quando aprovar
+    function ajustarAMao(c) {
+      manual.hidden = false; previa.hidden = true;
+      manual.innerHTML = "";
+      const W = Math.min(320, innerWidth - 80), k = W / c.width, H = Math.round(c.height * k);
+      const vis = h("canvas", { width: String(W), height: String(H), class: "foto-ajuste", "aria-label": "Arraste o círculo até o rosto" });
+      const menor = Math.min(c.width, c.height);
+      const est = { cx: c.width / 2, cy: c.height * 0.42, r: menor * 0.3 };
+      const tamanho = h("input", { type: "range", min: "10", max: "50", value: "30", "aria-label": "Tamanho do círculo", oninput: (e) => { est.r = menor * Number(e.target.value) / 100; desenhar(); } });
+      const desenhar = () => {
+        const x = vis.getContext("2d");
+        x.drawImage(c, 0, 0, W, H);
+        x.fillStyle = "rgba(10,42,74,0.55)";
+        x.beginPath(); x.rect(0, 0, W, H); x.arc(est.cx * k, est.cy * k, est.r * k, 0, Math.PI * 2, true); x.fill();
+        x.lineWidth = 4; x.strokeStyle = "#ffcc1f"; x.beginPath(); x.arc(est.cx * k, est.cy * k, est.r * k, 0, Math.PI * 2); x.stroke();
+      };
+      let arrasto = null;
+      vis.addEventListener("pointerdown", (e) => { arrasto = { x: e.clientX, y: e.clientY, cx: est.cx, cy: est.cy }; vis.setPointerCapture(e.pointerId); });
+      vis.addEventListener("pointermove", (e) => { if (!arrasto) return; est.cx = arrasto.cx + (e.clientX - arrasto.x) / k; est.cy = arrasto.cy + (e.clientY - arrasto.y) / k; desenhar(); });
+      vis.addEventListener("pointerup", () => { arrasto = null; });
+      // setas também movem (teclado / controle)
+      vis.tabIndex = 0;
+      vis.addEventListener("keydown", (e) => { const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key]; if (d) { e.preventDefault(); est.cx += d[0] * menor * 0.03; est.cy += d[1] * menor * 0.03; desenhar(); } });
+      const recortar = h("button", { type: "button", class: "botao", texto: "Recortar o rostinho ✓", onclick: () => { const r = recortarRosto(c, est.cx, est.cy, est.r); descartar(c); bons.push({ recorte: r, nota: 1 }); mostrarPrevia(r); } });
+      manual.append(
+        h("p", { html: "<b>Posicione o círculo sobre o rostinho</b> (arraste) e ajuste o tamanho. Só o que está dentro do círculo fica guardado." }),
+        vis, h("label", { class: "foto-tamanho" }, [document.createTextNode("Tamanho"), tamanho]),
+        h("div", { class: "familia-acoes" }, [recortar]),
+      );
+      desenhar();
+    }
+  });
+}
+
+function montarCadastro({ obrigatorio = false, titulo = "Quem vai brincar?", intro = null } = {}) {
   if (telaAberta) return telaAberta.promessa;
   garantirCss();
   const p = perfil || {};
@@ -156,20 +376,19 @@ export function abrirCadastro({ obrigatorio = false, titulo = "Quem vai brincar?
 
   const fotoRoda = h("div", { class: "roda", "aria-hidden": "true" }, [C.foto ? h("img", { src: C.foto, alt: "" }) : document.createTextNode("🙂")]);
   let foto = C.foto || null;
-  const trocarFoto = async (arquivo) => {
-    if (!arquivo) return;
-    try {
-      foto = await prepararFoto(arquivo);
-      fotoRoda.innerHTML = "";
-      fotoRoda.append(h("img", { src: foto, alt: "" }));
-      btnTirar.hidden = false;
-    } catch { mostrarErro("Não consegui abrir essa foto. Tente outra."); }
+  // a foto passa pela etapa segura (orientação, detecção de rosto local, recorte só do rosto, prévia para aprovar)
+  const desenharFoto = () => {
+    fotoRoda.innerHTML = "";
+    if (foto) fotoRoda.append(h("img", { src: foto, alt: "" })); else fotoRoda.textContent = "🙂";
+    btnTirar.hidden = !foto;
+    btnFoto.textContent = foto ? "📷 Trocar a foto" : "📷 Foto da criança";
   };
-  const entradaArquivo = (texto, extra) => h("label", { class: "botao-arquivo" }, [
-    document.createTextNode(texto),
-    h("input", { type: "file", accept: "image/*", ...extra, onchange: (e) => trocarFoto(e.target.files?.[0]) }),
-  ]);
-  const btnTirar = h("button", { type: "button", texto: "✕ Tirar foto", hidden: !C.foto, onclick: () => { foto = null; fotoRoda.innerHTML = "🙂"; btnTirar.hidden = true; } });
+  const btnFoto = h("button", { type: "button", class: "botao-foto", texto: C.foto ? "📷 Trocar a foto" : "📷 Foto da criança", onclick: async () => {
+    const r = await abrirEtapaFoto();
+    if (r === undefined) return; // cancelou: fica como estava
+    foto = r; desenharFoto();
+  } });
+  const btnTirar = h("button", { type: "button", texto: "✕ Tirar foto", hidden: !C.foto, onclick: () => { foto = null; desenharFoto(); } });
 
   const selUf = h("select", { id: "fam-uf", name: "uf" }, [h("option", { value: "", texto: "UF" }), ...UFS.map((u) => h("option", { value: u, texto: u, selected: R.uf === u }))]);
   const btnLocal = h("button", { type: "button", class: "pequeno", "aria-label": "Usar minha localização para preencher cidade e estado", title: "Usar minha localização", texto: "📍", onclick: usarLocalizacao });
@@ -215,12 +434,14 @@ export function abrirCadastro({ obrigatorio = false, titulo = "Quem vai brincar?
       h("div", { class: "familia-campos" }, [
         campo("crianca-nome", "Nome ou apelido *", { value: C.nome || "", required: true, maxlength: 30, oninput: (e) => conferirNome(e.target.value) }),
         campo("nasc", "Nascimento", { type: "date", value: C.nascimento || "", max: new Date().toISOString().slice(0, 10) }, { dica: "opcional" }),
-        h("label", { for: "fam-genero" }, [document.createTextNode("Menina ou menino?"), h("small", { texto: "opcional, para falar \"pronta\" ou \"pronto\"" }),
-          h("select", { id: "fam-genero", name: "genero" }, [["", "Prefiro não dizer"], ["menina", "Menina"], ["menino", "Menino"]].map(([v, t]) => h("option", { value: v, texto: t, selected: (C.genero || "") === v })))]),
+        h("label", { for: "fam-genero" }, [document.createTextNode("Menina ou menino? *"), h("small", { texto: "para a narradora falar \"pronta\" ou \"pronto\"" }),
+          h("select", { id: "fam-genero", name: "genero", required: true }, [
+            h("option", { value: "", texto: "Escolha…", disabled: true, selected: !C.genero }),
+            ...[["menina", "Menina"], ["menino", "Menino"]].map(([v, t]) => h("option", { value: v, texto: t, selected: C.genero === v }))])]),
         avisoNome,
         h("div", { class: "familia-foto" }, [
           fotoRoda,
-          h("div", { class: "botoes" }, [entradaArquivo("📷 Câmera", { capture: "user" }), entradaArquivo("🖼️ Galeria", {}), btnTirar]),
+          h("div", { class: "botoes" }, [btnFoto, btnTirar]),
         ]),
         h("p", { class: "nota-foto", texto: "A foto é opcional, vira o rostinho da criança dentro dos jogos e fica guardada só neste aparelho. Ela nunca é enviada." }),
       ]),
@@ -270,6 +491,8 @@ export function abrirCadastro({ obrigatorio = false, titulo = "Quem vai brincar?
     if (email && !emailOk(email)) { mostrarErro("Esse e-mail parece incompleto. Confere?"); q("email").focus(); return; }
     if (whats && whats.replace(/\D/g, "").length < 10) { mostrarErro("O WhatsApp precisa ter DDD e número, como (11) 99999-9999."); q("whats").focus(); return; }
     if (!cNome) { mostrarErro("E o nome da criança? É assim que o Rabisco vai chamar ela!"); q("crianca-nome").focus(); return; }
+    marcar(q("genero"), !q("genero").value);
+    if (!q("genero").value) { mostrarErro("A criança é menina ou menino? Escolha uma opção."); q("genero").focus(); return; }
     const nasc = q("nasc").value;
     if (nasc && idadeDe(nasc) === null) { mostrarErro("A data de nascimento não pode ser no futuro."); q("nasc").focus(); return; }
     mostrarErro("");
@@ -301,6 +524,6 @@ export function abrirCadastro({ obrigatorio = false, titulo = "Quem vai brincar?
   return promessa;
 }
 
-export const Familia = { obterPerfil, crianca, temFoto, completo, aoMudar, abrirCadastro, sincronizar, idadeDe, UFS };
+export const Familia = { obterPerfil, crianca, temFoto, completo, aoMudar, abrirCadastro, abrirEtapaFoto, portaoDosPais, sincronizar, idadeDe, UFS };
 window.Familia = Familia;
 export default Familia;

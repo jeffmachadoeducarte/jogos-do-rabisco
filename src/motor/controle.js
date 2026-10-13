@@ -23,6 +23,29 @@ export const botoesPadrao = (nome) => [...(BOTOES[nome] || [])];
 let bloqueado = false;
 export function bloquearControle(v) { bloqueado = Boolean(v); }
 const ZONA_MORTA = 0.5;
+// Dois jogadores (src/motor/jogadores.js): o controle do jogador 2 fica "reservado" durante a partida.
+// O ler() comum (jogador 1, menus) ignora os botões dele, menos o Start (qualquer um pode pausar).
+const reservados = new Set();
+export function reservarGamepad(indices = []) { reservados.clear(); for (const i of indices) if (i != null) reservados.add(i); }
+export const gamepadReservado = (i) => reservados.has(i);
+// Fontes virtuais: os celulares de controle quando a TV é a tela (src/motor/salatv.js). Cada fonte devolve uma lista de
+// { segura, eixoX, eixoY, reservado } e entra no ler() comum como mais um controle (menus, pausa e o jogador 1).
+// "reservado" (o celular do jogador 2 durante a partida) só vale para o Start, igual ao gamepad reservado.
+const fontes = new Set();
+export function adicionarFonte(fn) { fontes.add(fn); return () => fontes.delete(fn); }
+// Leitura de UM controle (pelo índice do Gamepad API), com os mesmos nomes de botão do ler() comum.
+export function lerGamepad(indice) {
+  const g = (navigator.getGamepads?.() ?? [])[indice] ?? [...(navigator.getGamepads?.() ?? [])].find((p) => p?.index === indice);
+  const segura = { pulo: false, confirma: false, voltar: false, cima: false, baixo: false, esq: false, dir: false, start: false, select: false, acao: false };
+  if (!g) return { conectado: false, segura, eixoX: 0, eixoY: 0, eixoGX: 0 };
+  for (const [nome, idx] of Object.entries({ ...BOTOES, ...trocados })) if (idx.some((i) => g.buttons[i]?.pressed)) segura[nome] = true;
+  const [x = 0, y = 0, gx = 0] = g.axes;
+  if (x < -ZONA_MORTA) segura.esq = true;
+  if (x > ZONA_MORTA) segura.dir = true;
+  if (y < -ZONA_MORTA) segura.cima = true;
+  if (y > ZONA_MORTA) segura.baixo = true;
+  return { conectado: true, segura, eixoX: Math.abs(x) > 0.15 ? x : 0, eixoY: Math.abs(y) > 0.15 ? y : 0, eixoGX: Math.abs(gx) > 0.2 ? gx : 0 };
+}
 
 export function criarControle({ aoConectar = () => {}, aoDesconectar = () => {} } = {}) {
   const estilo = document.createElement("style");
@@ -45,6 +68,7 @@ export function criarControle({ aoConectar = () => {}, aoDesconectar = () => {} 
       let eixoX = 0, eixoY = 0; // alavanca esquerda de -1 a 1 (kart vira aos poucos; aventura 3D anda em qualquer direção)
       for (const g of navigator.getGamepads?.() ?? []) {
         if (!g) continue;
+        if (reservados.has(g.index)) { if (g.buttons[9]?.pressed) segura.start = true; continue; } // controle do jogador 2
         for (const [nome, idx] of Object.entries({ ...BOTOES, ...trocados })) {
           if (idx.some((i) => g.buttons[i]?.pressed)) segura[nome] = true;
         }
@@ -55,6 +79,16 @@ export function criarControle({ aoConectar = () => {}, aoDesconectar = () => {} 
         if (x > ZONA_MORTA) segura.dir = true;
         if (y < -ZONA_MORTA) segura.cima = true;
         if (y > ZONA_MORTA) segura.baixo = true;
+      }
+      for (const f of fontes) {
+        let lista = [];
+        try { lista = f() || []; } catch { /* fonte com erro não trava o jogo */ }
+        for (const v of lista) {
+          if (v.reservado) { if (v.segura?.start) segura.start = true; continue; }
+          for (const k in segura) if (v.segura?.[k]) segura[k] = true;
+          if (Math.abs(v.eixoX || 0) > Math.abs(eixoX)) eixoX = v.eixoX;
+          if (Math.abs(v.eixoY || 0) > Math.abs(eixoY)) eixoY = v.eixoY;
+        }
       }
       const apertou = vazio(), soltou = vazio();
       for (const k in segura) {

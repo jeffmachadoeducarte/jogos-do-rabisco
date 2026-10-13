@@ -16,6 +16,7 @@ import { modoAtual } from "./modos.js";
 import { pistaAtual, PISTAS, decoracao, estrelas } from "./pistas.js";
 import { botaoVoltar } from "../../src/motor/voltar.js";
 import { criarRemapear } from "../../src/motor/remapear.js";
+import { Jogadores, CODIGOS_J2, COR_J2 } from "../../src/motor/jogadores.js";
 
 const RAIZ = "../..";
 const MEIA_PISTA = 9;          // metade da largura do asfalto
@@ -413,11 +414,18 @@ function trocarConta(p) {
 // ------------------------------------------------------------------ Karts
 const karts = [];
 
-function criarKart({ nome, corKart, piloto, ehJogador, linhaLargada, colunaLargada, img, cores }) {
-  const g = kart3D(corKart, ehJogador ? img.texIcone : null, cores);
+function criarKart({ nome, corKart, piloto, ehJogador, humano = 0, linhaLargada, colunaLargada, img, cores }) {
+  const g = kart3D(corKart, ehJogador || humano ? img.texIcone : null, cores);
   const chassi = g.userData.chassi;
-  let rabisco = null, companheiro = null;
-  if (ehJogador) {
+  let rabisco = null, companheiro = null, motorista2 = null;
+  if (humano === 2) {
+    // jogador 2: a criança-companheira pilota o próprio kart (rosto = foto do cadastro; sem cadastro, a criança genérica)
+    const c = window.Familia?.crianca?.();
+    motorista2 = criarCompanheiro3D({ raiz: RAIZ, altura: ALTURA_RABISCO * 0.9, cracha: true, crianca: c?.nome ? c : { nome } });
+    rabisco = motorista2.rabisco; // mesma API do Rabisco3D: o volante encaixa nas mãos dela
+    motorista2.grupo.position.set(0, 1.0 - 2.0 * motorista2.escala, -0.55);
+    chassi.add(motorista2.grupo);
+  } else if (ehJogador) {
     // Rabisco 3D oficial sentado no banco, mãos no volante
     rabisco = new Rabisco3D({ raiz: RAIZ, altura: ALTURA_RABISCO });
     rabisco.grupo.position.set(0, 1.0 - 2.0 * rabisco.escala, -0.55); // quadril (y 2,0 do modelo) no banco
@@ -437,7 +445,7 @@ function criarKart({ nome, corKart, piloto, ehJogador, linhaLargada, colunaLarga
     chassi.add(p);
   }
   cena.add(g);
-  const kart = { nome, g, chassi, rabisco, companheiro, ehJogador, cor: piloto ?? corKart, linhaLargada, colunaLargada };
+  const kart = { nome, g, chassi, rabisco, companheiro, passageiro: companheiro, motorista2, ehJogador, humano: ehJogador ? 1 : humano, cor: piloto ?? corKart, linhaLargada, colunaLargada };
   naLargada(kart);
   karts.push(kart);
   return kart;
@@ -576,6 +584,10 @@ document.querySelector("#abertura .sub").textContent = `${MODO.sub} · ${PISTA.e
 for (const s of document.querySelectorAll(".dica-modo")) s.textContent = MODO.dica;
 if (MODO.amigos) $("amigos").hidden = false;
 const entrada = { esq: false, dir: false, eixo: 0 }; // eixo: alavanca do controle, de -1 a 1
+const entradaJ2 = { eixo: 0 };                        // jogador 2 (src/motor/jogadores.js): alavanca, direcional ou A/D
+// "Quantos vão jogar?": com 2, o jogador 2 pilota o kart da criança-companheira (tela dividida)
+Jogadores.configurar({ tipo: "simultaneo", layout: "kart", aoMudarModo: (n) => { if (n === 1 && kartJ2) { kartJ2.humano = 0; dividida = false; ajustarTelaDividida(); } } });
+$("abertura").insertBefore(Jogadores.escolha(), $("jogar"));
 
 // teclas e botões que a criança pode trocar (⚙️ na abertura e na pausa; no celular/tablet não aparece)
 const remap = criarRemapear({
@@ -588,9 +600,13 @@ const remap = criarRemapear({
   aoAbrir: () => { entrada.esq = entrada.dir = false; if (estado === "corrida" && !pausa.ativa) pausa.pausar(); },
 });
 if (remap.botao) { remap.botao.classList.add("remap-kart"); $("abertura").append(remap.botao); }
-let buzinaEspera = 0;
+let buzinaEspera = 0, buzinaEspera2 = 0;
 function buzinar() { if (estado !== "corrida" || buzinaEspera > 0) return; buzinaEspera = 0.8; sons.buzina(); }
+function buzinar2() { if (estado !== "corrida" || buzinaEspera2 > 0) return; buzinaEspera2 = 0.8; sons.buzina(); navigator.vibrate?.(15); Jogadores.vibrar2(60); } // vibra também o celular do jogador 2
 addEventListener("keydown", (e) => {
+  // TV como tela (página tv/): os karts são dos controles e celulares; o teclado/controle remoto da TV só começa a corrida
+  if (Jogadores.tv) { if ((e.key === "Enter" || e.key === " ") && estado === "abertura" && !document.activeElement?.closest?.(".pista")) comecar(); return; }
+  if (Jogadores.tecladoDividido && CODIGOS_J2.has(e.code)) return; // A/D/F/Espaço são do jogador 2
   const acao = remap.acaoDaTecla(e.code);
   if (acao === "esq") entrada.esq = true;
   if (acao === "dir") entrada.dir = true;
@@ -598,6 +614,8 @@ addEventListener("keydown", (e) => {
   if ((e.key === "Enter" || e.key === " ") && estado === "abertura") comecar();
 });
 addEventListener("keyup", (e) => {
+  if (Jogadores.tv) return;
+  if (Jogadores.tecladoDividido && CODIGOS_J2.has(e.code)) return;
   const acao = remap.acaoDaTecla(e.code);
   if (acao === "esq") entrada.esq = false;
   if (acao === "dir") entrada.dir = false;
@@ -616,6 +634,8 @@ $("som").addEventListener("click", () => { $("som").textContent = sons.alternarM
 $("jogar").addEventListener("click", () => comecar());
 // Correr de novo / sair: tudo na própria página (em páginas publicadas recarregar é bloqueado)
 function reiniciarCorrida() {
+  Jogadores.emJogo(false);
+  clearTimeout(esperaSegundo);
   for (const k of karts) naLargada(k);
   for (const p of porticos) trocarConta(p);
   tempoCorrida = 0; acertos = 0; perguntasFeitas = 0; amigos = 0; atualizarAmigos();
@@ -627,7 +647,8 @@ function reiniciarCorrida() {
 }
 $("de-novo").addEventListener("click", () => { reiniciarCorrida(); comecar(); });
 $("sair").addEventListener("click", () => {
-  if (RAIZ === ".") { reiniciarCorrida(); $("abertura").classList.remove("escondido"); }
+  if (Jogadores.tv) Jogadores.voltarParaTV(); // veio da TV: volta ao menu da TV com os jogadores conectados
+  else if (RAIZ === ".") { reiniciarCorrida(); $("abertura").classList.remove("escondido"); }
   else location.href = `${RAIZ}/index.html#/faixa/${MODO.faixa}`;
 });
 
@@ -641,6 +662,9 @@ function mensagem(texto, classe = "", ms = 1600) {
 
 function comecar() {
   if (estado !== "abertura") return;
+  if (Jogadores.ativo && !Jogadores.j2Pronto) { Jogadores.avisar(Jogadores.textoFaltaJ2, COR_J2); return; }
+  ajustarDois();
+  if (kartJ2) { Jogadores.emJogo(true); Jogadores.mostrarQuemEQuem(3200, { comLegenda: false }); } // as etiquetas ficam em cada metade da tela
   sons.destravar();
   estado = "contagem";
   $("abertura").classList.add("escondido");
@@ -668,9 +692,12 @@ function dirigir(k, dt) {
   let virar = 0;
   let alvoVel = VMAX;
 
-  if (k.ehJogador) {
-    virar = (entrada.esq ? 1 : 0) - (entrada.dir ? 1 : 0);
-    if (entrada.eixo) virar = -entrada.eixo; // alavanca: vira aos poucos
+  if (k.humano) {
+    if (k.humano === 2) virar = -entradaJ2.eixo;
+    else {
+      virar = (entrada.esq ? 1 : 0) - (entrada.dir ? 1 : 0);
+      if (entrada.eixo) virar = -entrada.eixo; // alavanca: vira aos poucos
+    }
     // assistência para crianças: olha um pouco à frente na pista e puxa de volta para o asfalto
     const adiante = tangente[idx(k.amostra + 14)];
     const lat = lateral(k.pos, k.amostra);
@@ -725,7 +752,7 @@ function dirigir(k, dt) {
     k.pos.addScaledVector(lado[k.amostra], -(Math.abs(lat2) - LIMITE_MURO) * s);
     k.vel = Math.max(k.vel * 0.92, 10);
     k.ang += difAngulo(anguloDe(tangente[idx(k.amostra + 10)]), k.ang) * 0.5;
-    if (k.ehJogador && k.cooldownBatida <= 0) { sons.batida(); k.cooldownBatida = 0.6; }
+    if (k.humano && k.cooldownBatida <= 0) { sons.batida(); k.cooldownBatida = 0.6; }
   }
   k.cooldownBatida -= dt;
 
@@ -734,11 +761,12 @@ function dirigir(k, dt) {
   if (anterior > AMOSTRAS * 0.9 && k.amostra < AMOSTRAS * 0.1 && k.passouMeio) {
     k.volta++;
     k.passouMeio = false;
-    if (k.volta >= VOLTAS && !k.terminou) { k.terminou = true; k.tempoFinal = tempoCorrida; if (k.ehJogador) terminar(); }
-    else if (k.ehJogador) {
+    if (k.volta >= VOLTAS && !k.terminou) { k.terminou = true; k.tempoFinal = tempoCorrida; if (k.humano) chegou(k); }
+    else if (k.humano) {
       sons.volta();
-      if (k.volta === VOLTAS - 1) { falar("volta-final"); mensagem("Última volta!", "acerto"); }
-      else { falar(`volta-${k.volta + 1}`); mensagem(`Volta ${k.volta + 1}!`); }
+      const quem = k.humano === 2 ? `${k.nome}: ` : kartJ2?.humano ? "Rabisco: " : "";
+      if (k.volta === VOLTAS - 1) { falar("volta-final"); mensagem(`${quem}Última volta!`, "acerto"); }
+      else { falar(`volta-${k.volta + 1}`); mensagem(`${quem}Volta ${k.volta + 1}!`); }
     }
   }
   k.progresso = k.volta * AMOSTRAS + k.amostra;
@@ -746,7 +774,7 @@ function dirigir(k, dt) {
   // pórticos
   const prox = porticos[k.proximoPortico];
   if (prox && passou(anterior, k.amostra, prox.i)) {
-    if (k.ehJogador) responder(prox, lat2);
+    if (k.humano) responder(prox, lat2, k);
     else if (Math.random() < 0.45) k.turbo = 1.6;
     k.proximoPortico = (k.proximoPortico + 1) % porticos.length;
   }
@@ -757,20 +785,21 @@ const passou = (de, ate, alvo) => {
   return a > 0 && a <= b && b < AMOSTRAS / 2;
 };
 
-function responder(p, lat) {
+function responder(p, lat, k = jogador) {
+  const quem = k.humano === 2 ? `${k.nome}: ` : "";
   const faixa = lat > MEIA_PISTA * 0.31 ? 0 : lat < -MEIA_PISTA * 0.31 ? 2 : 1;
   const c = p.conta;
   perguntasFeitas++;
   if (faixa === c.certa) {
     acertos++;
-    jogador.turbo = 2.4;
+    k.turbo = 2.4;
     sons.letra();
     sons.turbo();
     setTimeout(() => falar(`acerto-${1 + Math.floor(Math.random() * 3)}`), 250);
-    mensagem(`${c.resposta}  TURBO!`, "acerto");
+    mensagem(`${quem}${c.resposta}  TURBO!`, "acerto");
     if (c.ganho) { amigos += c.ganho; atualizarAmigos(); }
     for (let n = 0; n < 18; n++) {
-      soltar(jogador.pos.clone().setY(2), {
+      soltar(k.pos.clone().setY(2), {
         tex: texEstrela, vel: new THREE.Vector3((Math.random() - 0.5) * 14, 6 + Math.random() * 8, (Math.random() - 0.5) * 14),
         vida: 0.9, tam: 1.3, gravidade: 18,
       });
@@ -778,13 +807,17 @@ function responder(p, lat) {
   } else {
     sons.erro();
     if (c.quase) falar(c.quase);
-    mensagem(`Quase! ${c.resposta}`, "quase", 2200);
+    mensagem(`${quem}Quase! ${c.resposta}`, "quase", 2200);
   }
   $("pergunta").classList.remove("ativa");
   setTimeout(() => trocarConta(p), 400);
 }
 
 function perguntar(dt) {
+  for (const h of [jogador, kartJ2?.humano ? kartJ2 : null]) if (h) perguntarPara(h);
+  void dt;
+}
+function perguntarPara(jogador) {
   const prox = porticos[jogador.proximoPortico];
   if (!prox || jogador.terminou) return;
   const faltam = idx(prox.i - jogador.amostra) * PASSO;
@@ -794,7 +827,6 @@ function perguntar(dt) {
     $("pergunta").classList.add("ativa");
     if (prox.conta.fala) falar(prox.conta.fala);
   }
-  void dt;
 }
 
 // Colisão entre karts: cada kart é uma cápsula (dois círculos, frente e trás). Ninguém atravessa ninguém:
@@ -893,7 +925,7 @@ function animarKart(k, dt, t) {
     c.rabisco.tronco.rotation.x += k.turbo > 0 ? -0.12 : 0;
   }
   // fogo do turbo (e o rabisco na pista, se for o Rabisco)
-  if (k.turbo > 0 && k.ehJogador) riscar(k, dt);
+  if (k.turbo > 0 && k.humano) riscar(k, dt);
   if (k.turbo > 0) {
     for (const e of g.userData.escapes) {
       const p = new THREE.Vector3();
@@ -974,7 +1006,7 @@ function atualizarCamera(dt, t) {
   camAlvo.lerp(desejoAlvo, 1 - Math.exp(-dt * s * 1.4));
   camera.position.copy(camPos);
   camera.lookAt(camAlvo);
-  const fov = 62 + (k.turbo > 0 ? 12 : 0) + Math.min(1, k.vel / VMAX) * 4;
+  const fov = (dividida && !ladoALado() ? 48 : 62) + (k.turbo > 0 ? 12 : 0) + Math.min(1, k.vel / VMAX) * 4;
   camera.fov += (fov - camera.fov) * Math.min(1, dt * 4);
   camera.updateProjectionMatrix();
 
@@ -982,6 +1014,8 @@ function atualizarCamera(dt, t) {
   const cx = camera.position.x, cz = camera.position.z, ax = k.pos.x - cx, az = k.pos.z - cz, L2 = ax * ax + az * az || 1;
   for (const o of karts) {
     if (o === k) continue;
+    if (dividida && o.humano) { esmaecer(o, 1, dt); continue; }
+    if (dividida && camera2Tapa(o)) { esmaecer(o, 0.25, dt); continue; }
     const ox = o.pos.x - cx, oz = o.pos.z - cz, d = Math.hypot(ox, oz);
     const ao = (ox * ax + oz * az) / L2, lat = Math.abs(ox * az - oz * ax) / Math.sqrt(L2);
     const tapa = (ao > -0.2 && ao < 0.95 && lat < 3.2) || d < 5.5;
@@ -993,6 +1027,109 @@ function atualizarCamera(dt, t) {
   sol.target.position.copy(k.pos);
   cena.userData.ceu.position.copy(camera.position);
   $("linhas-turbo").classList.toggle("ativa", k.turbo > 0 && estado === "corrida");
+  if (dividida) atualizarCamera2(dt);
+}
+
+// ------------------------------------------------------------------ 2 jogadores: kart da criança e tela dividida
+// Decisão: TELA DIVIDIDA (não câmera compartilhada). Numa pista em circuito os karts se separam por meia volta,
+// e uma câmera só teria de se afastar até ninguém enxergar nada. Cada um tem sua câmera de perseguição:
+// celular deitado (tela bem larga, ≥ 2:1) divide lado a lado; TV, tablet e computador dividem em cima/embaixo.
+// Desempenho: a sombra é calculada uma vez por quadro (não por tela) e, no toque, a resolução cai para 1×.
+let kartJ2 = null, dividida = false, imgKart = null;
+const camera2 = new THREE.PerspectiveCamera(62, 16 / 9, 0.3, 1600);
+const camPos2 = new THREE.Vector3(), camAlvo2 = new THREE.Vector3();
+const ladoALado = () => innerWidth / innerHeight >= 2.0;
+function ajustarDois() {
+  const quer = Jogadores.ativo && Jogadores.j2Pronto;
+  if (quer && !kartJ2) {
+    kartJ2 = criarKart({ nome: Jogadores.j2.nome, corKart: COR3D.rosa, cores: { capo: COR3D.amarelo, detalhe: COR3D.ciano }, ehJogador: false, humano: 2, linhaLargada: 2, colunaLargada: 1, img: imgKart });
+    camPos2.copy(kartJ2.pos).add(new THREE.Vector3(0, 3, -8)); camAlvo2.copy(kartJ2.pos);
+  } else if (!quer && kartJ2) {
+    cena.remove(kartJ2.g); karts.splice(karts.indexOf(kartJ2), 1); kartJ2 = null;
+  }
+  if (kartJ2) kartJ2.humano = 2;
+  // com 2 jogadores a criança sai do banco do carona do Rabisco e vai pilotar o kart dela
+  if (jogador.passageiro) { jogador.passageiro.grupo.visible = !kartJ2; jogador.companheiro = kartJ2 ? null : jogador.passageiro; }
+  dividida = Boolean(kartJ2);
+  ajustarTelaDividida();
+}
+let hudJ2 = null;
+function ajustarTelaDividida() {
+  const toque = navigator.maxTouchPoints > 0;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, dividida ? (toque ? 1 : 1.25) : 1.75));
+  ajustarTela();
+  document.body.classList.toggle("kart-dividido", dividida);
+  document.body.classList.toggle("kart-lado", dividida && ladoALado());
+  if (dividida && !hudJ2) {
+    hudJ2 = document.createElement("div");
+    hudJ2.id = "hud-j2";
+    hudJ2.innerHTML = `<div class="divisoria"></div><div class="tag tag-j1"></div><div class="tag tag-j2"></div><div class="placar-j2"><div class="pos"></div><div class="volta"></div></div>`;
+    $("hud").append(hudJ2);
+  }
+  if (hudJ2) {
+    hudJ2.hidden = !dividida;
+    const ic = { controle: "🎮", teclado: "⌨️", toque: "👆", celular: "📱" };
+    hudJ2.querySelector(".tag-j1").innerHTML = `<i></i>1 · Rabisco ${ic[Jogadores.j1.entrada] ?? ""}`;
+    hudJ2.querySelector(".tag-j2").innerHTML = `<i></i>2 · ${Jogadores.j2.nome} ${ic[Jogadores.j2.entrada] ?? ""}`;
+  }
+}
+addEventListener("resize", () => { if (dividida) ajustarTelaDividida(); });
+Jogadores.aoMudar(() => { if (hudJ2 && dividida) ajustarTelaDividida(); });
+function atualizarCamera2(dt) {
+  const k = kartJ2;
+  const frente = new THREE.Vector3(Math.sin(k.ang), 0, Math.cos(k.ang));
+  camPos2.lerp(k.pos.clone().addScaledVector(frente, -7).setY(3.3), 1 - Math.exp(-dt * (estado === "contagem" ? 2.2 : 12)));
+  camAlvo2.lerp(k.pos.clone().addScaledVector(frente, 6).setY(1.9), 1 - Math.exp(-dt * (estado === "contagem" ? 3 : 16)));
+  camera2.position.copy(camPos2);
+  camera2.lookAt(camAlvo2);
+  const fov = (ladoALado() ? 62 : 48) + (k.turbo > 0 ? 12 : 0) + Math.min(1, k.vel / VMAX) * 4;
+  camera2.fov += (fov - camera2.fov) * Math.min(1, dt * 4);
+  camera2.updateProjectionMatrix();
+}
+// adversário entre a câmera do jogador 2 e o kart dele (ou colado na câmera): também fica semitransparente
+function camera2Tapa(o) {
+  const k = kartJ2, cx = camera2.position.x, cz = camera2.position.z, ax = k.pos.x - cx, az = k.pos.z - cz, L2 = ax * ax + az * az || 1;
+  const ox = o.pos.x - cx, oz = o.pos.z - cz, d = Math.hypot(ox, oz);
+  const ao = (ox * ax + oz * az) / L2, lat = Math.abs(ox * az - oz * ax) / Math.sqrt(L2);
+  return (ao > -0.2 && ao < 0.95 && lat < 3.2) || d < 5.5;
+}
+// desenha a cena: tela cheia (1 jogador, abertura e fim) ou dividida em duas câmeras
+function desenhar() {
+  const W = innerWidth, H = innerHeight;
+  if (!dividida || estado === "abertura" || estado === "fim") {
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, W, H);
+    if (Math.abs(camera.aspect - W / H) > 1e-3) { camera.aspect = W / H; camera.updateProjectionMatrix(); }
+    renderer.shadowMap.autoUpdate = true;
+    for (const o of karts) if (o.humano === 2) o.g.visible = true;
+    renderer.render(cena, camera);
+    return;
+  }
+  const lado = ladoALado();
+  const vistas = lado ? [[0, 0, W / 2, H], [W / 2, 0, W / 2, H]] : [[0, H / 2, W, H / 2], [0, 0, W, H / 2]];
+  renderer.setScissorTest(true);
+  renderer.shadowMap.autoUpdate = false;
+  renderer.shadowMap.needsUpdate = true; // sombra uma vez por quadro, não uma por tela
+  [[camera, jogador], [camera2, kartJ2]].forEach(([c, dono], i) => {
+    const [x, y, w, h] = vistas[i];
+    renderer.setViewport(x, y, w, h);
+    renderer.setScissor(x, y, w, h);
+    if (Math.abs(c.aspect - w / h) > 1e-3) { c.aspect = w / h; c.updateProjectionMatrix(); }
+    for (const o of karts) if (o.humano) o.g.visible = o === dono || o.pos.distanceTo(c.position) > 1.2;
+    cena.userData.ceu.position.copy(c.position);
+    renderer.render(cena, c);
+  });
+  renderer.setScissorTest(false);
+}
+// 2 jogadores: a corrida acaba quando os dois chegam (ou 25 s depois do primeiro)
+let esperaSegundo = null;
+function chegou(k) {
+  if (!kartJ2?.humano) { if (k === jogador) terminar(); return; }
+  const outro = k === jogador ? kartJ2 : jogador;
+  if (outro.terminou) { clearTimeout(esperaSegundo); terminar(); return; }
+  mensagem(`${k === jogador ? "Rabisco" : k.nome} chegou! 🏁`, "acerto", 2400);
+  sons.volta();
+  esperaSegundo = setTimeout(() => { if (estado === "corrida") terminar(); }, 25000);
 }
 
 // ------------------------------------------------------------------ HUD
@@ -1017,24 +1154,24 @@ function desenharMapa() {
   }
   const [lx, lz] = P(centro[0]);
   mapa.fillStyle = "#fff"; mapa.fillRect(lx - 5, lz - 5, 10, 10);
-  for (const k of [...karts].sort((a) => (a.ehJogador ? 1 : -1))) {
+  for (const k of [...karts].sort((a) => (a.humano ? 1 : -1))) {
     const [x, z] = P(k.pos);
     mapa.beginPath();
-    mapa.arc(x, z, k.ehJogador ? 9 : 6.5, 0, Math.PI * 2);
+    mapa.arc(x, z, k.humano ? 9 : 6.5, 0, Math.PI * 2);
     mapa.fillStyle = `#${new THREE.Color(k.cor).getHexString()}`;
     mapa.fill();
     mapa.lineWidth = 3; mapa.strokeStyle = "#151515"; mapa.stroke();
   }
 }
 
-function lugarDoJogador() {
+function lugarDoJogador(quem = jogador) {
   const ordem = [...karts].sort((a, b) => {
     if (a.terminou && b.terminou) return a.tempoFinal - b.tempoFinal;
     if (a.terminou) return -1;
     if (b.terminou) return 1;
     return b.progresso - a.progresso;
   });
-  return ordem.indexOf(jogador) + 1;
+  return ordem.indexOf(quem) + 1;
 }
 
 let hudT = 0;
@@ -1044,6 +1181,10 @@ function atualizarHud(dt) {
   hudT = 0.1;
   $("posicao").textContent = `${lugarDoJogador()}º`;
   $("volta").textContent = `Volta ${Math.min(VOLTAS, jogador.volta + 1)}/${VOLTAS}`;
+  if (dividida && hudJ2) {
+    hudJ2.querySelector(".pos").textContent = `${lugarDoJogador(kartJ2)}º`;
+    hudJ2.querySelector(".volta").textContent = `Volta ${Math.min(VOLTAS, kartJ2.volta + 1)}/${VOLTAS}`;
+  }
   desenharMapa();
 }
 
@@ -1051,7 +1192,10 @@ function atualizarHud(dt) {
 let saudou = false;
 function terminar() {
   estado = "fim";
+  clearTimeout(esperaSegundo);
+  Jogadores.emJogo(false);
   const lugar = lugarDoJogador();
+  const lugar2 = kartJ2?.humano ? lugarDoJogador(kartJ2) : null;
   musica.parar();
   motor.desligar();
   sons.vitoria();
@@ -1062,6 +1206,7 @@ function terminar() {
     if (!med[PISTA.numero] || lugar < med[PISTA.numero]) { med[PISTA.numero] = lugar; try { localStorage.setItem(CHAVE_MEDALHAS, JSON.stringify(med)); } catch { /* sem armazenamento */ } }
     $("res-trofeu").textContent = ["🏆", "🥈", "🥉", "🏁"][lugar - 1];
     $("res-acertos").textContent = MODO.amigos ? `Você levou ${amigos} amigos para a escola!` : `Você acertou ${acertos} de ${perguntasFeitas} ${MODO.unidade}!`;
+    if (lugar2) $("res-acertos").textContent = `Rabisco: ${lugar}º · ${kartJ2.nome}: ${lugar2}º${kartJ2.terminou ? "" : " (ainda correndo)"} — ${MODO.amigos ? `${amigos} amigos na escola!` : `${acertos} de ${perguntasFeitas} ${MODO.unidade} certos!`}`;
     $("resultado").classList.remove("escondido");
     falar(`chegada-${lugar}`);
     // narradora com o nome da criança, depois da fala da chegada (fila da voz)
@@ -1091,6 +1236,8 @@ const controle = ligarControle({
   aoStart: () => { if (estado === "abertura") comecar(); },
   aoConectar: () => { $("dica").textContent = `Controle: direcional ou alavanca para virar · ${MODO.dica} · Start para pausar`; },
 });
+// TV como tela: o foco já começa no "CORRER" (o primeiro A do controle ou a buzina do celular larga a corrida)
+if (Jogadores.tv) setTimeout(() => { if (estado === "abertura") controle.controle.focar($("jogar")); }, 300);
 
 // ------------------------------------------------------------------ Laço principal
 const relogio = new THREE.Clock();
@@ -1099,9 +1246,14 @@ function quadro() {
   const leitura = controle.atualizar();
   entrada.eixo = leitura.eixoX;
   if (leitura.apertou.acao) buzinar();
-  buzinaEspera -= dt;
+  buzinaEspera -= dt; buzinaEspera2 -= dt;
+  if (kartJ2?.humano) {
+    const e = Jogadores.ler2();
+    entradaJ2.eixo = pausa.ativa ? 0 : e.x;
+    if (!pausa.ativa && (e.acaoNova || e.puloNovo)) buzinar2();
+  }
   pausa.atualizar();
-  if (pausa.ativa) { renderer.render(cena, camera); requestAnimationFrame(quadro); return; }
+  if (pausa.ativa) { desenhar(); requestAnimationFrame(quadro); return; }
   const t = relogio.elapsedTime;
   if (estado === "corrida") tempoCorrida += dt;
 
@@ -1115,7 +1267,7 @@ function quadro() {
   if (estado !== "abertura") atualizarHud(dt);
   motor.atualizar(estado === "corrida" ? Math.min(1.3, jogador.vel / VMAX) : 0.05);
 
-  renderer.render(cena, camera);
+  desenhar();
   requestAnimationFrame(quadro);
 }
 
@@ -1129,7 +1281,7 @@ async function iniciar() {
     carregarImagem(`${RAIZ}/assets/marca/logos/azul-icone-rosa.png`),
     carregarImagem(`${RAIZ}/assets/marca/logos/icone-branco.png`),
   ]);
-  const img = {
+  const img = imgKart = {
     logo,
     texLogo: texturaCanvas(logo.width, logo.height, (c) => c.drawImage(logo, 0, 0)),
     texIcone: texturaCanvas(icone.width, icone.height, (c) => c.drawImage(icone, 0, 0)),
@@ -1147,7 +1299,7 @@ async function iniciar() {
   if (params.has("auto")) comecar();
   if (params.has("fim")) { comecar(); setTimeout(() => { jogador.volta = VOLTAS; jogador.terminou = true; terminar(); }, 5000); }
   if (params.has("porticos")) { const k = jogador; const i = idx(POSICOES_PORTICO[Number(params.get("porticos"))] - 60); k.pos.copy(centro[i]); k.amostra = i; k.ang = anguloDe(tangente[i]); }
-  if (params.has("teste")) window.teste = { get jogador() { return jogador; }, karts, porticos, get estado() { return estado; }, renderer, set angulo(a) { anguloTeste = a; },
+  if (params.has("teste")) window.teste = { get jogador() { return jogador; }, get j2() { return kartJ2; }, get dividida() { return dividida; }, karts, porticos, get estado() { return estado; }, renderer, set angulo(a) { anguloTeste = a; },
     get menorDistancia() { return menorDistancia; }, zerarDistancia() { menorDistancia = Infinity; }, get batidas() { return batidas; }, idx, centro, lado, tangente, AMOSTRAS, PASSO,
     colocar(k, i, lat, vel = 0) { const a = idx(i); k.pos.copy(centro[a]).addScaledVector(lado[a], lat); k.amostra = a; k.ang = anguloDe(tangente[a]); k.vel = vel; } };
 }

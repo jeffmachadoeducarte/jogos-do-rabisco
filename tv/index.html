@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <!-- Tela da TV: <site>/tv. A TV (notebook/mini PC no HDMI, TV box, Smart TV) vira SÓ a tela; os jogadores
+       controlam com controle físico (Bluetooth/USB) e/ou celular lendo o QR. Lógica das vagas em src/motor/salatv.js. -->
+  <script>
+    // /tv sem a barra final (o nginx serve a pasta assim mesmo): acerta o endereço para os caminhos relativos funcionarem
+    if (!/\/$/.test(location.pathname) && !/\.html$/.test(location.pathname)) location.replace(location.pathname + "/" + location.search + location.hash);
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#00b5f0">
+  <title>Jogos do Rabisco na TV</title>
+  <link rel="icon" href="../assets/marca/logos/icone-rosa.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tv.css">
+</head>
+<body>
+  <header class="topo">
+    <img class="logo" src="../assets/marca/logos/azul-icone-rosa.png" alt="Educarte Escola Cristã">
+    <h1>Jogos do <span>Rabisco</span> <small>na TV</small></h1>
+    <span class="estado-sala" id="estado-sala" aria-live="polite"></span>
+  </header>
+
+  <main id="menu">
+    <!-- Entrar com o celular: QR grande + código de 4 letras + endereço curto -->
+    <section class="painel entrar" aria-labelledby="titulo-entrar">
+      <h2 id="titulo-entrar">📱 Entre com o celular</h2>
+      <div class="qr" id="qr" role="img" aria-label="QR code do controle"></div>
+      <div class="codigo" id="codigo" aria-label="Código da sala">····</div>
+      <p class="endereco" id="endereco"></p>
+    </section>
+
+    <!-- Quem joga: as 2 vagas e como cada um está conectado -->
+    <section class="painel vagas" aria-labelledby="titulo-vagas">
+      <h2 id="titulo-vagas">Quem vai jogar?</h2>
+      <div class="vaga" id="vaga-1" data-n="1" style="--cor: #00b5f0"></div>
+      <div class="vaga" id="vaga-2" data-n="2" style="--cor: #ec2e8c"></div>
+      <p class="dica-controle" id="dica-controle">🎮 Aperte qualquer botão do controle</p>
+    </section>
+
+    <!-- Escolha do jogo (setas + OK do controle remoto, direcional + A do controle, ou o celular) -->
+    <section class="painel jogos" aria-labelledby="titulo-jogos">
+      <h2 id="titulo-jogos">Escolha o jogo</h2>
+      <div class="cards" id="cards"></div>
+    </section>
+  </main>
+
+  <div class="recado" id="recado" role="status" aria-live="assertive" hidden></div>
+
+  <script type="module" src="tv.js"></script>
+</body>
+</html>

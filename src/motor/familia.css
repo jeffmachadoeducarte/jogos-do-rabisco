@@ -86,3 +86,43 @@
   .familia-cartao { width: min(760px, 100%); }
   .familia-cartao .familia-topo img.rabisco { height: 56px; }
 }
+
+/* ---------- Portão dos pais (conta de multiplicar antes do cadastro e das fotos) ---------- */
+.portao-tela { z-index: 92; align-items: center; }
+.portao-cartao { width: min(420px, 100%); text-align: center; }
+.portao-cadeado { font-size: 46px; line-height: 1; }
+.portao-pergunta { margin: 4px 0 8px; font-weight: 800; font-size: clamp(24px, 6vw, 32px); }
+.portao-conta { color: var(--f-rosa); white-space: nowrap; }
+.portao-cartao #portao-resposta { display: block; width: 140px; margin: 0 auto 8px; text-align: center; font: 800 32px "Baloo 2", system-ui, sans-serif;
+  border: 4px solid var(--f-tinta); border-radius: 18px; padding: 4px 8px; }
+.portao-cartao .familia-acoes { justify-content: center; margin-top: 6px; }
+
+/* ---------- Etapa da foto (orientação, até 3 fotos, detecção local, prévia) ---------- */
+.familia-foto .botoes .botao-foto { background: var(--f-amarelo); }
+.foto-tela { z-index: 94; }
+.foto-cartao { width: min(520px, 100%); }
+.foto-dicas { list-style: none; margin: 6px 0 8px; padding: 0; display: grid; gap: 4px; }
+.foto-dicas li { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px; background: #f3fafe; border-radius: 14px; padding: 4px 10px; }
+.foto-dicas li span { font-size: 24px; }
+.foto-privacidade { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: #335; background: #fff8dd; border: 2px dashed #e7c84a; border-radius: 14px; padding: 6px 10px; }
+.foto-cartao .botao-arquivo.grande { display: flex; justify-content: center; align-items: center; cursor: pointer; font: 800 18px "Baloo 2", system-ui, sans-serif;
+  background: var(--f-ciano); color: #fff; border: 3px solid var(--f-tinta); border-radius: 999px; padding: 8px 16px; box-shadow: 0 5px 0 var(--f-tinta); }
+.foto-cartao .botao-arquivo.grande[hidden] { display: none; }
+.foto-cartao .botao-arquivo.grande:focus-within { outline: 5px solid var(--f-amarelo); outline-offset: 2px; }
+.foto-cartao .botao-arquivo input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.foto-status { margin: 6px 0; font-weight: 700; font-size: 14px; color: #555; }
+.foto-status:empty { display: none; }
+.foto-resultados { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 6px; }
+.foto-resultados li { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; border-radius: 14px; padding: 4px 10px 4px 4px; }
+.foto-resultados li.bom { background: #e5f8ef; color: #136b47; }
+.foto-resultados li.ruim { background: #fff0f6; color: #a3124f; }
+.foto-resultados img, .foto-resultados .x { width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--f-tinta); flex: none; display: grid; place-items: center; background: #fff; font-weight: 900; }
+.foto-previa, .foto-recusa, .foto-manual { border: 3px solid #e3eef5; border-radius: 20px; padding: 10px; margin: 8px 0; }
+.foto-previa[hidden], .foto-recusa[hidden], .foto-manual[hidden] { display: none; }
+.foto-previa { display: flex; gap: 14px; align-items: center; }
+.foto-previa p, .foto-recusa p, .foto-manual p { margin: 0 0 6px; font-weight: 600; }
+.foto-grande { width: 140px; height: 140px; border-radius: 50%; border: 6px solid var(--f-tinta); flex: none; }
+.foto-ajuste { display: block; margin: 6px auto; border-radius: 12px; touch-action: none; cursor: grab; max-width: 100%; }
+.foto-tamanho { flex-direction: row !important; align-items: center; justify-content: center; gap: 8px !important; }
+.foto-tamanho input { width: 180px; accent-color: var(--f-rosa); }
+@media (max-width: 420px) { .foto-previa { flex-direction: column; text-align: center; } }

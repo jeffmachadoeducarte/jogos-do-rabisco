@@ -3,6 +3,8 @@
 //
 //   tela.append(botaoVoltar({ raiz: "../..", faixa: "pequenos" }));
 
+import { emModoTV, urlTV } from "./salatv.js";
+
 const CSS = `
 .botao-voltar {
   position: absolute; z-index: 25; top: calc(env(safe-area-inset-top, 0px) + 12px); left: calc(env(safe-area-inset-left, 0px) + 12px);
@@ -15,7 +17,9 @@ const CSS = `
 `;
 let estiloPosto = false;
 
+// Jogo aberto pela página tv/ (src/motor/salatv.js): "voltar" e "sair" levam ao menu da TV, com os jogadores conectados
 export function linkPortal(raiz, faixa) {
+  if (emModoTV) return urlTV();
   return `${raiz}/index.html${faixa ? `#/faixa/${faixa}` : ""}`;
 }
 
@@ -29,7 +33,7 @@ export function botaoVoltar({ raiz = "../..", faixa = "" } = {}) {
   const a = document.createElement("a");
   a.className = "botao-voltar";
   a.href = linkPortal(raiz, faixa);
-  a.setAttribute("aria-label", "Voltar para os jogos");
-  a.textContent = "← Voltar";
+  a.setAttribute("aria-label", emModoTV ? "Voltar ao menu da TV" : "Voltar para os jogos");
+  a.textContent = emModoTV ? "← Menu da TV" : "← Voltar";
   return a;
 }

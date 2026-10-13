@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <!-- Celular de controle: abre pelo QR code da tela do jogo (?s=CÓDIGO) e vira um controle grande para criança -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#00b5f0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Controle do Rabisco</title>
+  <link rel="icon" href="../../assets/app/icone-192.png">
+  <link rel="stylesheet" href="controle.css">
+</head>
+<body>
+  <header class="topo">
+    <img class="logo" src="../../assets/marca/logos/azul-icone-rosa.png" alt="Educarte Escola Cristã">
+    <div class="chip" id="chip" hidden><i></i><span id="chip-nome">Jogador 2</span></div>
+    <!-- ⏸ pausa o jogo (só aparece quando a tela pede: jogando com a TV como tela) -->
+    <button class="pausar" id="pausar" type="button" hidden aria-label="Pausar o jogo">⏸</button>
+    <span class="sinal" id="sinal" data-estado="conectando" title="Conexão"></span>
+  </header>
+
+  <!-- Entrar: digitar o código de 4 letras (quando não veio pelo QR, ou deu erro) -->
+  <section class="tela" id="tela-entrar" hidden>
+    <div class="cartao">
+      <h1>📱 Controle do Rabisco</h1>
+      <p>Digite o código que aparece na tela do jogo:</p>
+      <form id="form-codigo" autocomplete="off">
+        <input id="codigo" inputmode="text" autocapitalize="characters" spellcheck="false" maxlength="4" placeholder="ABCD" aria-label="Código da sala (4 letras)">
+        <button class="botao rosa" type="submit">Entrar</button>
+      </form>
+      <p class="erro" id="erro-entrar" role="alert"></p>
+    </div>
+  </section>
+
+  <!-- Recado grande: conectando, o jogo saiu, sala fechou... -->
+  <section class="tela" id="tela-recado" hidden>
+    <div class="cartao">
+      <div class="roda" id="recado-roda" aria-hidden="true"></div>
+      <h1 id="recado-titulo">Conectando…</h1>
+      <p id="recado-texto"></p>
+      <button class="botao ciano" id="recado-botao" type="button" hidden>Digitar o código</button>
+    </div>
+  </section>
+
+  <!-- O controle -->
+  <main class="pad" id="pad" hidden data-layout="padrao">
+    <p class="recado-jogo" id="recado-jogo" aria-live="polite" hidden></p>
+    <div class="zona esquerda" id="zona-esq"></div>
+    <div class="zona direita" id="zona-dir"></div>
+  </main>
+
+  <script type="module" src="controle.js"></script>
+</body>
+</html>

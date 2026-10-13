@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <!-- Atalho curto do celular de controle: <site>/c/?s=CÓDIGO (é o que vai no QR e o que se digita).
+       Leva para a página do controle (src/controle-remoto/) com o mesmo ?s= (e ?sala= dos testes). O endereço antigo continua valendo. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#00b5f0">
+  <title>Controle do Rabisco</title>
+  <script>
+    // vale tanto em /c quanto em /c/ (o nginx serve os dois): o caminho é montado a partir da pasta do site
+    (function () {
+      var raiz = location.pathname.replace(/\/c\/?(index\.html)?$/, "/");
+      location.replace(raiz + "src/controle-remoto/" + location.search + location.hash);
+    })();
+  </script>
+</head>
+<body style="font: 700 20px system-ui, sans-serif; text-align: center; padding: 40px 16px; background: #00b5f0; color: #fff">
+  <p>Abrindo o controle…</p>
+  <noscript><p><a style="color:#fff" href="../src/controle-remoto/">Abrir o controle do Rabisco</a></p></noscript>
+</body>
+</html>

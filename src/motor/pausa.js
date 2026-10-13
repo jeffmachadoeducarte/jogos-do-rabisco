@@ -1,9 +1,17 @@
 // Pause comum a todos os jogos: botão ⏸ na tela, teclas P / Esc e a tela "Pausado"
 // com Continuar, Recomeçar e Sair. O jogo informa quando pode pausar e o que fazer em cada botão;
 // no laço principal, enquanto `pausa.ativa`, ele só desenha a cena (nada se mexe).
+// A pausa também tem o botão "📺 Modo TV" (src/motor/modotv.js) para quem espelha o aparelho na TV.
 //
 //   const pausa = criarPausa({ podePausar: () => estado === "jogando", aoPausar, aoContinuar, aoRecomecar, aoSair });
 //   if (pausa.ativa) { renderer.render(cena, camera); return requestAnimationFrame(quadro); }
+
+import { botaoTV } from "./modotv.js";
+import { emModoTV, voltarParaTV } from "./salatv.js";
+
+// a pausa do jogo aberto (para quem não tem a referência, ex.: jogadores.js quando o celular do jogador 1 cai na TV)
+let ultima = null;
+export const pausaAtual = () => ultima;
 
 const CSS = `
 .pausa-botao {
@@ -36,6 +44,8 @@ const CSS = `
 .pausa-cartao .continuar { background: #ec2e8c; }
 .pausa-cartao .recomecar { background: #00b5f0; }
 .pausa-cartao .sair { background: #fff; color: #151515; border: 3px solid #151515; }
+.pausa-cartao .voltar-tv { background: #ff7a00; }
+.pausa-cartao .tv-botao { background: #fff; color: #151515; border: 3px solid #151515; font-size: clamp(18px, 2.4vw, 24px); }
 `;
 
 export function criarPausa({ podePausar, aoPausar = () => {}, aoContinuar = () => {}, aoRecomecar = null, aoSair = null, lugar = null }) {
@@ -60,6 +70,19 @@ export function criarPausa({ podePausar, aoPausar = () => {}, aoContinuar = () =
       ${aoRecomecar ? '<button class="recomecar">Recomeçar ↻</button>' : ""}
       ${aoSair ? '<button class="sair">Sair</button>' : ""}
     </div>`;
+  // 📺 Modo TV (lembrado no aparelho); fica antes do "Sair"
+  const cartao = tela.querySelector(".pausa-cartao");
+  if (emModoTV) {
+    // jogo aberto pela página tv/: volta ao menu da TV com os jogadores conectados (a sala continua a mesma)
+    const voltar = document.createElement("button");
+    voltar.className = "voltar-tv";
+    voltar.textContent = "📺 Voltar ao menu da TV";
+    voltar.addEventListener("click", () => voltarParaTV());
+    cartao.insertBefore(voltar, cartao.querySelector(".recomecar")?.nextSibling ?? cartao.querySelector(".continuar").nextSibling);
+  } else {
+    const tv = botaoTV({ classe: "tv-pausa", rotulo: true });
+    cartao.insertBefore(tv, cartao.querySelector(".sair"));
+  }
   document.body.append(botao, tela);
 
   const api = {
@@ -83,6 +106,7 @@ export function criarPausa({ podePausar, aoPausar = () => {}, aoContinuar = () =
     atualizar() { botao.hidden = api.ativa || !podePausar(); },
   };
 
+  ultima = api;
   botao.addEventListener("click", () => api.pausar());
   tela.querySelector(".continuar").addEventListener("click", () => api.continuar());
   tela.querySelector(".recomecar")?.addEventListener("click", () => { api.ativa = false; tela.hidden = true; aoRecomecar(); });

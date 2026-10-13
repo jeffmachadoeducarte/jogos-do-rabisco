@@ -20,6 +20,7 @@ import { sons } from "../../src/motor/sons.js";
 import { falar, preCarregarFalas, falarNome, parabenizar } from "../../src/motor/voz.js";
 import { criarCompanheiro3D } from "../../src/motor3d/companheiro3d.js";
 import { criarJoystick } from "../../src/motor/joystick.js";
+import { CODIGOS_J2, TECLAS_J1_EXTRA } from "../../src/motor/jogadores.js";
 import { montarCidade, carro, carroAberto, BORDA } from "./cidade.js";
 import { RUAS, segmentos, ROTAS, CASAS, LAGO, PARQUE, PRACA, VAGAS, LARGADA, lugar as lugarDoMapa } from "./mapa.js";
 
@@ -56,6 +57,8 @@ const jogo = criarCasca({
   },
   falas: { titulo: "cid-titulo", vitoria: null },
   controles: CONTROLES,
+  // 2 jogadores ao mesmo tempo: o jogador 2 controla a criança-companheira a pé; no carro, buzina (pulo) e acena (ação)
+  jogadores: "simultaneo",
   aoComecar: iniciar,
   aoSair: parar,
   aoPausar: () => { teclas.clear(); toque?.zerar(); },
@@ -66,12 +69,22 @@ const jogo = criarCasca({
 // ------------------------------------------------------------------ Entrada
 const teclas = new Set();
 const PADRAO = Object.fromEntries(CONTROLES.map((a) => [a.id, a.teclas]));
-const tem = (acao) => (jogo.remap?.teclas(acao) ?? PADRAO[acao]).some((k) => teclas.has(k));
-const ehAcao = (acao, code) => (jogo.remap?.teclas(acao) ?? PADRAO[acao]).includes(code);
+const J = jogo.jogadores;
+// teclas do jogador 1; no teclado dividido (2 jogadores no computador) as teclas do jogador 2 (WASD, Espaço, F) saem
+// e o jogador 1 ganha Shift direito para pular e Enter para a ação
+function teclasDe(acao) {
+  const t = jogo.remap?.teclas(acao) ?? PADRAO[acao];
+  if (!J.tecladoDividido) return t;
+  const extra = acao === "pular" ? TECLAS_J1_EXTRA.pulo : acao === "acao" ? TECLAS_J1_EXTRA.acao : [];
+  return [...t.filter((k) => !CODIGOS_J2.has(k)), ...extra];
+}
+const tem = (acao) => teclasDe(acao).some((k) => teclas.has(k));
+const ehAcao = (acao, code) => teclasDe(acao).includes(code);
 let pad = { x: 0, y: 0, gx: 0, pulo: false, puloNovo: false, acaoNova: false };
 let toque = null;
 addEventListener("keydown", (e) => {
   if (jogo.estado !== "jogando" || jogo.pausado) return;
+  if (J.tv && !ehAcao("mapa", e.code)) return; // TV como tela (página tv/): o Rabisco e a criança são dos controles e celulares
   teclas.add(e.code);
   if (ehAcao("pular", e.code)) { pad.puloNovo = true; e.preventDefault(); }
   if (ehAcao("acao", e.code) && !e.repeat) { pad.acaoNova = true; e.preventDefault(); }
@@ -82,7 +95,7 @@ addEventListener("keyup", (e) => teclas.delete(e.code));
 function lerControle({ segura, apertou, eixoX, eixoY }) {
   const g = navigator.getGamepads?.() ?? [];
   let gx = 0;
-  for (const p of g) if (p && Math.abs(p.axes[2] ?? 0) > 0.2) gx = p.axes[2];
+  for (const p of g) if (p && p.index !== J.padJ2 && Math.abs(p.axes[2] ?? 0) > 0.2) gx = p.axes[2];
   pad.x = eixoX || ((segura.dir ? 1 : 0) - (segura.esq ? 1 : 0));
   pad.y = -(eixoY || ((segura.baixo ? 1 : 0) - (segura.cima ? 1 : 0)));
   pad.gx = gx;
@@ -95,7 +108,9 @@ function lerControle({ segura, apertou, eixoX, eixoY }) {
 // ------------------------------------------------------------------ Cena
 let r3, cena, cam, sol, mundo, rabisco, relogio, vivo = false, hud, mapa, balao, bussola, btnAcao, mapaGrande;
 let companheiro = null; // a criança cadastrada passeando junto (src/motor3d/companheiro3d.js)
-const amigo = { pos: new THREE.Vector3(), dir: 0, vel: 0, fase: 0 };
+const amigo = { pos: new THREE.Vector3(), dir: 0, vel: 0, fase: 0, vy: 0, noChao: true, acena: 0, buzina: 0 };
+let dois = false; // 2 jogadores: a criança é do jogador 2 (src/motor/jogadores.js)
+const RAIO_J2 = 11; // o jogador 2 fica a no máximo 11 m do Rabisco (a câmera enquadra os dois)
 const j = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), noChao: true, coyote: 0, buffer: 0, dir: 0 };
 let camYaw = 0, camManual = 0, vistaTeste = null;
 const carros = [], moradores = [], selos = [], npcs = [], veiculos = [];
@@ -138,7 +153,11 @@ function iniciar() {
   rabisco = new Rabisco3D({ raiz: "../..", altura: 1.8 });
   cena.add(rabisco.grupo);
   j.pos.set(LARGADA.x, 0.03, LARGADA.z); j.vel.set(0, 0, 0); j.dir = LARGADA.dir; camYaw = LARGADA.dir;
-  companheiro = criarCompanheiro3D({ raiz: "../..", altura: 1.55, cracha: true });
+  dois = J.ativo && J.j2Pronto;
+  // sem cadastro, no modo 2 jogadores, vem a criança genérica (lápis verde) com o nome "Jogador 2"
+  const semCadastro = !window.Familia?.crianca?.();
+  companheiro = criarCompanheiro3D({ raiz: "../..", altura: 1.55, cracha: true, ...(dois && semCadastro ? { crianca: { nome: J.j2.nome } } : {}) });
+  Object.assign(amigo, { vy: 0, noChao: true, acena: 0, buzina: 0 });
   if (companheiro) {
     amigo.pos.set(LARGADA.x + 1.4, 0.03, LARGADA.z + 1.4); amigo.dir = LARGADA.dir; amigo.vel = 0;
     companheiro.grupo.position.copy(amigo.pos);
@@ -235,7 +254,7 @@ function moverJogador(dt) {
   rabisco.grupo.position.copy(j.pos);
   rabisco.grupo.rotation.y = j.dir;
   rabisco.atualizar(dt, { modo: fim ? "comemorar" : !j.noChao ? "pular" : v > 0.6 ? "andar" : "parado", vel: v, vmax: VEL });
-  if (companheiro) moverCompanheiro(dt, v);
+  if (companheiro) (dois ? moverJogador2(dt) : moverCompanheiro(dt, v));
   return { andando: m > 0.2 && iy > -0.3 };
 }
 
@@ -269,6 +288,65 @@ function moverCompanheiro(dt, velRabisco) {
   companheiro.grupo.position.copy(amigo.pos);
   companheiro.grupo.rotation.y = amigo.dir;
   companheiro.atualizar(dt, { modo: fim ? "comemorar" : andando ? "andar" : velRabisco > 0.6 ? "parado" : "acenar", vel: amigo.vel, vmax: VEL });
+}
+
+// Jogador 2: a criança anda sozinha (relativo à câmera, como o Rabisco), pula e acena (ação). Fica a no máximo
+// RAIO_J2 do Rabisco: passando disso, é segurada na borda (a câmera compartilhada enquadra os dois).
+let avisouRaio = false;
+function moverJogador2(dt) {
+  const e = J.ler2();
+  let ix = e.x, iy = e.y;
+  if (fim) ix = iy = 0;
+  const m = Math.hypot(ix, iy);
+  if (m > 1) { ix /= m; iy /= m; }
+  const fx = Math.sin(camYaw), fz = Math.cos(camYaw);
+  const wx = fx * iy - fz * ix, wz = fz * iy + fx * ix;
+  const V = VEL * 0.95;
+  amigo.vx = (amigo.vx ?? 0) + (wx * V - (amigo.vx ?? 0)) * Math.min(1, dt * 12);
+  amigo.vz = (amigo.vz ?? 0) + (wz * V - (amigo.vz ?? 0)) * Math.min(1, dt * 12);
+  if (e.puloNovo && amigo.noChao) { amigo.vy = PULO * 0.95; amigo.noChao = false; sons.pulo(); }
+  if (!e.pulo && amigo.vy > 4) amigo.vy = 4;
+  if (e.acaoNova) { amigo.acena = 1.4; sons.bipe?.(false); }
+  amigo.acena -= dt;
+  amigo.vy -= GRAV * dt;
+  let nx = amigo.pos.x + amigo.vx * dt, nz = amigo.pos.z + amigo.vz * dt;
+  // segura perto do Rabisco
+  const dx = nx - j.pos.x, dz = nz - j.pos.z, d = Math.hypot(dx, dz);
+  if (d > RAIO_J2) {
+    nx = j.pos.x + (dx / d) * RAIO_J2; nz = j.pos.z + (dz / d) * RAIO_J2;
+    if (!avisouRaio) { avisouRaio = true; dizer(J.j2.nome, "Fique pertinho do Rabisco, assim a gente não se perde!", 3200); }
+  }
+  // nunca atravessa o Rabisco
+  const ex = nx - j.pos.x, ez = nz - j.pos.z, d2 = Math.hypot(ex, ez);
+  if (d2 < 1.0 && d2 > 1e-3) { nx = j.pos.x + (ex / d2) * 1.0; nz = j.pos.z + (ez / d2) * 1.0; }
+  if (!bate(nx, amigo.pos.z, amigo.pos.y) && Math.abs(nx) < BORDA + 10) amigo.pos.x = nx; else amigo.vx = 0;
+  if (!bate(amigo.pos.x, nz, amigo.pos.y) && Math.abs(nz) < BORDA + 10) amigo.pos.z = nz; else amigo.vz = 0;
+  // ficou longe demais (o Rabisco correu e ela ficou presa atrás de algo): aparece pertinho dele
+  if (Math.hypot(amigo.pos.x - j.pos.x, amigo.pos.z - j.pos.z) > RAIO_J2 + 4) { const [lx, lz] = livre(j.pos.x - Math.sin(j.dir) * 1.8, j.pos.z - Math.cos(j.dir) * 1.8); amigo.pos.x = lx; amigo.pos.z = lz; }
+  const chao = chaoEm(amigo.pos.x, amigo.pos.z, amigo.pos.y);
+  amigo.pos.y += amigo.vy * dt;
+  if (amigo.pos.y <= chao) { amigo.pos.y = chao; amigo.vy = 0; amigo.noChao = true; } else amigo.noChao = amigo.pos.y - chao < 0.03;
+  const v = Math.hypot(amigo.vx, amigo.vz);
+  amigo.vel = v;
+  if (v > 0.4) { let a = Math.atan2(amigo.vx, amigo.vz) - amigo.dir; a = Math.atan2(Math.sin(a), Math.cos(a)); amigo.dir += a * Math.min(1, dt * 12); }
+  companheiro.grupo.position.copy(amigo.pos);
+  companheiro.grupo.rotation.y = amigo.dir;
+  const modo = fim ? "comemorar" : !amigo.noChao ? "pular" : v > 0.6 ? "andar" : amigo.acena > 0 ? "acenar" : "parado";
+  companheiro.atualizar(dt, { modo, vel: v, vmax: VEL });
+}
+// Jogador 2 no carona: pulo = buzina, ação = acenar (braço para fora do carro)
+function jogador2NoCarro(dt, v) {
+  const e = J.ler2();
+  amigo.buzina -= dt;
+  if (e.puloNovo && amigo.buzina <= 0) { sons.buzina(); amigo.buzina = 0.8; navigator.vibrate?.(15); }
+  if (e.acaoNova) amigo.acena = 1.6;
+  amigo.acena -= dt;
+  if (amigo.acena > 0 && companheiro) {
+    const rb = companheiro.rabisco, t = relogio.elapsedTime;
+    rb.bracoE.ombro.rotation.set(-0.25, 0, 2.55);
+    rb.bracoE.cotovelo.rotation.x = -0.35 + Math.sin(t * 7) * 0.45;
+  }
+  void v;
 }
 
 // ------------------------------------------------------------------ Carro do Rabisco (dirigir)
@@ -373,6 +451,7 @@ function dirigirCarro(dt) {
     companheiro.atualizar(dt, { modo: festa ? "comemorarSentado" : "dirigir", virar: v.virar });
     if (!festa) companheiro.bracos(-0.35, 0.55, -1.25);
     companheiro.rabisco.tronco.rotation.z += -v.virar * 0.1;
+    if (dois) jogador2NoCarro(dt, v);
   }
   return { andando: Math.abs(v.vel) > 1 };
 }
@@ -402,18 +481,21 @@ function posicionarCamera(k, dt, andando = false) {
   if (camManual <= 0 && (andando || dentro)) { let d = ref - camYaw; d = Math.atan2(Math.sin(d), Math.cos(d)); camYaw += d * Math.min(1, dt * (dentro ? 2.5 : 1.2)); }
   const longe = cam.aspect < 1.2 ? 1.25 : 1;
   let dist = (dentro ? 8.6 : 6.3) * longe;
+  // 2 jogadores a pé: a câmera mira o meio dos dois e se afasta conforme eles se separam
+  const P = dois && !dentro && companheiro ? new THREE.Vector3((j.pos.x + amigo.pos.x) / 2, (j.pos.y + amigo.pos.y) / 2, (j.pos.z + amigo.pos.z) / 2) : j.pos;
+  if (P !== j.pos) dist += Math.hypot(j.pos.x - amigo.pos.x, j.pos.z - amigo.pos.z) * 0.75;
   // a câmera não atravessa prédios: encurta a distância se tiver parede no caminho
   for (let s = 1; s <= 10; s++) {
     const d = (dist * s) / 10;
-    const x = j.pos.x - Math.sin(camYaw) * d, z = j.pos.z - Math.cos(camYaw) * d;
+    const x = P.x - Math.sin(camYaw) * d, z = P.z - Math.cos(camYaw) * d;
     if (mundo.solidos.some((o) => o.y1 > 3 && x > o.x0 - 0.3 && x < o.x1 + 0.3 && z > o.z0 - 0.3 && z < o.z1 + 0.3)) { dist = Math.max(2.5, d - 0.6); break; }
   }
   const alt = dentro ? 3.8 : 3.0;
-  alvo.lerp(new THREE.Vector3(j.pos.x + Math.sin(camYaw) * (dentro ? 4 : 2), j.pos.y + (dentro ? 1.4 : 1.3), j.pos.z + Math.cos(camYaw) * (dentro ? 4 : 2)), k);
-  posCam.lerp(new THREE.Vector3(j.pos.x - Math.sin(camYaw) * dist, j.pos.y + alt * longe, j.pos.z - Math.cos(camYaw) * dist), k);
+  alvo.lerp(new THREE.Vector3(P.x + Math.sin(camYaw) * (dentro ? 4 : 2), P.y + (dentro ? 1.4 : 1.3), P.z + Math.cos(camYaw) * (dentro ? 4 : 2)), k);
+  posCam.lerp(new THREE.Vector3(P.x - Math.sin(camYaw) * dist, P.y + alt * longe, P.z - Math.cos(camYaw) * dist), k);
   cam.position.copy(posCam);
   cam.lookAt(alvo);
-  sol.position.set(j.pos.x + 40, 60, j.pos.z + 30);
+  sol.position.set(P.x + 40, 60, P.z + 30);
   sol.target.position.set(j.pos.x, 0, j.pos.z);
 }
 
@@ -908,7 +990,8 @@ function regras(dt, t) {
   for (const s of selos) {
     if (!s.vivo) continue;
     s.m.rotation.y = t * 3;
-    if (Math.hypot(j.pos.x - s.m.position.x, j.pos.z - s.m.position.z) < (dentro ? 2 : 1.2) && j.pos.y < 2.5) { s.vivo = false; s.m.visible = false; selosPegos++; sons.moeda(); atualizarHud(); }
+    const pegaJ2 = dois && !dentro && companheiro && Math.hypot(amigo.pos.x - s.m.position.x, amigo.pos.z - s.m.position.z) < 1.2 && amigo.pos.y < 2.5;
+    if (pegaJ2 || (Math.hypot(j.pos.x - s.m.position.x, j.pos.z - s.m.position.z) < (dentro ? 2 : 1.2) && j.pos.y < 2.5)) { s.vivo = false; s.m.visible = false; selosPegos++; sons.moeda(); atualizarHud(); }
   }
   // carros: a pé perto de um carro, o botão entra; dirigindo, o botão sai (parado)
   if (!contexto) {
@@ -1073,6 +1156,7 @@ let tMapa = 0, tHud = 0;
 function quadro() {
   if (!vivo) return;
   const dt = Math.min(relogio.getDelta(), 1 / 30);
+  if (dois && !J.ativo) dois = false; // o controle do jogador 2 caiu e escolheram seguir só com o Rabisco: a criança volta a seguir
   if (!jogo.pausado) {
     const t = relogio.elapsedTime;
     const { andando } = dentro ? dirigirCarro(dt) : moverJogador(dt);
@@ -1094,7 +1178,7 @@ function quadro() {
 }
 
 if (params.has("teste")) window.teste = {
-  jogo, j, carros, veiculos, lugarDoMapa,
+  jogo, j, carros, veiculos, lugarDoMapa, amigo, get dois() { return dois; },
   get companheiro() { return companheiro; }, get missoes() { return missoes; }, get mundo() { return mundo; }, get selos() { return selosPegos; }, get visitados() { return visitados.size; },
   get dentro() { return dentro; }, get foco() { return foco; }, alvo: () => alvoAtual(), get contexto() { return contexto?.tipo ?? null; },
   ir(x, z, y = 0.03) { j.pos.set(x, y, z); j.vel.set(0, 0, 0); posicionarCamera(1, 0); }, olhar(yaw) { camYaw = yaw; camManual = 5; posicionarCamera(1, 0); },

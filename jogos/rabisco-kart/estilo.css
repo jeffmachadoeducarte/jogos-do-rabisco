@@ -319,3 +319,29 @@ body:has(.tela:not(.escondido)) #som { top: calc(env(safe-area-inset-top, 0px) +
   width: 54px !important; height: 54px !important; min-width: 0; padding: 0 !important; margin: 0; flex: none;
   border-radius: 50% !important; font-size: 24px; line-height: 1; background: rgba(255, 255, 255, 0.9); border: 4px solid #151515; box-shadow: 0 4px 0 #151515;
 }
+
+/* ---------- 2 jogadores: tela dividida (jogo.js, ajustarDois) ----------
+   TV/tablet/computador: em cima = Rabisco, embaixo = jogador 2; celular deitado (≥ 2:1): lado a lado. */
+#hud-j2[hidden] { display: none; }
+#hud-j2 .divisoria { position: absolute; left: 0; right: 0; top: 50%; height: 6px; margin-top: -3px; background: var(--tinta); }
+body.kart-lado #hud-j2 .divisoria { left: 50%; right: auto; top: 0; bottom: 0; width: 6px; height: auto; margin: 0 0 0 -3px; }
+#hud-j2 .tag { position: absolute; right: 16px; font: 800 clamp(14px, 1.8vw, 19px) "Baloo 2", system-ui, sans-serif; white-space: nowrap;
+  background: rgba(255, 255, 255, 0.92); border: 4px solid var(--jc); border-radius: 999px; padding: 0 12px; color: var(--tinta); }
+#hud-j2 .tag i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: var(--jc); border: 2px solid var(--tinta); margin-right: 5px; vertical-align: -1px; }
+#hud-j2 .tag-j1 { --jc: #00b5f0; top: calc(50% - 44px); }
+#hud-j2 .tag-j2 { --jc: #ec2e8c; bottom: 12px; }
+body.kart-lado #hud-j2 .tag-j1 { right: calc(50% + 16px); top: auto; bottom: 12px; }
+#hud-j2 .placar-j2 { position: absolute; left: 16px; top: calc(50% + 12px); color: #fff; -webkit-text-stroke: 3px var(--tinta); paint-order: stroke fill;
+  text-shadow: 0 5px 0 var(--tinta); font-weight: 800; line-height: 0.9; }
+body.kart-lado #hud-j2 .placar-j2 { left: calc(50% + 16px); top: 14px; }
+#hud-j2 .placar-j2 .pos { font-size: clamp(44px, 7vw, 80px); color: #ff8fc8; }
+#hud-j2 .placar-j2 .volta { font-size: clamp(18px, 2.6vw, 28px); margin-top: 4px; }
+body.kart-dividido #posicao { font-size: clamp(44px, 7vw, 80px); }
+body.kart-dividido #volta { font-size: clamp(18px, 2.6vw, 28px); }
+body.kart-dividido #mapa { width: clamp(90px, 11vw, 150px); }
+body.kart-dividido .pergunta { font-size: clamp(28px, 4.5vw, 52px); }
+body.kart-dividido .toque button { opacity: 0.6; }
+/* no toque os botões ◀ ▶ ficam nos cantos de baixo: as etiquetas vão para o meio de cada metade */
+body.touch #hud-j2 .tag { right: auto; left: 50%; transform: translateX(-50%); }
+body.touch.kart-lado #hud-j2 .tag-j1 { left: 25%; }
+body.touch.kart-lado #hud-j2 .tag-j2 { left: 75%; }

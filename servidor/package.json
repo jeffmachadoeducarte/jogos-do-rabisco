@@ -1,0 +1,10 @@
+{
+  "name": "jogos-sala",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Relay WebSocket das salas dos Jogos do Rabisco (celular como controle)",
+  "engines": { "node": ">=20" },
+  "scripts": { "start": "node sala.mjs", "test": "node --test teste.mjs" },
+  "dependencies": { "ws": "^8.18.0" }
+}

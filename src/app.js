@@ -12,6 +12,7 @@ import { Familia } from "./motor/familia.js";
 import { sons } from "./motor/sons.js";
 import { ligarControle } from "./motor/controle.js";
 import { registrarApp, pedirInstalacao, jaInstalado } from "./motor/instalar.js";
+import { botaoTV, ModoTV } from "./motor/modotv.js";
 
 const RAIZ = ".";
 const $ = (id) => document.getElementById(id);
@@ -197,6 +198,24 @@ function desenharFamilia() {
 desenharFamilia();
 Familia.aoMudar(desenharFamilia);
 btnFamilia.addEventListener("click", () => Familia.abrirCadastro({ obrigatorio: false, titulo: "Nossa família" }));
+// 📺 Modo TV (src/motor/modotv.js): botãozinho ao lado de "Família"; a escolha vale para todos os jogos deste aparelho
+btnFamilia.after(botaoTV({ classe: "tv-botao-portal" }));
+// 📺 Jogar na TV (tv/index.html): a TV vira só a tela e os jogadores usam controle ou celular. Discreto, ao lado do Modo TV;
+// um toque explica em uma frase onde abrir (o endereço sai do próprio site, nada fixo)
+{
+  const enderecoTV = `${location.host}${location.pathname.replace(/[^/]*$/, "")}tv`;
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "jogar-tv-portal";
+  b.id = "jogar-tv";
+  b.innerHTML = '<span aria-hidden="true">📺</span><span class="txt">Jogar na TV</span>';
+  b.setAttribute("aria-label", "Jogar na TV");
+  b.addEventListener("click", (e) => {
+    e.stopPropagation();
+    ModoTV.toast(`<b>Jogar na TV</b>Na TV, abra <b>${enderecoTV}</b> e jogue com o controle ou o celular.`, [{ texto: "Abrir aqui", acao: () => { location.href = "tv/"; } }], 9000);
+  });
+  btnFamilia.nextElementSibling.after(b);
+}
 // um jogo só abre depois do cadastro (uma vez por aparelho); o link segue depois de salvar
 $("jogos").addEventListener("click", async (e) => {
   const a = e.target.closest("a.jogo.pronto");

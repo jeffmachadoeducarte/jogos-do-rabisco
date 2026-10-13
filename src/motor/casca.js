@@ -9,15 +9,21 @@
 //     aoComecar: (nivel) => { ...desenha em jogo.palco... },
 //   });
 //   jogo.placar("⭐ 3");  jogo.aviso("Muito bem!", "bom");  jogo.vencer({ estrelas: 3, texto: "Você achou todos!" });
+//
+// Dois jogadores (src/motor/jogadores.js): a abertura pergunta "Quantos vão jogar?". Por padrão (jogadores: "revezamento")
+// todo jogo da casca ganha o revezamento sem edição: "Agora é a vez de {nome}!" a cada fase, as estrelas de cada um
+// e o placar dos dois na vitória e ao sair. Jogos em que os dois jogam juntos passam jogadores: "simultaneo" e leem o
+// jogador 2 com jogo.jogadores.ler2(); jogadores: false desliga a pergunta.
 
 import { sons, musica } from "./sons.js";
 import { falar, preCarregarFalas, saudar, parabenizar } from "./voz.js";
 import "./familia.js"; // window.Familia: nome e foto da criança para a voz e os companheiros
 import { criarPausa } from "./pausa.js";
-import { ligarControle, navegarComTeclado, moverFoco } from "./controle.js";
+import { ligarControle, navegarComTeclado, moverFoco, focar } from "./controle.js";
 import { prepararCelular } from "./celular.js";
 import { botaoVoltar, linkPortal } from "./voltar.js";
 import { criarRemapear } from "./remapear.js";
+import { Jogadores } from "./jogadores.js";
 
 const RAIZ = "../..";
 const el = (tag, props = {}, filhos = []) => {
@@ -42,6 +48,7 @@ export function criarCasca({
   aoComecar = () => {}, aoSair = () => {}, aoPausar = () => {}, aoContinuar = () => {}, aoVoltar = () => {},
   aoControle = null, // (leitura) a cada quadro durante o jogo: para jogos que usam os botões direto
   controles = null,  // opcional: ações que a criança pode remapear (ver src/motor/remapear.js); cria o botão ⚙️ no topo
+  jogadores = "revezamento", // "revezamento" (padrão) | "simultaneo" | false: pergunta 1 ou 2 jogadores na abertura
 }) {
   if (cor) document.documentElement.style.setProperty("--cor", cor);
   document.title = titulo;
@@ -62,7 +69,8 @@ export function criarCasca({
     aoFechar: () => { if (pausouPeloRemap) { pausouPeloRemap = false; pausa.continuar(); } },
   }) : null;
   const ladoDireito = remap?.botao ? el("div", { style: "display:flex;gap:10px;align-items:center" }, [remap.botao, btnSom]) : btnSom;
-  const topo = el("div", { class: "casca-topo" }, [el("div", { style: "display:flex;gap:10px;align-items:center" }, [btnSair, placar]), ladoDireito]);
+  const vezEl = el("div", { class: "casca-vez", style: "display:contents" }); // revezamento: de quem é a vez
+  const topo = el("div", { class: "casca-topo" }, [el("div", { style: "display:flex;gap:10px;align-items:center" }, [btnSair, placar, vezEl]), ladoDireito]);
   const avisoEl = el("div", { class: "casca-aviso", "aria-live": "assertive" });
 
   const conteudoAbertura = el("div", { class: "conteudo" }, [
@@ -70,6 +78,12 @@ export function criarCasca({
     el("h1", { texto: titulo }),
     el("p", { class: "sub", texto: sub }),
   ]);
+  // "Quantos vão jogar?" (1 ou 2), com o quem-é-quem do modo 2 jogadores
+  if (jogadores) {
+    Jogadores.configurar({ tipo: jogadores, aoMudarModo: () => vezEl.replaceChildren() });
+    conteudoAbertura.append(Jogadores.escolha());
+  }
+  const revezando = () => jogadores === "revezamento" && Jogadores.ativo;
   const nivelBotoes = [];
   if (niveis?.length) {
     const grupo = el("div", { class: "casca-niveis", role: "group", "aria-label": "Escolha o nível" });
@@ -99,12 +113,13 @@ export function criarCasca({
   const vitEstrelas = el("div", { class: "estrelas", "aria-hidden": "true" });
   const vitTexto = el("div", { class: "texto" });
   const vitExtra = el("div", { class: "extra" });
+  const vitPlacar = el("div", { class: "casca-placar-2j" });
   const btnProximo = el("button", { class: "botao", texto: "Próximo nível ▶", onclick: () => { esconderVitoria(); comecar(Math.min(niveis?.length || 1, nivel + 1)); } });
   const btnDeNovo = el("button", { class: "botao ciano", texto: "Jogar de novo ↻", onclick: () => { esconderVitoria(); comecar(nivel); } });
   const btnVitSair = el("button", { class: "botao branco", texto: "Sair", onclick: () => sair() });
   const vitoria = el("section", { class: "casca-tela casca-vitoria escondido" }, [
     el("div", { class: "casca-cartao", role: "dialog", "aria-label": "Vitória" }, [
-      vitTitulo, el("img", { class: "rabisco-feliz", src: `${RAIZ}/assets/rabisco/poses/frente.png`, alt: "" }), vitEstrelas, vitTexto, vitExtra,
+      vitTitulo, el("img", { class: "rabisco-feliz", src: `${RAIZ}/assets/rabisco/poses/frente.png`, alt: "" }), vitEstrelas, vitTexto, vitExtra, vitPlacar,
       el("div", { class: "botoes" }, [btnProximo, btnDeNovo, btnVitSair]),
     ]),
   ]);
@@ -118,6 +133,11 @@ export function criarCasca({
   marcarFeitos();
 
   function comecar(n) {
+    // 2 jogadores ao mesmo tempo precisa de algo para o jogador 2 (controle ou teclado dividido)
+    if (jogadores === "simultaneo" && Jogadores.ativo && !Jogadores.j2Pronto) {
+      aviso(Jogadores.textoFaltaJ2, "", 3600);
+      return;
+    }
     nivel = n;
     estado = "jogando";
     sons.destravar();
@@ -129,6 +149,11 @@ export function criarCasca({
     placar.textContent = "";
     if (musicaFundo) musica.tocar(musicaFundo);
     aoComecar(n);
+    if (jogadores && Jogadores.ativo) {
+      Jogadores.emJogo(true);
+      if (revezando()) { Jogadores.anunciarVez(); vezEl.replaceChildren(Jogadores.chipVez()); saudou = true; } // a vez já chama pelo nome
+      else if (jogadores === "simultaneo") Jogadores.mostrarQuemEQuem();
+    } else vezEl.replaceChildren();
     // a narradora dá "oi" pelo nome da criança uma vez por visita (gancho único para os 31 jogos)
     if (!saudou) { saudou = true; setTimeout(() => saudar({ gravada: !falas.titulo }), 600); }
   }
@@ -142,7 +167,11 @@ export function criarCasca({
     vitoria.classList.add("escondido");
     abertura.classList.remove("escondido");
     marcarFeitos();
+    if (jogadores) Jogadores.emJogo(false);
+    vezEl.replaceChildren();
     aoSair();
+    // revezamento: placar final dos dois ao voltar para a abertura (se jogaram pelo menos uma rodada)
+    if (jogadores === "revezamento") Jogadores.placarFinal({ aoFechar: () => moverFoco(abertura, 0, 0) });
   }
   function sair() {
     if (estado !== "abertura") { irParaAbertura(); return; }
@@ -182,6 +211,15 @@ export function criarCasca({
     vitExtra.innerHTML = "";
     if (extra instanceof Node) vitExtra.append(extra); else vitExtra.innerHTML = extra;
     btnProximo.hidden = !proximo || !niveis || nivel >= niveis.length;
+    // revezamento: a rodada conta para quem jogou; o placar dos dois aparece e a vez passa para o outro
+    vitPlacar.replaceChildren();
+    if (revezando()) {
+      const quem = Jogadores.jogadorDaVez();
+      Jogadores.marcar(estrelas ?? 1);
+      Jogadores.proximaVez();
+      vitTitulo.textContent = `${t} ${quem.nome}!`.replace(/!\s(\S)/, ", $1");
+      vitPlacar.append(Jogadores.placar({ proxima: true }));
+    }
     setTimeout(() => {
       vitoria.classList.remove("escondido");
       sons.vitoria();
@@ -216,6 +254,8 @@ export function criarCasca({
     navegarComTeclado(telaDoMenu(), e);
   });
   prepararCelular({ deitado });
+  // TV como tela (página tv/): o foco já começa no primeiro botão de jogar (o "← Menu da TV" fica para depois)
+  if (jogadores && Jogadores.tv) setTimeout(() => { if (estado === "abertura") { const b = nivelBotoes[0] || abertura.querySelector(".botao"); if (b) focar(b); } }, 300);
   const laco = () => {
     const leitura = controle.atualizar();
     if (aoControle && estado === "jogando" && !pausa.ativa) aoControle(leitura);
@@ -229,16 +269,19 @@ export function criarCasca({
   const params = new URLSearchParams(location.search);
   if (params.has("nivel") || params.has("jogar")) queueMicrotask(() => comecar(Number(params.get("nivel")) || 1));
 
-  return {
+  const api = {
     palco, pausa, controle, remap,
     get estado() { return estado; },
     get nivel() { return nivel; },
     get pausado() { return pausa.ativa; },
+    jogadores: Jogadores,
     placar(html) { placar.innerHTML = html; },
     aviso, vencer, confete, falar, sair,
     voltarAoInicio: irParaAbertura,
     focarPrimeiro: () => moverFoco(palco, 0, 0),
   };
+  if (params.has("teste")) window.cascaTeste = api; // testes: vencer() direto, etc.
+  return api;
 }
 
 // Grade que cabe na tela: escolhe o número de colunas que deixa os itens maiores.
