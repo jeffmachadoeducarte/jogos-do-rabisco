@@ -17,11 +17,13 @@ import { pistaAtual, PISTAS, decoracao, estrelas } from "./pistas.js";
 import { botaoVoltar } from "../../src/motor/voltar.js";
 import { criarRemapear } from "../../src/motor/remapear.js";
 import { Jogadores, CODIGOS_J2, COR_J2 } from "../../src/motor/jogadores.js";
+import { PARCEIROS, ESTILO_PARCEIRO } from "../cidade-do-rabisco/parceiros.js";
 
 const RAIZ = "../..";
 const MEIA_PISTA = 9;          // metade da largura do asfalto
 const ZEBRA = 1.6;             // largura da zebra
 const LIMITE_MURO = MEIA_PISTA + 11;
+const PARC = { altura: 11, larguraMax: 30, prof: 8, outdoorAlt: 7, outdoorLarg: 17, pe: 4 }; // lojas parceiras na beira da pista (metros)
 const MODO = modoAtual();      // contas, cores, onibus, ingles-jr, gp ou ingles (ver modos.js)
 const VOLTAS = MODO.voltas;
 const VMAX = MODO.vmax;
@@ -273,12 +275,97 @@ function construirMundo(img) {
   escola.rotation.y = Math.atan2(centro[kEsc].x - lugarEscola.x, centro[kEsc].z - lugarEscola.z);
   cena.add(escola);
 
+  // Lojas parceiras (fonte única: ../cidade-do-rabisco/parceiros.js): um prédio de cada uma logo depois da largada
+  // e outdoors espalhados pela beira da pista. A textura de cada parceira carrega UMA vez e é reaproveitada;
+  // sem sombra e com material simples, para não pesar em TV e tela dividida.
+  const ocupados = [{ x: lugarEscola.x, z: lugarEscola.z, r: 34 }, { x: bus.position.x, z: bus.position.z, r: 14 }];
+  const FOLGA_PARCEIRO = 27; // do centro da pista à parte mais próxima (muro invisível e barreira de gizes ficam dentro disso)
+  const cabe = (x, z, rot, w, d) => {
+    const c = Math.cos(rot), s = Math.sin(rot);
+    for (let a = 0; a <= 4; a++) for (let b = 0; b <= 2; b++) {
+      const la = (a / 4 - 0.5) * w, lb = (b / 2 - 0.5) * d;
+      const px = x + la * c + lb * s, pz = z - la * s + lb * c;
+      for (let i = 0; i < AMOSTRAS; i += 3) if (Math.hypot(px - centro[i].x, pz - centro[i].z) < FOLGA_PARCEIRO) return false;
+    }
+    const r = Math.hypot(w, d) / 2 + 2;
+    return ocupados.every((o) => Math.hypot(x - o.x, z - o.z) > o.r + r);
+  };
+  const lojas = PARCEIROS.map((p) => {
+    const e = ESTILO_PARCEIRO[p.tipo] ?? ESTILO_PARCEIRO.carros;
+    const o = {
+      p, prop: PARC.larguraMax / PARC.altura, ajustes: [],
+      frente: new THREE.MeshBasicMaterial({ color: e.parede }),
+      lado: new THREE.MeshLambertMaterial({ color: e.parede }),
+      beiral: new THREE.MeshLambertMaterial({ color: e.beiral }),
+    };
+    new THREE.TextureLoader().load(`${RAIZ}/${p.foto}`, (t) => {
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+      o.frente.map = t; o.frente.color.set(0xffffff); o.frente.needsUpdate = true;
+      o.prop = t.image.width / t.image.height;
+      o.ajustes.forEach((f) => f(o.prop));
+    }, undefined, () => console.warn(`foto da parceira ${p.nome} não carregou`));
+    return o;
+  });
+  const CAIXA = new THREE.BoxGeometry(1, 1, 1), POSTE = new THREE.CylinderGeometry(0.35, 0.45, 1, 8);
+  const matPoste = new THREE.MeshLambertMaterial({ color: 0x6b7280 }), matVerso = new THREE.MeshLambertMaterial({ color: 0x4b5563 });
+  function predioParceiro(o) {
+    const g = new THREE.Group(), l = o.lado;
+    const corpo = new THREE.Mesh(CAIXA, [l, l, l, l, o.frente, l]); // face +z = frente
+    const beiral = new THREE.Mesh(CAIXA, o.beiral);
+    g.add(corpo, beiral);
+    const ajustar = (prop) => {
+      const w = Math.min(PARC.larguraMax, PARC.altura * prop), h = w / prop;
+      corpo.scale.set(w, h, PARC.prof); corpo.position.set(0, h / 2, 0);
+      beiral.scale.set(w + 1, 0.9, PARC.prof + 1.2); beiral.position.set(0, h + 0.45, 0.3);
+    };
+    ajustar(o.prop); o.ajustes.push(ajustar);
+    return g;
+  }
+  function outdoorParceiro(o) {
+    const g = new THREE.Group();
+    const painel = new THREE.Mesh(CAIXA, [matVerso, matVerso, matVerso, matVerso, o.frente, matVerso]);
+    const postes = [new THREE.Mesh(POSTE, matPoste), new THREE.Mesh(POSTE, matPoste)];
+    g.add(painel, ...postes);
+    const ajustar = (prop) => {
+      const w = Math.min(PARC.outdoorLarg, PARC.outdoorAlt * prop), h = w / prop;
+      painel.scale.set(w, h, 0.5); painel.position.set(0, PARC.pe + h / 2, 0);
+      postes.forEach((p, k) => { p.scale.set(1, PARC.pe + h / 2, 1); p.position.set((k ? 1 : -1) * (w / 2 - 1.3), (PARC.pe + h / 2) / 2, -0.5); });
+    };
+    ajustar(o.prop); o.ajustes.push(ajustar);
+    return g;
+  }
+  // acha um lugar perto da amostra i0 (alternando lado e deslocando ao longo da pista), de frente para a pista
+  function colocarParceiro(o, criar, w, d, i0, ladoPreferido, recuos) {
+    for (const desl of [0, 14, -14, 28, -28, 45, -45, 70, -70, 100, -100, 140, -140]) {
+      const i = idx(i0 + desl);
+      for (const s of [ladoPreferido, -ladoPreferido]) for (const recuo of recuos) {
+        const alvo = centro[i].clone().addScaledVector(lado[i], s * (recuo + d / 2));
+        // de frente para a pista, virado um pouco para quem chega (a frente fica mais legível ao passar)
+        const dir = lado[i].clone().multiplyScalar(-s).addScaledVector(tangente[i], -0.45).normalize();
+        const rot = Math.atan2(dir.x, dir.z);
+        if (!cabe(alvo.x, alvo.z, rot, w, d)) continue;
+        const obj = criar(o);
+        obj.position.set(alvo.x, 0.02, alvo.z); obj.rotation.y = rot;
+        cena.add(obj);
+        ocupados.push({ x: alvo.x, z: alvo.z, r: Math.hypot(w, d) / 2 + 2 });
+        return true;
+      }
+    }
+    return false;
+  }
+  lojas.forEach((o, k) => colocarParceiro(o, predioParceiro, PARC.larguraMax, PARC.prof, 30 + Math.round((k * AMOSTRAS) / lojas.length), 1, [30, 36, 44, 56]));
+  for (let k = 0; k < 9; k++) {
+    colocarParceiro(lojas[(k + 1) % lojas.length], outdoorParceiro, PARC.outdoorLarg, 1, Math.round(((k + 0.5) / 9) * AMOSTRAS) + 140, k % 2 ? -1 : 1, [30, 36, 46]);
+  }
+
   // Decoração espalhada (sempre igual, por causa da semente)
   const rnd = aleatorio(42);
   const coresLapis = [COR3D.roxo, COR3D.vermelho, COR3D.amarelo, 0x2f7de1, COR3D.verde, COR3D.laranja, COR3D.rosa];
   const livre = (p, folga) => {
     const k = amostraGlobal(p);
-    return Math.hypot(p.x - centro[k].x, p.z - centro[k].z) > MEIA_PISTA + folga && p.distanceTo(lugarEscola) > 34 && p.distanceTo(bus.position) > 14;
+    return Math.hypot(p.x - centro[k].x, p.z - centro[k].z) > MEIA_PISTA + folga && p.distanceTo(lugarEscola) > 34 && p.distanceTo(bus.position) > 14
+      && ocupados.every((o) => Math.hypot(p.x - o.x, p.z - o.z) > o.r + 5);
   };
   const sortear = (n, folga, criar) => {
     let feitos = 0, tentativas = 0;
@@ -1288,7 +1375,7 @@ async function iniciar() {
   if (params.has("auto")) comecar();
   if (params.has("fim")) { comecar(); setTimeout(() => { jogador.volta = VOLTAS; jogador.terminou = true; terminar(); }, 5000); }
   if (params.has("porticos")) { const k = jogador; const i = idx(POSICOES_PORTICO[Number(params.get("porticos"))] - 60); k.pos.copy(centro[i]); k.amostra = i; k.ang = anguloDe(tangente[i]); }
-  if (params.has("teste")) window.teste = { get jogador() { return jogador; }, get j2() { return kartJ2; }, get dividida() { return dividida; }, karts, porticos, get estado() { return estado; }, renderer, set angulo(a) { anguloTeste = a; },
+  if (params.has("teste")) window.teste = { get jogador() { return jogador; }, get j2() { return kartJ2; }, get dividida() { return dividida; }, karts, porticos, cena, get estado() { return estado; }, renderer, set angulo(a) { anguloTeste = a; },
     get menorDistancia() { return menorDistancia; }, zerarDistancia() { menorDistancia = Infinity; }, get batidas() { return batidas; }, idx, centro, lado, tangente, AMOSTRAS, PASSO,
     colocar(k, i, lat, vel = 0) { const a = idx(i); k.pos.copy(centro[a]).addScaledVector(lado[a], lat); k.amostra = a; k.ang = anguloDe(tangente[a]); k.vel = vel; } };
 }

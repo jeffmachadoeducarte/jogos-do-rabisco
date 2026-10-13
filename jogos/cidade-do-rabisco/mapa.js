@@ -89,9 +89,13 @@ export const LUGARES = [
   L("casas2", "Vila", -80.5, 32, 1, 0, { raio: 14, recuo: 0 }),
   L("parque", "Parque", 30, 71.5, 0, 1, { raio: 14, recuo: 0 }),
 ];
-// lojas das empresas parceiras (parceiros.js): no lado sul da Avenida Central, logo depois da rotatória
-// (as duas primeiras ficam a poucos passos da largada) e depois perto das pontas da avenida
-export const PONTOS_PARCEIROS = [[34, 11.5, 0, -1], [-34, 11.5, 0, -1], [100, 11.5, 0, -1], [-100, 11.5, 0, -1]];
+// lojas das empresas parceiras (parceiros.js), na ordem da lista, espalhadas pela cidade (cada uma de frente
+// para uma rua, num terreno livre; os prédios de enchimento e as árvores desviam sozinhos dos LUGARES):
+//  1. nordeste: lado sul da Rua do Norte, depois da Rua Leste (o carro novo da J.E estaciona na rua, em frente);
+//  2. oeste: na Rua Oeste, depois da Vila, de frente para a rua;
+//  3. centro: na Rua do Sino, logo ao norte da rotatória (lado oeste);
+//  4. livre (noroeste): lado sul da Rua do Norte, antes da Rua Oeste.
+export const PONTOS_PARCEIROS = [[100, -61.5, 0, -1], [-80.5, 66, 1, 0], [-8.5, -45, 1, 0], [-100, -61.5, 0, -1]];
 PARCEIROS.slice(0, PONTOS_PARCEIROS.length).forEach((p, i) => {
   const [x, z, dx, dz] = PONTOS_PARCEIROS[i];
   LUGARES.push(L(`parceiro-${p.id}`, p.nome, x, z, dx, dz, { parceiro: p }));

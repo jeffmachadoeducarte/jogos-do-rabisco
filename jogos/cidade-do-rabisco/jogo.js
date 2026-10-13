@@ -8,6 +8,8 @@
 //  - Bombeiros: apagar os foguinhos com o botão da água;
 //  - Caça ao tesouro: seguir as pistas (adivinhas) de um lugar para o outro;
 //  - Patinhos do lago: contar os patos e pisar no número certo (e aprender "duck");
+//  - Lojas parceiras (parceiros.js): Carro novo (J.E Multimarcas → casa verde, dirigindo o carro do laço),
+//    Presente da Vovó (laço da Bella Cat → Vovó) e Exercício (Rise Up: 5 pulos, 4 cones e água para a Lápis Rosa);
 //  - Passeio: visitar todos os lugares (passaporte). Selos espalhados para colecionar.
 // O alvo da missão em foco pisca no minimapa e uma seta (bússola) no alto da tela aponta o caminho.
 
@@ -108,14 +110,15 @@ function lerControle({ segura, apertou, eixoX, eixoY }) {
 // ------------------------------------------------------------------ Cena
 let r3, cena, cam, sol, mundo, rabisco, relogio, vivo = false, hud, mapa, balao, bussola, btnAcao, mapaGrande;
 let companheiro = null; // a criança cadastrada passeando junto (src/motor3d/companheiro3d.js)
-const amigo = { pos: new THREE.Vector3(), dir: 0, vel: 0, fase: 0, vy: 0, noChao: true, acena: 0, buzina: 0 };
+const amigo = { pos: new THREE.Vector3(), dir: 0, vel: 0, fase: 0, vy: 0, noChao: true, acena: 0, buzina: 0, pulos: 0 };
 let dois = false; // 2 jogadores: a criança é do jogador 2 (src/motor/jogadores.js)
 const RAIO_J2 = 11; // o jogador 2 fica a no máximo 11 m do Rabisco (a câmera enquadra os dois)
-const j = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), noChao: true, coyote: 0, buffer: 0, dir: 0 };
+const j = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), noChao: true, coyote: 0, buffer: 0, dir: 0, pulos: 0 };
 let camYaw = 0, camManual = 0, vistaTeste = null;
 const carros = [], moradores = [], selos = [], npcs = [], veiculos = [];
 let dentro = null;     // carro em que o Rabisco está dirigindo (ou null: a pé)
 let missoes = {}, visitados = new Set(), selosPegos = 0, fim = false, foco = null;
+let levando = null;     // presente ou garrafinha sobre a cabeça do Rabisco (missões das lojas parceiras)
 let entradaTeste = null; // ?teste: { acel, virar } força o volante (fotos e testes)
 
 function iniciar() {
@@ -203,7 +206,7 @@ function parar() {
   vivo = false;
   if (r3) { r3.dispose(); r3 = null; }
   carros.length = moradores.length = selos.length = npcs.length = veiculos.length = 0;
-  missoes = {}; visitados = new Set(); selosPegos = 0; fim = false; foco = null; dentro = null;
+  missoes = {}; visitados = new Set(); selosPegos = 0; fim = false; foco = null; dentro = null; levando = null;
   teclas.clear();
 }
 
@@ -244,7 +247,7 @@ function moverJogador(dt) {
   pad.puloNovo = false; if (toque) toque.puloNovo = false;
   j.coyote = j.noChao ? 0.1 : j.coyote - dt;
   j.buffer = quer ? 0.14 : j.buffer - dt;
-  if (j.buffer > 0 && j.coyote > 0) { j.vel.y = PULO; j.buffer = j.coyote = 0; j.noChao = false; sons.pulo(); }
+  if (j.buffer > 0 && j.coyote > 0) { j.vel.y = PULO; j.buffer = j.coyote = 0; j.noChao = false; j.pulos++; sons.pulo(); }
   if (!(pad.pulo || toque?.pulo || tem("pular")) && j.vel.y > 4) j.vel.y = 4;
   j.vel.y -= GRAV * dt;
   const nx = j.pos.x + j.vel.x * dt;
@@ -309,7 +312,7 @@ function moverJogador2(dt) {
   const V = VEL * 0.95;
   amigo.vx = (amigo.vx ?? 0) + (wx * V - (amigo.vx ?? 0)) * Math.min(1, dt * 12);
   amigo.vz = (amigo.vz ?? 0) + (wz * V - (amigo.vz ?? 0)) * Math.min(1, dt * 12);
-  if (e.puloNovo && amigo.noChao) { amigo.vy = PULO * 0.95; amigo.noChao = false; sons.pulo(); }
+  if (e.puloNovo && amigo.noChao) { amigo.vy = PULO * 0.95; amigo.noChao = false; amigo.pulos++; sons.pulo(); }
   if (!e.pulo && amigo.vy > 4) amigo.vy = 4;
   if (e.acaoNova) { amigo.acena = 1.4; sons.bipe?.(false); }
   amigo.acena -= dt;
@@ -740,6 +743,60 @@ function placaNumero(n) {
   sp.scale.setScalar(1.2); sp.position.y = 2.2; g.add(sp);
   return g;
 }
+// lojas parceiras: laço de presente no capô do carro novo, cone numerado da academia e o que o Rabisco carrega
+function laco() {
+  const g = new THREE.Group();
+  const fitaMat = new THREE.MeshStandardMaterial({ color: 0xe8213a, roughness: 0.45, emissive: 0x330008 });
+  const f1 = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.05, 1.52), fitaMat); f1.position.set(0, 1.4, 1.45);
+  const f2 = new THREE.Mesh(new THREE.BoxGeometry(2.24, 0.05, 0.24), fitaMat); f2.position.set(0, 1.4, 1.45);
+  const no = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), fitaMat); no.position.set(0, 1.55, 1.45);
+  g.add(f1, f2, no);
+  for (const s of [-1, 1]) { const a = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.08, 8, 16), fitaMat); a.position.set(s * 0.3, 1.66, 1.45); a.rotation.set(0, 0, s * 0.5); a.scale.set(1, 0.7, 1); g.add(a); }
+  return g;
+}
+function cone(n) {
+  const g = new THREE.Group();
+  const laranja = new THREE.MeshStandardMaterial({ color: 0xff7a00, roughness: 0.5, emissive: 0x331500 });
+  const base = new THREE.Mesh(new THREE.BoxGeometry(1, 0.1, 1), laranja); base.position.y = 0.05;
+  const c = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.1, 14), laranja); c.position.y = 0.6; c.castShadow = true;
+  const faixa = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.27, 0.18, 14), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+  faixa.position.y = 0.62;
+  const num = new THREE.Sprite(new THREE.SpriteMaterial({ map: texNumero(n, "#ff7a00") }));
+  num.scale.setScalar(1.2); num.position.y = 2;
+  g.add(base, c, faixa, num);
+  g.userData.num = num;
+  return g;
+}
+function presente() {
+  const g = new THREE.Group();
+  const caixa = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.6), new THREE.MeshStandardMaterial({ color: 0xec8cb8, roughness: 0.6 }));
+  const fitaMat = new THREE.MeshStandardMaterial({ color: 0xa98ce0, roughness: 0.4 });
+  const f1 = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.52, 0.12), fitaMat), f2 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.52, 0.62), fitaMat);
+  g.add(caixa, f1, f2);
+  for (const s of [-1, 1]) { const a = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.04, 6, 12), fitaMat); a.position.set(s * 0.12, 0.33, 0); a.rotation.z = s * 0.6; g.add(a); }
+  return g;
+}
+function garrafa() {
+  const g = new THREE.Group();
+  const corpo = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.6, 12), new THREE.MeshStandardMaterial({ color: 0x7fd6ff, roughness: 0.15, transparent: true, opacity: 0.85 }));
+  const tampa = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.14, 10), new THREE.MeshStandardMaterial({ color: 0x1d6fe0 }));
+  tampa.position.y = 0.37;
+  const rotulo = new THREE.Mesh(new THREE.CylinderGeometry(0.165, 0.165, 0.2, 12), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+  g.add(corpo, tampa, rotulo);
+  return g;
+}
+// o que o Rabisco leva nas mãos (presente, garrafinha): flutua sobre a cabeça, a pé ou de carro
+function levar(obj) {
+  if (levando) levando.removeFromParent();
+  levando = obj;
+  if (obj) cena.add(obj);
+}
+function atualizarLevando(t) {
+  if (!levando) return;
+  levando.position.set(j.pos.x, j.pos.y + (dentro ? 3.1 : 2.45) + Math.sin(t * 4) * 0.08, j.pos.z);
+  levando.rotation.y = t * 1.5;
+}
+
 // pedacinho de "água" que sai da mangueira (bolinhas azuis)
 const gotas = [];
 function soltarGota(de, para) {
@@ -816,7 +873,52 @@ function criarMissoes() {
     patos: Array.from({ length: nPatos }, (_, i) => { const g = patinho(); cena.add(g); return { g, a: (i / nPatos) * Math.PI * 2, r: 3 + (i % 3) * 2.2, v: 0.25 + Math.random() * 0.2 }; }),
     placas: opcoes.map((n, i) => { const [x, z] = livre(donaPatos.x - 3 + i * 3, donaPatos.z - 4, 1.1); const g = placaNumero(n); g.position.set(x, 0.03, z); g.visible = false; cena.add(g); return { n, x, z, g, dentro: false }; }),
     alvo() { return { x: LAGO.x, z: LAGO.z, emoji: "🦆" }; } };
-  // 10. passaporte: visitar todos os lugares
+  // 10–12. lojas parceiras (parceiros.js e mapa.js): cada missão só existe se a loja estiver na cidade
+  const je = L("parceiro-je-multimarcas"), bella = L("parceiro-bella-cat"), rise = L("parceiro-rise-up");
+  // carro novo: o carro verde com laço está na frente da J.E; dirigir até a casa verde (Rua das Casas Coloridas)
+  if (je) {
+    const verde = CASAS.find((c) => c.cor === "verde");
+    const g = carroAberto(0x2bb24c);
+    // estacionado na faixa da rua em frente à loja, ao lado da porta (de frente ao longo da rua)
+    const lado = [-je.dir[1], je.dir[0]];
+    const v = { g, pos: new THREE.Vector3(je.x + je.dir[0] * 5.5 + lado[0] * 4, 0.03, je.z + je.dir[1] * 5.5 + lado[1] * 4), ang: Math.atan2(lado[0], lado[1]), vel: 0, virar: 0, giro: 0, batida: 0, buzina: 0, caixa: null };
+    g.position.copy(v.pos); g.rotation.y = v.ang;
+    const fita = laco(); g.add(fita);
+    cena.add(g); veiculos.push(v);
+    missoes.carroNovo = { id: "carroNovo", nome: "Carro novo", icone: "🔑", estado: "nova", carro: v, laco: fita, dirigindo: false,
+      npc: npc("Seu Lápis Cinza, da J.E Multimarcas", 0x6b6b6b, ...naPorta(je), "cid-je"),
+      texto: "Olá, Rabisco! Na J.E Multimarcas tem carro e até jet ski! Este carro verde com laço é da família da casa verde. Você leva para eles?",
+      destino: { x: verde.x + verde.dir[0] * 7.5, z: verde.z + verde.dir[1] * 7.5 },
+      alvo() { return dentro === this.carro ? { ...this.destino, emoji: "🏠" } : { x: this.carro.pos.x, z: this.carro.pos.z, emoji: "🔑" }; } };
+  }
+  // presente da Vovó: um laço da Bella Cat para o aniversário da Vovó Lápis (a pé ou de carro)
+  if (bella) {
+    const vovo = mundo.casas.find((c) => c.vovo);
+    missoes.presente = { id: "presente", nome: "Presente da Vovó", icone: "🎀", estado: "nova",
+      npc: npc("Lápis Lilás, da Bella Cat", 0xa98ce0, ...naPorta(bella), "cid-bella"),
+      texto: "Oi, Rabisco! Hoje é aniversário da Vovó Lápis! Escolhi um laço lindo aqui na Bella Cat. Leve o presente até a casa laranja dela, perto da Rua Leste!",
+      destino: { x: vovo.porta[0] - 3, z: vovo.porta[1] },
+      aoAceitar() { levar(presente()); },
+      alvo() { return { ...this.destino, emoji: "🎁" }; } };
+  }
+  // hora do exercício na Rise Up: pular 5 vezes, correr pelos 4 cones em volta da academia e levar água para a Lápis Rosa (praça)
+  if (rise) {
+    const ld = [-rise.dir[1], rise.dir[0]];
+    const ponto = (lat, prof) => livre(rise.x + ld[0] * lat - rise.dir[0] * prof, rise.z + ld[1] * lat - rise.dir[1] * prof, 1); // prof > 0: para trás da loja
+    const pts = [ponto(-15, -1), ponto(15, -1), ponto(16, 16), ponto(-16, 16)];
+    missoes.exercicio = { id: "exercicio", nome: "Exercício", icone: "💪", estado: "nova", fase: "pulos", pulos: 0, cone: 0, vistos: [j.pulos, amigo.pulos],
+      npc: npc("Treinadora Lápis Laranja, da Rise Up", 0xff7a00, ...naPorta(rise), "cid-rise"), amiga: missoes.gatos.npc,
+      texto: "Oi, Rabisco! Aqui na Academia Rise Up a gente cuida da saúde! Vamos aquecer? Pule cinco vezes aqui pertinho de mim!",
+      aoAceitar() { this.vistos = [j.pulos, amigo.pulos]; }, // pulos de antes da conversa não contam
+      cones: pts.map(([x, z], i) => { const g = cone(i + 1); g.position.set(x, 0.03, z); g.visible = false; cena.add(g); return { x, z, g }; }),
+      alvo() {
+        if (this.fase === "pulos") return { x: this.npc.x, z: this.npc.z, emoji: "💪" };
+        const c = this.cones[this.cone];
+        if (this.fase === "cones" && c) return { x: c.x, z: c.z, emoji: String(this.cone + 1) };
+        return { x: this.amiga.x, z: this.amiga.z, emoji: "💧" };
+      } };
+  }
+  // 13. passaporte: visitar todos os lugares
   missoes.passaporte = { id: "passaporte", nome: "Passeio", icone: "🗺️", estado: "ativa",
     alvo() { const l = mundo.lugares.filter((q) => !visitados.has(q.id)).sort((a, b) => dist2(a) - dist2(b))[0]; return l && { x: l.x, z: l.z, emoji: "📍" }; } };
   preCarregarFalas(["cid-intro", "cid-carteiro", "cid-gatos", "cid-padeiro", "cid-guarda", "cid-carta-ok", "cid-gato-ok", "cid-pao-ok", "cid-faixa-ok", "cid-espere", "cid-missao-ok", "cid-final"]); // as falas das missões novas (cid-carro, cid-corrida...) tocam sob demanda
@@ -976,6 +1078,65 @@ function regras(dt, t) {
     }
     pl.dentro = em;
   }
+  // carro novo da J.E: entrar no carro do laço e dirigir até a casa verde
+  const CN = missoes.carroNovo;
+  if (CN?.estado === "ativa") {
+    CN.laco.children[2].scale.setScalar(1 + Math.sin(t * 5) * 0.15);
+    if (dentro === CN.carro && !CN.dirigindo) {
+      CN.dirigindo = true; sons.moeda(); falar("cid-je-chave");
+      dizer(CN.npc.nome, "A chave é sua! Agora leve o carro novo até a casa verde, na Rua das Casas Coloridas. Siga a seta!", 4200);
+      atualizarHud();
+    }
+    if (dentro === CN.carro && perto(CN.destino.x, CN.destino.z, 8)) {
+      CN.laco.removeFromParent();
+      concluir(CN); falar("cid-je-ok"); dizer("Família da casa verde", "Uau, nosso carro novo! Obrigado, Rabisco! Vamos passear juntos!", 4600);
+    }
+  }
+  // presente da Vovó (Bella Cat): chegar na porta da casa laranja com o presente
+  const PV = missoes.presente;
+  if (PV?.estado === "ativa" && perto(PV.destino.x, PV.destino.z, dentro ? 8 : 4)) {
+    levar(null);
+    concluir(PV); falar("cid-bella-ok"); dizer("Vovó Lápis", "Um laço lindo! Que presente mais bonito! Obrigada, Rabisco, você é um amor!", 4800);
+  }
+  // exercício (Rise Up): pulos perto da treinadora, cones em ordem (a pé) e a garrafinha para a Lápis Rosa
+  const EX = missoes.exercicio;
+  if (EX?.estado === "ativa") {
+    const quem = [[j, aPe]]; // Rabisco e, no modo 2 jogadores, a criança do jogador 2 também vale
+    if (dois && companheiro && aPe) quem.push([amigo, true]);
+    if (EX.fase === "pulos") {
+      if (!aPe && perto(EX.npc.x, EX.npc.z, 8) && t - (EX.avisou || -9) > 7) { EX.avisou = t; falar("cid-rise-pe"); dizer(EX.npc.nome, "Exercício é a pé! Saia do carro e venha pular.", 3000); }
+      quem.forEach(([p, ok], i) => {
+        if (!ok) return;
+        const pulou = p.pulos !== EX.vistos[i]; // contador de pulos de moverJogador/moverJogador2 (descer da calçada não conta)
+        EX.vistos[i] = p.pulos;
+        if (pulou && Math.hypot(p.pos.x - EX.npc.x, p.pos.z - EX.npc.z) < 7 && EX.pulos < 5) {
+          EX.pulos++; sons.moeda(); falar(`cid-num-${EX.pulos}`); dizer(EX.npc.nome, `${EX.pulos}! ${EX.pulos < 5 ? "Mais um!" : "Muito bem!"}`, 1400);
+          if (EX.pulos === 5) {
+            EX.fase = "cones"; EX.cones.forEach((c) => (c.g.visible = true));
+            setTimeout(() => { falar("cid-rise-cones"); dizer(EX.npc.nome, "Aquecimento pronto! Agora corra pelos cones laranja em volta da academia: 1, 2, 3 e 4!", 5200); }, 1300);
+          }
+          atualizarHud();
+        }
+      });
+    } else if (EX.fase === "cones") {
+      EX.cones.forEach((c, i) => { c.g.userData.num.position.y = 2 + (i === EX.cone ? Math.abs(Math.sin(t * 5)) * 0.4 : 0); });
+      const c = EX.cones[EX.cone];
+      if (!aPe && perto(c.x, c.z, 8) && t - (EX.avisou || -9) > 7) { EX.avisou = t; falar("cid-rise-pe"); dizer(EX.npc.nome, "Os cones são a pé! Saia do carro e corra.", 3000); }
+      if (quem.some(([p, ok]) => ok && Math.hypot(p.pos.x - c.x, p.pos.z - c.z) < 2.2)) {
+        c.g.visible = false; EX.cone++; sons.volta(); falar(`cid-num-${EX.cone}`);
+        if (EX.cone === EX.cones.length) {
+          EX.fase = "agua"; levar(garrafa());
+          falar("cid-rise-agua"); dizer(EX.npc.nome, "Que corrida! Depois do exercício, água! Leve esta garrafinha para a Lápis Rosa, lá na praça.", 5600);
+        }
+        atualizarHud();
+      }
+    } else if (perto(EX.amiga.x, EX.amiga.z, dentro ? 6 : 3.5)) {
+      EX.amiga.ultima = t; // ela agradece primeiro; a conversa dela vem depois
+      levar(null);
+      concluir(EX); falar("cid-rise-ok"); dizer("Lápis Rosa", "Água fresquinha! Obrigada, Rabisco! Exercício e água: que dupla saudável!", 4600);
+    }
+  }
+  atualizarLevando(t);
   // passaporte: chegar perto de cada lugar
   for (const l of mundo.lugares) {
     if (visitados.has(l.id) || !perto(l.x, l.z, l.raio)) continue;
@@ -1006,8 +1167,10 @@ function regras(dt, t) {
   if (pad.acaoNova) { pad.acaoNova = false; contexto?.fazer(); }
   for (const v of veiculos) if (v !== dentro) animarCarro(v, dt);
 }
-const NOMES_MISSAO = { cartas: "cartas", gatos: "gatos", pao: "pao", faixa: "faixa", corrida: "corrida", encomenda: "encomenda", fogo: "fogo", tesouro: "tesouro", patos: "patos" };
+const NOMES_MISSAO = { cartas: "cartas", gatos: "gatos", pao: "pao", faixa: "faixa", corrida: "corrida", encomenda: "encomenda", fogo: "fogo", tesouro: "tesouro", patos: "patos", carroNovo: "je", presente: "bella", exercicio: "rise" };
 function conversar(n) {
+  const EX = missoes.exercicio;
+  if (EX?.estado === "ativa" && EX.fase === "agua" && n === EX.amiga) return; // primeiro ele recebe a água (regras)
   const M = Object.values(missoes).find((m) => m.npc === n);
   if (!M) return;
   if (M.estado === "nova") {
@@ -1016,6 +1179,7 @@ function conversar(n) {
     falar(n.fala);
     dizer(n.nome, M.texto, 7600);
     if (M === missoes.pao) carregando = "pao";
+    M.aoAceitar?.();
     setTimeout(() => jogo.aviso(`${M.icone} Siga a seta ➤`, "bom", 2200), 7800);
     atualizarHud();
   } else if (M.estado === "ativa") {
@@ -1058,6 +1222,9 @@ function atualizarHud() {
     if (m.id === "encomenda") return m.noCarro ? " <small>📦→👵</small>" : " <small>🚗→📦</small>";
     if (m.id === "fogo") return ` <small>${"💧".repeat(m.apagados)}${"🔥".repeat(4 - m.apagados)}</small>`;
     if (m.id === "tesouro") return ` <small>pista ${Math.min(4, m.pista + 1)}/4</small>`;
+    if (m.id === "carroNovo") return m.dirigindo ? " <small>🚗→🏠</small>" : " <small>🔑→🚗</small>";
+    if (m.id === "presente") return " <small>🎁→👵</small>";
+    if (m.id === "exercicio") return m.fase === "pulos" ? ` <small>pulos ${m.pulos}/5</small>` : m.fase === "cones" ? ` <small>cones ${m.cone}/4</small>` : " <small>💧→🎀</small>";
     if (m.id === "passaporte") return ` <small>${visitados.size}/${mundo.lugares.length}</small>`;
     return "";
   };
