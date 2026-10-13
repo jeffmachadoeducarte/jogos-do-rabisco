@@ -73,17 +73,26 @@ const difAngulo = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 // ------------------------------------------------------------------ Render
 const canvas = $("cena");
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+let dividida = false; // tela dividida (2 jogadores)
+const semToque = navigator.maxTouchPoints === 0; // TV e computador de mesa: caminho mais leve (menos pixels e sombra mais barata)
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = semToque ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 
 const cena = new THREE.Scene();
 cena.fog = new THREE.Fog(TEMA.neblina, 220, 720);
 const camera = new THREE.PerspectiveCamera(62, 16 / 9, 0.3, 1600);
 
+// Sem toque (TV): até 1,25× com uma tela e 1× dividida, e no máximo ~1920×1080 pixels desenhados
+function ajustarPixelRatio(w, h) {
+  const teto = dividida ? 1 : semToque ? 1.25 : 1.75;
+  let dpr = Math.min(window.devicePixelRatio, teto);
+  if (semToque) dpr *= Math.min(1, Math.sqrt((1920 * 1080) / (w * h * dpr * dpr)));
+  renderer.setPixelRatio(dpr);
+}
 function ajustarTela() {
   const w = window.innerWidth, h = window.innerHeight;
+  ajustarPixelRatio(w, h);
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
@@ -108,7 +117,7 @@ ajustarTela();
 
 const sol = new THREE.DirectionalLight(TEMA.corLuz ?? 0xffffff, TEMA.luz);
 sol.castShadow = true;
-sol.shadow.mapSize.set(2048, 2048);
+sol.shadow.mapSize.set(semToque ? 1024 : 2048, semToque ? 1024 : 2048);
 Object.assign(sol.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 300 });
 sol.shadow.bias = -0.0005;
 sol.shadow.normalBias = 0.04;
@@ -417,7 +426,7 @@ const karts = [];
 function criarKart({ nome, corKart, piloto, ehJogador, humano = 0, linhaLargada, colunaLargada, img, cores }) {
   const g = kart3D(corKart, ehJogador || humano ? img.texIcone : null, cores);
   const chassi = g.userData.chassi;
-  let rabisco = null, companheiro = null, motorista2 = null;
+  let rabisco = null, motorista2 = null;
   if (humano === 2) {
     // jogador 2: a criança-companheira pilota o próprio kart (rosto = foto do cadastro; sem cadastro, a criança genérica)
     const c = window.Familia?.crianca?.();
@@ -430,14 +439,6 @@ function criarKart({ nome, corKart, piloto, ehJogador, humano = 0, linhaLargada,
     rabisco = new Rabisco3D({ raiz: RAIZ, altura: ALTURA_RABISCO });
     rabisco.grupo.position.set(0, 1.0 - 2.0 * rabisco.escala, -0.55); // quadril (y 2,0 do modelo) no banco
     chassi.add(rabisco.grupo);
-    // kart de dois lugares: a criança cadastrada vai sentada ao lado, um pouco atrás (sem cadastro, nada muda)
-    companheiro = criarCompanheiro3D({ raiz: RAIZ, altura: ALTURA_RABISCO * 0.84 });
-    if (companheiro) {
-      rabisco.grupo.position.x = -0.42;
-      companheiro.grupo.position.set(0.6, 1.0 - 2.0 * companheiro.escala, -0.95);
-      companheiro.grupo.rotation.y = -0.12;
-      chassi.add(companheiro.grupo);
-    }
   } else {
     const p = pilotoLapis(piloto);
     p.position.set(0, 0.9, -0.7);
@@ -445,7 +446,7 @@ function criarKart({ nome, corKart, piloto, ehJogador, humano = 0, linhaLargada,
     chassi.add(p);
   }
   cena.add(g);
-  const kart = { nome, g, chassi, rabisco, companheiro, passageiro: companheiro, motorista2, ehJogador, humano: ehJogador ? 1 : humano, cor: piloto ?? corKart, linhaLargada, colunaLargada };
+  const kart = { nome, g, chassi, rabisco, motorista2, ehJogador, humano: ehJogador ? 1 : humano, cor: piloto ?? corKart, linhaLargada, colunaLargada };
   naLargada(kart);
   karts.push(kart);
   return kart;
@@ -916,14 +917,6 @@ function animarKart(k, dt, t) {
       vol.rotation.set(-1.05, 0, k.virar * 0.6);
     }
   }
-  if (k.companheiro) {
-    // a criança segura na beirada do kart; no turbo e na chegada, levanta os braços; nas curvas, inclina junto
-    const c = k.companheiro, festa = estado === "fim" || k.turbo > 0;
-    c.atualizar(dt, { modo: festa ? "comemorarSentado" : "dirigir", virar: k.virar });
-    if (!festa) c.bracos(-0.35, 0.55, -1.25);
-    c.rabisco.tronco.rotation.z += -k.virar * 0.12;
-    c.rabisco.tronco.rotation.x += k.turbo > 0 ? -0.12 : 0;
-  }
   // fogo do turbo (e o rabisco na pista, se for o Rabisco)
   if (k.turbo > 0 && k.humano) riscar(k, dt);
   if (k.turbo > 0) {
@@ -1035,7 +1028,7 @@ function atualizarCamera(dt, t) {
 // e uma câmera só teria de se afastar até ninguém enxergar nada. Cada um tem sua câmera de perseguição:
 // celular deitado (tela bem larga, ≥ 2:1) divide lado a lado; TV, tablet e computador dividem em cima/embaixo.
 // Desempenho: a sombra é calculada uma vez por quadro (não por tela) e, no toque, a resolução cai para 1×.
-let kartJ2 = null, dividida = false, imgKart = null;
+let kartJ2 = null, imgKart = null;
 const camera2 = new THREE.PerspectiveCamera(62, 16 / 9, 0.3, 1600);
 const camPos2 = new THREE.Vector3(), camAlvo2 = new THREE.Vector3();
 const ladoALado = () => innerWidth / innerHeight >= 2.0;
@@ -1048,15 +1041,11 @@ function ajustarDois() {
     cena.remove(kartJ2.g); karts.splice(karts.indexOf(kartJ2), 1); kartJ2 = null;
   }
   if (kartJ2) kartJ2.humano = 2;
-  // com 2 jogadores a criança sai do banco do carona do Rabisco e vai pilotar o kart dela
-  if (jogador.passageiro) { jogador.passageiro.grupo.visible = !kartJ2; jogador.companheiro = kartJ2 ? null : jogador.passageiro; }
   dividida = Boolean(kartJ2);
   ajustarTelaDividida();
 }
 let hudJ2 = null;
 function ajustarTelaDividida() {
-  const toque = navigator.maxTouchPoints > 0;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, dividida ? (toque ? 1 : 1.25) : 1.75));
   ajustarTela();
   document.body.classList.toggle("kart-dividido", dividida);
   document.body.classList.toggle("kart-lado", dividida && ladoALado());

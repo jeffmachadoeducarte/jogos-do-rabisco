@@ -56,7 +56,7 @@ async function tela(url) {
   await t.cmd("Page.navigate", { url });
   return t;
 }
-const celular = (url) => abrir(url, { mobile: true, largura: 390, altura: 844 });
+const celular = (url) => abrir(url, { mobile: true, largura: 844, altura: 390 });
 const centro = (t, sel) => t.ev(`(() => { const b = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2]; })()`);
 async function segurar(t, sel, ms, durante = null) {
   const [x, y] = await centro(t, sel);
@@ -109,8 +109,18 @@ if (quer("kart")) {
   ok(await ate(c, "controleTeste.layout === 'kart' && document.getElementById('chip-nome').textContent === 'Alice'"), "Kart: celular recebe layout 'kart' e só o primeiro nome (Alice)");
   ok(await c.ev("!!document.querySelector('.btn[data-btn=esq]') && !!document.querySelector('.btn[data-btn=dir]') && !!document.querySelector('.btn[data-btn=acao]') && !document.querySelector('.joy')"), "Kart: celular com ◀ ▶ e buzina (sem joystick)");
   await foto(t, "host-kart-celular-conectado.png");
+  await foto(c, "controle-kart-paisagem.png");
+  ok(!(await c.transborda()), "Kart: controle (celular deitado) sem rolagem lateral");
+  // em retrato o controle pede para girar o celular; emPe() dispensa o aviso
+  await c.cmd("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await espera(500);
+  ok(await c.ev(`(() => { const g = document.querySelector('.girar'); return !!g && getComputedStyle(g).display !== 'none' && g.textContent.includes('Gire o celular'); })()`), "Kart: controle em retrato mostra o aviso 'Gire o celular'");
   await foto(c, "controle-kart-retrato.png");
-  ok(!(await c.transborda()), "Kart: controle em retrato sem rolagem lateral");
+  await c.ev("controleTeste.emPe()");
+  await espera(300);
+  ok(!(await c.transborda()), "Kart: controle em pé (emPe) sem rolagem lateral");
+  await c.cmd("Emulation.setDeviceMetricsOverride", { width: 844, height: 390, deviceScaleFactor: 2, mobile: true });
+  await espera(300);
 
   // controle físico tem prioridade: conecta um → ele assume e o QR some; desconecta → volta o celular
   await t.ev("__liga(1)");

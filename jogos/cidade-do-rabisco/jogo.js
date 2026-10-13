@@ -124,12 +124,17 @@ function iniciar() {
   jogo.palco.append(caixa);
   r3 = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
   const leve = navigator.maxTouchPoints > 0; // tablet e celular: um pouco menos de resolução para rodar liso
-  r3.setPixelRatio(Math.min(devicePixelRatio, leve ? 1.3 : 1.6));
+  const tv = !leve; // sem toque (TV): até 1,25× e no máximo ~1920×1080 pixels desenhados
+  const ajustarPixels = (w, h) => {
+    let dpr = Math.min(devicePixelRatio, tv ? 1.25 : 1.3);
+    if (tv) dpr *= Math.min(1, Math.sqrt((1920 * 1080) / (w * h * dpr * dpr)));
+    r3.setPixelRatio(dpr);
+  };
   r3.outputColorSpace = THREE.SRGBColorSpace;
   r3.toneMapping = THREE.ACESFilmicToneMapping;
   r3.toneMappingExposure = 1.05;
   r3.shadowMap.enabled = true;
-  r3.shadowMap.type = THREE.PCFSoftShadowMap;
+  r3.shadowMap.type = tv ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
   caixa.append(r3.domElement);
   cena = new THREE.Scene();
   cena.fog = new THREE.Fog(0xcfe6f5, 80, 300);
@@ -144,7 +149,7 @@ function iniciar() {
   cena.add(ceu);
   sol = new THREE.DirectionalLight(0xfff2dc, 3.0);
   sol.castShadow = true;
-  sol.shadow.mapSize.set(leve ? 1024 : 2048, leve ? 1024 : 2048);
+  sol.shadow.mapSize.set(leve || tv ? 1024 : 2048, leve || tv ? 1024 : 2048);
   Object.assign(sol.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 160 });
   sol.shadow.bias = -0.0004; sol.shadow.normalBias = 0.05;
   cena.add(sol, sol.target, new THREE.HemisphereLight(0xcfe6ff, 0x6a8f4a, 1.1));
@@ -185,7 +190,7 @@ function iniciar() {
   toque = criarJoystick(caixa);
   atualizarHud();
 
-  const ajustar = () => { const w = caixa.clientWidth || innerWidth, h = caixa.clientHeight || innerHeight; r3.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); };
+  const ajustar = () => { const w = caixa.clientWidth || innerWidth, h = caixa.clientHeight || innerHeight; ajustarPixels(w, h); r3.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); };
   new ResizeObserver(ajustar).observe(caixa);
   ajustar();
   relogio = new THREE.Clock();

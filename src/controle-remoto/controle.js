@@ -20,6 +20,7 @@ function mostrar(qual) {
   $("tela-entrar").hidden = qual !== "entrar";
   $("tela-recado").hidden = qual !== "recado";
   $("pad").hidden = qual !== "pad";
+  document.body.classList.toggle("jogando", qual === "pad"); // paisagem + aviso "gire o celular" só com o controle na tela
 }
 function recado(titulo, texto = "", { roda = true, botao = false } = {}) {
   $("recado-titulo").textContent = titulo;
@@ -141,24 +142,36 @@ const vibrar = (ms) => { try { navigator.vibrate?.(ms); } catch { /* sem vibraç
 
 // ------------------------------------------------------------------ Estado da entrada
 const estado = { x: 0, y: 0, pulo: false, acao: false, baixo: false, esq: false, dir: false, start: false };
-let seq = 0, ultimoEnvio = 0, tEnvio = 0, ultimoTexto = "";
+let seq = 0, ultimoEnvio = 0, tEnvio = 0, ultimoTexto = "", ultimosBotoes = "";
+const envios = []; // horários dos últimos envios (teto por segundo)
+const TETO_POR_S = 45; // o relay derruba o que passar de 60/s: um "soltei" perdido deixava o botão preso até o batimento
+// Só manda o que MUDOU. Botão apertado/solto sai na hora (sem esperar o joystick); o joystick sai no máximo a ~30 por segundo.
 function enviarEstado(forcar = false) {
   const x = estado.esq || estado.dir ? (estado.dir ? 1 : 0) - (estado.esq ? 1 : 0) : estado.x;
-  const d = { x: Math.round(x * 100) / 100, y: Math.round(estado.y * 100) / 100, pulo: estado.pulo, acao: estado.acao, baixo: estado.baixo };
+  // joystick arredondado em passos de 0,05: tremidinha do dedo não vira mensagem
+  const q = (v) => Math.round(v * 20) / 20;
+  const d = { x: q(x), y: q(estado.y), pulo: estado.pulo, acao: estado.acao, baixo: estado.baixo };
   if (estado.start) d.start = true; // ⏸ apertado
   const txt = JSON.stringify(d);
-  if (!forcar && txt === ultimoTexto) return;
-  // até ~30 por segundo (o relay aceita 60): o joystick não entope a rede
+  if (!forcar && txt === ultimoTexto) { clearTimeout(tEnvio); tEnvio = 0; return; }
+  const botoes = `${d.pulo}${d.acao}${d.baixo}${Boolean(d.start)}${estado.esq}${estado.dir}`;
   const agora = performance.now();
-  if (!forcar && agora - ultimoEnvio < 33) { clearTimeout(tEnvio); tEnvio = setTimeout(() => enviarEstado(), 34); return; }
-  if (enviar({ t: "in", d: { ...d, seq: ++seq } })) { ultimoTexto = txt; ultimoEnvio = agora; }
+  while (envios.length && agora - envios[0] > 1000) envios.shift();
+  const soJoy = botoes === ultimosBotoes;
+  const espera = envios.length >= TETO_POR_S ? 1000 - (agora - envios[0]) + 1 : soJoy && !forcar ? 33 - (agora - ultimoEnvio) : 0;
+  if (espera > 0) { if (!tEnvio) tEnvio = setTimeout(() => { tEnvio = 0; enviarEstado(); }, espera); return; }
+  clearTimeout(tEnvio); tEnvio = 0;
+  if (enviar({ t: "in", d: { ...d, seq: ++seq } })) { ultimoTexto = txt; ultimosBotoes = botoes; ultimoEnvio = agora; envios.push(agora); contagem.enviadas++; }
 }
+const contagem = { enviadas: 0 }; // para medir (window.controleTeste.enviadas)
 setInterval(() => { if (ws?.readyState === 1 && sessao) enviarEstado(true); }, 1000); // batimento: a tela sabe que o celular está vivo
 
 // ------------------------------------------------------------------ Layouts
 let layout = "padrao";
+// esquerda = polegar esquerdo (movimento), direita = polegar direito (ação). O meio da tela fica livre.
+// Kart: acelera sozinho, então cada polegar vira para um lado (◀ na borda esquerda, ▶ na direita) e a buzina é pequena.
 const LAYOUTS = {
-  kart: { esq: ["esq", "dir"], dir: [["acao", "🎺", "Buzina"]] },
+  kart: { esq: ["esq"], dir: ["dir", ["acao", "🎺", "Buzina", "mini"]] },
   cidade: { esq: ["joy"], dir: [["acao", "👋", "Ação"], ["pulo", "⬆", "Pulo", "menor"]] },
   plataforma: { esq: ["esq", "dir"], dir: [["pulo", "⬆", "Pulo"], ["baixo", "⬇", "", "baixo"]] },
   padrao: { esq: ["joy"], dir: [["pulo", "⬆", "Pulo"], ["acao", "⭐", "Ação", "menor"]] },
@@ -169,7 +182,8 @@ function botao(nome, ic, rotulo, extra = "") {
   b.dataset.btn = nome;
   b.setAttribute("role", "button");
   b.setAttribute("aria-label", rotulo || nome);
-  b.innerHTML = `<span><span class="ic">${ic}</span>${rotulo ? `<small>${rotulo}</small>` : ""}</span>`;
+  const mostrarRotulo = rotulo && !extra.includes("seta");
+  b.innerHTML = `<span><span class="ic">${ic}</span>${mostrarRotulo ? `<small>${rotulo}</small>` : ""}</span>`;
   return b;
 }
 function montar(qual) {
@@ -179,55 +193,77 @@ function montar(qual) {
   $("pad").dataset.layout = layout;
   const ze = $("zona-esq"), zd = $("zona-dir");
   ze.replaceChildren(); zd.replaceChildren();
-  for (const e of L.esq) {
-    if (e === "joy") { const j = document.createElement("div"); j.className = "joy"; j.dataset.joy = ""; j.innerHTML = '<div class="pino"></div>'; ze.append(j); }
-    else ze.append(botao(e, e === "esq" ? "◀" : "▶", "", "seta"));
-  }
+  const peca = (e) => {
+    if (e === "joy") { const j = document.createElement("div"); j.className = "joy"; j.dataset.joy = ""; j.innerHTML = '<div class="pino"></div>'; return j; }
+    if (typeof e === "string") return botao(e, e === "esq" ? "◀" : "▶", e === "esq" ? "Esquerda" : "Direita", "seta");
+    const [n, ic, r, extra] = e;
+    return botao(n, ic, r, extra);
+  };
+  for (const e of L.esq) ze.append(peca(e));
   const col = L.dir.length > 1 ? document.createElement("div") : zd;
   if (col !== zd) { col.className = "coluna"; zd.append(col); }
-  for (const [n, ic, r, extra] of L.dir) col.append(botao(n, ic, r, extra));
+  for (const e of L.dir) col.append(peca(e));
+  todos = [...$("pad").querySelectorAll("[data-btn], [data-joy]")];
 }
+let todos = []; // botões e joystick do layout atual (para achar o mais perto do dedo)
 
 // ------------------------------------------------------------------ Toque (vários dedos ao mesmo tempo)
 const dedos = new Map(); // pointerId → { tipo: "btn"|"joy", el, nome }
 function aplicarBotoes() {
   const ativos = new Set([...dedos.values()].filter((d) => d.tipo === "btn").map((d) => d.nome));
   for (const k of ["esq", "dir", "pulo", "acao", "baixo"]) estado[k] = ativos.has(k);
-  for (const b of document.querySelectorAll(".btn")) b.classList.toggle("apertado", ativos.has(b.dataset.btn));
+  for (const b of todos) if (b.dataset.btn) b.classList.toggle("apertado", ativos.has(b.dataset.btn));
   enviarEstado();
 }
 function moverJoy(d, ev) {
-  const r = d.el.getBoundingClientRect();
+  // medida do joystick guardada no toque (medir a cada movimento forçava o navegador a recalcular a página toda vez)
+  const r = d.r || (d.r = d.el.getBoundingClientRect());
   const raio = r.width * 0.36;
   let dx = (ev.clientX - (r.left + r.width / 2)) / raio, dy = (ev.clientY - (r.top + r.height / 2)) / raio;
   const m = Math.hypot(dx, dy);
   if (m > 1) { dx /= m; dy /= m; }
   if (m < 0.15) dx = dy = 0; // zona morta no meio
   estado.x = dx; estado.y = -dy; // y = +1 para cima
-  d.el.querySelector(".pino").style.transform = `translate(${dx * raio}px, ${dy * raio}px)`;
+  d.pino.style.transform = `translate3d(${dx * raio}px, ${dy * raio}px, 0)`;
   enviarEstado();
 }
 function soltarJoy(d) {
   estado.x = estado.y = 0;
-  const p = d?.el?.querySelector(".pino");
-  if (p) p.style.transform = "";
+  if (d?.pino) d.pino.style.transform = "";
+  d?.el?.classList.remove("apertado");
   enviarEstado();
 }
-const alvo = (x, y) => document.elementFromPoint(x, y)?.closest?.("[data-btn], [data-joy]");
+// área de toque generosa: dedo que cai perto de um botão (até 40% do tamanho dele, no mínimo 36 px) conta como nele
+function alvo(x, y, longe = true) {
+  const el = document.elementFromPoint(x, y)?.closest?.("[data-btn], [data-joy]");
+  if (el || !longe) return el;
+  let melhor = null, menor = Infinity;
+  for (const b of todos) {
+    const r = b.getBoundingClientRect();
+    const dx = Math.max(r.left - x, 0, x - r.right), dy = Math.max(r.top - y, 0, y - r.bottom), dist = Math.hypot(dx, dy);
+    if (dist <= Math.max(36, r.width * 0.4) && dist < menor) { menor = dist; melhor = b; }
+  }
+  return melhor;
+}
 $("pad").addEventListener("pointerdown", (ev) => {
+  ev.preventDefault();
   const el = alvo(ev.clientX, ev.clientY);
   if (!el) return;
-  ev.preventDefault();
   try { $("pad").setPointerCapture(ev.pointerId); } catch { /* */ }
-  if (el.dataset.joy !== undefined) { const d = { tipo: "joy", el }; dedos.set(ev.pointerId, d); moverJoy(d, ev); }
-  else { dedos.set(ev.pointerId, { tipo: "btn", el, nome: el.dataset.btn }); vibrar(12); aplicarBotoes(); }
+  if (el.dataset.joy !== undefined) {
+    const d = { tipo: "joy", el, pino: el.querySelector(".pino"), r: null };
+    dedos.set(ev.pointerId, d); el.classList.add("apertado"); vibrar(10); moverJoy(d, ev);
+  } else {
+    el.classList.add("apertado"); // feedback já neste toque, antes de qualquer outra conta
+    dedos.set(ev.pointerId, { tipo: "btn", el, nome: el.dataset.btn }); vibrar(15); aplicarBotoes();
+  }
 });
 $("pad").addEventListener("pointermove", (ev) => {
   const d = dedos.get(ev.pointerId);
   if (!d) return;
   if (d.tipo === "joy") { moverJoy(d, ev); return; }
   // arrastar o dedo de ◀ para ▶ troca de botão (sem levantar)
-  const el = alvo(ev.clientX, ev.clientY);
+  const el = alvo(ev.clientX, ev.clientY, false);
   const nome = el?.dataset.btn;
   if (nome && nome !== d.nome && el.classList.contains("seta") === d.el.classList.contains("seta")) { d.el = el; d.nome = nome; vibrar(8); aplicarBotoes(); }
 });
@@ -240,8 +276,11 @@ const soltar = (ev) => {
 $("pad").addEventListener("pointerup", soltar);
 $("pad").addEventListener("pointercancel", soltar);
 $("pad").addEventListener("contextmenu", (e) => e.preventDefault());
+addEventListener("resize", () => { for (const d of dedos.values()) d.r = null; }); // girou/tela cheia: mede o joystick de novo
 function soltarTudo() {
   dedos.clear();
+  for (const j of document.querySelectorAll(".joy.apertado")) j.classList.remove("apertado");
+  for (const p of document.querySelectorAll(".joy .pino")) p.style.transform = "";
   Object.assign(estado, { x: 0, y: 0, pulo: false, acao: false, baixo: false, esq: false, dir: false, start: false });
   $("pausar").classList.remove("apertado");
   for (const b of document.querySelectorAll(".btn.apertado")) b.classList.remove("apertado");
@@ -294,6 +333,34 @@ else telaEntrar("");
 // primeiro toque em qualquer lugar: pede a tela acesa (o navegador só deixa depois de um toque)
 addEventListener("pointerdown", manterAcesa, { once: true });
 
+// ------------------------------------------------------------------ Sem zoom sozinho (iOS ignora o user-scalable=no do viewport)
+// pinça e "zoom de duplo toque" desligados; no campo do código o toque segue normal (o teclado precisa abrir)
+const ehCampo = (e) => e.target?.closest?.("input, textarea, select");
+for (const ev of ["gesturestart", "gesturechange", "gestureend"]) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+document.addEventListener("dblclick", (e) => e.preventDefault(), { passive: false });
+document.addEventListener("touchmove", (e) => { if (e.touches.length > 1 || !ehCampo(e)) e.preventDefault(); }, { passive: false });
+let ultimoFim = 0;
+document.addEventListener("touchend", (e) => {
+  const agora = e.timeStamp;
+  if (agora - ultimoFim < 350 && !ehCampo(e) && !e.target?.closest?.("button")) e.preventDefault(); // segundo toque rápido: não amplia
+  ultimoFim = agora;
+}, { passive: false });
+// no controle, o toque não vira clique/rolagem/seleção (os botões vão por pointer events, sem o atraso de 300 ms)
+for (const el of [$("pad"), $("pausar")]) el.addEventListener("touchstart", (e) => e.preventDefault(), { passive: false });
+
+// ------------------------------------------------------------------ Celular deitado: tela cheia + travar em paisagem
+// Android/Chrome: travar a orientação só funciona em tela cheia e depois de um toque. iPhone não tem: fica o aviso "gire o celular".
+async function deitar() {
+  try {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+  } catch { /* sem tela cheia (iPhone) */ }
+  try { await screen.orientation?.lock?.("landscape"); } catch { /* sem travar (iPhone, ou fora da tela cheia) */ }
+}
+$("girar-botao").addEventListener("click", () => { vibrar(15); deitar(); });
+$("girar-pular").addEventListener("click", () => document.body.classList.add("em-pe")); // trava de rotação ligada: joga em pé mesmo
+// primeiro toque no controle já tenta deitar (tela cheia + paisagem)
+$("pad").addEventListener("pointerdown", () => { if (!document.fullscreenElement) deitar(); }, { once: true });
+
 // para o teste automático (ferramentas/teste/qr-controle.mjs)
 window.controleTeste = {
   get estado() { return { ...estado }; },
@@ -301,4 +368,6 @@ window.controleTeste = {
   get conectado() { return ws?.readyState === 1 && Boolean(sessao) && !$("pad").hidden; },
   get sessao() { return sessao ? { codigo: sessao.codigo, id: sessao.id } : null; },
   derrubar() { try { ws?.close(); } catch { /* */ } }, // simula a rede caindo (reconecta sozinho)
+  get enviadas() { return contagem.enviadas; }, // mensagens de entrada mandadas (medir o ritmo)
+  emPe() { document.body.classList.add("em-pe"); }, // teste em retrato: dispensa o aviso "gire o celular"
 };

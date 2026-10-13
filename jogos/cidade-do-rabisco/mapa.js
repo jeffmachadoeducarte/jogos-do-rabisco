@@ -8,6 +8,8 @@
 //  - a Rua das Casas Coloridas, curtinha, e a Rua do Contorno em volta de tudo (cantos arredondados).
 // Unidade: o Rabisco tem 1,8 de altura.
 
+import { PARCEIROS } from "./parceiros.js";
+
 export const BORDA = 125;
 
 const arco = (cx, cz, r, a0, a1, n) => {
@@ -87,6 +89,13 @@ export const LUGARES = [
   L("casas2", "Vila", -80.5, 32, 1, 0, { raio: 14, recuo: 0 }),
   L("parque", "Parque", 30, 71.5, 0, 1, { raio: 14, recuo: 0 }),
 ];
+// lojas das empresas parceiras (parceiros.js): no lado sul da Avenida Central, logo depois da rotatória
+// (as duas primeiras ficam a poucos passos da largada) e depois perto das pontas da avenida
+export const PONTOS_PARCEIROS = [[34, 11.5, 0, -1], [-34, 11.5, 0, -1], [100, 11.5, 0, -1], [-100, 11.5, 0, -1]];
+PARCEIROS.slice(0, PONTOS_PARCEIROS.length).forEach((p, i) => {
+  const [x, z, dx, dz] = PONTOS_PARCEIROS[i];
+  LUGARES.push(L(`parceiro-${p.id}`, p.nome, x, z, dx, dz, { parceiro: p }));
+});
 export const lugar = (id) => LUGARES.find((l) => l.id === id);
 
 // casas coloridas: quatro do lado norte da Rua das Casas (porta para a rua); duas na Vila; a casa da Vovó

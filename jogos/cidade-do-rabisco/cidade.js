@@ -8,6 +8,7 @@
 import { THREE, texturaCanvas, aleatorio, carregarTextura } from "../../src/motor3d/toon.js";
 import { escolaEducarte3D, pilotoLapis } from "../../src/motor3d/objetos.js";
 import { RUAS, CALCADA, distRua, LUGARES, CASAS, SEMAFOROS, PARQUE, LAGO, PLAYGROUND, PRACA, VAGAS, LARGADA } from "./mapa.js";
+import { ESTILO_PARCEIRO } from "./parceiros.js";
 
 export { BORDA } from "./mapa.js";
 const r = aleatorio(2026);
@@ -101,6 +102,36 @@ function predio(w, d, andares, cor, luzes) {
   beiral.position.y = h + 0.25;
   g.add(corpo, beiral);
   return { g, h };
+}
+// loja de empresa parceira: a frente inteira do prédio (de canto a canto, do chão ao topo) é a foto real
+// da fachada; o prédio se adapta à proporção da foto (altura fixa, largura = altura × proporção, sem esticar).
+// Laterais, fundo e telhado em cor sólida que combina com a foto. A foto carrega sem travar o jogo: até lá
+// (ou se ela falhar) fica um prédio liso do mesmo tipo. aoMudar(largura) avisa a nova largura (colisão).
+const LOJA = { altura: 9, d: 7, frente: 3.08, larguraMax: 24 };
+function lojaParceira(p, aoMudar) {
+  const g = new THREE.Group();
+  const estilo = ESTILO_PARCEIRO[p.tipo] ?? ESTILO_PARCEIRO.carros;
+  const parede = std(estilo.parede, { roughness: 0.8 });
+  const matFrente = std(estilo.parede, { roughness: 0.75 });
+  const corpo = caixa(1, 1, LOJA.d, [parede, parede, parede, parede, matFrente, parede]); // 4 = face +z (rua)
+  const beiral = caixa(1, 0.35, LOJA.d + 0.4, std(estilo.beiral, { roughness: 0.7 }));
+  g.add(corpo, beiral);
+  const montar = (prop) => {
+    const w = Math.min(LOJA.larguraMax, LOJA.altura * prop), h = w / prop;
+    corpo.scale.set(w, h, 1); corpo.position.set(0, h / 2, LOJA.frente - LOJA.d / 2);
+    beiral.scale.set(w + 0.4, 1, 1); beiral.position.set(0, h + 0.17, LOJA.frente - LOJA.d / 2 - 0.2);
+    aoMudar?.(w);
+  };
+  montar(LOJA.larguraMax / LOJA.altura); // começa na largura máxima (reserva o terreno) e encolhe quando a foto chega
+  new THREE.TextureLoader().load(`../../${p.foto}`, (t) => {
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 8;
+    // a foto também "brilha" um pouco (emissiva): fica legível mesmo com o sol de lado ou na sombra
+    Object.assign(matFrente, { map: t, emissiveMap: t, emissiveIntensity: 0.35 });
+    matFrente.color.set(0xffffff); matFrente.emissive.set(0xffffff); matFrente.needsUpdate = true;
+    montar(t.image.width / t.image.height);
+  }, undefined, () => console.warn(`foto da parceira ${p.nome} não carregou`));
+  return g;
 }
 function casa(cor, telhadoCor, numero) {
   const g = new THREE.Group();
@@ -463,6 +494,20 @@ export function montarCidade(cena) {
   };
   for (const l of LUGARES) {
     lugares.push({ ...l });
+    if (l.parceiro) {
+      const ox = l.x - l.dir[0] * l.recuo, oz = l.z - l.dir[1] * l.recuo;
+      // colisão: o mesmo retângulo é ajustado quando a foto chega e o prédio muda de largura
+      const s = { x0: 0, x1: 0, z0: 0, z1: 0, y1: 20 };
+      solidos.push(s);
+      const loja = lojaParceira(l.parceiro, (w) => {
+        const [cx, cz] = mundoDe(ox, oz, l.rot, 0, LOJA.frente - LOJA.d / 2);
+        const deitado = Math.abs(Math.sin(l.rot)) > 0.5, sx = (deitado ? LOJA.d : w) / 2 + 0.2, sz = (deitado ? w : LOJA.d) / 2 + 0.2;
+        Object.assign(s, { x0: cx - sx, x1: cx + sx, z0: cz - sz, z1: cz + sz });
+      });
+      loja.position.set(ox, 0.03, oz); loja.rotation.y = l.rot;
+      cena.add(loja);
+      continue;
+    }
     if (!["escola", "igreja", ...Object.keys(info)].includes(l.id)) continue;
     const ox = l.x - l.dir[0] * l.recuo, oz = l.z - l.dir[1] * l.recuo;
     const grupo = new THREE.Group();

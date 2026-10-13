@@ -6,11 +6,14 @@
   --texto: "Baloo 2", ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* nada de zoom sozinho: sem ajuste de texto do iOS, sem duplo toque, sem seleção nem menu de "copiar" ao segurar */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: manipulation; }
 html, body { margin: 0; height: 100%; }
+button, .btn, .joy, .pad { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 body {
   font-family: var(--texto); color: var(--tinta); overflow: hidden; overscroll-behavior: none;
   background: radial-gradient(circle at 50% 120%, #7fdcff 0, var(--ciano) 55%, #0091c4 100%);
-  display: flex; flex-direction: column;
+  display: flex; flex-direction: column; position: fixed; inset: 0; width: 100%; touch-action: manipulation;
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
   padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
 }
@@ -52,43 +55,82 @@ form { display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .roda.parada { display: none; }
 @keyframes gira { to { transform: rotate(360deg); } }
 
-/* ------------------------------------------------------------ o controle */
-.pad { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 6px 16px 16px; position: relative; touch-action: none; min-height: 0; }
-.zona { display: flex; align-items: center; justify-content: center; gap: 16px; touch-action: none; min-height: 0; }
-.recado-jogo { position: absolute; left: 50%; top: 4px; transform: translateX(-50%); margin: 0; z-index: 2; max-width: 90%; text-align: center;
-  background: #fff; border: 4px solid var(--tinta); border-radius: 18px; padding: 4px 16px; font-weight: 800; font-size: 18px; box-shadow: 0 4px 0 var(--tinta); pointer-events: none; }
+/* ------------------------------------------------------------ o controle (feito para o celular DEITADO) */
+/* paisagem: direção encostada na borda esquerda, botões na direita, tudo na altura dos polegares; topo vira uma faixa fina */
+body.jogando .topo { position: absolute; left: 0; right: 0; top: 0; z-index: 3; padding: max(4px, env(safe-area-inset-top, 0)) max(12px, env(safe-area-inset-right, 0)) 0 max(12px, env(safe-area-inset-left, 0)); pointer-events: none; }
+body.jogando .topo > * { pointer-events: auto; }
+body.jogando .logo { height: 30px; border-width: 2px; }
+body.jogando .chip { font-size: 18px; border-width: 3px; box-shadow: 0 3px 0 var(--tinta); }
+body.jogando .pausar { width: 48px; height: 48px; font-size: 22px; }
+.pad { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; position: relative; touch-action: none; min-height: 0;
+  padding: 58px max(14px, env(safe-area-inset-right, 0)) max(12px, env(safe-area-inset-bottom, 0)) max(14px, env(safe-area-inset-left, 0)); }
+.zona { display: flex; align-items: center; gap: 14px; touch-action: none; min-height: 0; padding-bottom: 4vh; }
+.zona.esquerda { justify-content: flex-start; }
+.zona.direita { justify-content: flex-end; }
+.recado-jogo { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); margin: 0; z-index: 2; max-width: 46%; text-align: center;
+  background: #fff; border: 4px solid var(--tinta); border-radius: 18px; padding: 4px 14px; font-weight: 800; font-size: 16px; box-shadow: 0 4px 0 var(--tinta); pointer-events: none; }
 
 .btn { --b: var(--cor); position: relative; display: grid; place-items: center; flex: none; touch-action: none;
-  width: var(--t, min(36vw, 38vh, 170px)); height: var(--t, min(36vw, 38vh, 170px)); border-radius: 50%;
+  width: var(--t, min(24vw, 52vh, 190px)); height: var(--t, min(24vw, 52vh, 190px)); border-radius: 50%;
   background: var(--b); color: #fff; border: 6px solid var(--tinta); box-shadow: 0 10px 0 var(--tinta);
-  font: 900 clamp(22px, 5vh, 34px) / 1 var(--texto); text-shadow: 2px 2px 0 var(--tinta); transition: transform 0.04s; }
-.btn .ic { font-size: 1.5em; line-height: 1; text-shadow: none; }
-.btn small { display: block; font-size: 0.55em; margin-top: 2px; }
-.btn.apertado { transform: translateY(7px); box-shadow: 0 3px 0 var(--tinta); filter: brightness(1.12); }
-.btn.seta { --b: #fff; color: var(--tinta); text-shadow: none; border-radius: 30px; font-size: clamp(40px, 9vh, 64px); }
+  font: 900 clamp(20px, 6vh, 32px) / 1 var(--texto); text-shadow: 2px 2px 0 var(--tinta); }
+.btn .ic { font-size: 1.5em; line-height: 1; text-shadow: none; pointer-events: none; }
+.btn small { display: block; font-size: 0.55em; margin-top: 2px; pointer-events: none; }
+.btn > span { pointer-events: none; }
+/* resposta na hora: sem transição ao apertar (só na volta) */
+.btn:not(.apertado) { transition: transform 0.06s, box-shadow 0.06s; }
+.btn.apertado { transform: translateY(7px) scale(0.96); box-shadow: 0 3px 0 var(--tinta); filter: brightness(1.15); }
+.btn.apertado::after { content: ""; position: absolute; inset: -14px; border-radius: inherit; border: 5px solid #fff; opacity: 0.85; pointer-events: none; }
+.btn.seta { --b: #fff; color: var(--tinta); text-shadow: none; border-radius: 32px; font-size: clamp(40px, 13vh, 72px); --t: min(21vw, 56vh, 200px); }
 .btn.seta.apertado { --b: var(--amarelo); }
 .btn.acao { --b: var(--laranja); }
 .btn.pulo { --b: var(--rosa); }
-.btn.baixo { --b: var(--ciano); --t: min(24vw, 26vh, 112px); }
-.btn.menor { --t: min(26vw, 28vh, 118px); }
-.coluna { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.btn.baixo { --b: var(--ciano); --t: min(15vw, 34vh, 124px); }
+.btn.menor { --t: min(17vw, 38vh, 136px); }
+/* dois botões na direita: como num controle de videogame, o principal embaixo encostado na borda e o outro mais acima, à esquerda */
+.coluna { display: flex; flex-direction: row-reverse; align-items: flex-end; gap: 10px; height: 100%; max-height: min(100%, 92vh); padding: 2vh 0; }
+.coluna > :nth-child(2) { align-self: flex-start; }
 
-.joy { position: relative; width: min(44vw, 62vh, 250px); height: min(44vw, 62vh, 250px); border-radius: 50%; touch-action: none;
+.joy { position: relative; flex: none; width: min(36vw, 74vh, 280px); height: min(36vw, 74vh, 280px); border-radius: 50%; touch-action: none;
   background: rgba(255, 255, 255, 0.92); border: 6px solid var(--tinta); box-shadow: 0 10px 0 var(--tinta); }
-.joy::before { content: ""; position: absolute; inset: 22%; border-radius: 50%; border: 4px dashed rgba(21, 21, 21, 0.18); }
-.joy .pino { position: absolute; left: 50%; top: 50%; width: 42%; height: 42%; margin: -21% 0 0 -21%; border-radius: 50%;
+.joy::before { content: ""; position: absolute; inset: 22%; border-radius: 50%; border: 4px dashed rgba(21, 21, 21, 0.18); pointer-events: none; }
+.joy .pino { position: absolute; left: 50%; top: 50%; width: 42%; height: 42%; margin: -21% 0 0 -21%; border-radius: 50%; will-change: transform;
   background: var(--cor); border: 6px solid var(--tinta); box-shadow: 0 6px 0 var(--tinta); pointer-events: none; }
+.joy.apertado { background: #fff8d6; }
 
-/* retrato: as duas zonas uma em cima da outra (direção embaixo, onde o polegar alcança) */
+/* Kart: acelera sozinho. Polegar esquerdo = ◀ (borda esquerda), polegar direito = ▶ (borda direita), dois botões altos;
+   a buzina é pequena, ao lado do ▶ e mais para cima, para não ser apertada sem querer */
+.pad[data-layout="kart"] .btn.seta { width: min(27vw, 230px); height: min(76vh, 340px); border-radius: 44px; font-size: clamp(48px, 16vh, 96px); }
+.pad[data-layout="kart"] .coluna { align-items: center; }
+.btn.mini { --t: min(13vw, 28vh, 104px); border-width: 5px; box-shadow: 0 6px 0 var(--tinta); font-size: clamp(16px, 5vh, 24px); }
+.btn.mini.apertado { transform: translateY(4px) scale(0.96); box-shadow: 0 2px 0 var(--tinta); }
+
+/* ------------------------------------------------------------ celular em pé: pede para girar */
+.girar { display: none; position: fixed; inset: 0; z-index: 10; align-items: center; justify-content: center; padding: 16px;
+  background: radial-gradient(circle at 50% 120%, #7fdcff 0, var(--ciano) 55%, #0091c4 100%); }
+.celular-gira { font-size: 64px; line-height: 1; animation: gira-celular 1.8s ease-in-out infinite; }
+@keyframes gira-celular { 0%, 25% { transform: rotate(0); } 55%, 100% { transform: rotate(-90deg); } }
+.link { background: none; border: 0; font: 700 17px var(--texto); color: #555; text-decoration: underline; padding: 8px; cursor: pointer; }
+
 @media (orientation: portrait) {
-  .pad { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; padding-top: 44px; }
+  body.jogando:not(.em-pe) .girar { display: flex; }
+  /* "jogar em pé mesmo": as duas zonas uma em cima da outra (direção embaixo, onde o polegar alcança) */
+  .pad { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; padding-top: 64px; }
+  .zona { justify-content: center !important; padding-bottom: 0; }
   .zona.direita { order: 1; }
   .zona.esquerda { order: 2; }
   .btn { --t: min(40vw, 24vh, 170px); }
   .btn.seta { --t: min(40vw, 22vh, 170px); }
   .btn.menor { --t: min(28vw, 17vh, 120px); }
   .btn.baixo { --t: min(26vw, 15vh, 110px); }
+  .coluna { flex-direction: column; align-items: center; height: auto; padding: 0; }
+  .coluna > :nth-child(2) { align-self: center; }
   .joy { width: min(70vw, 34vh, 280px); height: min(70vw, 34vh, 280px); }
+  .pad[data-layout="kart"] .btn.seta { width: min(44vw, 200px); height: min(36vh, 260px); }
+  .btn.mini { --t: min(24vw, 12vh, 96px); }
+  .pad[data-layout="kart"] .zona.direita { order: 2; }
+  .pad[data-layout="kart"] { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
+  .recado-jogo { max-width: 90%; }
 }
 @media (max-height: 420px) {
   .topo { padding: 4px 12px; }
