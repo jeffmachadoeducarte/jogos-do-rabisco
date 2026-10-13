@@ -59,6 +59,13 @@ main {
 .vaga.livre .como { color: #666; }
 .vaga.caiu .como { color: var(--rosa); }
 .vaga .selo { margin-left: auto; font-size: calc(var(--u) * 4.4); }
+/* escolha 1 / 2 jogadores */
+.quantos { display: flex; gap: calc(var(--u) * 1.2); flex: none; }
+.qtd { flex: 1; font: inherit; font-weight: 800; font-size: calc(var(--u) * 2.3); color: var(--tinta); background: #fff; cursor: pointer; padding: calc(var(--u) * 0.2) calc(var(--u) * 1); border: calc(var(--u) * 0.4) solid var(--tinta); border-radius: 999px; box-shadow: 0 calc(var(--u) * 0.35) 0 var(--tinta); }
+.qtd[aria-pressed="true"] { background: var(--amarelo); }
+.qtd:focus { outline: none; }
+.qtd.controle-foco, .qtd:focus-visible { outline: calc(var(--u) * 0.8) solid var(--rosa) !important; outline-offset: calc(var(--u) * 0.25); }
+.vaga.fora { opacity: 0.55; }
 .dica-controle { margin: 0; font-weight: 800; font-size: calc(var(--u) * 2.3); text-align: center; background: var(--amarelo); border: calc(var(--u) * 0.35) solid var(--tinta); border-radius: 999px; padding: calc(var(--u) * 0.2) calc(var(--u) * 1.4); flex: none; }
 .dica-controle.calma { background: #e9f6fd; }
 

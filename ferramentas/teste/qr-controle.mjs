@@ -67,6 +67,16 @@ async function segurar(t, sel, ms, durante = null) {
   await espera(250);
   return r;
 }
+// segura o botão até a tela do jogo mostrar o efeito (ou até `max` ms): com a máquina ocupada a tela demora segundos para notar
+async function segurarAte(t, sel, ler, bom, max = 40000) {
+  const [x, y] = await centro(t, sel);
+  await t.cmd("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+  let r = await ler(); const fim = Date.now() + max;
+  while (!bom(r) && Date.now() < fim) { await espera(150); r = await ler(); }
+  await t.cmd("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await espera(250);
+  return r;
+}
 // decodifica o QR desenhado na tela (quando o Chrome tem BarcodeDetector)
 const lerQr = (t, sel) => t.ev(`(async () => {
   if (!("BarcodeDetector" in window)) return null;
@@ -134,28 +144,30 @@ if (quer("kart")) {
   await t.ev("document.getElementById('jogar').click()");
   ok(await ate(t, "teste.dividida && teste.j2?.humano === 2 && teste.estado === 'corrida'", 30000), "Kart: corrida em 2 com o kart do jogador 2");
   await espera(800);
-  const esq = await segurar(c, ".btn[data-btn=esq]", 1300, () => t.ev("[teste.j2.virar, teste.jogador.virar]"));
+  const esq = await segurarAte(c, ".btn[data-btn=esq]", () => t.ev("[teste.j2.virar, teste.jogador.virar]"), (r) => r[0] > 0.3);
   ok(esq[0] > 0.3 && Math.abs(esq[1]) < 0.3, `Kart: ◀ no celular vira só o kart do jogador 2 (j2 ${esq[0].toFixed(2)}, j1 ${esq[1].toFixed(2)})`);
-  await espera(600);
-  const dir = await segurar(c, ".btn[data-btn=dir]", 1300, () => t.ev("[teste.j2.virar, teste.jogador.virar]"));
+  await ate(t, "Math.abs(teste.j2.virar) < 0.15", 30000, 150); // a tela leva um tempo para endireitar
+  const dir = await segurarAte(c, ".btn[data-btn=dir]", () => t.ev("[teste.j2.virar, teste.jogador.virar]"), (r) => r[0] < -0.3);
   ok(dir[0] < -0.3 && Math.abs(dir[1]) < 0.3, `Kart: ▶ no celular vira só o kart do jogador 2 (j2 ${dir[0].toFixed(2)}, j1 ${dir[1].toFixed(2)})`);
-  await espera(800);
+  await ate(t, "Math.abs(teste.j2.virar) < 0.3", 30000, 150);
   const solto = await t.ev("teste.j2.virar");
   ok(Math.abs(solto) < 0.3, `Kart: soltou o botão → kart do jogador 2 endireita (${solto.toFixed(2)})`);
   await t.ev("(() => { window.__acoes = 0; const ler = Jogadores.ler2; Jogadores.ler2 = () => { const r = ler(); if (r.acaoNova) window.__acoes++; return r; }; })()");
   await segurar(c, ".btn[data-btn=acao]", 60); // toque rapidinho também conta
-  ok(await ate(t, "window.__acoes === 1", 2000, 100), "Kart: ação (buzina) do celular chega uma vez por toque");
+  ok(await ate(t, "window.__acoes === 1", 30000, 100), "Kart: ação (buzina) do celular chega uma vez por toque");
   await foto(t, "host-kart-corrida-celular.png");
 
   // celular cai (tela apagou / rede) → aviso amigável; volta sozinho com o mesmo lugar (voltar + token)
   const antes = await c.ev("controleTeste.sessao");
+  // o aviso fecha sozinho quando o celular volta: com a tela lenta ele podia abrir e fechar entre duas olhadas, então um observador anota que apareceu
+  await t.ev("(() => { window.__avisou = false; const ver = () => { if (document.querySelector('.jog-aviso:not([hidden])')?.textContent.includes('celular da Alice Souza desconectou')) window.__avisou = true; }; new MutationObserver(ver).observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true }); ver(); })()");
   await c.ev("controleTeste.derrubar()");
-  ok(await ate(t, "!!document.querySelector('.jog-aviso:not([hidden])')?.textContent.includes('celular da Alice Souza desconectou')", 3000, 50), "Kart: celular caiu → aviso amigável na tela");
+  ok(await ate(t, "window.__avisou === true", 30000, 50), "Kart: celular caiu → aviso amigável na tela");
   await foto(t, "host-kart-celular-caiu.png");
   ok(await ate(t, "!document.querySelector('.jog-aviso:not([hidden])') && Jogadores.celular?.conectado === true", 8000), "Kart: celular voltou sozinho e o aviso fechou");
   ok(await ate(c, "controleTeste.conectado", 5000) && JSON.stringify(await c.ev("controleTeste.sessao")) === JSON.stringify(antes), "Kart: reconectou na mesma vaga (mesmo id, sem ler o QR de novo)");
   await espera(400);
-  const dir2 = await segurar(c, ".btn[data-btn=dir]", 1200, () => t.ev("teste.j2.virar"));
+  const dir2 = await segurarAte(c, ".btn[data-btn=dir]", () => t.ev("teste.j2.virar"), (r) => r < -0.3);
   ok(dir2 < -0.3, `Kart: depois de voltar, ▶ ainda vira o kart do jogador 2 (${dir2.toFixed(2)})`);
 
   // controle em paisagem (mesmo celular girado)

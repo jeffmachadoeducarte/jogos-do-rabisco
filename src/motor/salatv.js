@@ -59,6 +59,9 @@ export function iniciarSalaTV({ layout = "padrao", pausar = false, permitirNovos
   const inicio = performance.now();
   let reservada = null; // vaga cujo celular não mexe no jogador 1 (o do jogador 2 durante a partida)
   let codigoSala = salvo.codigo || null;
+  // "Quantos vão jogar?" na TV: 1 = só o Rabisco (a vaga 2 pode até estar ocupada, mas fica de fora); 2 = os dois; null = ainda sem escolha
+  // (vale o que as vagas dizem: alguém na vaga 2 → 2 jogadores). Sobrevive à troca /tv → jogo → /tv junto com as vagas.
+  let escolhido = salvo.jogadores === 1 || salvo.jogadores === 2 ? salvo.jogadores : null;
   const novosPads = new Set(); // gamepadconnected desde o último quadro
 
   function guardar() {
@@ -66,6 +69,7 @@ export function iniciarSalaTV({ layout = "padrao", pausar = false, permitirNovos
       sessionStorage.setItem(CHAVE, JSON.stringify({
         codigo: sala?.codigo || codigoSala, token: sala?.token || salvo.token || null,
         vagas: vagas.map((v) => ({ tipo: v.tipo, pad: v.pad, cel: v.cel })),
+        jogadores: escolhido,
       }));
     } catch { /* sem armazenamento: a TV funciona, só não lembra ao trocar de página */ }
   }
@@ -219,6 +223,10 @@ export function iniciarSalaTV({ layout = "padrao", pausar = false, permitirNovos
   const api = {
     get vagas() { return vagas; },
     get espera() { return espera.size; },
+    get escolhido() { return escolhido; },
+    // quantos jogam de fato: escolheu 1 → 1; senão, 2 só se a vaga 2 tem alguém
+    get jogadores() { return escolhido === 1 ? 1 : vagas[1].tipo ? 2 : 1; },
+    escolher(n) { escolhido = n === 1 ? 1 : n === 2 ? 2 : null; mudou(); },
     get sala() { return sala ? { estado: sala.estado, codigo: sala.codigo, link: sala.link } : null; },
     get temSala() { return Boolean(sala); },
     ultimaEntrada: null,

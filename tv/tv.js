@@ -38,12 +38,26 @@ $("cards").addEventListener("click", (e) => {
   if (b) abrirJogo(b.dataset.jogo);
 });
 
+// 1 ou 2 jogadores: o que a criança escolheu; sem escolha, 2 só se já tem alguém na vaga 2 (começa em 1 com um só conectado)
+const quantos = () => tv.escolhido ?? (tv.vagas[1].tipo ? 2 : 1);
+$("quantos").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-jogadores]");
+  if (!b) return;
+  const n = Number(b.dataset.jogadores);
+  tv.escolher(n);
+  if (n === 2 && !tv.vagas[1].tipo) recado(SALA_JOGOS ? "Para jogar a 2, o jogador 2 entra: controle 🎮 ou QR 📱" : "Para jogar a 2, ligue um segundo controle 🎮", 3200);
+});
+
 let saindo = false;
 function abrirJogo(id) {
   if (saindo) return;
   const [v1, v2] = tv.vagas;
   if (!v1.tipo && !v2.tipo) {
     recado(SALA_JOGOS ? "Primeiro, alguém entra: aperte um botão do controle 🎮 ou leia o QR com o celular 📱" : "Primeiro, aperte um botão do controle 🎮");
+    return;
+  }
+  if (quantos() === 2 && !(v1.tipo && v2.tipo)) {
+    recado(`Faltam dois jogadores aqui: ${SALA_JOGOS ? "leia o QR 📱 ou aperte o controle 🎮" : "ligue outro controle 🎮"} — ou escolha 1 jogador`, 4000);
     return;
   }
   if (!v1.tipo) tv.subirVaga2(); // só tem o jogador 2: ele vira o Rabisco
@@ -98,10 +112,12 @@ function como(v) {
   return { ic: "📱", txt: "O celular desconectou… esperando voltar", classe: "caiu" };
 }
 function desenharVagas() {
+  const n = quantos();
+  for (const b of $("quantos").children) b.setAttribute("aria-pressed", String(Number(b.dataset.jogadores) === n));
   for (const v of tv.vagas) {
     const el = $(`vaga-${v.n}`);
-    const c = como(v);
-    el.className = `vaga ${c.classe ?? ""}`.trim();
+    const c = n === 1 && v.n === 2 && !v.tipo ? { ic: "➕", txt: SALA_JOGOS ? "Quer entrar? Leia o QR 📱 (ou aperte o controle 🎮)" : "Quer entrar? Ligue outro controle 🎮", classe: "livre" } : como(v);
+    el.className = `vaga ${c.classe ?? ""}${n === 1 && v.n === 2 && v.tipo ? " fora" : ""}`.trim();
     el.dataset.tipo = v.tipo ?? "";
     el.dataset.conectado = String(Boolean(v.conectado));
     el.innerHTML = `${rosto(v.n)}<span><span class="nome">${v.n} · ${esc(v.n === 1 ? "Rabisco" : nomeJ2())}</span>
@@ -128,7 +144,7 @@ const antes = tv.vagas.map((v) => `${v.tipo}:${v.conectado}`);
 function anunciarEntradas() {
   tv.vagas.forEach((v, i) => {
     const agora = `${v.tipo}:${v.conectado}`;
-    if (agora !== antes[i] && v.conectado && !saindo) recado(`${v.n === 1 ? "Rabisco" : nomeJ2()} entrou ${v.tipo === "controle" ? "com o controle 🎮" : "pelo celular 📱"}!`, 1800);
+    if (agora !== antes[i] && v.conectado && !saindo) recado(`${v.n === 1 ? "Rabisco" : nomeJ2()} entrou ${v.tipo === "controle" ? "com o controle 🎮" : "pelo celular 📱"}!${v.n === 2 && quantos() === 2 ? " Vão jogar 2!" : ""}`, 1800);
     antes[i] = agora;
   });
 }
@@ -161,6 +177,7 @@ focar(document.querySelector(".card"));
 window.tvTeste = {
   get vagas() { return tv.vagas.map(({ n, tipo, pad, cel, conectado }) => ({ n, tipo, pad, cel, conectado })); },
   get sala() { return tv.sala; },
+  get jogadores() { return quantos(); },
   get foco() { return document.querySelector(".controle-foco")?.dataset.jogo ?? null; },
   abrir: abrirJogo,
 };

@@ -59,7 +59,7 @@ async function telaTV(url) {
 }
 // celular na mão da criança: página em foco (sem isto o Chrome sem janela pode "esconder" a página e atrasar os envios)
 async function celular(url) {
-  const c = await abrir("about:blank", { mobile: true, largura: 390, altura: 844 });
+  const c = await abrir("about:blank", { mobile: true, largura: 844, altura: 390 }); // deitado: em pé o controle pede "Gire o celular" e cobre os botões
   await c.cmd("Emulation.setFocusEmulationEnabled", { enabled: true });
   await c.cmd("Page.navigate", { url });
   return c;
@@ -266,6 +266,86 @@ await foto(c2, "controle-cidade-tv.png");
 ok(!errosDe(t).length, "TV: sem erros " + errosDe(t).join(" ; "));
 ok(!c1.erros.length && !c2.erros.length, "celulares: sem erros " + [...c1.erros, ...c2.erros].join(" ; "));
 await c1.fechar(); await c2.fechar(); await t.fechar();
+
+// ------------------------------------------------------------------ (h) 1 jogador só, com UM controle físico: escolha 1/2 na TV e Kart sem tela dividida
+{
+  const t = await telaTV(`${BASE}/tv/?teste&sala=${encodeURIComponent(SALA)}`);
+  await ate(t, "window.tvTeste?.sala?.estado === 'aberta'");
+  ok(await t.ev("!!document.getElementById('jog-1') && !!document.getElementById('jog-2') && tvTeste.jogadores === 1"), "(h) a TV tem 'Quantos vão jogar?' (1 / 2) e começa em 1 jogador");
+  await t.ev("__liga(1); __btn(0, 0, true)"); await espera(300); await t.ev("__btn(0, 0, false)");
+  ok(await ate(t, "tvTeste.vagas[0].tipo === 'controle' && tvTeste.vagas[0].conectado && !tvTeste.vagas[1].tipo", 3000), "(h) só o controle 1 conectado (vaga 1)");
+  ok(await t.ev("document.getElementById('jog-1').getAttribute('aria-pressed') === 'true' && tvTeste.jogadores === 1 && !!document.querySelector('#qr svg')"), "(h) '1 jogador' marcado e o QR continua na tela para um 2º entrar");
+  // 2 jogadores escolhido sem o 2º: avisa e NÃO abre o jogo
+  await t.ev("document.getElementById('jog-2').click()"); await espera(300);
+  ok(await t.ev("tvTeste.jogadores === 2"), "(h) escolher '2 jogadores' vale");
+  await t.ev("tvTeste.abrir('rabisco-kart')"); await espera(400);
+  ok(await t.ev("location.pathname.endsWith('/tv/') && !document.getElementById('recado').hidden && document.getElementById('recado').textContent.includes('1 jogador')"), "(h) 2 jogadores sem o 2º: recado amigável e fica na TV");
+  // setas: do jogo em foco, 'para cima' chega nos botões 1/2 e o OK escolhe '1 jogador'
+  await t.ev("document.getElementById('jog-1').focus()"); await tecla(t, "Enter", "Enter", 13);
+  ok(await t.ev("tvTeste.jogadores === 1 && document.getElementById('jog-1').getAttribute('aria-pressed') === 'true'"), "(h) OK no '1 jogador' marca 1 jogador");
+  await t.ev("tvTeste.abrir('rabisco-kart')");
+  ok(await ate(t, "location.pathname.includes('/jogos/rabisco-kart/') && !!window.teste && window.Jogadores?.tv === true", 30000), "(h) Kart abriu em modo TV só com a vaga 1");
+  ok(await t.ev("Jogadores.modo === 1 && Jogadores.j1.entrada === 'controle' && !Jogadores.j2Pronto"), "(h) Kart em 1 jogador: Rabisco 🎮, sem jogador 2");
+  ok(await t.ev("!document.body.innerText.includes('conecte um controle') && !document.body.innerText.includes('Leia o QR')"), "(h) nenhum pedido de controle/QR na abertura");
+  ok(await ate(t, "document.activeElement?.id === 'jogar'", 3000), "(h) foco já no 'CORRER'");
+  await t.ev("__btn(0, 0, true)"); await espera(300); await t.ev("__btn(0, 0, false)");
+  ok(await ate(t, "teste.estado === 'corrida' && !teste.dividida && !teste.j2", 30000), "(h) corrida em 1 jogador: sem kart do jogador 2 e sem tela dividida");
+  await espera(800);
+  await t.ev("__btn(0, 14, true)"); await ate(t, "teste.jogador.virar > 0.3", 4000, 150);
+  const v = await t.ev("teste.jogador.virar"); await t.ev("__btn(0, 14, false)");
+  ok(v > 0.3, `(h) direcional do controle vira o kart do Rabisco (${v.toFixed(2)})`);
+  await tecla(t, "Escape", "Escape", 27);
+  await t.ev("(document.querySelector('.pausa-tela')?.hidden !== false) && document.querySelector('.pausa-botao, #pausar, .casca-pausa')?.click?.()");
+  if (!(await t.ev("!document.querySelector('.pausa-tela').hidden"))) await t.ev("__btn(0, 9, true)"), await espera(300), await t.ev("__btn(0, 9, false)"); // Start pausa
+  ok(await ate(t, "!document.querySelector('.pausa-tela').hidden", 3000), "(h) pausa abriu pelo controle");
+  await t.ev("document.querySelector('.pausa-tela .voltar-tv').click()");
+  ok(await ate(t, "location.pathname.endsWith('/tv/') && !!window.tvTeste", 10000), "(h) 'Voltar ao menu da TV' volta à /tv");
+  ok(await ate(t, "tvTeste.vagas[0].tipo === 'controle' && tvTeste.vagas[0].conectado && tvTeste.jogadores === 1", 8000), "(h) o controle continua conectado na vaga 1 e a escolha '1 jogador' foi mantida");
+  ok(!errosDe(t).length, "(h) sem erros " + errosDe(t).join(" ; "));
+  await t.fechar();
+}
+
+// ------------------------------------------------------------------ (i) 1 jogador só, com UM celular: Cidade sem companheiro
+{
+  const t = await telaTV(`${BASE}/tv/?teste&sala=${encodeURIComponent(SALA)}`);
+  await ate(t, "window.tvTeste?.sala?.estado === 'aberta'");
+  const c = await celular(await t.ev("tvTeste.sala.link"));
+  ok(await ate(t, "tvTeste.vagas[0].tipo === 'celular' && tvTeste.vagas[0].conectado && !tvTeste.vagas[1].tipo", 8000), "(i) só um celular → vaga 1 (Rabisco)");
+  ok(await t.ev("tvTeste.jogadores === 1 && document.getElementById('jog-1').getAttribute('aria-pressed') === 'true'"), "(i) começa em 1 jogador");
+  // joystick do celular leva o foco ao Cidade e o botão confirma
+  await joystick(c, 90, 0, 250);
+  ok(await ate(t, "tvTeste.foco === 'cidade-do-rabisco'", 3000), "(i) joystick do celular escolhe o jogo");
+  await segurar(c, ".btn[data-btn=acao]", 150);
+  ok(await ate(t, "location.pathname.includes('/jogos/cidade-do-rabisco/') && !!window.teste && window.Jogadores?.tv === true", 30000), "(i) Cidade abriu em modo TV só com o celular 1");
+  ok(await ate(t, "Jogadores.salaTV.vagas[0].conectado", 10000) && await ate(c, "controleTeste.layout === 'cidade'"), "(i) celular voltou na vaga 1 com o layout 'cidade'");
+  ok(await t.ev("Jogadores.modo === 1 && !Jogadores.j2Pronto && !document.body.innerText.includes('conecte um controle')"), "(i) Cidade em 1 jogador, sem pedir jogador 2");
+  await segurar(c, ".btn[data-btn=acao]", 120);
+  ok(await ate(t, "!!teste.j && teste.dois === false && Jogadores.modo === 1", 40000), "(i) Cidade começou em 1 jogador (a criança do cadastro só acompanha, ninguém a controla)");
+  await espera(3000);
+  const p0 = await t.ev("[teste.j.pos.x, teste.j.pos.z]");
+  await joystick(c, 0, -90, 2500);
+  const p1 = await t.ev("[teste.j.pos.x, teste.j.pos.z]");
+  ok(Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) > 0.5, `(i) joystick do celular 1 move o Rabisco (${Math.hypot(p1[0] - p0[0], p1[1] - p0[1]).toFixed(1)} m)`);
+  await tecla(t, "ArrowUp", "ArrowUp", 38);
+  await t.cmd("Input.dispatchKeyEvent", { type: "keyDown", key: "ArrowUp", code: "ArrowUp", windowsVirtualKeyCode: 38 });
+  await espera(500);
+  const q0 = await t.ev("[teste.j.pos.x, teste.j.pos.z]");
+  await espera(1200);
+  const q1 = await t.ev("[teste.j.pos.x, teste.j.pos.z]");
+  await t.cmd("Input.dispatchKeyEvent", { type: "keyUp", key: "ArrowUp", code: "ArrowUp", windowsVirtualKeyCode: 38 });
+  ok(Math.hypot(q1[0] - q0[0], q1[1] - q0[1]) < 0.3, "(i) teclado da TV não pilota o Rabisco");
+  await segurar(c, "#pausar", 150);
+  ok(await ate(t, "!document.querySelector('.pausa-tela').hidden && !!document.querySelector('.pausa-tela .voltar-tv')", 3000), "(i) ⏸ do celular pausa e oferece 'Voltar ao menu da TV'");
+  await t.ev("document.querySelector('.pausa-tela .voltar-tv').click()");
+  ok(await ate(t, "location.pathname.endsWith('/tv/') && !!window.tvTeste", 10000), "(i) voltou para /tv");
+  ok(await ate(t, "tvTeste.vagas[0].tipo === 'celular' && tvTeste.vagas[0].conectado && tvTeste.jogadores === 1", 10000), "(i) o celular continua conectado na vaga 1");
+  // um 2º celular entra depois: a TV passa a 2 jogadores (e avisa), porque ninguém escolheu "1" de propósito
+  const c2 = await celular(await t.ev("tvTeste.sala.link"));
+  ok(await ate(t, "tvTeste.vagas[1].tipo === 'celular' && tvTeste.vagas[1].conectado && tvTeste.jogadores === 2", 8000), "(i) 2º celular entrou depois: a TV oferece 2 jogadores");
+  ok(await t.ev("document.getElementById('jog-2').getAttribute('aria-pressed') === 'true'"), "(i) '2 jogadores' fica marcado (e dá para voltar a '1 jogador')");
+  ok(!errosDe(t).length, "(i) TV sem erros " + errosDe(t).join(" ; "));
+  await c.fechar(); await c2.fechar(); await t.fechar();
+}
 
 ok(!/Alice|"in"|"x":/.test(relayLog), "relay não registra conteúdo das mensagens");
 encerrar();

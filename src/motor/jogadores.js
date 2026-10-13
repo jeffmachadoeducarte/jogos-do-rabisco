@@ -34,7 +34,7 @@ import { qrSvg } from "../../vendor/qr.js";
 import { emModoTV, iniciarSalaTV, voltarParaTV } from "./salatv.js";
 
 const RAIZ = new URL("../..", import.meta.url).href.replace(/\/$/, "");
-const CHAVE = "rabisco.jogadores"; // 1 ou 2, lembrado só nesta visita (sessionStorage)
+const CHAVE = "rabisco.jogadores"; // 1 ou 2, lembrado só nesta visita (sessionStorage) e SÓ onde não é aparelho de toque
 export const COR_J1 = "#00b5f0", COR_J2 = "#ec2e8c";
 // teclado dividido (computador): o jogador 2 fica com estas teclas; o jogador 1 com as setas e as teclas do remapear que sobrarem
 export const TECLAS_J2 = { esq: ["KeyA"], dir: ["KeyD"], cima: ["KeyW"], baixo: ["KeyS"], pulo: ["Space"], acao: ["KeyF"] };
@@ -43,7 +43,9 @@ export const TECLAS_J1_EXTRA = { pulo: ["ShiftRight", "Numpad0"], acao: ["Enter"
 
 const ehToque = () => "ontouchstart" in window || navigator.maxTouchPoints > 0;
 const crianca = () => { try { return window.Familia?.crianca?.() || null; } catch { return null; } };
-const lerModo = () => { try { return Number(sessionStorage.getItem(CHAVE)) === 2 ? 2 : 1; } catch { return 1; } };
+// Celular/tablet (toque) SEMPRE abre em 1 jogador: ali o jogador 2 depende de controle ou QR, e lembrar o "2" de outro jogo
+// fazia o próximo pedir "conecte um controle" a quem só queria jogar pelo toque. No computador o teclado dividido não pede nada.
+const lerModo = () => { if (ehToque()) return 1; try { return Number(sessionStorage.getItem(CHAVE)) === 2 ? 2 : 1; } catch { return 1; } };
 const params = new URLSearchParams(location.search);
 
 const ICONES = { controle: "🎮", teclado: "⌨️", toque: "👆", qr: "📱", celular: "📱", revezar: "🔄" };
@@ -183,8 +185,8 @@ function atribuirTV() {
   const [v1, v2] = tv.vagas;
   j1.entrada = v1.tipo || "qr"; j1.pad = v1.tipo === "controle" ? v1.pad : null;
   j2.entrada = v2.tipo || "qr"; j2.pad = v2.tipo === "controle" ? v2.pad : null;
-  // o modo vem das vagas: com alguém na vaga 2 são 2 jogadores (durante a partida não muda sozinho)
-  if (!emJogo) modo = v2.tipo ? 2 : 1;
+  // o modo vem da escolha na TV (1 jogador) ou das vagas: com alguém na vaga 2 são 2 jogadores (durante a partida não muda sozinho)
+  if (!emJogo) modo = tv.jogadores;
   aplicarReserva();
   for (const cb of ouvintes) { try { cb(api); } catch { /* ouvinte com erro não trava */ } }
 }
@@ -427,7 +429,7 @@ function escolhaTV() {
 function definirModo(n) {
   if (tv) { atribuir(); return; } // na TV o modo vem das vagas
   modo = n === 2 ? 2 : 1;
-  try { sessionStorage.setItem(CHAVE, String(modo)); } catch { /* sem armazenamento */ }
+  if (!ehToque()) { try { sessionStorage.setItem(CHAVE, String(modo)); } catch { /* sem armazenamento */ } }
   atribuir();
 }
 

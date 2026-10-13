@@ -35,7 +35,12 @@
 
     <!-- Quem joga: as 2 vagas e como cada um está conectado -->
     <section class="painel vagas" aria-labelledby="titulo-vagas">
-      <h2 id="titulo-vagas">Quem vai jogar?</h2>
+      <h2 id="titulo-vagas">Quantos vão jogar?</h2>
+      <!-- 1 ou 2 jogadores: setas + OK do controle remoto, direcional + A do controle ou o joystick do celular -->
+      <div class="quantos" id="quantos" role="group" aria-label="Quantos vão jogar?">
+        <button class="qtd" type="button" id="jog-1" data-jogadores="1" aria-pressed="false">🙋 1 jogador</button>
+        <button class="qtd" type="button" id="jog-2" data-jogadores="2" aria-pressed="false">👫 2 jogadores</button>
+      </div>
       <div class="vaga" id="vaga-1" data-n="1" style="--cor: #00b5f0"></div>
       <div class="vaga" id="vaga-2" data-n="2" style="--cor: #ec2e8c"></div>
       <p class="dica-controle" id="dica-controle">🎮 Aperte qualquer botão do controle</p>
