@@ -470,6 +470,15 @@ falas.update(_arca["pt"])
 falas_en.update(_arca["en"])
 # <<< FIM DO BLOCO Rabisco e a Arca <<<
 
+# >>> BLOCO Rabiscópolis (jogos/rabiscopolis) — mantido por quem cuida desse jogo >>>
+# As falas ficam em jogos/rabiscopolis/falas.json (gerado por jogos/rabiscopolis/falas.mjs), chaves rp-*:
+#   node jogos/rabiscopolis/falas.mjs && python3 ferramentas/gerar_vozes.py
+with open(os.path.join(os.path.dirname(__file__), "..", "jogos", "rabiscopolis", "falas.json"), encoding="utf-8") as _f:
+    _rp = json.load(_f)
+falas.update(_rp["pt"])
+falas_en.update(_rp.get("en", {}))
+# <<< FIM DO BLOCO Rabiscópolis <<<
+
 
 async def gerar(chave, texto, marcas=None, voz=None):
     caminho = os.path.join(SAIDA, f"{chave}.mp3")
