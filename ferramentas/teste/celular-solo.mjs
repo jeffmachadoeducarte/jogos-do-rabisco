@@ -14,6 +14,7 @@ const ate = async (t, expr, ms = 20000, passo = 250) => { const fim = Date.now()
 const JOGOS = [
   { id: "rabisco-kart", inicio: "#jogar", comecou: "teste.estado === 'corrida'", landscape: true },
   { id: "cidade-do-rabisco", inicio: ".botao.respira", comecou: "!!teste.j && teste.dois === false", landscape: true },
+  { id: "rabiscopolis", inicio: ".botao.respira", comecou: "!!teste.vivo", landscape: true },
   { id: "super-rabisco-letras", inicio: ".nivel", comecou: "!document.querySelector('.nivel')?.offsetParent", landscape: true },
   { id: "pula-rabisco", inicio: ".casca-nivel", comecou: "!document.querySelector('.casca-nivel')?.offsetParent" }, // bebês
   { id: "colorir-magico", inicio: ".casca-nivel", comecou: "!document.querySelector('.casca-nivel')?.offsetParent" }, // bem pequenos

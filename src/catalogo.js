@@ -82,6 +82,7 @@ export const faixas = [
       { id: "resgate-no-parquinho", estilo: "extra", nome: "Resgate no Parquinho", desc: "O gatinho subiu lá no alto! Suba os andaimes, desvie das bolas e pegue as letras no caminho para salvá-lo.", habilidade: "Coordenação e letras", status: "pronto" },
       { id: "rabisco-e-a-arca", estilo: "plataforma", nome: "Rabisco e a Arca", desc: "Fliperama clássico na arca de Noé: suba vigas e escadas, pule os barris da Manchinha e pegue o animal, a cor ou o número que a voz pede em inglês. No fim, o arco-íris e um versículo.", habilidade: "Inglês: animais, cores e números", status: "pronto", ingles: true },
       { id: "english-kart-jr", estilo: "corrida", nome: "English Kart Jr.", desc: "Ouça a palavra em inglês e passe pelo portal com a figura certa.", habilidade: "Inglês: vocabulário", status: "pronto", ingles: true },
+      { id: "rabiscopolis", estilo: "extra", nome: "Rabiscolândia", desc: "Cidade grande em 3D: escolha sua casa, dirija, vista profissões e ajude os amigos.", habilidade: "Convivência e valores", status: "pronto" },
     ],
   },
   {
@@ -99,6 +100,7 @@ export const faixas = [
       { id: "rabisco-robo", estilo: "extra", nome: "Rabisco Robô", desc: "Programe o caminho do Rabisco com blocos de comando.", habilidade: "Lógica e programação", status: "pronto" },
       { id: "rabisco-e-a-arca", estilo: "plataforma", nome: "Rabisco e a Arca", desc: "Fliperama clássico na arca de Noé: suba vigas e escadas, pule os barris da Manchinha e pegue o animal, a cor ou o número que a voz pede em inglês. No fim, o arco-íris e um versículo.", habilidade: "Inglês: vocabulário e frases", status: "pronto", ingles: true },
       { id: "english-kart", estilo: "corrida", nome: "English Kart", desc: "Leia a frase em inglês (\"It shines at night\") e passe pela figura certa para ganhar turbo.", habilidade: "Inglês: leitura", status: "pronto", ingles: true },
+      { id: "rabiscopolis", estilo: "extra", nome: "Rabiscolândia", desc: "Cidade grande em 3D: escolha sua casa, dirija, vista profissões e ajude os amigos.", habilidade: "Convivência e valores", status: "pronto" },
     ],
   },
 ];

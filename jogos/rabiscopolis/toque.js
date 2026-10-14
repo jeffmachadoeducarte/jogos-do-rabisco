@@ -1,4 +1,4 @@
-// Rabiscópolis: controles de toque (só aparecem com body.touch, celular/tablet deitado).
+// Rabiscolândia: controles de toque (só aparecem com body.touch, celular/tablet deitado).
 //  - a pé: joystick dinâmico à esquerda (src/motor/joystick.js, que também gira a câmera arrastando à direita e
 //    tem o botão de pulo) + botões Ação e 📱 (Rabifone) à direita;
 //  - no carro: ◀ ▶ à esquerda; ▲ (frente), ▼ (ré) e Sair à direita.

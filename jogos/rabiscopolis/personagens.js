@@ -1,4 +1,4 @@
-// Rabiscópolis: os moradores são amigos do estojo (lápis de cor, borracha, apontador, giz de cera, cola, régua,
+// Rabiscolândia: os moradores são amigos do estojo (lápis de cor, borracha, apontador, giz de cera, cola, régua,
 // pincel, caderno, clipe) no mesmo traço do Rabisco: formas arredondadas, contorno preto, olhos grandes de
 // desenho animado (íris colorida, brilho, sobrancelha grossa e boca aberta com língua rosa), bracinhos e tênis.
 // Andam dando pulinhos (estica e achata), piscam, olham em volta e acenam quando o Rabisco chega perto.

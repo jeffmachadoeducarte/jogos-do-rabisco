@@ -1,4 +1,4 @@
-// Rabiscópolis: céu, sol, luz ambiente e neblina, com dia e noite. hora(h) de 0 a 24 muda tudo junto:
+// Rabiscolândia: céu, sol, luz ambiente e neblina, com dia e noite. hora(h) de 0 a 24 muda tudo junto:
 // cor do céu (degradê), posição e força do sol, estrelas e lua de noite, e as janelas/postes que acendem
 // (materiais MAT de base3d.js com emissiveIntensity). Nenhuma luz extra: as "luzes" da noite são emissivas.
 

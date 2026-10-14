@@ -1,4 +1,4 @@
-// Rabiscópolis: perfis de qualidade. Toque (celular/tablet): pixelRatio até 1,3. TV/computador: até 1,25 e no
+// Rabiscolândia: perfis de qualidade. Toque (celular/tablet): pixelRatio até 1,3. TV/computador: até 1,25 e no
 // máximo ~1080p desenhados. Sombra 1024. Nos 3 primeiros segundos mede o FPS e, se estiver baixo, baixa o
 // pixelRatio (até 0,75) e, no pior caso, desliga as sombras.
 

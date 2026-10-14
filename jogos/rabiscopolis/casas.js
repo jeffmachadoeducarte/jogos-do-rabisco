@@ -1,4 +1,4 @@
-// Rabiscópolis: as casas do Bairro das Casas. Cada lote tem gramado, cerquinha branca com portão, caminho de
+// Rabiscolândia: as casas do Bairro das Casas. Cada lote tem gramado, cerquinha branca com portão, caminho de
 // pedras, caixa de correio, placa na frente (vira "Casa da/do {nome}" quando a criança escolhe morar ali),
 // e a casa: paredes fofas de cantos arredondados, telhado com beiral, chaminé, porta de arco com toldo e
 // degraus, janelas com moldura, venezianas e floreira, janela redonda no sótão e lampião que acende de noite.

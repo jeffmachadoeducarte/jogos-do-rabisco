@@ -1,4 +1,4 @@
-// Rabiscópolis: peças 3D de base. Parte delas foi COPIADA de jogos/cidade-do-rabisco/cidade.js (que é de outro
+// Rabiscolândia: peças 3D de base. Parte delas foi COPIADA de jogos/cidade-do-rabisco/cidade.js (que é de outro
 // jogo e não deve ser editado daqui): placa, densificar, normais, fita, arvoreReal, semaforo e lojaParceira.
 // Cada cópia diz de onde veio e o que mudou. O resto (caixa arredondada, materiais toon com contorno e a
 // mesclagem de malhas estáticas por material, que corta as chamadas de desenho) é novo.

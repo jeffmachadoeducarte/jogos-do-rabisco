@@ -1,4 +1,4 @@
-// Rabiscópolis: confere o traçado da cidade (jogos/rabiscopolis/mapa.js) sem navegador.
+// Rabiscolândia: confere o traçado da cidade (jogos/rabiscopolis/mapa.js) sem navegador.
 //  - todo lote, lugar, prédio e vaga fica fora do asfalto (distRua > 0, inclusive os cantos da pegada);
 //  - nenhum lugar/lote/prédio/vaga em cima de outro;
 //  - cada empresa parceira de PARCEIROS tem ponto (e só elas têm "parceiro");

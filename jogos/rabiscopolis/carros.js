@@ -1,4 +1,4 @@
-// Rabiscópolis: os veículos que o Rabisco dirige, no traço de desenho animado da cidade.
+// Rabiscolândia: os veículos que o Rabisco dirige, no traço de desenho animado da cidade.
 //  - carroFofo(cor): conversível arredondado (perfil com curvas extrudado com chanfro grande), para-lamas que
 //    abraçam as rodas, capô curvo com faixa, faróis redondos com aro cromado, grade sorridente, para-choques
 //    redondos, retrovisores, para-brisa com moldura, interior (bancos com friso rosa, painel, volante) e rodas

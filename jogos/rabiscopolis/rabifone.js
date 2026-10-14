@@ -1,4 +1,4 @@
-// Rabiscópolis: o Rabifone, o celular do jogo. Menu HTML com 4 apps (Casa, Garagem, Mapa, Dia/Noite) que dá para
+// Rabiscolândia: o Rabifone, o celular do jogo. Menu HTML com 4 apps (Casa, Garagem, Mapa, Dia/Noite) que dá para
 // usar no toque, no mouse, no teclado (setas, Enter, Esc) e no controle (direcional, A confirma, B volta): os itens
 // têm data-foco e o foco anda pela grade, como nos menus da casca.
 //

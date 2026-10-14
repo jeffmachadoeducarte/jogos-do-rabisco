@@ -1,4 +1,4 @@
-// Rabiscópolis: o que a criança guarda neste aparelho (localStorage "rabisco.rabiscopolis.v1"). Nada vai para a rede.
+// Rabiscolândia: o que a criança guarda neste aparelho (localStorage "rabisco.rabiscopolis.v1"). Nada vai para a rede.
 //   { casa: número do lote ou null, corCasa, moveis: [], roupas: [], pet: null, selos: [], missoesFeitas: [] }
 
 const CHAVE = "rabisco.rabiscopolis.v1";

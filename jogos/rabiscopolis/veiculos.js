@@ -1,4 +1,4 @@
-// Rabiscópolis: veículos. O Rabisco dirige o carro fofo (carroFofo, em carros.js) ou o ônibus da escola (onibusFofo).
+// Rabiscolândia: veículos. O Rabisco dirige o carro fofo (carroFofo, em carros.js) ou o ônibus da escola (onibusFofo).
 // Os carros da cidade (carro, de ../cidade-do-rabisco/cidade.js) andam sozinhos nas ROTAS, na faixa da direita, param
 // no sinal fechado e quando tem alguém na frente. A IA de trânsito foi copiada e adaptada de
 // jogos/cidade-do-rabisco/jogo.js (faixaDireita, pontoNaRota, atualizarCarros, luzDe).

@@ -1,4 +1,4 @@
-// Rabiscópolis: física do Rabisco a pé (andar relativo à câmera, pulo com "coyote time" e buffer, chão de cima
+// Rabiscolândia: física do Rabisco a pé (andar relativo à câmera, pulo com "coyote time" e buffer, chão de cima
 // dos sólidos baixos) e do veículo (acelera, freia, ré, vira proporcional à velocidade, bate e volta).
 // Copiado e adaptado de jogos/cidade-do-rabisco/jogo.js (chaoEm, bate, livre, moverJogador, carroBate, dirigirCarro).
 

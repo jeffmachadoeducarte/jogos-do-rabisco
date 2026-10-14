@@ -1,4 +1,4 @@
-// Rabiscópolis: os prédios dos lugares (Igreja Reviver, hospital, bombeiros, escola, mercado, padaria,
+// Rabiscolândia: os prédios dos lugares (Igreja Reviver, hospital, bombeiros, escola, mercado, padaria,
 // sorveteria), os prédios de enchimento, a praça (chafariz e coreto), o parque (lago, patinhos, parquinho),
 // a Fazendinha (celeiro, silo, bichinhos) e os postes de luz. Tudo no traço de desenho animado: cantos
 // arredondados, contorno preto e cores fortes. Janelas usam MAT.janela (acendem de noite).

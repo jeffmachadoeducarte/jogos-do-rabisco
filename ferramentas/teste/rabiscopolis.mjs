@@ -1,4 +1,4 @@
-// Rabiscópolis (Fatia 1): carrega sem erro, escolhe casa (e guarda), dirige sem atravessar sólidos, Garagem do
+// Rabiscolândia (Fatia 1): carrega sem erro, escolhe casa (e guarda), dirige sem atravessar sólidos, Garagem do
 // Rabifone, noite com janelas acesas, lojas parceiras, controles de toque e celular sozinho sem pedir controle/QR.
 // Tira as fotos em .claude/tmp/rabiscopolis/.
 // Uso: python3 -m http.server 8097 &  node --experimental-websocket ferramentas/teste/rabiscopolis.mjs [http://localhost:8097]

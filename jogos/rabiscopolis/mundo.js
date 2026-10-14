@@ -1,4 +1,4 @@
-// Rabiscópolis: monta a cidade 3D a partir de mapa.js, em 3 × 3 blocos de 100 m. Cada bloco é um grupo com tudo o
+// Rabiscolândia: monta a cidade 3D a partir de mapa.js, em 3 × 3 blocos de 100 m. Cada bloco é um grupo com tudo o
 // que é fixo (prédios, casas, árvores, postes) mesclado por material; só o bloco do jogador e os vizinhos ficam
 // visíveis (com a neblina em 140 m, o resto nem apareceria). Ruas, calçadas e o chão são de todos os blocos.
 // Devolve as colisões (retângulos e círculos), os lugares, as casas, os semáforos e o que anima (água, patos, bichos).

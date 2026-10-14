@@ -1,4 +1,4 @@
-// Rabiscópolis: traçado da cidade em dados puros (sem three.js), usado pela montagem 3D (mundo.js), pelo minimapa,
+// Rabiscolândia: traçado da cidade em dados puros (sem three.js), usado pela montagem 3D (mundo.js), pelo minimapa,
 // pela física e pelo teste em node (ferramentas/teste/rabiscopolis-mapa.mjs).
 //
 // A cidade tem ~300 × 300 m, dividida em 3 × 3 blocos de 100 m (só o bloco atual e os vizinhos ficam visíveis):

@@ -1,4 +1,4 @@
-// Rabiscópolis: Vida na Cidade. A criança vive o dia do Rabisco numa cidade grande e colorida: escolhe uma casa no
+// Rabiscolândia: Vida na Cidade. A criança vive o dia do Rabisco numa cidade grande e colorida: escolhe uma casa no
 // Bairro das Casas (a placa ganha o nome dela), passeia a pé ou dirigindo (carro aberto ou ônibus da escola, que
 // aparecem pelo Rabifone), conhece a Igreja Reviver, a escola, o hospital, os bombeiros, o comércio com as lojas
 // parceiras, o parque com o lago e a Fazendinha, e troca o dia pela noite. Sem tempo, sem perder, sem dinheiro.
@@ -42,9 +42,9 @@ const CONTROLES = [
 const FALAS = ["rp-titulo", "rp-intro", "rp-casa", "rp-casa-pre", "rp-casa-pos", "rp-carro", "rp-onibus", "rp-garagem", "rp-noite", "rp-dia"];
 
 const jogo = criarCasca({
-  titulo: "Rabiscópolis",
+  titulo: "Rabiscolândia",
   sub: "Vida na Cidade: escolha sua casa, passeie e dirija!",
-  faixa: "pequenos",
+  faixa: "alfabetizacao",
   cor: "#00B5F0",
   pose: "apresentando",
   deitado: true,
@@ -160,7 +160,7 @@ function iniciar() {
   minimapa.addEventListener("click", () => alternarMapa());
   balao = el("div", { class: "balao-rp", "aria-live": "polite" });
   bussola = el("div", { class: "bussola-rp", hidden: "" }, [el("div", { class: "seta", html: "<span>➤</span>" }), el("div", { class: "rotulo" })]);
-  mapaGrande = el("div", { class: "mapa-grande-rp", hidden: "" }, [el("div", { class: "cartao" }, [el("h2", { texto: "🗺️ Rabiscópolis" }), el("canvas", { width: "640", height: "640" }), el("p", { class: "legenda", html: '<span class="voce">▲ Você</span> <span>🏠 Sua casa</span> <span>● Lugares</span> <span>▬ Veículos</span>' })])]);
+  mapaGrande = el("div", { class: "mapa-grande-rp", hidden: "" }, [el("div", { class: "cartao" }, [el("h2", { texto: "🗺️ Rabiscolândia" }), el("canvas", { width: "640", height: "640" }), el("p", { class: "legenda", html: '<span class="voce">▲ Você</span> <span>🏠 Sua casa</span> <span>● Lugares</span> <span>▬ Veículos</span>' })])]);
   mapaGrande.addEventListener("click", () => alternarMapa());
   const btnFone = el("button", { class: "btn-fone-rp", "aria-label": "Abrir o Rabifone", html: "📱 <span>Rabifone</span>" });
   btnFone.addEventListener("click", () => fone.abrir());
@@ -190,7 +190,7 @@ function iniciar() {
   vivo = true;
   posicionarCamera(1, 0);
   requestAnimationFrame(quadro);
-  setTimeout(() => { falar("rp-intro"); dizer("Rabiscópolis", salvo.casa != null ? "Bem-vindo de volta! Sua casa está esperando no Bairro das Casas." : "Que cidade grande! Escolha uma casa no Bairro das Casas e use o Rabifone 📱 para chamar um carro."); }, 700);
+  setTimeout(() => { falar("rp-intro"); dizer("Rabiscolândia", salvo.casa != null ? "Bem-vindo de volta! Sua casa está esperando no Bairro das Casas." : "Que cidade grande! Escolha uma casa no Bairro das Casas e use o Rabifone 📱 para chamar um carro."); }, 700);
 }
 function parar() {
   vivo = false;
@@ -282,7 +282,7 @@ function morarAqui(c) {
   sons.vitoria?.();
   jogo.confete?.();
   const n = nomeCrianca();
-  dizer("Rabiscópolis", n ? `Agora esta é a casa de ${n}! Que lar bonito!` : "Agora esta é a sua casa! Que lar bonito!", 4200);
+  dizer("Rabiscolândia", n ? `Agora esta é a casa de ${n}! Que lar bonito!` : "Agora esta é a sua casa! Que lar bonito!", 4200);
   falarNome("rp-casa-pre", "rp-casa-pos").then((ok) => { if (!ok) falar("rp-casa"); });
 }
 
@@ -302,7 +302,7 @@ function entrar(v) {
   sons.pisao();
   camera.st.manual = 0;
   toque?.modo("carro");
-  if (!entrar.falou) { entrar.falou = true; falar(v.tipo === "onibus" ? "rp-onibus" : "rp-carro"); dizer("Rabiscópolis", "Cinto afivelado! Para a frente acelera, para trás freia. Aperte a ação de novo para sair.", 4200); }
+  if (!entrar.falou) { entrar.falou = true; falar(v.tipo === "onibus" ? "rp-onibus" : "rp-carro"); dizer("Rabiscolândia", "Cinto afivelado! Para a frente acelera, para trás freia. Aperte a ação de novo para sair.", 4200); }
 }
 function sair() {
   const v = dentro;
@@ -345,7 +345,7 @@ function chamarVeiculo(tipo, cor) {
 function mudarHora(h) {
   ceu.hora(h);
   falar(h >= 18.5 || h < 6 ? "rp-noite" : "rp-dia");
-  dizer("Rabifone", h >= 19 || h < 6 ? "Boa noite! As janelas e os postes acenderam." : h >= 18 ? "Que pôr do sol bonito!" : "Bom dia, Rabiscópolis!", 2800);
+  dizer("Rabifone", h >= 19 || h < 6 ? "Boa noite! As janelas e os postes acenderam." : h >= 18 ? "Que pôr do sol bonito!" : "Bom dia, Rabiscolândia!", 2800);
 }
 function irPara(x, z) { const [lx, lz] = fis.livre(x, z, 0.6); j.pos.set(lx, 0.07, lz); j.vel.set(0, 0, 0); posicionarCamera(1, 0); }
 
@@ -374,7 +374,7 @@ function regras() {
     else {
       const c = mundo.casas.find((k) => Math.hypot(k.frente[0] - j.pos.x, k.frente[1] - j.pos.z) < 4.5 || Math.hypot(k.porta[0] - j.pos.x, k.porta[1] - j.pos.z) < 3);
       if (c && c.lote.numero !== salvo.casa) contexto = { rotulo: "🏠 Morar aqui?", fazer: () => morarAqui(c) };
-      else if (c) contexto = { rotulo: "🏠 Minha casa!", fazer: () => dizer("Rabiscópolis", "Lar, doce lar! Logo dá para decorar por dentro.") };
+      else if (c) contexto = { rotulo: "🏠 Minha casa!", fazer: () => dizer("Rabiscolândia", "Lar, doce lar! Logo dá para decorar por dentro.") };
     }
   }
   const quer = pad.acaoNova || toque?.acaoNova || (dentro && toque?.sairNovo);
@@ -384,15 +384,16 @@ function regras() {
   // chegou num lugar novo: aviso com o nome
   for (const l of mundo.lugares) {
     const d = Math.hypot(l.x - j.pos.x, l.z - j.pos.z);
-    if (d < l.raio * 0.7 && regras.ultimo !== l.id) { regras.ultimo = l.id; dizer(l.bairro || "Rabiscópolis", `${l.nome}`, 2200); }
+    if (d < l.raio * 0.7 && regras.ultimo !== l.id) { regras.ultimo = l.id; dizer(l.bairro || "Rabiscolândia", `${l.nome}`, 2200); }
   }
   if (alvoMapa && Math.hypot(alvoMapa.x - j.pos.x, alvoMapa.z - j.pos.z) < 5) alvoMapa = null;
 }
 let tMapa = 0;
+const _pOnibus = new THREE.Vector3();
 function posicionarCamera(k, dt, andando = false) {
   const giro = (tem("girarD") ? 1 : 0) - (tem("girarE") ? 1 : 0) + pad.gx * 1.2;
   const arrasto = toque && !dentro ? toque.girar() : 0;
-  const P = dentro ? dentro.pos : j.pos;
+  const P = dentro?.tipo === "onibus" ? _pOnibus.set(dentro.pos.x + Math.sin(dentro.ang) * 2.6, dentro.pos.y, dentro.pos.z + Math.cos(dentro.ang) * 2.6) : dentro ? dentro.pos : j.pos;
   camera.posicionar({ P, ref: dentro ? dentro.ang : j.dir, dirigindo: Boolean(dentro), andando, giro, arrasto, onibus: dentro?.tipo === "onibus" }, k, dt);
   ceu.seguir(P.x, P.z);
   mundo.visibilidade(P.x, P.z);
@@ -465,7 +466,7 @@ function dizer(nome, texto, ms = 4200) {
   clearTimeout(dizer.t);
   dizer.t = setTimeout(() => balao.classList.remove("ativo"), ms);
 }
-function atualizarHud() { hud.innerHTML = `<div class="chip-rp">🏙️ Rabiscópolis</div>`; }
+function atualizarHud() { hud.innerHTML = `<div class="chip-rp">🏙️ Rabiscolândia</div>`; }
 function atualizarBotaoAcao() {
   const b = hud.btnAcao;
   const touch = document.body.classList.contains("touch");
