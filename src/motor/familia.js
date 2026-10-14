@@ -147,14 +147,47 @@ const h = (tag, props = {}, filhos = []) => {
 };
 
 let telaAberta = null;
-// obrigatorio: sem "Agora não" (primeiro jogo). titulo/intro: textos do topo. Resolve true se salvou.
+// obrigatorio: cadastro automático do primeiro jogo (no máximo uma vez, ver abaixo). titulo/intro: textos do topo.
 // Antes da tela, o portão dos pais (conta simples): se a criança voltar, resolve false e nada abre.
 let portaoEmCurso = null;
+//
+// Regra do cadastro "obrigatório" (o que o portal abre sozinho ao tocar num jogo): aparece NO MÁXIMO UMA VEZ por
+// aparelho. Marcamos "já perguntamos" ao abrir (salvando, "Agora não", voltar no portão, Esc ou recarregar a página
+// no meio contam). Depois disso, e na TV / 2 jogadores, ele não abre e resolve true: o jogo segue sem cadastro.
+// Só o botão "Família" (obrigatorio: false) abre sempre, para editar.
+const CHAVE_PERGUNTOU = "rabisco.familia.perguntou";
+let perguntouNaMemoria = false; // último recurso quando nem localStorage nem sessionStorage funcionam
+function jaPerguntou() {
+  if (perguntouNaMemoria) return true;
+  try { if (localStorage.getItem(CHAVE_PERGUNTOU)) return true; } catch { /* bloqueado (modo privado) */ }
+  try { if (sessionStorage.getItem(CHAVE_PERGUNTOU)) return true; } catch { /* bloqueado */ }
+  return false;
+}
+function marcarPerguntou() {
+  perguntouNaMemoria = true;
+  const v = new Date().toISOString();
+  try { localStorage.setItem(CHAVE_PERGUNTOU, v); } catch { /* sem localStorage: vale a sessão */ }
+  try { sessionStorage.setItem(CHAVE_PERGUNTOU, v); } catch { /* vale só até recarregar */ }
+}
+// TV (/tv, ?tv=1, vaga de TV na sessão) e partida de 2 jogadores: ali ninguém preenche o cadastro completo
+function emTvOuDoisJogadores() {
+  try {
+    const q = new URLSearchParams(location.search);
+    if (q.get("tv") === "1" || /\/tv(\/|$|index\.html)/.test(location.pathname)) return true;
+    if (sessionStorage.getItem("rabisco.tv") || sessionStorage.getItem("rabisco.jogadores") === "2") return true;
+  } catch { /* sem sessionStorage: segue */ }
+  return false;
+}
 export function abrirCadastro(opcoes = {}) {
   if (telaAberta) return telaAberta.promessa;
   if (portaoEmCurso) return portaoEmCurso;
-  portaoEmCurso = portaoDosPais({ texto: opcoes.obrigatorio ? "Antes do primeiro jogo, um adulto faz um cadastro rapidinho." : "O cadastro e a foto da criança ficam aqui." })
-    .then((ok) => { portaoEmCurso = null; return ok ? montarCadastro(opcoes) : false; });
+  const sozinho = Boolean(opcoes.obrigatorio);
+  if (sozinho && (completo() || jaPerguntou() || emTvOuDoisJogadores())) return Promise.resolve(true);
+  if (sozinho) marcarPerguntou();
+  portaoEmCurso = portaoDosPais({ texto: sozinho ? "Antes do primeiro jogo, um adulto faz um cadastro rapidinho." : "O cadastro e a foto da criança ficam aqui." })
+    .then((ok) => { portaoEmCurso = null; return ok ? montarCadastro(opcoes) : false; })
+    // o cadastro automático nunca trava o jogo: salvou, "Agora não" ou voltou, a criança segue para brincar
+    .then((salvou) => (sozinho ? true : salvou));
   return portaoEmCurso;
 }
 
@@ -453,7 +486,7 @@ function montarCadastro({ obrigatorio = false, titulo = "Quem vai brincar?", int
     erro,
     h("div", { class: "familia-acoes" }, [
       status,
-      !obrigatorio && h("button", { type: "button", class: "botao branco", texto: "Agora não", onclick: () => fechar(false) }),
+      h("button", { type: "button", class: "botao branco", texto: "Agora não", onclick: () => fechar(false) }),
       h("button", { type: "submit", class: "botao", texto: obrigatorio ? "Começar a brincar ▶" : "Salvar ✓" }),
     ]),
   ]);
@@ -506,7 +539,7 @@ function montarCadastro({ obrigatorio = false, titulo = "Quem vai brincar?", int
   });
   // Esc fecha (quando não é obrigatório); o foco fica preso dentro do cartão
   const teclas = (e) => {
-    if (e.key === "Escape" && !obrigatorio) { e.preventDefault(); fechar(false); }
+    if (e.key === "Escape") { e.preventDefault(); fechar(false); }
     if (e.key === "Tab") {
       const f = [...tela.querySelectorAll("input:not([type=file]), select, button")].filter((x) => !x.hidden && x.offsetParent !== null);
       if (!f.length) return;
