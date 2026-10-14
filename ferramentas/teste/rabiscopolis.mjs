@@ -46,13 +46,20 @@ async function testarAulas(t, { ok, espera, FOTOS }) {
   let errou = false;
   for (let m = 0; m < 3; m++) {
     const rot = await ev("teste.emLugar.interativos.find((i) => i.id === 'aula')?.rotulo");
-    await acao("aula", 3000);
+    await acao("aula", 1000);
+    for (let k = 0; k < 30 && !(await aula()); k++) await espera(250); // a aula começa depois da explicação da professora
     for (let r = 0; r < 8; r++) {
       const a = await aula(); if (!a) break;
       const ids = await inter();
+      // todo objeto da aula dentro do piso (1 m de margem das paredes de 14 × 9), sem um em cima do outro
+      const objs = await ev("teste.emLugar.est.aulas.objs");
+      const fora = objs.filter((o) => Math.abs(o.x) > 7 - 1.0 || Math.abs(o.z) > 4.5 - 1.0), juntos = objs.filter((o, i) => objs.some((q, k) => k > i && Math.hypot(q.x - o.x, q.z - o.z) < 1.2));
+      ok((objs.length || a.tipo === "contar") && !fora.length && !juntos.length, `aulas: ${objs.length} objetos da rodada dentro da sala, com margem da parede e sem encostar ${[...fora, ...juntos].map((o) => o.id).join(", ")}`);
       if (a.tipo === "achar") {
         if (!errou) { const outro = ids.find((i) => i.startsWith("obj-") && !i.startsWith(`obj-${a.certo}-`)); const d0 = (await ev("teste.emLugar.est.aulas.dicas")) ?? 0; await acao(outro, 500); errou = true; ok((await ev("teste.emLugar.est.aulas.dicas")) === d0 + 1 && (await aula())?.i === a.i, `aulas: errar (${outro}) só dá dica e repete a rodada`); }
         if (m === 0 && r === 0) await t.foto(`${FOTOS}f3-aula-ingles.png`);
+        await ev(`teste.irAoInterativo(${JSON.stringify(ids.find((i) => i.startsWith(`obj-${a.certo}-`)))})`); await espera(200);
+        if (m === 0 && r === 0) ok(!(await ev("teste.dentroDeSolido(teste.j.pos.x, teste.j.pos.z)")), "aulas: o Rabisco escolhe parado na frente do objeto (não em cima dele)");
         await acao(ids.find((i) => i.startsWith(`obj-${a.certo}-`)), 2700);
       } else if (a.tipo === "letras") {
         for (const L of a.palavra) await acao((await inter()).find((i) => i.startsWith(`obj-${L}-`)), 300);
@@ -147,7 +154,7 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
         if (k === 0) await foto("f1-fogo-lixeira", f.x, f.z, 4.4, 6, 3, 1);
         await acao(); await espera(500);
         if (k === 0) await foto("f1-fogo-agua", f.x, f.z, 4.4, 6, 3, 1);
-        await espera(1200);
+        for (let w = 0; w < 12 && (await info()).fogos?.[k].apagado === false; w++) await espera(250);
         if (k < fs.length - 1) ok((await info()).fogos[k].apagado, `fogo: apagou o foguinho ${k + 1}`);
       }
       await esperaEtapa(m, e);
@@ -171,6 +178,28 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
     } else if (E.tipo === "voltar") {
       const n = await posNpc(m.id, E.ate); await perto(n.x, n.z); const c = await ev("teste.contexto"); await acao();
       ok(c?.includes("Contar"), `${m.id}: voltou e contou para ${m.npcs[E.ate].nome} ("${c}")`);
+    } else if (E.tipo === "evento") {
+      const L = await ev(`teste.LUGARES.find((l) => l.id === '${E.lugar}')`);
+      await ev(`teste.ir(${L.x + L.dir[0] * 0.5}, ${L.z + L.dir[1] * 0.5})`); await espera(500);
+      const c = await ev("teste.contexto"); await acao(); await espera(700);
+      ok(c?.includes("Entrar") && (await ev("teste.emLugar?.id")) === E.lugar, `${m.id}: entrou em ${E.lugar} ("${c}")`);
+      const inter = async (id, ms = 400) => { await ev(`teste.irAoInterativo('${id}')`); await espera(150); await ev("teste.acao()"); await espera(ms); };
+      if (E.evento === "embrulhou") {
+        await inter("embrulhar", 500);
+        ok((await ev("teste.missoes.etapa")) === e, "presente: embrulhar sem escolher só pede para escolher");
+        await inter("ped-tiara", 600); await t.foto(`${FOTOS}f4-bella-escolheu.png`);
+        await inter("embrulhar", 900);
+        ok(await ev("teste.missoes.levando.includes('presente')"), "presente: escolheu a tiara, a Lápis Lilás embrulhou e o presente foi para a cabeça");
+      } else {
+        await inter("halter", 1000);
+        await inter("esteira", 1500); await t.foto(`${FOTOS}f4-rise-esteira.png`);
+        ok(await ev("teste.trava !== null"), "exercício: na esteira o Rabisco fica correndo no lugar");
+        await espera(3600);
+        for (let k = 0; k < 5; k++) { await inter("halter", k === 2 ? 350 : 900); if (k === 2) await t.foto(`${FOTOS}f4-rise-halter.png`); }
+        await espera(1600);
+        ok((await ev("teste.missoes.etapa")) === e + 1, "exercício: esteira + halter 5 vezes terminam o treino");
+      }
+      await ev("teste.sairLugar()"); await espera(500);
     } else if (E.tipo === "orar") {
       const [x, z] = E.tapete;
       await ev(`teste.ir(${x}, ${z + 3})`); await espera(500);

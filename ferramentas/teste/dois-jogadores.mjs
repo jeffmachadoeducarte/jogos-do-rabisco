@@ -213,7 +213,7 @@ if (quer("rabiscolandia")) {
   const URL_RP = `${BASE}/jogos/rabiscopolis/?teste&fixo`;
   const comecar = async (t) => { await ate(t, "!!window.teste && !!document.querySelector('.casca-abertura .botao')"); await t.ev(`document.querySelector('.casca-abertura .botao.respira, .casca-abertura .casca-nivel').click()`); };
   const errosRP = (t) => t.erros.filter((e) => !/assets\/voz\/(rp-|nomes\/)/.test(e));
-  const aperta = async (t, p, b) => { await t.ev(`__btn(${p}, ${b}, true)`); await espera(220); await t.ev(`__btn(${p}, ${b}, false)`); await espera(250); };
+  const aperta = async (t, p, b) => { await t.ev(`__btn(${p}, ${b}, true)`); await espera(450); await t.ev(`__btn(${p}, ${b}, false)`); await espera(150); }; // segura 0,45 s: no navegador de teste (lento) um quadro pode passar de 0,2 s
   // 1 jogador: só o Rabisco
   {
     const t = await abrir2(`${URL_RP}&jogadores=1`, { pads: 1, antes: CADASTRO, largura: 1280, altura: 720 });
@@ -267,7 +267,8 @@ if (quer("rabiscolandia")) {
     ok(await t.ev("teste.j2.sentado"), "Rabiscolândia: o jogador 2 vai de carona no carro");
     await aperta(t, 1, 0); const buz = await t.ev("teste.j2.buzina > 0");
     await aperta(t, 1, 2);
-    ok(buz && await t.ev("teste.j2.acena > 0"), "Rabiscolândia: no carro o jogador 2 buzina (A) e acena (X)");
+    const acn = await t.ev("teste.j2.acena");
+    ok(buz && acn > 0, `Rabiscolândia: no carro o jogador 2 buzina (A) e acena (X) (buzina ${buz}, aceno ${acn?.toFixed?.(2)}, sentado ${await t.ev("teste.j2.sentado")})`);
     await t.ev("teste.volante(1, 0)"); await espera(1500); await t.ev("teste.volante(0, 0)"); await espera(700);
     await foto(t, "rabiscolandia-carona.png");
     await t.ev("teste.volante(null); teste.sair()"); await espera(500);

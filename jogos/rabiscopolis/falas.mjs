@@ -53,6 +53,8 @@ export const FALAS_PT = {
   "rp-mercado-caixa": "Bip, bip, bip! Obrigada pela compra.",
   "rp-livro-1": "O livro das cores. Vermelho como o morango, amarelo como o sol, azul como o céu e verde como a folha. Deus pintou o mundo com muitas cores!",
   // missões que vieram da Rabiscópolis (o resto reaproveita as falas cid-* já gravadas)
+  "rp-bella-entrar": "Bem-vindo à Bella Cat! Chegue pertinho dos pedestais para ver os laços, colares e tiaras.",
+  "rp-rise-entrar": "Bem-vindo à Academia Rise Up! Aqui a gente cuida do corpo que Deus nos deu.",
   "rp-corrida-pe": "A corrida é de carro! Chame um carro no Rabifone e passe por baixo da bandeira.",
   "rp-remedio-heli": "Que bom que você veio! Mas a doutora pediu para vir de helicóptero: pouse aqui pertinho.",
   "rp-livro-2": "Os bichos da arca. O leão, a girafa, o elefante e o macaquinho entraram na arca de dois em dois. Noé cuidou de todos até a chuva passar.",

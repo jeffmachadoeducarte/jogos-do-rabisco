@@ -193,6 +193,7 @@ let emCasa = null, deco = null, fade = null; const interiores = {}; // casa por 
 let emLugar = null, sorveteUI = null; const salas = {}; // lugares por dentro (Fatia 3), montados na primeira visita
 let solidosDentro = []; // colisões da sala/casa em que o Rabisco está
 let entradaTeste = null;
+let trava = null; // Rabisco preso na esteira ou no halter (parceiras-dentro.js)
 let oracao = null, painelOracao = null, audiosOracao = null; // Pai Nosso no tapete da igreja (ou lá dentro)
 let acaoJ2 = null; // balãozinho rosa: o que a ação do jogador 2 faz agora
 // idade da criança do cadastro (src/motor/familia.js); ?idade=N na URL vale para testar
@@ -321,7 +322,7 @@ function parar() {
   if (r3) { r3.dispose(); r3 = null; }
   veiculos.length = 0; transito = []; moradores = []; vovo = null; garagem = null; missoes = null;
   jogo.palco.querySelector('.escolha-j2-rp')?.remove(); j2 = null;
-  dentro = null; contexto = null; alvoMapa = null; oracao = null;
+  dentro = null; contexto = null; alvoMapa = null; oracao = null; trava = null;
   teclas.clear();
 }
 
@@ -475,6 +476,12 @@ const apiLugar = () => ({
   profissao: () => rabisco.profissao ?? null,
   vestir, tirar: tirarUniforme,
   confete: () => jogo.confete?.(),
+  // missões dentro das lojas parceiras (presente na Bella Cat, treino na Rise Up)
+  missao: () => missoes?.ativa ?? null, evento: (nome, dados) => missoes?.evento(nome, dados),
+  // prende o Rabisco num lugar por uns segundos (esteira, halter), com animação
+  // colisão que entra e sai com o objeto (blocos e objetos das aulas)
+  solido: (s, sim = true) => { if (sim) { solidosDentro.push(s); mundo.solidos.push(s); } else for (const L of [solidosDentro, mundo.solidos]) { const i = L.indexOf(s); if (i >= 0) L.splice(i, 1); } },
+  travar: (o) => { trava = { ...o, t: 0, tp: 0 }; teclas.clear(); toque?.zerar(); },
   abrirSorvete: (sabores, cb) => { teclas.clear(); toque?.zerar(); sorveteUI.abrir(sabores, cb); },
 });
 function entrarLugar(id, imediato = false) {
@@ -489,8 +496,9 @@ function entrarLugar(id, imediato = false) {
     camera.st.yaw = Math.PI;
     minimapa.hidden = true;
     posicionarCamera(1, 0);
-    falar("rp-lugar-entrar");
-    dizer(s.nome, "Bem-vindo! Vista o uniforme no armário 👔 e brinque com os objetos marcados.", 4200);
+    const def = SALAS[id];
+    if (def.dica && missoes?.ativa === def.dica.missao) { falar(def.dica.fala); dizer(s.nome, def.dica.texto, 4600); }
+    else { falar(def.fala ?? "rp-lugar-entrar"); dizer(s.nome, def.boasVindas ?? "Bem-vindo! Vista o uniforme no armário 👔 e brinque com os objetos marcados.", 4200); }
   };
   imediato ? fazer() : escurecer(fazer);
 }
@@ -690,6 +698,7 @@ function entrada() {
 function regras() {
   // o que a ação faz agora
   contexto = null;
+  if (trava) { pad.acaoNova = false; if (toque) toque.acaoNova = false; return; } // na esteira/halter a ação espera
   if (oracao) {
     const passou = relogio.elapsedTime - oracao.inicio, pode = passou > Math.min(oracao.dur * 0.6, oracao.dur - 0.3);
     contexto = pode ? { rotulo: oracao.i === ORACAO.length - 1 ? "🙏 Amém!" : "🙏 Amém, próxima", fazer: () => proximaFrase() } : { rotulo: "🙏 Orando…", fazer: () => {} };
@@ -816,6 +825,20 @@ function passo(dt, ultimo) {
         if (vol) { vol.position.copy(meio); vol.scale.setScalar(Math.max(0.6, mE.distanceTo(mD) / 2 / 0.24)); vol.rotation.set(-1.0, 0, dentro.virar * 0.6); }
       }
       andando = Math.abs(dentro.vel) > 1;
+    } else if (trava) {
+      pad.puloNovo = false; if (toque) toque.puloNovo = false;
+      j.pos.set(trava.x, 0.07, trava.z); j.vel.set(0, 0, 0); j.dir = trava.dir;
+      rabisco.grupo.position.copy(j.pos); rabisco.grupo.rotation.y = j.dir;
+      rabisco.atualizar(dt, { modo: trava.modo, vel: trava.vel ?? 0, vmax: VEL });
+      trava.t += dt; trava.tp -= dt;
+      const f = Math.min(1, trava.t / trava.segundos);
+      if (trava.pose === "halter") { // levanta o halter acima da cabeça e desce
+        const k = Math.sin(f * Math.PI);
+        for (const [b, s] of [[rabisco.bracoE, 1], [rabisco.bracoD, -1]]) { b.ombro.rotation.set(0, 0, s * (0.3 + k * 2.5)); b.cotovelo.rotation.x = -0.4 * (1 - k); }
+        if (trava.objeto) { trava.objeto.position.set(j.pos.x + Math.sin(j.dir) * 0.15, 0.25 + k * 2.0, j.pos.z + Math.cos(j.dir) * 0.15); trava.objeto.rotation.set(0, j.dir + Math.PI / 2, 0); }
+      }
+      if (trava.progresso && trava.tp <= 0) { trava.tp = 0.45; trava.progresso(f); }
+      if (f >= 1) { const o = trava; trava = null; if (o.objeto) o.objeto.position.y = 0.25; o.aoFim?.(); }
     } else if (oracao) {
       pad.puloNovo = false; if (toque) toque.puloNovo = false;
       j.pos.set(oracao.x, 0.07, oracao.z); j.vel.set(0, 0, 0); j.dir = oracao.olhar;
@@ -1042,6 +1065,7 @@ if (params.has("teste")) window.teste = {
   get corParedes() { const c = mundo.casas.find((k) => k.lote.numero === salvo.casa); return c?.grupo.userData.paredes.userData.cor; },
   get radio() { return radio; }, get radioUI() { return radioUI; }, falar: (k) => falar(k),
   get missoes() { return missoes; },
+  get trava() { return trava ? { pose: trava.pose ?? null, t: trava.t } : null; },
   get oracao() { return oracao ? { i: oracao.i, total: ORACAO.length, painel: !painelOracao.hidden, texto: painelOracao.textContent } : null; },
   proximaFrase: () => proximaFrase(),
   get j2() { return j2; }, get dois() { return Boolean(j2?.ativo); }, get Jogadores() { return J; },

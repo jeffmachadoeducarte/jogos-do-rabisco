@@ -25,6 +25,8 @@
 //   { tipo: "pistas", pistas: [{ x, z, texto, voz }] }         — caça ao tesouro: um baú por vez; cada um dá a pista
 //   { tipo: "entregar", entregas: [{ item, ate }] }            — cada carta (item pego antes) para quem tem a caixinha da cor
 //   { tipo: "voltar", ate }                                    — voltar e contar para quem pediu (ele comemora)
+//   { tipo: "evento", evento, lugar, texto, item? }            — acontece lá dentro de um lugar (embrulhou o presente na
+//                                                                  Bella Cat, terminou o treino na Rise Up); item vai na cabeça
 //   { tipo: "orar", tapete: [x, z], olhar, ate }               — Pai Nosso: no tapete azul, mãos juntas, frase por frase
 //                                                                  (karaokê com as vozes cid-pai-1..11); o jogador 2 ora junto
 // npcs: { id: { nome, tipo, cor, x, z, rot?, acessorio?, escala?, casa?: n, escola?: [dx, dz], caixa?: cor } } — tipo de
@@ -223,6 +225,30 @@ export const MISSOES = [
         aPe: "Que bom que você veio! Mas a doutora pediu para vir de helicóptero: pouse aqui pertinho.", vozAPe: "rp-remedio-heli" },
     ],
     fim: "Meu remédio! Obrigada, Rabisco! Que voo lindo! Deus cuida de nós com tanto carinho.",
+  },
+  // ---- lojas parceiras por dentro (só existem se a parceira estiver em src/parceiros.js)
+  {
+    id: "presente", titulo: "Presente da Professora", icone: "🎁", tipo: "cidadania", voz: { pedido: "cid-bella", fim: "cid-bella-ok" }, parceiro: "bella-cat",
+    npcs: {
+      lilas: { nome: "Lápis Lilás, da Bella Cat", tipo: "lapis", cor: 0xa98ce0, x: 100.5, z: 8.2, acessorio: "laco" },
+      professora: { nome: "Professora Lápis Turquesa", tipo: "lapis", mesmo: "escola:professora" },
+    },
+    pedido: "Oi, Rabisco! Que tal um presente para a Professora Lápis Turquesa? Entre aqui na Bella Cat e escolha um acessório bem bonito!",
+    etapas: [
+      { tipo: "evento", evento: "embrulhou", lugar: "parceiro-bella-cat", texto: "Entre na Bella Cat, escolha e embrulhe um presente", item: { id: "presente", emoji: "🎁", nome: "presente" } },
+      { tipo: "levar", ate: "professora" },
+    ],
+    fim: "Que lindo! Obrigada por lembrar de mim, Rabisco. Deus te abençoe!",
+  },
+  {
+    id: "exercicio", titulo: "Treino na Rise Up", icone: "💪", tipo: "cidadania", voz: { pedido: "cid-rise" }, parceiro: "rise-up",
+    npcs: { treinadora: { nome: "Treinadora Lápis Laranja", tipo: "lapis", cor: 0xff7a00, x: 123.5, z: 8.2, acessorio: "bone" } },
+    pedido: "Oi, Rabisco! Bem-vindo à Academia Rise Up! Aqui a gente cuida do corpo que Deus nos deu. Entre pela porta e vamos treinar!",
+    etapas: [
+      { tipo: "evento", evento: "treinou", lugar: "parceiro-rise-up", texto: "Entre na Rise Up: corra na esteira e levante o halter 5 vezes" },
+      { tipo: "voltar", ate: "treinadora" },
+    ],
+    fim: "Que treino bonito! Agora, água fresquinha e um descanso. Corpo saudável, coração alegre!",
   },
   // ---- Igreja Reviver (a igreja da escola), de frente para a praça
   {

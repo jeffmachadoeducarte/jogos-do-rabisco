@@ -121,6 +121,8 @@ export function criarMissoes(ctx) {
     const k = `${M.id}:${id}`;
     if (npcs.has(k)) return npcs.get(k);
     const d = M.npcs[id];
+    // "mesmo": é a mesma pessoa de outra missão (a Professora Lápis Turquesa da Hora da Aula recebe o presente)
+    if (d.mesmo) { const [mid, nid] = d.mesmo.split(":"); return npcDe(MISSOES.find((x) => x.id === mid), nid); }
     const n = { dados: d, M, id, quem: id === M.quem, festa: 0 };
     if (d.tipo === "vovo") Object.assign(n, { m: vovo, g: vovo.grupo, fixo: true });
     else if (["ovelha", "coelho", "piquenique", "gato"].includes(d.tipo)) {
@@ -193,7 +195,7 @@ export function criarMissoes(ctx) {
     const M = MISSOES.find((x) => x.id === id);
     if (!M || ativa) return false;
     limparItens(M.id); // jogando de novo: os brotos da vez passada saem
-    ativa = M; etapa = 0; levando = []; carona = null;
+    ativa = M; etapa = 0; levando = []; carona = null; aviso = 0; // missão nova: as dicas podem aparecer na hora
     for (const nid of Object.keys(M.npcs)) voltarAoLugar(npcDe(M, nid));
     falar(M.voz?.pedido ?? `rp-m-${M.id}-pedido`);
     dizer(M.npcs[M.quem].nome, M.pedido, 6500);
@@ -297,7 +299,7 @@ export function criarMissoes(ctx) {
     for (const pl of plantas) { if (pl.sprite.parent) pl.sprite.visible = Math.hypot(p.x - pl.x, p.z - pl.z) < R; if (pl.broto) { pl.cresce = Math.min(1, pl.cresce + dt * 1.5); pl.broto.scale.setScalar(0.3 + pl.cresce * 0.9); pl.broto.visible = Math.hypot(p.x - pl.x, p.z - pl.z) < R; } }
     for (const n of npcs.values()) {
       const [x, z] = npcPos(n);
-      const daMissao = n.quem || ativa === n.M || feitas.has(n.M.id) || n.festa > 0;
+      const daMissao = n.quem || ativa === n.M || (feitas.has(n.M.id) && !n.dados.soNaMissao) || n.festa > 0;
       const vis = n === caronaNpc() || (daMissao && Math.hypot(p.x - x, p.z - z) < R);
       if (!n.fixo) n.g.visible = vis;
       if (n.extras) n.extras.visible = Math.hypot(p.x - n.casa[0], p.z - n.casa[1]) < R && (n.casaExtras ? ativa === n.M : daMissao);
@@ -439,6 +441,7 @@ export function criarMissoes(ctx) {
     if (E.tipo === "apagar") est.fogos = E.fogos.map(([x, z]) => { const g = temp(foguinho()); g.position.set(x, 0.03, z); return { x, z, g, agua: 0, jato: 0, perto: 0, apagado: false, fumaca: 0 }; });
     if (E.tipo === "pistas") { est.i = 0; est.baus = E.pistas.map((q) => { const g = temp(bau()); g.position.set(q.x, 0.03, q.z); g.rotation.y = Math.PI * 0.15; g.visible = false; return { ...q, g, aberto: 0 }; }); }
     if (E.tipo === "entregar") est.feitas = new Set();
+    if (E.tipo === "evento") est.evento = E.evento;
     if (E.tipo === "orar") { const g = temp(tapeteOracao()); g.position.set(E.tapete[0], 0.03, E.tapete[1]); g.rotation.y = E.olhar; est.orando = false; }
   }
   const veiculoServe = (E, v) => v && (E.veiculos === "porta-malas" ? !["bici", "patinete", "barco", "heli"].includes(v.tipo) : E.veiculos.includes(v.tipo));
@@ -626,6 +629,7 @@ export function criarMissoes(ctx) {
     if (E.tipo === "entregar") { const p = pos(); const n = E.entregas.filter((en) => !est.feitas.has(en.item)).map((en) => npcDe(ativa, en.ate)).sort((a, b) => Math.hypot(npcPos(a)[0] - p.x, npcPos(a)[1] - p.z) - Math.hypot(npcPos(b)[0] - p.x, npcPos(b)[1] - p.z))[0]; if (!n) return null; const [x, z] = npcPos(n); return { x, z, emoji: "✉️" }; }
     if (E.tipo === "voltar") return npcAlvo(E.ate);
     if (E.tipo === "orar") return { x: E.tapete[0], z: E.tapete[1], emoji: "🙏" };
+    if (E.tipo === "evento") { const l = lugar(E.lugar); return l ? { x: l.x, z: l.z, emoji: "🚪" } : null; }
     return undefined;
   }
   function textoNovo(E) {
@@ -640,6 +644,7 @@ export function criarMissoes(ctx) {
     if (E.tipo === "pistas") return `Pista ${est.i + 1} de ${E.pistas.length}: ache o baú`;
     if (E.tipo === "entregar") return `Entregue as cartas: ${est.feitas.size} de ${E.entregas.length}`;
     if (E.tipo === "voltar") return `Volte e conte para ${nomeDe(E.ate)}`;
+    if (E.tipo === "evento") return E.texto;
     if (E.tipo === "orar") return est.orando ? "Orando juntos o Pai Nosso 🙏" : "Pise no tapete azul na porta da igreja";
     return "";
   }
@@ -658,6 +663,13 @@ export function criarMissoes(ctx) {
     itensDe: (mid) => itens.filter((x) => x.missao === mid).map((x) => ({ id: x.id, x: x.x, z: x.z, pego: x.pego })),
     plantasDe: (mid) => plantas.filter((x) => x.missao === mid).map((x) => ({ x: x.x, z: x.z, feito: x.feito })),
     // estado da etapa atual (testes): fila, contagem, bandeiras, carga, foguinhos, baús, entregas
+    // algo aconteceu lá dentro de um lugar (embrulhou o presente, terminou o treino): a etapa "evento" anda
+    evento(nome, dados = {}) {
+      const E = ativa?.etapas[etapa];
+      if (!E || E.tipo !== "evento" || E.evento !== nome) return false;
+      if (E.item) { const s = spriteEmoji(E.item.emoji, 0.6); s.position.set(0, 0, 0); s.userData.item = E.item.id; sobreCabeca.add(s); levando.push(E.item.id); }
+      est.dados = dados; sons.moeda?.(); avancar(); return true;
+    },
     etapaInfo: () => ({ tipo: ativa?.etapas[etapa]?.tipo ?? null, fila: fila.map((n) => n.id), juntos: [...(est.juntos ?? [])], n: est.n, placas: est.placas?.map((q) => ({ n: q.n, x: q.x, z: q.z })), prox: est.prox,
       carregado: est.carregado, fogos: est.fogos?.map((f) => ({ x: f.x, z: f.z, apagado: f.apagado })), bau: est.baus?.[est.i] ? { x: est.baus[est.i].x, z: est.baus[est.i].z, i: est.i } : null,
       entregues: [...(est.feitas ?? [])], patosVisiveis: est.patos?.filter((q) => q.p.visible).length }),

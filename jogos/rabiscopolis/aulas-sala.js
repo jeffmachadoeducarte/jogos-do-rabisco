@@ -18,8 +18,10 @@ const TEXTO_AULA = {
   aulaMatematica: { bebe: "Vamos brincar com as formas e contar até três!", k: "Aula de matemática! Pegue as maçãs na bandeja e leve para a minha mesa!" },
 };
 const FALA_AULA = { aulaIngles: "cid-aula-ingles", aulaPortugues: "cid-aula-portugues", aulaMatematica: "cid-aula-matematica" };
-// onde os objetos da aula aparecem (local da sala; longe dos alunos do meio, do sino e da lousa)
-const VAGAS = [[-5.4, -1.5], [-4.0, -1.5], [-5.4, 0.2], [-4.0, 0.2], [3.6, 0.3], [5.0, 0.3], [-5.4, 1.9], [-4.0, 1.9], [3.6, 1.9], [5.0, 1.9], [-2.6, 2.6]];
+// onde os objetos da aula aparecem (local da sala 14 × 9; longe dos alunos do meio, do sino e da lousa, com pelo menos
+// 1,5 m das paredes); o Rabisco escolhe parado na frente do objeto (z + FRENTE), onde fica o anel amarelo
+export const VAGAS = [[-5.2, -1.6], [-3.8, -1.6], [-5.2, 0.1], [-3.8, 0.1], [3.8, 0.0], [5.2, 0.0], [-5.2, 1.8], [-3.8, 1.8], [3.8, 1.7], [5.2, 1.7], [-2.4, 1.8], [2.4, 2.6]];
+const FRENTE = 0.95;
 const embaralhar = (l) => { const a = [...l]; for (let i = a.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [a[i], a[k]] = [a[k], a[i]]; } return a; };
 const fala = (chaves) => { falarSequencia(chaves).then((ok) => { if (!ok && chaves[0]) falar(chaves[0]); }); };
 
@@ -65,7 +67,7 @@ export function objetoAula({ tipo, valor }) {
     const cubo = malha(new THREE.BoxGeometry(0.7, 0.7, 0.7), new THREE.MeshToonMaterial({ map: tex }), { contorno: 0.03, sombra: false }); cubo.position.y = 0.36; cubo.rotation.y = 0.2; g.add(cubo);
   }
   mesclar(g);
-  const anel = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.05, 6, 28), new THREE.MeshBasicMaterial({ color: 0xffcc1f })); anel.rotation.x = Math.PI / 2; anel.position.y = 0.06; anel.visible = false; g.add(anel);
+  const anel = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.05, 6, 28), new THREE.MeshBasicMaterial({ color: 0xffcc1f })); anel.rotation.x = Math.PI / 2; anel.position.set(0, 0.06, FRENTE); anel.visible = false; g.add(anel);
   g.userData.anel = anel;
   return g;
 }
@@ -118,7 +120,7 @@ export function montarAulas({ id, g, ox, oz, inter, npcs, est, solido, escrever,
   }
   const removerInter = (x) => { const k = inter.indexOf(x); if (k >= 0) inter.splice(k, 1); };
   function limparRodada() {
-    for (const o of aula.objs) { o.g.removeFromParent(); removerInter(o.inter); }
+    for (const o of aula.objs) { o.g.removeFromParent(); removerInter(o.inter); if (o.solido) aula.api.solido?.(o.solido, false); }
     aula.objs = [];
     for (const x of [aula.pegar, aula.entregar]) if (x) removerInter(x);
     aula.pegar = aula.entregar = null;
@@ -127,13 +129,15 @@ export function montarAulas({ id, g, ox, oz, inter, npcs, est, solido, escrever,
     limparRodada();
     aula.i++;
     const R = aula.R = aula.rod[aula.i];
+    est.aulas.objs = [];
     est.aulas.aula = R ? { materia: aula.M.id, i: aula.i, total: aula.rod.length, tipo: R.tipo, certo: R.certo ?? null, palavra: R.palavra ?? null, n: R.n ?? null } : null;
     if (!R) return terminar();
     aula.pos = 0; aula.carregando = 0; macas.count = 10;
     const por = (itens) => itens.forEach((op, k) => {
       const [x, z] = VAGAS[k % VAGAS.length], o = objetoAula(op); o.position.set(ox + x, 0.03, oz + z); soltos.add(o);
-      const obj = { ...op, g: o, x: ox + x, z: oz + z };
-      obj.inter = { id: `obj-${op.valor}-${k}`, valor: op.valor, rotulo: "✋ Este!", local: [x, z], pos: [ox + x, oz + z], raio: 0.95, fazer: () => escolher(obj) };
+      const obj = { ...op, g: o, x: ox + x, z: oz + z + FRENTE, lx: x, lz: z };
+      obj.inter = { id: `obj-${op.valor}-${k}`, valor: op.valor, rotulo: "✋ Este!", local: [x, z + FRENTE], pos: [ox + x, oz + z + FRENTE], raio: 0.8, fazer: () => escolher(obj) };
+      obj.solido = { x0: ox + x - 0.42, x1: ox + x + 0.42, z0: oz + z - 0.42, z1: oz + z + 0.42, y1: 1.1 }; aula.api.solido?.(obj.solido, true);
       inter.push(obj.inter); aula.objs.push(obj);
     });
     if (R.tipo === "achar") { por(embaralhar(R.opcoes)); escrever(R.sub ? [R.lousa, R.sub] : [R.lousa]); }
@@ -144,6 +148,7 @@ export function montarAulas({ id, g, ox, oz, inter, npcs, est, solido, escrever,
       aula.entregar = { id: "mesa", rotulo: "🧺 Entregar na mesa", local: [0.7, -2.8], pos: [ox + 0.7, oz - 2.8], raio: 1.2, fazer: () => entregarMacas() };
       inter.push(aula.pegar, aula.entregar);
     }
+    est.aulas.objs = aula.objs.filter((o) => o.lx != null).map((o) => ({ id: o.inter.id, x: o.lx, z: o.lz }));
     fala(R.fala);
   }
   const ehIngles = () => aula?.M.id === "aulaIngles";

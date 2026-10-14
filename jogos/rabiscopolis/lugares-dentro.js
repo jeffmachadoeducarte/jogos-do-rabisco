@@ -15,6 +15,7 @@ import { movel } from "./moveis.js";
 import { PROFISSOES } from "./roupas-rp.js";
 import { HINOS } from "../../src/radio/hinos.js";
 import { montarAulas } from "./aulas-sala.js";
+import { montarBella, montarRise } from "./parceiras-dentro.js";
 
 const W = 14, D = 9, ALT = 3;
 export const SALAS = {
@@ -28,6 +29,10 @@ export const SALAS = {
   bombeiros: { nome: "Bombeiros", piso: 0xdfe6ee, parede: 0xffe1dc, acento: 0xe8413c, profissao: "bombeiro" },
   mercado: { nome: "Mercado Cesta Cheia", piso: 0xeef5e8, parede: 0xd9f2c9, acento: 0x2bb24c, profissao: "caixa" },
   biblioteca: { nome: "Biblioteca Ler é Bom", piso: 0xe9c79a, parede: 0xf3e6cf, acento: 0x8e6cff, profissao: "bibliotecario" },
+  // lojas parceiras por dentro (parceiras-dentro.js): sem armário de uniforme
+  "parceiro-bella-cat": { nome: "Bella Cat Make Biju", piso: 0xfbeef5, parede: 0xf9dbe9, acento: 0xec2e8c, profissao: null, fala: "rp-bella-entrar", boasVindas: "Bem-vindo à Bella Cat! Chegue pertinho dos pedestais para ver os laços, colares e tiaras.",
+    dica: { missao: "presente", fala: "cid-bella-escolha", texto: "Que bom que você veio! Escolha um presente: chegue pertinho de um pedestal e aperte o botão!" } },
+  "parceiro-rise-up": { nome: "Academia Rise Up", piso: 0x4a4e55, parede: 0xf1ebe0, acento: 0xff7a00, profissao: null, fala: "rp-rise-entrar", boasVindas: "Bem-vindo à Academia Rise Up! Aqui a gente cuida do corpo que Deus nos deu. Corra na esteira e levante o halter!" },
 };
 export const IDS_SALAS = Object.keys(SALAS);
 export const origemSala = (id) => [IDS_SALAS.indexOf(id) * 40 - 180, 0, 1200];
@@ -130,11 +135,10 @@ export function montarSala(id, { idade = null } = {}) {
   const add = (o, x, z, rot = 0, dinamico = false) => { o.position.set(x, 0, z); o.rotation.y = rot; if (dinamico) o.userData.dinamico = true; g.add(o); return o; };
   const I = (iid, rotulo, x, z, fazer, raio = 1.6) => inter.push({ id: iid, rotulo, local: [x, z], pos: [ox + x, oz + z], raio, fazer });
 
-  // armário de uniforme (canto do fundo à esquerda)
-  add(armario(def.acento), -W / 2 + 1.1, -D / 2 + 0.6);
-  solido(-W / 2 + 1.1, -D / 2 + 0.6, 1.7, 0.8, 2.3);
+  // armário de uniforme (canto do fundo à esquerda); as lojas parceiras não têm
+  if (def.profissao) { add(armario(def.acento), -W / 2 + 1.1, -D / 2 + 0.6); solido(-W / 2 + 1.1, -D / 2 + 0.6, 1.7, 0.8, 2.3); }
   const prof = PROFISSOES[def.profissao];
-  I("armario", "👔 Uniforme", -W / 2 + 1.1, -D / 2 + 1.6, (api) => {
+  if (def.profissao) I("armario", "👔 Uniforme", -W / 2 + 1.1, -D / 2 + 1.6, (api) => {
     if (api.profissao() === def.profissao) { api.tirar(); api.dizer(def.nome, "Uniforme guardado no armário!"); est.uniforme = false; return; }
     api.vestir(def.profissao); est.uniforme = true;
     api.falar(`rp-prof-${def.profissao}`);
@@ -143,8 +147,8 @@ export function montarSala(id, { idade = null } = {}) {
 
   // decoração comum: plantas nos cantos da frente, tapete redondo com a cor do lugar e um quadrinho na parede
   for (const [x, z] of [[-W / 2 + 0.8, D / 2 - 1.3], [W / 2 - 0.8, D / 2 - 1.3]]) { const pl = movel("planta").fazer(def.acento); pl.position.set(x, 0, z); g.add(pl); solido(x, z, 0.6, 0.6, 1.2); }
-  const tapete = movel("tapete").fazer(def.acento); tapete.position.set(id === "igreja" ? 2 : -0.5, 0, 1.6); tapete.scale.setScalar(1.3); g.add(tapete);
-  const quadro = movel("quadro-versiculo").fazer(def.acento, IDS_SALAS.indexOf(id) % 6); quadro.position.set(-W / 2 + 0.16, 0, 1.2); quadro.rotation.y = Math.PI / 2; g.add(quadro);
+  if (def.profissao) { const tapete = movel("tapete").fazer(def.acento); tapete.position.set(id === "igreja" ? 2 : -0.5, 0, 1.6); tapete.scale.setScalar(1.3); g.add(tapete); }
+  if (def.profissao) { const quadro = movel("quadro-versiculo").fazer(def.acento, IDS_SALAS.indexOf(id) % 6); quadro.position.set(-W / 2 + 0.16, 0, 1.2); quadro.rotation.y = Math.PI / 2; g.add(quadro); }
   // banquinho de espera na parede da direita
   if (["hospital", "veterinario", "padaria", "mercado", "sorveteria"].includes(id)) { const b = movel("sofa").fazer(def.acento); b.position.set(W / 2 - 0.6, 0, 1.4); b.rotation.y = -Math.PI / 2; b.scale.setScalar(0.85); g.add(b); solido(W / 2 - 0.6, 1.4, 1.0, 2.2, 1); }
 
@@ -337,6 +341,11 @@ export function montarSala(id, { idade = null } = {}) {
       api.falar(lv.fala); api.dizer(lv.titulo, lv.texto, 11000); leitor.acenar(2);
     });
     I("carimbo", "🔖 Carimbar o livro", 5.6, -2.9, (api) => { est.carimbos = (est.carimbos ?? 0) + 1; cb.position.y = 0.85; setTimeout(() => (cb.position.y = 0.95), 200); api.sons.bloco?.(); api.dizer("Biblioteca", "Tchac! Livro emprestado. Devolva daqui a uma semana!"); });
+  }
+
+  if (id === "parceiro-bella-cat" || id === "parceiro-rise-up") {
+    const npcA = (tp, cor, semente, escala, acessorio) => criarMorador(tp, { cor, semente, escala, acessorio });
+    (id === "parceiro-bella-cat" ? montarBella : montarRise)({ g, ox, oz, inter, npcs, est, solido, I, npc: npcA });
   }
 
   mesclar(fixo);
