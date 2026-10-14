@@ -23,7 +23,7 @@ import { moeda3D, pilotoLapis } from "../../src/motor3d/objetos.js";
 import { carregarTextura } from "../../src/motor3d/toon.js";
 import { criarCasca, el } from "../../src/motor/casca.js";
 import { sons } from "../../src/motor/sons.js";
-import { falar, preCarregarFalas, falarNome, parabenizar } from "../../src/motor/voz.js";
+import { falar as falarMotor, preCarregarFalas, falarNome, parabenizar } from "../../src/motor/voz.js";
 import { criarCompanheiro3D } from "../../src/motor3d/companheiro3d.js";
 import { criarJoystick } from "../../src/motor/joystick.js";
 import { CODIGOS_J2, TECLAS_J1_EXTRA } from "../../src/motor/jogadores.js";
@@ -666,11 +666,10 @@ function criarMoradores() {
   const cores = [0xe8413c, 0x58c43a, 0xffcc1f, 0x8e6cff, 0x00b5f0, 0xff7a00, 0xec2e8c, 0x9a6232];
   RUAS.filter((r) => !r.fechada && r.id !== "casas").forEach((rua, i) => {
     for (const lado of [1, -1]) {
-      const p = pilotoLapis(cores[(i * 2 + (lado > 0 ? 0 : 1)) % cores.length]);
-      p.scale.setScalar(0.62);
+      const p = lapis(cores[(i * 2 + (lado > 0 ? 0 : 1)) % cores.length], { escala: 0.62 });
       cena.add(p);
       const segs = segmentos(rua);
-      moradores.push({ p, rua, segs, lado, t: Math.random(), vel: 0.012 + Math.random() * 0.01, sentido: lado, fase: Math.random() * 6 });
+      moradores.push({ p, rua, segs, lado, t: Math.random(), vel: 0.012 + Math.random() * 0.01, sentido: lado, fase: Math.random() * 6, passo: Math.random() * 6 });
     }
   });
 }
@@ -682,7 +681,9 @@ function atualizarMoradores(dt, tempo) {
     const [[ax, az], [bx, bz]] = m.segs[i];
     const l = Math.hypot(bx - ax, bz - az) || 1, nx = -(bz - az) / l, nz = (bx - ax) / l;
     const off = m.lado * (m.rua.w / 2 + 1.4);
-    m.p.position.set(ax + (bx - ax) * f + nx * off, 0.03 + Math.abs(Math.sin(tempo * 8 + m.fase)) * 0.06, az + (bz - az) * f + nz * off);
+    m.passo += dt * 7; // passo na velocidade da caminhada (sem balançar o corpo todo)
+    m.p.position.set(ax + (bx - ax) * f + nx * off, 0.03, az + (bz - az) * f + nz * off);
+    andarLapis(m.p, m.passo, 1);
     m.p.rotation.y = Math.atan2((bx - ax) * m.sentido, (bz - az) * m.sentido);
   }
 }
@@ -769,20 +770,48 @@ const ACESSORIOS = {
     const g = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.42, 4), matLapis(0xe63946)); g.rotation.x = Math.PI; g.position.set(0, 1.25, 0.43); p.add(g);
   },
 };
+// geometrias e materiais compartilhados por todos os lápis (braços, pernas e tênis); sem sombra extra
+const PERNA = 0.3; // altura das perninhas: o corpo do lápis sobe isso para os pés ficarem no chão
+const GEO_LAPIS = {
+  braco: new THREE.CylinderGeometry(0.075, 0.065, 0.6, 8),
+  mao: new THREE.SphereGeometry(0.1, 10, 8),
+  perna: new THREE.CylinderGeometry(0.07, 0.065, PERNA, 8),
+  tenis: new THREE.SphereGeometry(0.13, 10, 8),
+};
+const MAT_LAPIS = new Map();
+const matCompartilhado = (cor) => { if (!MAT_LAPIS.has(cor)) MAT_LAPIS.set(cor, matLapis(cor)); return MAT_LAPIS.get(cor); };
+const TENIS = [0xffffff, 0xe8413c, 0x1d6fe0, 0x58c43a, 0xffcc1f, 0xec2e8c, 0x151515];
+let proximoTenis = 0;
 function lapis(cor, { escala = 0.8, acessorios = [] } = {}) {
   const p = pilotoLapis(cor);
   p.scale.setScalar(escala);
   // bracinhos: [0] do lado -x e [1] do lado +x (o que acena)
   p.userData.bracos = [-1, 1].map((s) => {
     const ombro = new THREE.Group(); ombro.position.set(s * 0.43, 1.0, 0); ombro.rotation.z = s * 0.25;
-    const braco = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.065, 0.6, 8), matLapis(cor)); braco.position.y = -0.3;
-    const mao = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), matLapis(0xffffff)); mao.position.y = -0.62;
-    braco.castShadow = true;
+    const braco = new THREE.Mesh(GEO_LAPIS.braco, matCompartilhado(cor)); braco.position.y = -0.3;
+    const mao = new THREE.Mesh(GEO_LAPIS.mao, matCompartilhado(0xffffff)); mao.position.y = -0.62;
     ombro.add(braco, mao); p.add(ombro);
     return ombro;
   });
   for (const a of acessorios) ACESSORIOS[a]?.(p);
+  for (const c of p.children) c.position.y += PERNA; // sobe o lápis inteiro (acessórios incluídos) para caberem as pernas
+  // perninhas com tênis: [0] do lado -x e [1] do lado +x; o quadril fica em y = PERNA e gira para andar
+  const tenis = matCompartilhado(TENIS[proximoTenis++ % TENIS.length]);
+  p.userData.pernas = [-1, 1].map((s) => {
+    const quadril = new THREE.Group(); quadril.position.set(s * 0.2, PERNA, 0);
+    const perna = new THREE.Mesh(GEO_LAPIS.perna, matCompartilhado(cor)); perna.position.y = -PERNA / 2;
+    const pe = new THREE.Mesh(GEO_LAPIS.tenis, tenis); pe.scale.set(1, 0.55, 1.5); pe.position.set(0, -PERNA + 0.03, 0.07);
+    quadril.add(perna, pe); p.add(quadril);
+    return quadril;
+  });
   return p;
+}
+// anda: pernas alternando e braços em oposição; fase em radianos (avança com o passo), amp 0..1 (0 = parado, braços relaxados)
+function andarLapis(p, fase, amp) {
+  const [e, d] = p.userData.pernas, [be, bd] = p.userData.bracos;
+  const s = Math.sin(fase) * amp;
+  e.rotation.x = s * 0.7; d.rotation.x = -s * 0.7;
+  be.rotation.set(-s * 0.55, 0, -0.25); bd.rotation.set(s * 0.55, 0, 0.25);
 }
 // anima um amigo lápis (npc, quem recebe, convidado): acena enquanto espera, recebe com as mãos para a frente
 // e depois comemora pulando (a.festa > 0: segundos de festa, ver receber)
@@ -1220,7 +1249,7 @@ function terminarOracao(PN) {
   oracao = null;
   painelOracao.hidden = true;
   receber(PN.npc);
-  concluir(PN, { voz: false });
+  concluir(PN);
   jogo.confete();
   dizer(PN.npc.nome, "Amém! Deus ouve a nossa oração. (Pai Nosso: Mateus 6:9-13)", 5200);
 }
@@ -1509,7 +1538,7 @@ function regras(dt, t) {
       const lat = [-CV.npc.lado[1], CV.npc.lado[0]];
       convidados.forEach((a, i) => { [a.x, a.z] = livre(CV.npc.x - lat[0] * (1.6 + i * 1.3), CV.npc.z - lat[1] * (1.6 + i * 1.3), 0.5); a.p.visible = true; a.p.position.set(a.x, 0.03, a.z); a.p.rotation.y = Math.atan2(j.pos.x - a.x, j.pos.z - a.z); receber(a); });
       receber(CV.npc);
-      concluir(CV, { voz: false }); falar("cid-igreja-ok");
+      concluir(CV); falar("cid-igreja-ok");
       dizer(CV.npc.nome, "Que alegria! “Alegrei-me quando me disseram: vamos à casa do Senhor!” (baseado no Salmo 122:1)", 7600);
     }
   }
@@ -1539,7 +1568,7 @@ function regras(dt, t) {
   {
     const parada = Math.hypot(j.vel.x, j.vel.z) < 0.3;
     if (!aPe || !parada || oracao) paradoDesde = null; else if (paradoDesde == null) paradoDesde = t;
-    if (paradoDesde != null && t - paradoDesde >= 1 && t - ultimaFalaLugar >= 8 && !balao.classList.contains("ativo")) {
+    if (paradoDesde != null && t - paradoDesde >= 1 && t - ultimaFalaLugar >= 8 && !balao.classList.contains("ativo") && performance.now() > falaAte + 500) {
       const l = mundo.lugares.find((q) => !falouLugar.has(q.id) && perto(q.x, q.z, q.raio));
       if (l) { falouLugar.add(l.id); ultimaFalaLugar = t; falar(`cid-lugar-${l.id}`); }
     }
@@ -1584,14 +1613,35 @@ function conversar(n) {
     dizer(n.nome, "Obrigado pela ajuda, Rabisco!", 2400);
   }
 }
-function concluir(M, { voz = true } = {}) {
+// fala da cidade: o motor só toca uma por vez; aqui lembramos até quando a atual vai (pela duração do MP3)
+// para o "Missão cumprida" falado esperar o fim dela em vez de cortá-la.
+const duracaoFala = new Map(); // chave → segundos (vem dos metadados do MP3)
+let falaAte = 0;
+function falar(chave) {
+  const agora = performance.now();
+  const dur = duracaoFala.get(chave);
+  falaAte = agora + (dur ?? 3.5) * 1000;
+  if (dur == null) {
+    const a = new Audio(new URL(`../../assets/voz/${chave}.mp3`, import.meta.url).href);
+    a.preload = "metadata";
+    a.addEventListener("loadedmetadata", () => { if (Number.isFinite(a.duration)) { duracaoFala.set(chave, a.duration); falaAte = Math.max(falaAte, agora + a.duration * 1000); } });
+  }
+  falarMotor(chave);
+}
+function concluir(M) {
   if (M.estado === "feita") return;
   M.estado = "feita";
   if (foco === M.id) foco = Object.values(missoes).find((m) => m.estado === "ativa" && m.id !== "passaporte")?.id ?? null;
   if (companheiro) setTimeout(() => parabenizar({ gravada: false }), 900);
   if (M.npc) M.npc.marca.visible = false;
   sons.porta();
-  setTimeout(() => { jogo.aviso(`${M.icone} Missão cumprida!`, "bom", 2200); if (voz) falar("cid-missao-ok"); }, 600); // voz: false deixa terminar uma fala importante (versículo)
+  // o letreiro é imediato; a voz "Missão cumprida" espera a fala em andamento acabar (ou é omitida se faltar mais de 6 s: versículo, Amém)
+  setTimeout(() => {
+    jogo.aviso(`${M.icone} Missão cumprida!`, "bom", 2200);
+    const falta = falaAte - performance.now();
+    if (falta <= 0) falar("cid-missao-ok");
+    else if (falta <= 6000) setTimeout(() => { if (falaAte - performance.now() <= 0) falar("cid-missao-ok"); }, falta + 150);
+  }, 600);
   atualizarHud();
   if (Object.values(missoes).every((m) => m.estado === "feita")) {
     fim = true;
@@ -1748,7 +1798,7 @@ function quadro() {
 }
 
 if (params.has("teste")) window.teste = {
-  jogo, j, carros, veiculos, lugarDoMapa, amigo, get dois() { return dois; },
+  jogo, j, carros, veiculos, moradores, lugarDoMapa, amigo, get dois() { return dois; },
   get companheiro() { return companheiro; }, get missoes() { return missoes; }, get mundo() { return mundo; }, get selos() { return selosPegos; }, carroBate, get falouLugar() { return falouLugar.size; }, get visitados() { return visitados.size; },
   get dentro() { return dentro; }, get foco() { return foco; }, get oracao() { return oracao; }, get quemRecebe() { return quemRecebe; }, receptores, alvo: () => alvoAtual(), get contexto() { return contexto?.tipo ?? null; },
   ir(x, z, y = 0.03) { j.pos.set(x, y, z); j.vel.set(0, 0, 0); posicionarCamera(1, 0); }, olhar(yaw) { camYaw = yaw; camManual = 5; posicionarCamera(1, 0); },
