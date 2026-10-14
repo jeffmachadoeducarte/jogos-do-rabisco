@@ -406,16 +406,24 @@ falas.update({
     "cid-patos": "Quantos patinhos estão nadando no lago? Conte bem e pise no número certo!",
     "cid-patos-erro": "Hmm, conte de novo, devagarinho.",
     "cid-patos-ok": "Isso mesmo! Em inglês, pato é duck! Quack, quack!",
-    "cid-je": "Olá, Rabisco! A J.E Multimarcas é uma loja de carros! Este carro verde com laço é da família da casa verde. Você leva para eles?",
-    "cid-je-chave": "A chave é sua! Agora leve o carro novo até a casa verde, na Rua das Casas Coloridas. Siga a seta!",
-    "cid-je-ok": "Uau, nosso carro novo! Obrigado, Rabisco! Vamos passear juntos!",
-    "cid-bella": "Oi, Rabisco! Hoje é aniversário da Vovó Lápis! Escolhi um laço lindo aqui na Bella Cat. Leve o presente até a casa laranja dela, perto da Rua Leste!",
-    "cid-bella-ok": "Um laço lindo! Que presente mais bonito! Obrigada, Rabisco, você é um amor!",
-    "cid-rise": "Oi, Rabisco! Aqui na Academia Rise Up a gente cuida da saúde! Vamos aquecer? Pule cinco vezes aqui pertinho de mim!",
-    "cid-rise-pe": "Exercício é a pé! Saia do carro e venha pular.",
-    "cid-rise-cones": "Aquecimento pronto! Agora corra pelos cones laranja em volta da academia: um, dois, três e quatro!",
-    "cid-rise-agua": "Que corrida! Depois do exercício, água! Leve esta garrafinha para a Lápis Rosa, lá na praça.",
-    "cid-rise-ok": "Água fresquinha! Obrigada, Rabisco! Exercício e água: que dupla saudável!",
+    # lojas parceiras (2026-10-14): pátio da J.E, Bella Cat e Rise Up por dentro
+    "cid-je": "Olá, Rabisco! Bem-vindo à J.E Multimarcas, a loja de carros! Entre no pátio pelo portão e escolha o carro que você mais gostar. Chegue pertinho e aperte o botão!",
+    "cid-je-vermelho": "Quero este! O carro vermelho!", "cid-je-azul": "Quero este! O carro azul!", "cid-je-amarelo": "Quero este! O carro amarelo!",
+    "cid-je-verde": "Quero este! O carro verde!", "cid-je-roxo": "Quero este! O carro roxo!",
+    "cid-je-chave": "É seu! Cuide bem dele! Aqui está a chave. Entre no carro e saia pelo portão!",
+    "cid-je-portao": "Boa viagem! Leve o carro novo até a casa verde: o Seu Lápis Verde quer ver!",
+    "cid-je-ok": "Uau, que carro lindo! Parabéns, Rabisco! Vamos agradecer a Deus por esse presente!",
+    "cid-bella": "Oi, Rabisco! Que tal um presente para a Professora Lápis Turquesa? Entre aqui na Bella Cat e escolha um acessório bem bonito!",
+    "cid-bella-escolha": "Que bom que você veio! Escolha um presente: chegue pertinho de um pedestal e aperte o botão!",
+    "cid-bella-laco": "O laço rosa! Que lindo!", "cid-bella-colar": "O colar de pérolas brancas! Que lindo!", "cid-bella-pulseira": "A pulseira azul! Que linda!",
+    "cid-bella-bolsa": "A bolsinha roxa! Que linda!", "cid-bella-tiara": "A tiara amarela, cheia de brilhos! Que linda!",
+    "cid-bella-embrulho": "Pronto, embrulhadinho! Agora leve o presente até a Professora Lápis Turquesa, na porta da escola!",
+    "cid-bella-ok": "Que lindo! Obrigada por lembrar de mim, Rabisco. Deus te abençoe!",
+    "cid-rise": "Oi, Rabisco! Bem-vindo à Academia Rise Up! Aqui a gente cuida do corpo que Deus nos deu. Entre pela porta e vamos treinar!",
+    "cid-rise-esteira": "Primeiro, a esteira! Suba na esteira do meio e corra: aperte o botão ou vá para a frente!",
+    "cid-rise-corre": "Isso! Continue correndo!",
+    "cid-rise-peso": "Que corrida! Agora vamos levantar o halter. Vá até o colchonete laranja e aperte o botão cinco vezes!",
+    "cid-rise-ok": "Parabéns, Rabisco! Você foi forte e corajoso! Corpo saudável, coração alegre!",
     # Hora da Aula (Escola Educarte)
     "cid-professora": "Oi, Rabisco! O sino da aula já vai tocar e o Lápis Azulzinho esqueceu a mochila em casa! Busque a mochila azul na casa azul, a de número dois, e traga para ele aqui na porta da escola!",
     "cid-mochila": "A mochila azul! Obrigada, Rabisco! Agora corra para a Escola Educarte!",
@@ -478,6 +486,20 @@ with open(os.path.join(os.path.dirname(__file__), "..", "jogos", "rabiscopolis",
 falas.update(_rp["pt"])
 falas_en.update(_rp.get("en", {}))
 # <<< FIM DO BLOCO Rabiscolândia <<<
+
+# >>> BLOCO Rádio (src/radio) — vinhetas do rádio gospel do carro, chaves radio-* >>>
+# Duas variações por estação; o rádio alterna entre elas entre um hino e outro.
+falas.update({
+    "radio-jesus-me-ama": "Rádio Jesus Me Ama!",
+    "radio-jesus-me-ama-2": "Você está ouvindo a Rádio Jesus Me Ama!",
+    "radio-hinos-de-fe": "Rádio Hinos de Fé!",
+    "radio-hinos-de-fe-2": "Você está ouvindo a Rádio Hinos de Fé.",
+    "radio-paz": "Rádio Paz.",
+    "radio-paz-2": "Você está ouvindo a Rádio Paz.",
+    "radio-alegria": "Rádio Alegria!",
+    "radio-alegria-2": "Você está ouvindo a Rádio Alegria!",
+})
+# <<< FIM DO BLOCO Rádio <<<
 
 
 async def gerar(chave, texto, marcas=None, voz=None):

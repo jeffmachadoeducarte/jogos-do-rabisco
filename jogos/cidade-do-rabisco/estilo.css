@@ -54,6 +54,14 @@ body:not(.touch) .acao-cidade { bottom: 30px; }
 .oracao-cidade .dica { margin: 8px 0 0; min-height: 1.3em; font: 700 clamp(15px, 2vw, 20px) var(--texto); color: #8e6cff; }
 .oracao-cidade .conta { margin: 4px 0 0; font: 700 13px var(--texto); color: #8a8a8a; }
 @keyframes oracao-entra { from { opacity: 0; transform: translate(-50%, -12px); } to { opacity: 1; transform: translateX(-50%); } }
+/* fade curtinho ao entrar e sair das lojas */
+.fade-cidade { position: absolute; inset: 0; z-index: 7; background: #fff8ee; opacity: 0; pointer-events: none; transition: opacity 0.28s ease; }
+.fade-cidade.ativo { opacity: 1; }
+/* barrinha da esteira (Rise Up) */
+.barra-cidade { position: absolute; z-index: 6; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 140px); transform: translateX(-50%); width: min(420px, 60vw); height: 30px;
+  background: #fff; border: 5px solid var(--tinta); border-radius: 999px; box-shadow: 0 4px 0 var(--tinta); overflow: hidden; pointer-events: none; }
+.barra-cidade[hidden] { display: none; }
+.barra-cidade i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ff7a00, #ffcc1f); transition: width 0.15s linear; }
 @media (max-height: 520px) and (orientation: landscape) {
   .hud-cidade { top: 60px; } .hud-cidade ul { padding: 2px 8px; border-width: 3px; } .hud-cidade li { font-size: 12px; line-height: 1.35; }
   .mapa-cidade { width: 112px; height: 112px; top: 60px; border-width: 3px; }
@@ -62,5 +70,6 @@ body:not(.touch) .acao-cidade { bottom: 30px; }
   .acao-cidade { right: 18px; bottom: 116px; font-size: 16px; min-width: 96px; border-width: 4px; }
   .balao-cidade { font-size: 14px; bottom: 10px; padding: 6px 12px 8px; max-width: 56vw; }
   .selos-cidade { font-size: 14px; }
+  .barra-cidade { top: 104px; height: 22px; border-width: 3px; }
   .oracao-cidade { top: 8px; padding: 8px 14px 6px; border-width: 3px; width: min(640px, 64vw); }
 }

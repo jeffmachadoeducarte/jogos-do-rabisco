@@ -91,15 +91,23 @@ export const LUGARES = [
 ];
 // lojas das empresas parceiras (parceiros.js), na ordem da lista, espalhadas pela cidade (cada uma de frente
 // para uma rua, num terreno livre; os prédios de enchimento e as árvores desviam sozinhos dos LUGARES):
-//  1. nordeste: lado sul da Rua do Norte, depois da Rua Leste (o carro novo da J.E estaciona na rua, em frente);
+//  1. nordeste: lado sul da Rua do Norte, depois da Rua Leste, com o pátio de carros (PATIO_JE) ao lado, na esquina;
 //  2. oeste: na Rua Oeste, depois da Vila, de frente para a rua;
 //  3. centro: na Rua do Sino, logo ao norte da rotatória (lado oeste);
 //  4. livre (noroeste): lado sul da Rua do Norte, antes da Rua Oeste.
-export const PONTOS_PARCEIROS = [[100, -61.5, 0, -1], [-80.5, 66, 1, 0], [-8.5, -45, 1, 0], [-100, -61.5, 0, -1]];
+export const PONTOS_PARCEIROS = [[106, -61.5, 0, -1], [-80.5, 66, 1, 0], [-8.5, -45, 1, 0], [-100, -61.5, 0, -1]];
 PARCEIROS.slice(0, PONTOS_PARCEIROS.length).forEach((p, i) => {
   const [x, z, dx, dz] = PONTOS_PARCEIROS[i];
   LUGARES.push(L(`parceiro-${p.id}`, p.nome, x, z, dx, dz, { parceiro: p }));
 });
+// pátio cercado da J.E Multimarcas (esquina da Rua do Norte com a Rua Leste): portão aberto para a Rua Leste e
+// cinco carros expostos em leque, cada um apontando para o portão (o escolhido sai dirigindo por ele)
+const PORTAO_JE = [78, -45];
+export const PATIO_JE = {
+  x0: 81.5, x1: 94.5, z0: -59, z1: -31, portao: [-51, -39], saida: PORTAO_JE,
+  vagas: [[-55.5, "vermelho", 0xe53935], [-50, "azul", 0x1e6fe0], [-45, "amarelo", 0xffc928], [-40, "verde", 0x2bb24c], [-34.5, "roxo", 0x8e5bd8]]
+    .map(([z, cor, hex], i) => ({ x: 90.4, z, cor, hex, modelo: i, ang: Math.atan2(PORTAO_JE[0] - 90.4, PORTAO_JE[1] - z) })),
+};
 export const lugar = (id) => LUGARES.find((l) => l.id === id);
 
 // casas coloridas: quatro do lado norte da Rua das Casas (porta para a rua); duas na Vila; a casa da Vovó

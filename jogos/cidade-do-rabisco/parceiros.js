@@ -4,9 +4,10 @@
 // a canto e do chão ao topo, sem céu nem rua) e acrescentar uma linha aqui. O prédio pega a proporção da foto.
 // Trocou a foto de uma parceira? Suba o número do ?v= dela.
 //  - nome: como aparece no passaporte e no mapa · foto: caminho a partir da raiz do site
+//  - larguraMax (opcional): largura máxima do prédio (a J.E é mais estreita para caber o pátio de carros ao lado)
 //  - tipo: "carros" | "academia" | "moda" (cor das laterais e do telhado)
 export const PARCEIROS = [
-  { id: "je-multimarcas", nome: "J.E Multimarcas", foto: "assets/parceiros/je-multimarcas.webp?v=3", tipo: "carros", instagram: "jemultimarcasitajai" },
+  { id: "je-multimarcas", nome: "J.E Multimarcas", foto: "assets/parceiros/je-multimarcas.webp?v=3", tipo: "carros", larguraMax: 20, instagram: "jemultimarcasitajai" },
   { id: "bella-cat", nome: "Bella Cat Make Biju", foto: "assets/parceiros/bella-cat.webp?v=1", tipo: "moda" },
   { id: "rise-up", nome: "Academia Rise Up", foto: "assets/parceiros/rise-up.webp?v=1", tipo: "academia" },
 ];

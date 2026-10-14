@@ -7,7 +7,7 @@
 
 import { THREE, texturaCanvas, aleatorio, carregarTextura } from "../../src/motor3d/toon.js";
 import { escolaEducarte3D, pilotoLapis } from "../../src/motor3d/objetos.js";
-import { RUAS, CALCADA, distRua, LUGARES, CASAS, SEMAFOROS, PARQUE, LAGO, PLAYGROUND, PRACA, VAGAS, LARGADA } from "./mapa.js";
+import { RUAS, CALCADA, distRua, LUGARES, CASAS, SEMAFOROS, PARQUE, LAGO, PLAYGROUND, PRACA, VAGAS, LARGADA, PATIO_JE } from "./mapa.js";
 import { ESTILO_PARCEIRO, IGREJA } from "./parceiros.js";
 
 export { BORDA } from "./mapa.js";
@@ -335,6 +335,76 @@ export function carroAberto(cor) {
   return g;
 }
 
+// Pátio de carros da J.E Multimarcas (PATIO_JE, mapa.js): piso de bloquinhos, cerca baixa com o portão aberto
+// para a Rua Leste (arco preto com o letreiro), mastros nos cantos e bandeirolas coloridas (uma malha só, com cor
+// por vértice). Os carros expostos são do jogo (jogo.js), porque o escolhido vira carro de dirigir.
+function patioJE(cena, solido) {
+  const P = PATIO_JE, w = P.x1 - P.x0, d = P.z1 - P.z0, cx = (P.x0 + P.x1) / 2, cz = (P.z0 + P.z1) / 2;
+  const g = new THREE.Group(); cena.add(g);
+  const texPiso = texturaCanvas(256, 256, (c, W, H) => {
+    c.fillStyle = "#9a9a96"; c.fillRect(0, 0, W, H);
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 4; x++) { const v = 176 + Math.floor(Math.random() * 30); c.fillStyle = `rgb(${v},${v - 2},${v - 8})`; c.fillRect(x * 64 + (y % 2) * 32 + 2, y * 32 + 2, 60, 28); }
+  }, { repetir: true });
+  texPiso.repeat.set(w / 4, d / 4);
+  const piso = new THREE.Mesh(new THREE.PlaneGeometry(w, d), std(0xffffff, { map: texPiso, roughness: 0.9 }));
+  piso.rotation.x = -Math.PI / 2; piso.position.set(cx, 0.045, cz); piso.receiveShadow = true; g.add(piso);
+  // cerca: postes (uma malha instanciada) e duas travessas brancas por lado; o lado da rua tem o vão do portão
+  const [p0, p1] = P.portao;
+  const lados = [[[P.x0, P.z0], [P.x1, P.z0]], [[P.x1, P.z0], [P.x1, P.z1]], [[P.x1, P.z1], [P.x0, P.z1]], [[P.x0, P.z1], [P.x0, p1]], [[P.x0, p0], [P.x0, P.z0]]];
+  const branco = std(0xffffff, { roughness: 0.5 }), preto = std(0x1d1d1d, { roughness: 0.5 });
+  const postes = [];
+  for (const [[ax, az], [bx, bz]] of lados) {
+    const l = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(l / 2.2));
+    for (let i = 0; i <= n; i++) postes.push([ax + ((bx - ax) * i) / n, az + ((bz - az) * i) / n]);
+    for (const y of [0.55, 1.05]) { const t = caixa(Math.abs(bx - ax) + 0.12, 0.1, Math.abs(bz - az) + 0.12, branco); t.position.set((ax + bx) / 2, y, (az + bz) / 2); t.castShadow = false; g.add(t); }
+    solidos(ax, az, bx, bz);
+  }
+  function solidos(ax, az, bx, bz) { solido((ax + bx) / 2, (az + bz) / 2, Math.abs(bx - ax) + 0.3, Math.abs(bz - az) + 0.3, 2.5); }
+  const im = new THREE.InstancedMesh(new THREE.BoxGeometry(0.14, 1.3, 0.14), preto, postes.length);
+  const m4 = new THREE.Matrix4();
+  postes.forEach(([x, z], i) => { m4.makeTranslation(x, 0.65, z); im.setMatrixAt(i, m4); });
+  im.castShadow = true; g.add(im);
+  // portão: dois pilares, o arco com o letreiro (de frente para a Rua Leste) e as folhas abertas para dentro
+  for (const z of [p0, p1]) { const pil = caixa(0.6, 3.6, 0.6, preto); pil.position.set(P.x0, 1.8, z); g.add(pil); solido(P.x0, z, 0.7, 0.7, 4); }
+  const viga = caixa(0.4, 0.5, p1 - p0 + 0.6, preto); viga.position.set(P.x0, 3.75, (p0 + p1) / 2); g.add(viga);
+  const texArco = texturaCanvas(1024, 160, (c, W, H) => {
+    c.fillStyle = "#151515"; c.fillRect(0, 0, W, H);
+    for (const [x, cor] of [[40, "#1e6fe0"], [80, "#3fa9f5"], [120, "#e53935"]]) { c.fillStyle = cor; c.beginPath(); c.moveTo(x + 30, 30); c.lineTo(x + 60, 30); c.lineTo(x + 30, 130); c.lineTo(x, 130); c.fill(); }
+    c.font = "900 92px 'Baloo 2', sans-serif"; c.textAlign = "left"; c.textBaseline = "middle"; c.fillStyle = "#ffffff"; c.fillText("J.E Multimarcas", 210, 86);
+    c.font = "800 34px 'Baloo 2', sans-serif"; c.fillStyle = "#ffcc1f"; c.textAlign = "right"; c.fillText("★ pátio ★", W - 30, 40);
+  });
+  const arco = new THREE.Mesh(new THREE.PlaneGeometry(p1 - p0 - 0.6, 1.5), std(0xffffff, { map: texArco, emissive: 0xffffff, emissiveMap: texArco, emissiveIntensity: 0.3 }));
+  arco.position.set(P.x0 - 0.25, 4.4, (p0 + p1) / 2); arco.rotation.y = -Math.PI / 2; g.add(arco);
+  const costas = arco.clone(); costas.position.x = P.x0 + 0.25; costas.rotation.y = Math.PI / 2; g.add(costas);
+  const texGrade = texturaCanvas(128, 64, (c, W, H) => { c.clearRect(0, 0, W, H); c.fillStyle = "#1d1d1d"; c.fillRect(0, 0, W, 6); c.fillRect(0, H - 6, W, 6); c.fillRect(0, 0, 6, H); c.fillRect(W - 6, 0, 6, H); for (let x = 16; x < W; x += 16) c.fillRect(x, 0, 3, H); });
+  const folhaMat = std(0xffffff, { map: texGrade, transparent: true, alphaTest: 0.4, side: THREE.DoubleSide });
+  for (const [z, s] of [[p0, 1], [p1, -1]]) { const f = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.3), folhaMat); f.position.set(P.x0 + 1.4, 0.75, z + s * 0.35); g.add(f); }
+  // mastros nos cantos e bandeirolas penduradas (cordões com triângulos coloridos numa malha só)
+  const topos = [[P.x0, P.z0], [P.x1, P.z0], [P.x1, P.z1], [P.x0, P.z1]].map(([x, z]) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 5.2, 8), branco); m.position.set(x, 2.6, z); g.add(m); return [x, 5.1, z]; });
+  const portaoTopo = [[P.x0, 4.1, p0], [P.x0, 4.1, p1]];
+  const cordoes = [[topos[0], portaoTopo[0]], [portaoTopo[1], topos[3]], [topos[0], topos[1]], [topos[1], topos[2]], [topos[2], topos[3]], [topos[0], topos[2]], [topos[3], topos[1]]];
+  const CORES = [0xe53935, 0xffc928, 0x1e6fe0, 0x2bb24c, 0xec2e8c, 0xff7a00].map((c) => new THREE.Color(c));
+  const pos = [], cor = [], linha = [];
+  let k = 0;
+  for (const [a, b] of cordoes) {
+    const l = Math.hypot(b[0] - a[0], b[2] - a[2]), n = Math.max(2, Math.floor(l / 0.9));
+    const ponto = (f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f - Math.sin(Math.PI * f) * Math.min(1.2, l * 0.05), a[2] + (b[2] - a[2]) * f];
+    for (let i = 0; i < n; i++) linha.push(...ponto(i / n), ...ponto((i + 1) / n));
+    for (let i = 1; i < n; i++) {
+      const p = ponto(i / n), q = ponto((i + 0.6) / n), c = CORES[k++ % CORES.length];
+      const meio = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2 - 0.5, (p[2] + q[2]) / 2];
+      pos.push(...p, ...q, ...meio);
+      for (let v = 0; v < 3; v++) cor.push(c.r, c.g, c.b);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute("color", new THREE.Float32BufferAttribute(cor, 3)); geo.computeVertexNormals();
+  g.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.7 })));
+  const lg = new THREE.BufferGeometry(); lg.setAttribute("position", new THREE.Float32BufferAttribute(linha, 3));
+  g.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x333333 })));
+  return g;
+}
+
 // ---------- montagem
 // Fita ao longo de uma linha (asfalto, calçada, faixa amarela): de "a" até "b" de distância lateral.
 // pular(x, z): não desenha aquele pedacinho (ex.: calçada em cima de outra rua).
@@ -592,6 +662,9 @@ export function montarCidade(cena) {
   }
   for (const [x, z, rot] of [[LAGO.x - 13, LAGO.z, Math.PI / 2], [LAGO.x, LAGO.z - 13, 0]]) { const b = banco(); b.position.set(x, 0.03, z); b.rotation.y = rot; cena.add(b); }
 
+  // ---------- pátio de carros da J.E (antes dos prédios de enchimento, que desviam da cerca)
+  if (LUGARES.some((l) => l.parceiro?.id === "je-multimarcas")) patioJE(cena, solido);
+
   // ---------- prédios de morar e casinhas preenchendo o resto (sempre iguais, pela semente)
   const coresPredio = ["#d9c7a8", "#c9d6e3", "#e3c9c9", "#cfe3c9", "#e8dcc4", "#d4cce6", "#f0e0c0"];
   const coresCasa = [0xd9a3c9, 0x9fd0e8, 0xf2d49b, 0xb6dba0, 0xf0b49a];
@@ -632,6 +705,7 @@ export function montarCidade(cena) {
         if (distRua(ax, az, rua).d < 2.5 || ocupado(ax, az, 1) || SEMAFOROS.some((q) => Math.hypot(q.x - ax, q.z - az) < 14) || Math.hypot(ax, az) < 30) continue;
         if (VAGAS.some((v) => Math.hypot(v.x - ax, v.z - az) < 5) || LUGARES.some((l) => Math.hypot(l.x - ax, l.z - az) < 6) || CASAS.some((c) => Math.hypot(c.x - ax, c.z - az) < 4)) continue;
         if (Math.hypot(ax - LARGADA.x, az - LARGADA.z) < 6) continue;
+        if (ax > PATIO_JE.x0 - 4 && ax < PATIO_JE.x1 && az > PATIO_JE.z0 && az < PATIO_JE.z1) continue; // portão do pátio da J.E
         const a = arvoreReal(0.9 + r() * 0.3); a.position.set(ax, 0.03, az); cena.add(a); arvores.push(a);
         solido(ax, az, 0.9, 0.9, 6);
       }

@@ -8,8 +8,9 @@
 //  - Bombeiros: apagar os foguinhos com o botão da água;
 //  - Caça ao tesouro: seguir as pistas (adivinhas) de um lugar para o outro;
 //  - Patinhos do lago: contar os patos e pisar no número certo (e aprender "duck");
-//  - Lojas parceiras (parceiros.js): Carro novo (J.E Multimarcas → casa verde, dirigindo o carro do laço),
-//    Presente da Vovó (laço da Bella Cat → Vovó) e Exercício (Rise Up: 5 pulos, 4 cones e água para a Lápis Rosa);
+//  - Lojas parceiras (parceiros.js): Carro novo (escolher um dos 5 carros do pátio da J.E Multimarcas, ganhar a
+//    chave e sair dirigindo pelo portão até a casa verde), Presente da Professora (entrar na Bella Cat, escolher um
+//    acessório, ver embrulhar e levar à professora na escola) e Exercício (entrar na Rise Up: esteira e halter 5 vezes);
 //  - Hora da Aula: buscar a mochila azul na casa azul (nº 2) e levar ao aluno na porta da Escola Educarte antes do sino;
 //  - Convite: convidar 3 amigos lápis para o culto infantil e levá-los à Igreja Reviver (Salmo 122:1);
 //  - Pai Nosso: orar junto, frase por frase, no tapete da porta da Igreja Reviver (Mateus 6:9-13);
@@ -28,7 +29,8 @@ import { criarCompanheiro3D } from "../../src/motor3d/companheiro3d.js";
 import { criarJoystick } from "../../src/motor/joystick.js";
 import { CODIGOS_J2, TECLAS_J1_EXTRA } from "../../src/motor/jogadores.js";
 import { montarCidade, carro, carroAberto, BORDA } from "./cidade.js";
-import { RUAS, segmentos, ROTAS, CASAS, LAGO, PARQUE, PRACA, VAGAS, LARGADA, lugar as lugarDoMapa } from "./mapa.js";
+import { RUAS, segmentos, ROTAS, CASAS, LAGO, PARQUE, PRACA, VAGAS, LARGADA, PATIO_JE, lugar as lugarDoMapa } from "./mapa.js";
+import { montarAcademia, montarBellaCat, halter } from "./interiores.js";
 
 const ORACAO = [ // Pai Nosso (Mateus 6:9-13, texto tradicional): uma frase por vez, cada uma com a sua voz (cid-pai-1..11)
   "Pai nosso, que estás no céu,", "santificado seja o teu nome.", "Venha o teu reino,", "seja feita a tua vontade,", "assim na terra como no céu.",
@@ -198,7 +200,9 @@ function iniciar() {
   mapaGrande = el("div", { class: "mapa-grande-cidade", hidden: "" }, [el("div", { class: "cartao" }, [el("h2", { texto: "🗺️ Mapa da Cidade" }), el("canvas", { width: "640", height: "640" }), el("p", { class: "legenda" })])]);
   mapaGrande.addEventListener("click", () => alternarMapaGrande());
   painelOracao = el("div", { class: "oracao-cidade", hidden: "", "aria-live": "polite" });
-  caixa.append(hud, mapa, bussola, balao, btnAcao, mapaGrande, painelOracao);
+  fadeEl = el("div", { class: "fade-cidade" });
+  barraEl = el("div", { class: "barra-cidade", hidden: "" }, [el("i")]);
+  caixa.append(hud, mapa, bussola, balao, btnAcao, mapaGrande, painelOracao, barraEl, fadeEl);
   toque = criarJoystick(caixa);
   atualizarHud();
 
@@ -215,7 +219,7 @@ function parar() {
   vivo = false;
   if (r3) { r3.dispose(); r3 = null; }
   carros.length = moradores.length = selos.length = npcs.length = veiculos.length = receptores.length = convidados.length = 0;
-  oracao = null; quemRecebe = { cartas: {} };
+  oracao = null; quemRecebe = { cartas: {} }; salas = {}; sala = null; transicao = false; bloqueioPorta = null; trava = null;
   paradoDesde = null; ultimaFalaLugar = -99; falouLugar = new Set(); missoes = {}; visitados = new Set(); selosPegos = 0; fim = false; foco = null; dentro = null; levando = null;
   teclas.clear();
 }
@@ -243,10 +247,18 @@ function entradaAndar() {
   if (entradaTeste) { ix = entradaTeste.virar; iy = entradaTeste.acel; }
   const m = Math.hypot(ix, iy);
   if (m > 1) { ix /= m; iy /= m; }
-  if (fim || oracao) ix = iy = 0;
+  if (fim || oracao || transicao) ix = iy = 0;
   return { ix, iy, m };
 }
 function moverJogador(dt) {
+  if (trava) { // na esteira ou com o halter: o Rabisco fica no lugar (a animação é da missão)
+    j.pos.set(trava.x, trava.y, trava.z); j.vel.set(0, 0, 0); j.dir = trava.dir; j.noChao = true;
+    pad.puloNovo = false; if (toque) toque.puloNovo = false;
+    rabisco.grupo.position.copy(j.pos); rabisco.grupo.rotation.y = j.dir;
+    rabisco.atualizar(dt, { modo: trava.modo, vel: trava.vel, vmax: VEL });
+    if (companheiro) (dois ? moverJogador2(dt) : moverCompanheiro(dt, 0));
+    return { andando: false };
+  }
   const { ix, iy, m } = entradaAndar();
   const fx = Math.sin(camYaw), fz = Math.cos(camYaw);
   const wx = fx * iy - fz * ix, wz = fz * iy + fx * ix; // frente e direita da câmera
@@ -261,9 +273,9 @@ function moverJogador(dt) {
   if (!(pad.pulo || toque?.pulo || tem("pular")) && j.vel.y > 4) j.vel.y = 4;
   j.vel.y -= GRAV * dt;
   const nx = j.pos.x + j.vel.x * dt;
-  if (!bate(nx, j.pos.z, j.pos.y) && Math.abs(nx) < BORDA + 10) j.pos.x = nx; else j.vel.x = 0;
+  if (!bate(nx, j.pos.z, j.pos.y) && naBorda(nx)) j.pos.x = nx; else j.vel.x = 0;
   const nz = j.pos.z + j.vel.z * dt;
-  if (!bate(j.pos.x, nz, j.pos.y) && Math.abs(nz) < BORDA + 10) j.pos.z = nz; else j.vel.z = 0;
+  if (!bate(j.pos.x, nz, j.pos.y) && naBorda(nz)) j.pos.z = nz; else j.vel.z = 0;
   const chao = chaoEm(j.pos.x, j.pos.z, j.pos.y);
   j.pos.y += j.vel.y * dt;
   if (j.pos.y <= chao) { j.pos.y = chao; j.vel.y = 0; j.noChao = true; } else j.noChao = j.pos.y - chao < 0.03;
@@ -292,8 +304,8 @@ function moverCompanheiro(dt, velRabisco) {
   // nunca atravessa o Rabisco: se ficar perto demais, é empurrada para fora
   const ex = nx - j.pos.x, ez = nz - j.pos.z, d2 = Math.hypot(ex, ez);
   if (d2 < MIN && d2 > 1e-3) { nx = j.pos.x + (ex / d2) * MIN; nz = j.pos.z + (ez / d2) * MIN; }
-  if (!bate(nx, amigo.pos.z, amigo.pos.y) && Math.abs(nx) < BORDA + 10) amigo.pos.x = nx;
-  if (!bate(amigo.pos.x, nz, amigo.pos.y) && Math.abs(nz) < BORDA + 10) amigo.pos.z = nz;
+  if (!bate(nx, amigo.pos.z, amigo.pos.y) && naBorda(nx)) amigo.pos.x = nx;
+  if (!bate(amigo.pos.x, nz, amigo.pos.y) && naBorda(nz)) amigo.pos.z = nz;
   // ficou muito para trás (ex.: preso atrás de um prédio): aparece pertinho do Rabisco
   if (Math.hypot(amigo.pos.x - j.pos.x, amigo.pos.z - j.pos.z) > 14) { const [lx, lz] = livre(alvoX, alvoZ); amigo.pos.x = lx; amigo.pos.z = lz; }
   const chao = chaoEm(amigo.pos.x, amigo.pos.z, amigo.pos.y);
@@ -324,7 +336,7 @@ function moverJogador2(dt) {
   amigo.vz = (amigo.vz ?? 0) + (wz * V - (amigo.vz ?? 0)) * Math.min(1, dt * 12);
   if (e.puloNovo && amigo.noChao) { amigo.vy = PULO * 0.95; amigo.noChao = false; amigo.pulos++; sons.pulo(); }
   if (!e.pulo && amigo.vy > 4) amigo.vy = 4;
-  if (e.acaoNova) { amigo.acena = 1.4; sons.bipe?.(false); }
+  if (e.acaoNova) { amigo.acena = 1.4; amigo.acaoNova = true; sons.bipe?.(false); }
   amigo.acena -= dt;
   amigo.vy -= GRAV * dt;
   let nx = amigo.pos.x + amigo.vx * dt, nz = amigo.pos.z + amigo.vz * dt;
@@ -337,8 +349,8 @@ function moverJogador2(dt) {
   // nunca atravessa o Rabisco
   const ex = nx - j.pos.x, ez = nz - j.pos.z, d2 = Math.hypot(ex, ez);
   if (d2 < 1.0 && d2 > 1e-3) { nx = j.pos.x + (ex / d2) * 1.0; nz = j.pos.z + (ez / d2) * 1.0; }
-  if (!bate(nx, amigo.pos.z, amigo.pos.y) && Math.abs(nx) < BORDA + 10) amigo.pos.x = nx; else amigo.vx = 0;
-  if (!bate(amigo.pos.x, nz, amigo.pos.y) && Math.abs(nz) < BORDA + 10) amigo.pos.z = nz; else amigo.vz = 0;
+  if (!bate(nx, amigo.pos.z, amigo.pos.y) && naBorda(nx)) amigo.pos.x = nx; else amigo.vx = 0;
+  if (!bate(amigo.pos.x, nz, amigo.pos.y) && naBorda(nz)) amigo.pos.z = nz; else amigo.vz = 0;
   // ficou longe demais (o Rabisco correu e ela ficou presa atrás de algo): aparece pertinho dele
   if (Math.hypot(amigo.pos.x - j.pos.x, amigo.pos.z - j.pos.z) > RAIO_J2 + 4) { const [lx, lz] = livre(j.pos.x - Math.sin(j.dir) * 1.8, j.pos.z - Math.cos(j.dir) * 1.8); amigo.pos.x = lx; amigo.pos.z = lz; }
   const chao = chaoEm(amigo.pos.x, amigo.pos.z, amigo.pos.y);
@@ -546,7 +558,7 @@ function posicionarCamera(k, dt, andando = false) {
   for (let s = 1; s <= 10; s++) {
     const d = (dist * s) / 10;
     const x = P.x - Math.sin(camYaw) * d, z = P.z - Math.cos(camYaw) * d;
-    if (mundo.solidos.some((o) => o.y1 > 3 && x > o.x0 - 0.3 && x < o.x1 + 0.3 && z > o.z0 - 0.3 && z < o.z1 + 0.3)) { dist = Math.max(2.5, d - 0.6); break; }
+    if (mundo.solidos.some((o) => o.y1 > 3 && x > o.x0 - 0.3 && x < o.x1 + 0.3 && z > o.z0 - 0.3 && z < o.z1 + 0.3)) { dist = Math.max(sala ? 1.2 : 2.5, d - 0.6); break; }
   }
   const alt = dentro ? 3.8 : 3.0;
   alvo.lerp(new THREE.Vector3(P.x + Math.sin(camYaw) * (dentro ? 4 : 2), P.y + (dentro ? 1.4 : 1.3), P.z + Math.cos(camYaw) * (dentro ? 4 : 2)), k);
@@ -933,7 +945,7 @@ function placaNumero(n) {
   sp.scale.setScalar(1.2); sp.position.y = 2.2; g.add(sp);
   return g;
 }
-// lojas parceiras: laço de presente no capô do carro novo, cone numerado da academia e o que o Rabisco carrega
+// lojas parceiras: laço de presente no capô do carro novo e o presente embrulhado que o Rabisco carrega
 function laco() {
   const g = new THREE.Group();
   const fitaMat = new THREE.MeshStandardMaterial({ color: 0xe8213a, roughness: 0.45, emissive: 0x330008 });
@@ -944,35 +956,13 @@ function laco() {
   for (const s of [-1, 1]) { const a = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.08, 8, 16), fitaMat); a.position.set(s * 0.3, 1.66, 1.45); a.rotation.set(0, 0, s * 0.5); a.scale.set(1, 0.7, 1); g.add(a); }
   return g;
 }
-function cone(n) {
+function presente(cor = 0xec8cb8) {
   const g = new THREE.Group();
-  const laranja = new THREE.MeshStandardMaterial({ color: 0xff7a00, roughness: 0.5, emissive: 0x331500 });
-  const base = new THREE.Mesh(new THREE.BoxGeometry(1, 0.1, 1), laranja); base.position.y = 0.05;
-  const c = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.1, 14), laranja); c.position.y = 0.6; c.castShadow = true;
-  const faixa = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.27, 0.18, 14), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-  faixa.position.y = 0.62;
-  const num = new THREE.Sprite(new THREE.SpriteMaterial({ map: texNumero(n, "#ff7a00") }));
-  num.scale.setScalar(1.2); num.position.y = 2;
-  g.add(base, c, faixa, num);
-  g.userData.num = num;
-  return g;
-}
-function presente() {
-  const g = new THREE.Group();
-  const caixa = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.6), new THREE.MeshStandardMaterial({ color: 0xec8cb8, roughness: 0.6 }));
-  const fitaMat = new THREE.MeshStandardMaterial({ color: 0xa98ce0, roughness: 0.4 });
+  const caixa = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.6), new THREE.MeshStandardMaterial({ color: cor === 0xf4f0ea ? 0x7fd6ff : cor, roughness: 0.6 }));
+  const fitaMat = new THREE.MeshStandardMaterial({ color: cor === 0xec8cb8 || cor === 0x8e5bd8 ? 0xffcc1f : 0xec2e8c, roughness: 0.4 });
   const f1 = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.52, 0.12), fitaMat), f2 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.52, 0.62), fitaMat);
   g.add(caixa, f1, f2);
   for (const s of [-1, 1]) { const a = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.04, 6, 12), fitaMat); a.position.set(s * 0.12, 0.33, 0); a.rotation.z = s * 0.6; g.add(a); }
-  return g;
-}
-function garrafa() {
-  const g = new THREE.Group();
-  const corpo = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.6, 12), new THREE.MeshStandardMaterial({ color: 0x7fd6ff, roughness: 0.15, transparent: true, opacity: 0.85 }));
-  const tampa = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.14, 10), new THREE.MeshStandardMaterial({ color: 0x1d6fe0 }));
-  tampa.position.y = 0.37;
-  const rotulo = new THREE.Mesh(new THREE.CylinderGeometry(0.165, 0.165, 0.2, 12), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-  g.add(corpo, tampa, rotulo);
   return g;
 }
 function mochila() {
@@ -1024,6 +1014,294 @@ function atualizarGotas(dt) {
   for (const g of gotas) { if (g.vida <= 0) continue; g.vida -= dt; g.vel.y -= 14 * dt; g.m.position.addScaledVector(g.vel, dt); if (g.vida <= 0) g.m.visible = false; }
 }
 
+// ------------------------------------------------------------------ J.E Multimarcas: carros do pátio
+// cada carro exposto ganha um jeitinho próprio (mesmo carro aberto da cidade): esportivo, jipe, fofinho, praia e luxo
+function enfeitarCarro(g, modelo) {
+  const branco = matLapis(0xffffff, { roughness: 0.4 }), preto = matLapis(0x1d1d1d, { roughness: 0.6 }), cromo = matLapis(0xdddddd, { metalness: 0.7, roughness: 0.25 });
+  const caixa = (w, h, d, m, x, y, z) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); g.add(b); return b; };
+  if (modelo === 0) { // esportivo: duas faixas brancas e aerofólio
+    for (const x of [-0.3, 0.3]) { caixa(0.22, 0.02, 1.52, branco, x, 1.39, 1.45); caixa(0.22, 0.02, 0.92, branco, x, 1.43, -1.75); }
+    caixa(2.2, 0.08, 0.45, preto, 0, 1.8, -2.1); for (const x of [-0.8, 0.8]) caixa(0.08, 0.38, 0.12, preto, x, 1.6, -2.05);
+  } else if (modelo === 1) { // jipe: santantônio e estepe atrás
+    const arco = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.07, 8, 20, Math.PI), preto); arco.position.set(0, 1.2, -1.15); g.add(arco);
+    const estepe = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.28, 16), preto); estepe.rotation.x = Math.PI / 2; estepe.position.set(0, 1.15, -2.45); g.add(estepe);
+    const cal = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.3, 12), cromo); cal.rotation.x = Math.PI / 2; cal.position.set(0, 1.15, -2.47); g.add(cal);
+  } else if (modelo === 2) { // fofinho: faróis redondos grandes e para-lamas arredondados
+    for (const x of [-0.75, 0.75]) { const f = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 10), matLapis(0xfff6d0, { emissive: 0xfff2c0, emissiveIntensity: 0.5 })); f.position.set(x, 1.1, 2.25); g.add(f); }
+    const lata = g.children[0].material;
+    for (const [x, z] of [[-1.1, 1.45], [1.1, 1.45], [-1.1, -1.45], [1.1, -1.45]]) { const p = new THREE.Mesh(new THREE.SphereGeometry(0.56, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), lata); p.scale.set(0.5, 0.8, 1); p.position.set(x, 0.85, z); g.add(p); }
+  } else if (modelo === 3) { // praia: bagageiro com prancha de surfe
+    for (const z of [-1.2, -2.2]) caixa(2.1, 0.06, 0.1, preto, 0, 1.55, z);
+    const prancha = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), matLapis(0xffcc1f, { roughness: 0.4 })); prancha.scale.set(0.35, 0.06, 1.5); prancha.position.set(0, 1.65, -1.6); g.add(prancha);
+    const faixa = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 2.6), matLapis(0xec2e8c)); faixa.position.set(0, 1.71, -1.6); g.add(faixa);
+  } else { // luxo: frisos cromados, pneus faixa branca e estrelinha no capô
+    for (const s of [-1, 1]) caixa(0.04, 0.08, 4.2, cromo, s * 1.17, 0.95, 0);
+    for (const r of g.userData.rodas) { const anel = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.06, 6, 20), branco); anel.rotation.y = Math.PI / 2; anel.position.copy(r.position); anel.position.x *= 1.15; g.add(anel); }
+    const estrela = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), matLapis(0xffd84a, { metalness: 0.6, roughness: 0.25 })); estrela.position.set(0, 1.55, 2.0); g.add(estrela);
+  }
+}
+// plaquinha de preço espetada no carro: o nome da cor e um "preço" de brincadeira (contar de 1 a 5)
+const PRECOS = ["R$ 1 sorriso", "R$ 2 abraços", "R$ 3 obrigados", "R$ 4 sorrisos", "R$ 5 abraços"];
+function plaquinhaPreco(vg) {
+  const g = new THREE.Group();
+  const cor = `#${new THREE.Color(vg.hex).getHexString()}`;
+  const tex = texturaCanvas(256, 176, (c, w, h) => {
+    c.fillStyle = "#ffffff"; c.fillRect(0, 0, w, h); c.lineWidth = 10; c.strokeStyle = "#151515"; c.strokeRect(5, 5, w - 10, h - 10);
+    c.fillStyle = cor; c.fillRect(10, 10, w - 20, 62);
+    c.font = "900 44px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = "#ffffff"; c.strokeStyle = "#151515"; c.lineWidth = 6;
+    c.strokeText(vg.cor.toUpperCase(), w / 2, 44); c.fillText(vg.cor.toUpperCase(), w / 2, 44);
+    c.font = "800 34px 'Baloo 2', sans-serif"; c.fillStyle = "#151515"; c.fillText(PRECOS[vg.modelo], w / 2, 108);
+    c.fillStyle = "#ffb300"; c.font = "900 30px 'Baloo 2', sans-serif"; c.fillText("★ ★ ★", w / 2, 146);
+  });
+  // frente e verso (o verso também lê certo, sem espelhar)
+  const mat = new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.3 });
+  const placa = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.03), mat), verso = placa.clone(); verso.rotation.y = Math.PI;
+  const haste = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6), matLapis(0x333333)); haste.position.y = -0.85;
+  g.add(placa, verso, haste);
+  g.position.set(0, 2.35, 1.0);
+  return g;
+}
+// chave do carro (voa da mão do vendedor para o Rabisco)
+function chave() {
+  const g = new THREE.Group(), ouro = matLapis(0xffcc1f, { metalness: 0.6, roughness: 0.3, emissive: 0x332200 });
+  const argola = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.06, 8, 16), ouro); argola.position.y = 0.25;
+  const haste = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.45, 0.04), ouro); haste.position.y = -0.08;
+  const dente = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.08, 0.04), ouro); dente.position.set(0.07, -0.22, 0);
+  const pingente = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), matLapis(0xec2e8c)); pingente.position.set(0, 0.25, 0.05);
+  g.add(argola, haste, dente, pingente); g.scale.setScalar(1.6);
+  return g;
+}
+function escolherCarro(CN, c, t) {
+  if (CN.fase !== "escolher") return;
+  CN.escolhido = c; CN.fase = "chave";
+  c.placa.removeFromParent();
+  mundo.solidos.splice(mundo.solidos.indexOf(c.solido), 1);
+  veiculos.push(c);
+  CN.laco = laco(); c.g.add(CN.laco);
+  // o vendedor vem até a frente do carro (do lado do corredor) entregar a chave
+  const fx = Math.sin(c.ang), fz = Math.cos(c.ang), lx = Math.cos(c.ang), lz = -Math.sin(c.ang);
+  CN.ponto = livre(c.pos.x + fx * 3.3 + lx * 1.3, c.pos.z + fz * 3.3 + lz * 1.3, 0.4);
+  CN.npc.volta = false;
+  sons.moeda(); falar(`cid-je-${c.cor}`); jogo.confete?.();
+  dizer("Rabisco", `Quero este! O carro ${c.cor}!`, 3000);
+  void t;
+  atualizarHud();
+}
+
+// ------------------------------------------------------------------ Lojas por dentro (interiores.js)
+// A porta de cada loja tem um tapete na calçada: pisar nele (a pé) leva para dentro com um fade; o tapete verde
+// de dentro traz de volta. A sala é montada na primeira entrada, longe da cidade (origem), e fica escondida fora.
+const SALAS_DEF = {
+  rise: { lugar: "parceiro-rise-up", origem: [-90, 430], montar: montarAcademia, lado: 1.0, ajudante: ["Treinadora Lápis Laranja", 0xff7a00, ["bone"], "treinadora"] },
+  bella: { lugar: "parceiro-bella-cat", origem: [0, 430], montar: montarBellaCat, lado: 0, ajudante: ["Lápis Lilás", 0xa98ce0, ["laco"], "vendedora"] },
+};
+let salas = {}, sala = null, transicao = false, bloqueioPorta = null, trava = null, fadeEl = null, barraEl = null;
+const naBorda = (v) => Boolean(sala) || Math.abs(v) < BORDA + 10;
+const TEX_TAPETE = texturaCanvas(256, 128, (c, w, h) => {
+  c.fillStyle = "#3a2a4a"; c.fillRect(0, 0, w, h); c.strokeStyle = "#ffcc1f"; c.lineWidth = 8; c.strokeRect(10, 10, w - 20, h - 20);
+  c.font = "900 54px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = "#ffcc1f"; c.fillText("ENTRE ▲", w / 2, h / 2 + 4);
+});
+function criarSalas() {
+  for (const [id, def] of Object.entries(SALAS_DEF)) {
+    const l = lugar(def.lugar);
+    if (!l) continue;
+    // tapete na frente da porta da foto (1,3 m da fachada), virado para a rua
+    const lat = [Math.cos(l.rot), -Math.sin(l.rot)], recuo = l.recuo - 3.08 - 1.3;
+    const px = l.x - l.dir[0] * recuo + lat[0] * def.lado, pz = l.z - l.dir[1] * recuo + lat[1] * def.lado;
+    const tapete = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.05, 1.3), new THREE.MeshStandardMaterial({ map: TEX_TAPETE, roughness: 0.95 }));
+    tapete.position.set(px, 0.07, pz); tapete.rotation.y = l.rot; tapete.receiveShadow = true; cena.add(tapete);
+    const seta = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.9, 4), new THREE.MeshBasicMaterial({ color: 0xffcc1f }));
+    seta.rotation.x = Math.PI; seta.position.set(px, 3.4, pz); seta.visible = false; cena.add(seta);
+    salas[id] = { id, def, l, porta: { x: px, z: pz }, dir: l.dir, O: def.origem, tapete, seta, obj: null, ajudante: null };
+  }
+}
+function montarSala(S) {
+  const o = S.def.montar();
+  const [ox, oz] = S.O;
+  o.g.position.set(ox, 0, oz); cena.add(o.g);
+  for (const s of o.solidos) mundo.solidos.push({ x0: s.x0 + ox, x1: s.x1 + ox, z0: s.z0 + oz, z1: s.z1 + oz, y1: s.y1 });
+  const [nome, cor, aces, onde] = S.def.ajudante, pos = o[onde];
+  const p = lapis(cor, { acessorios: aces });
+  p.position.set(ox + pos.x, 0.03, oz + pos.z); o.g.parent.add(p);
+  S.ajudante = { nome, p, x: ox + pos.x, z: oz + pos.z, alvo: null };
+  S.obj = o; S.saida = o.saida;
+}
+function portasDasSalas(t) {
+  for (const S of Object.values(salas)) {
+    const M = S.id === "rise" ? missoes.exercicio : missoes.presente;
+    S.seta.visible = !sala && M?.estado === "ativa" && M.fase === "entrar";
+    if (S.seta.visible) S.seta.position.y = 3.4 + Math.sin(t * 4) * 0.2;
+    if (transicao || dentro || fim || oracao) continue;
+    if (sala === S) {
+      const [ox, oz] = S.O;
+      if (!trava && Math.hypot(j.pos.x - (ox + S.obj.saida.x), j.pos.z - (oz + S.obj.saida.z)) < 0.9) sairSala(S);
+    } else if (!sala) {
+      const d = Math.hypot(j.pos.x - S.porta.x, j.pos.z - S.porta.z);
+      if (bloqueioPorta === S.id) { if (d > 2) bloqueioPorta = null; } else if (d < 1.0) entrarSala(S);
+    }
+  }
+}
+function fade(meio) {
+  transicao = true; fadeEl.classList.add("ativo");
+  setTimeout(() => {
+    if (!vivo) return;
+    meio();
+    posicionarCamera(1, 0);
+    fadeEl.classList.remove("ativo");
+    setTimeout(() => { transicao = false; }, 320);
+  }, 300);
+}
+function entrarSala(S) {
+  fade(() => {
+    if (!S.obj) montarSala(S);
+    S.obj.g.visible = S.ajudante.p.visible = true;
+    sala = S;
+    const [ox, oz] = S.O;
+    j.pos.set(ox + S.obj.entrada.x, 0.03, oz + S.obj.entrada.z); j.vel.set(0, 0, 0); j.dir = Math.PI; camYaw = Math.PI; camManual = 0;
+    if (companheiro) { amigo.pos.set(j.pos.x + 1.3, 0.03, j.pos.z + 0.6); amigo.vel = amigo.vx = amigo.vz = 0; }
+    cam.far = 90; cam.updateProjectionMatrix();
+    sons.porta();
+    const M = S.id === "rise" ? missoes.exercicio : missoes.presente;
+    if (!M || M.estado !== "ativa") dizer(S.ajudante.nome, S.id === "rise" ? "Bem-vindo à Academia Rise Up! Fique à vontade!" : "Bem-vindo à Bella Cat! Que bom ver você!", 3000);
+  });
+}
+function sairSala(S) {
+  fade(() => {
+    sala = null; trava = null;
+    S.obj.g.visible = S.ajudante.p.visible = false;
+    j.pos.set(S.porta.x + S.dir[0] * 1.7, 0.03, S.porta.z + S.dir[1] * 1.7); j.vel.set(0, 0, 0);
+    j.dir = Math.atan2(S.dir[0], S.dir[1]); camYaw = j.dir; camManual = 0;
+    if (companheiro) { const [cx, cz] = livre(j.pos.x - S.dir[1] * 1.3, j.pos.z + S.dir[0] * 1.3, 0.5); amigo.pos.set(cx, 0.03, cz); amigo.vel = amigo.vx = amigo.vz = 0; }
+    cam.far = 800; cam.updateProjectionMatrix();
+    bloqueioPorta = S.id;
+    sons.porta();
+  });
+}
+// a treinadora e a vendedora de dentro: andam até o lugar da vez e olham para o Rabisco
+function atualizarAjudantes(t, dt) {
+  if (!sala?.ajudante) return;
+  const a = sala.ajudante, [ox, oz] = sala.O;
+  let andando = false;
+  if (a.alvo) {
+    const dx = ox + a.alvo.x - a.x, dz = oz + a.alvo.z - a.z, d = Math.hypot(dx, dz);
+    if (d > 0.12) { const v = Math.min(d, 3 * dt); a.x += (dx / d) * v; a.z += (dz / d) * v; a.p.rotation.y = Math.atan2(dx, dz); andando = true; }
+  }
+  a.p.position.x = a.x; a.p.position.z = a.z;
+  if (!andando) { let r = Math.atan2(j.pos.x - a.x, j.pos.z - a.z) - a.p.rotation.y; r = Math.atan2(Math.sin(r), Math.cos(r)); a.p.rotation.y += r * Math.min(1, dt * 5); }
+  andarLapis(a.p, t * 9, andando ? 1 : 0);
+  if (!andando) animarLapis(a, t, dt, false);
+}
+
+// ------------------------------------------------------------------ Bella Cat: escolher e embrulhar
+function escolherAcessorio(PV, p, t) {
+  if (PV.fase !== "escolher") return;
+  PV.escolhido = p; PV.fase = "embrulhar"; PV.t0 = t; p.levado = true;
+  for (const q of salas.bella.obj.pedestais) q.anel.visible = q === p;
+  const S = salas.bella;
+  // o acessório sai do pedestal e voa para o balcão
+  S.obj.g.attach(p.obj);
+  PV.de = p.obj.position.clone();
+  S.ajudante.alvo = { x: S.obj.vendedora.x, z: S.obj.vendedora.z };
+  sons.moeda(); falar(`cid-bella-${p.id}`);
+  dizer(S.ajudante.nome, `${p.art === "a" ? "A" : "O"} ${p.nome}! Que ${p.art === "a" ? "linda" : "lindo"}! Vou embrulhar numa caixinha de presente.`, 3600);
+  // o Rabisco e a câmera viram para o balcão para ver o embrulho
+  const [ox, oz] = S.O, bx = ox + S.obj.balcao.x, bz = oz + S.obj.balcao.z;
+  camYaw = Math.atan2(bx - j.pos.x, bz - j.pos.z); camManual = 4.5; j.dir = camYaw;
+  atualizarHud();
+}
+function embrulhar(PV, t) {
+  const S = salas.bella, o = S.obj, k = (t - PV.t0) / 1.1, p = PV.escolhido;
+  const e = new THREE.Vector3(o.embrulho.x, o.embrulho.y + 0.15, o.embrulho.z);
+  if (k < 1) { p.obj.position.lerpVectors(PV.de, e, k); p.obj.position.y += Math.sin(k * Math.PI) * 1.2; p.obj.rotation.y = t * 6; return; }
+  if (!PV.caixa) {
+    p.obj.visible = false;
+    PV.caixa = presente(p.cor); PV.caixa.position.copy(e); PV.caixa.scale.setScalar(0.01); o.g.add(PV.caixa);
+    receber(S.ajudante); sons.porta();
+  }
+  const k2 = Math.min(1, (t - PV.t0 - 1.1) / 0.6);
+  PV.caixa.scale.setScalar(0.01 + k2 * 0.7); PV.caixa.rotation.y = t * 2;
+  if (t - PV.t0 > 3.2) {
+    PV.caixa.removeFromParent();
+    levar(presente(p.cor));
+    PV.fase = "levar"; falar("cid-bella-embrulho");
+    dizer(S.ajudante.nome, "Pronto, embrulhadinho! Agora leve o presente até a Professora Lápis Turquesa, na porta da escola!", 5600);
+    atualizarHud();
+  }
+}
+
+// ------------------------------------------------------------------ Rise Up: esteira e halter
+function treinar(EX, S, t, dt, aPe, acaoJ2, pertoJ2) {
+  const o = S.obj, [ox, oz] = S.O, e = o.esteira, ex = ox + e.x, ez = oz + e.z;
+  const perto = (x, z, r) => Math.hypot(j.pos.x - x, j.pos.z - z) < r;
+  e.g.children[1].material.color.setHex(EX.fase === "esteira" && Math.sin(t * 6) > 0 ? 0xffd84a : 0xffffff);
+  if (EX.fase === "esteira" && aPe && !trava && (perto(ex, ez + 1.9, 1.3) || pertoJ2(ex, ez + 1.9, 1.3))) {
+    trava = { x: ex, y: 0.27, z: ez + 0.3, dir: Math.PI, modo: "andar", vel: 3 };
+    EX.fase = "correndo"; barraEl.hidden = false; camYaw = Math.PI + 0.75; camManual = 4;
+    sons.pisao(); atualizarHud();
+  }
+  if (EX.fase === "correndo") {
+    const { iy } = entradaAndar();
+    contexto = { tipo: "correr", rotulo: "🏃 Correr!", fazer: () => { EX.empurrao = 0.6; } };
+    if (acaoJ2) EX.empurrao = 0.6;
+    EX.empurrao = (EX.empurrao || 0) - dt;
+    const forte = iy > 0.3 || tem("acao") || EX.empurrao > 0;
+    EX.corrida = Math.min(1, EX.corrida + dt * (0.045 + (forte ? 0.15 : 0)));
+    trava.vel = forte ? VEL : 3.2;
+    e.cinta.offset.y += dt * trava.vel * 0.5;
+    camManual = 1;
+    barraEl.firstElementChild.style.width = `${Math.round(EX.corrida * 100)}%`;
+    if (EX.corrida >= 0.5 && !EX.meio) { EX.meio = true; falar("cid-rise-corre"); dizer(S.ajudante.nome, "Isso! Continue correndo!", 2400); }
+    if (EX.corrida >= 1) {
+      trava = null; j.pos.set(ex + 1.4, 0.03, ez + 2.0); barraEl.hidden = true;
+      EX.fase = "peso"; S.ajudante.alvo = o.treinadoraPeso; receber(S.ajudante); sons.volta(); falar("cid-rise-peso");
+      dizer(S.ajudante.nome, "Que corrida! Agora vamos levantar o halter. Vá até o colchonete laranja e aperte o botão cinco vezes!", 6000);
+      atualizarHud();
+    }
+    return;
+  }
+  if (EX.fase !== "peso") return;
+  const px = ox + o.peso.x, pz = oz + o.peso.z;
+  if (!EX.pronto && aPe && (perto(px, pz, 1.4) || pertoJ2(px, pz, 1.4))) {
+    // em cima do colchonete, de frente para a sala: pega os dois halteres
+    EX.pronto = true; EX.parado = t;
+    trava = { x: px, y: 0.1, z: pz + 0.2, dir: 0, modo: "parado", vel: 0 };
+    camYaw = Math.PI - 0.55; camManual = 99;
+    o.peso.halter.visible = false;
+    EX.maos = [rabisco.bracoE, rabisco.bracoD].map((b, i) => { const h = halter(matLapis(i ? 0x1d6fe0 : 0xec2e8c, { roughness: 0.4 }), 1.7); h.position.set(0, -0.86, 0); h.rotation.y = Math.PI / 2; b.cotovelo.add(h); return h; });
+    sons.pisao();
+  }
+  if (!EX.pronto) return;
+  camManual = 99;
+  const levantar = () => { if (EX.rep == null && EX.levantou < 5) { EX.rep = 0; EX.contou = false; EX.parado = t; } };
+  if (EX.levantou < 5) contexto = { tipo: "levantar", rotulo: "🏋️ Levantar!", fazer: levantar };
+  if (acaoJ2) levantar();
+  if (EX.rep == null && EX.levantou < 5 && t - EX.parado > 6) { EX.parado = t; dizer(S.ajudante.nome, "Aperte o botão para levantar o halter!", 2400); }
+  let k = 0;
+  if (EX.rep != null) {
+    EX.rep += dt;
+    k = Math.sin(Math.min(1, EX.rep / 0.9) * Math.PI);
+    if (EX.rep > 0.42 && !EX.contou) {
+      EX.contou = true; EX.levantou++; sons.moeda(); falar(`cid-num-${EX.levantou}`);
+      dizer(S.ajudante.nome, `${EX.levantou}! ${EX.levantou < 5 ? "Mais um!" : "Muito bem!"}`, 1400);
+      atualizarHud();
+    }
+    if (EX.rep >= 0.9) EX.rep = null;
+  }
+  // pose: halteres na altura dos ombros e, a cada levantamento, braços esticados para cima
+  for (const [b, s] of [[rabisco.bracoE, 1], [rabisco.bracoD, -1]]) { b.ombro.rotation.set(0, 0, s * (1.25 + k * 1.65)); b.cotovelo.rotation.x = 0; b.cotovelo.rotation.z = s * (1.5 - k * 1.5); }
+  rabisco.tronco.rotation.x = 0;
+  if (EX.levantou >= 5 && EX.rep == null && !EX.fimT) {
+    EX.fimT = t;
+    soltarHalteres(EX, o); receber(S.ajudante); concluir(EX); jogo.confete?.(); falar("cid-rise-ok");
+    dizer(S.ajudante.nome, "Parabéns, Rabisco! Você foi forte e corajoso! Corpo saudável, coração alegre!", 5600);
+  }
+}
+function soltarHalteres(EX, o) {
+  for (const h of EX.maos || []) h.removeFromParent();
+  for (const b of [rabisco.bracoE, rabisco.bracoD]) b.cotovelo.rotation.z = 0;
+  EX.maos = null; o.peso.halter.visible = true; trava = null; camManual = 0;
+}
+
 // a missão que está "em foco" mostra o alvo piscando no mapa e a seta no alto da tela
 function aceitar(M) { M.estado = "ativa"; foco = M.id; }
 function criarMissoes() {
@@ -1062,7 +1340,7 @@ function criarMissoes() {
     destino: { x: vovo.porta[0] - 3, z: vovo.porta[1] },
     alvo() { if (!this.noCarro) return dentro ? { x: this.npc.x, z: this.npc.z, emoji: "📦" } : carroMaisPerto(); return dentro ? { ...this.destino, emoji: "👵" } : carroMaisPerto(); } };
   // 7. bombeiros: quatro foguinhos para apagar com o botão da água
-  const lugaresFogo = [[-22, -82], [22, 86], [-52, 47], [92, -40]].map(([x, z]) => livre(x, z, 1.2));
+  const lugaresFogo = [[-22, -82], [22, 86], [-52, 47], [86, -22]].map(([x, z]) => livre(x, z, 1.2));
   missoes.fogo = { id: "fogo", nome: "Bombeiros", icone: "🚒", estado: "nova", apagados: 0, npc: npc("Capitão Lápis Vermelho, o bombeiro", 0xe63946, ...naPorta(L("bombeiros")), "cid-bombeiro"),
     texto: "Socorro! Tem quatro foguinhos na cidade. Chegue pertinho e aperte o botão da água!",
     fogos: lugaresFogo.map(([x, z]) => { const g = foguinho(); g.position.set(x, 0.03, z); g.visible = false; cena.add(g); mundo.solidos.push({ x0: x - 0.5, x1: x + 0.5, z0: z - 0.5, z1: z + 0.5, y1: 0.9 }); return { x, z, g, agua: 0, perto: 0, apagado: false }; }),
@@ -1127,49 +1405,68 @@ function criarMissoes() {
     alvo() { return { x: this.tapete.x, z: this.tapete.z, emoji: "🙏" }; } };
   // 13–15. lojas parceiras (parceiros.js e mapa.js): cada missão só existe se a loja estiver na cidade
   const je = L("parceiro-je-multimarcas"), bella = L("parceiro-bella-cat"), rise = L("parceiro-rise-up");
-  // carro novo: o carro verde com laço está na frente da J.E; dirigir até a casa verde (Rua das Casas Coloridas)
+  // carro novo: no pátio da J.E (PATIO_JE) o Rabisco escolhe um dos 5 carros, ganha a chave do Seu Lápis Cinza, sai
+  // dirigindo pelo portão e leva o carro para mostrar ao Seu Lápis Verde, na casa verde. O carro continua dele.
   if (je) {
     const verde = CASAS.find((c) => c.cor === "verde");
-    const g = carroAberto(0x2bb24c);
-    // estacionado na faixa da rua em frente à loja, ao lado da porta (de frente ao longo da rua)
-    const lado = [-je.dir[1], je.dir[0]];
-    const v = { g, pos: new THREE.Vector3(je.x + je.dir[0] * 5.5 + lado[0] * 4, 0.03, je.z + je.dir[1] * 5.5 + lado[1] * 4), ang: Math.atan2(lado[0], lado[1]), vel: 0, virar: 0, giro: 0, batida: 0, buzina: 0, caixa: null };
-    g.position.copy(v.pos); g.rotation.y = v.ang;
-    const fita = laco(); g.add(fita);
-    cena.add(g); veiculos.push(v);
-    missoes.carroNovo = { id: "carroNovo", nome: "Carro novo", icone: "🔑", estado: "nova", carro: v, laco: fita, dirigindo: false,
-      npc: npc("Seu Lápis Cinza, da J.E Multimarcas", 0x6b6b6b, ...naPorta(je), "cid-je"),
-      texto: "Olá, Rabisco! A J.E Multimarcas é uma loja de carros! Este carro verde com laço é da família da casa verde. Você leva para eles?",
+    const patio = PATIO_JE.vagas.map((vg) => {
+      const g = carroAberto(vg.hex);
+      enfeitarCarro(g, vg.modelo);
+      g.userData.seta.visible = false;
+      const placa = plaquinhaPreco(vg); g.add(placa);
+      g.position.set(vg.x, 0.03, vg.z); g.rotation.y = vg.ang;
+      cena.add(g);
+      // colisão do carro exposto (caixa alinhada, um pouco menor que o carro girado): o Rabisco e o carro que sai desviam
+      const sa = Math.abs(Math.sin(vg.ang)), ca = Math.abs(Math.cos(vg.ang));
+      const hx = (sa * 2.3 + ca * 1.15) * 0.9, hz = (ca * 2.3 + sa * 1.15) * 0.9;
+      const solido = { x0: vg.x - hx, x1: vg.x + hx, z0: vg.z - hz, z1: vg.z + hz, y1: 1.0 };
+      mundo.solidos.push(solido);
+      return { g, pos: new THREE.Vector3(vg.x, 0.03, vg.z), ang: vg.ang, vel: 0, virar: 0, giro: 0, batida: 0, buzina: 0, caixa: null, cor: vg.cor, placa, solido };
+    });
+    const vendedor = npc("Seu Lápis Cinza, da J.E Multimarcas", 0x6b6b6b, PATIO_JE.x0 - 1.9, PATIO_JE.portao[0] - 1.6, "cid-je", ["gravata"]);
+    vendedor.casa = [vendedor.x, vendedor.z];
+    missoes.carroNovo = { id: "carroNovo", nome: "Carro novo", icone: "🔑", estado: "nova", fase: "escolher", patio, escolhido: null, laco: null,
+      npc: vendedor,
+      texto: "Olá, Rabisco! Bem-vindo à J.E Multimarcas, a loja de carros! Entre no pátio pelo portão e escolha o carro que você mais gostar. Chegue pertinho e aperte o botão!",
       destino: { x: verde.x + verde.dir[0] * 7.5, z: verde.z + verde.dir[1] * 7.5 },
-      alvo() { return dentro === this.carro ? { ...this.destino, emoji: "🏠" } : { x: this.carro.pos.x, z: this.carro.pos.z, emoji: "🔑" }; } };
-  }
-  // presente da Vovó: um laço da Bella Cat para o aniversário da Vovó Lápis (a pé ou de carro)
-  if (bella) {
-    const vovo = mundo.casas.find((c) => c.vovo);
-    missoes.presente = { id: "presente", nome: "Presente da Vovó", icone: "🎀", estado: "nova",
-      npc: npc("Lápis Lilás, da Bella Cat", 0xa98ce0, ...naPorta(bella), "cid-bella"),
-      texto: "Oi, Rabisco! Hoje é aniversário da Vovó Lápis! Escolhi um laço lindo aqui na Bella Cat. Leve o presente até a casa laranja dela, perto da Rua Leste!",
-      destino: { x: vovo.porta[0] - 3, z: vovo.porta[1] },
-      aoAceitar() { levar(presente()); },
-      alvo() { return { ...this.destino, emoji: "🎁" }; } };
-  }
-  // hora do exercício na Rise Up: pular 5 vezes, correr pelos 4 cones em volta da academia e levar água para a Lápis Rosa (praça)
-  if (rise) {
-    const ld = [-rise.dir[1], rise.dir[0]];
-    const ponto = (lat, prof) => livre(rise.x + ld[0] * lat - rise.dir[0] * prof, rise.z + ld[1] * lat - rise.dir[1] * prof, 1); // prof > 0: para trás da loja
-    const pts = [ponto(-15, -1), ponto(15, -1), ponto(16, 16), ponto(-16, 16)];
-    missoes.exercicio = { id: "exercicio", nome: "Exercício", icone: "💪", estado: "nova", fase: "pulos", pulos: 0, cone: 0, vistos: [j.pulos, amigo.pulos],
-      npc: npc("Treinadora Lápis Laranja, da Rise Up", 0xff7a00, ...naPorta(rise), "cid-rise"), amiga: missoes.gatos.npc,
-      texto: "Oi, Rabisco! Aqui na Academia Rise Up a gente cuida da saúde! Vamos aquecer? Pule cinco vezes aqui pertinho de mim!",
-      aoAceitar() { this.vistos = [j.pulos, amigo.pulos]; }, // pulos de antes da conversa não contam
-      cones: pts.map(([x, z], i) => { const g = cone(i + 1); g.position.set(x, 0.03, z); g.visible = false; cena.add(g); return { x, z, g }; }),
       alvo() {
-        if (this.fase === "pulos") return { x: this.npc.x, z: this.npc.z, emoji: "💪" };
-        const c = this.cones[this.cone];
-        if (this.fase === "cones" && c) return { x: c.x, z: c.z, emoji: String(this.cone + 1) };
-        return { x: this.amiga.x, z: this.amiga.z, emoji: "💧" };
+        const E = this.escolhido;
+        if (this.fase === "escolher") { const c = this.patio.filter((q) => q !== E).sort((a, b) => dist2(a.pos) - dist2(b.pos))[0]; return { x: c.pos.x, z: c.pos.z, emoji: "🚗" }; }
+        if (this.fase === "chave") return { x: this.npc.x, z: this.npc.z, emoji: "🔑" };
+        if (dentro !== E) return { x: E.pos.x, z: E.pos.z, emoji: "🔑" };
+        if (this.fase === "sair") return { x: PATIO_JE.saida[0], z: PATIO_JE.saida[1], emoji: "🚧" };
+        return { ...this.destino, emoji: "🏠" };
+      } };
+    vendedor.calado = () => missoes.carroNovo.estado === "ativa" && missoes.carroNovo.fase !== "escolher";
+  }
+  // presente para a Professora: entrar na Bella Cat, escolher um acessório nos pedestais, a Lápis Lilás embrulha e o
+  // Rabisco leva até a Professora Lápis Turquesa, que espera na porta da escola
+  if (bella) {
+    missoes.presente = { id: "presente", nome: "Presente da Professora", icone: "🎁", estado: "nova", fase: "entrar", escolhido: null,
+      npc: npc("Lápis Lilás, da Bella Cat", 0xa98ce0, ...naPorta(bella), "cid-bella", ["laco"]),
+      texto: "Oi, Rabisco! Que tal um presente para a Professora Lápis Turquesa? Entre aqui na Bella Cat e escolha um acessório bem bonito!",
+      alvo() {
+        const S = salas.bella, [ox, oz] = S.O;
+        if (this.fase === "levar") { if (sala === S) return { x: ox + S.saida.x, z: oz + S.saida.z, emoji: "🚪" }; const p = missoes.escola.npc; return { x: p.x, z: p.z, emoji: "🎁" }; }
+        if (sala !== S) return { x: S.porta.x, z: S.porta.z, emoji: "🚪" };
+        if (this.fase === "embrulhar") return { x: ox + S.obj.balcao.x - 1, z: oz + S.obj.balcao.z, emoji: "🎁" };
+        const p = S.obj.pedestais.filter((q) => !q.levado).sort((a, b) => dist2({ x: ox + a.x, z: oz + a.z }) - dist2({ x: ox + b.x, z: oz + b.z }))[0];
+        return { x: ox + p.x, z: oz + p.z + 1.2, emoji: "💝" };
       } };
   }
+  // exercício na Rise Up: entrar na academia, correr na esteira (barrinha enchendo) e levantar o halter 5 vezes
+  if (rise) {
+    missoes.exercicio = { id: "exercicio", nome: "Exercício", icone: "💪", estado: "nova", fase: "entrar", corrida: 0, levantou: 0,
+      npc: npc("Treinadora Lápis Laranja, da Rise Up", 0xff7a00, ...naPorta(rise), "cid-rise", ["bone"]),
+      texto: "Oi, Rabisco! Bem-vindo à Academia Rise Up! Aqui a gente cuida do corpo que Deus nos deu. Entre pela porta e vamos treinar!",
+      alvo() {
+        const S = salas.rise, [ox, oz] = S.O;
+        if (sala !== S) return { x: S.porta.x, z: S.porta.z, emoji: "🚪" };
+        if (this.fase === "peso") return { x: ox + S.obj.peso.x, z: oz + S.obj.peso.z, emoji: "🏋️" };
+        return { x: ox + S.obj.esteira.x, z: oz + S.obj.esteira.z + 1.9, emoji: "🏃" };
+      } };
+  }
+  criarSalas();
   // 16. passaporte: visitar todos os lugares
   missoes.passaporte = { id: "passaporte", nome: "Passeio", icone: "🗺️", estado: "ativa",
     alvo() { const l = mundo.lugares.filter((q) => !visitados.has(q.id)).sort((a, b) => dist2(a) - dist2(b))[0]; return l && { x: l.x, z: l.z, emoji: "📍" }; } };
@@ -1182,10 +1479,11 @@ function criarMissoes() {
       () => (ativa("cartas") && !missoes.cartas.entregues.includes(cor)) || (cor === "azul" && ativa("escola") && missoes.escola.fase === "buscar"), { acessorios: aces });
   }
   const cv = CASAS.find((q) => q.vovo);
-  quemRecebe.vovo = receptor("Vovó Lápis", 0xf4a3c4, ...portaCasa(cv, 1.8), cv.dir, () => ativa("presente") || (ativa("encomenda") && Boolean(missoes.encomenda.noCarro)), { acessorios: ["vovo"] });
+  quemRecebe.vovo = receptor("Vovó Lápis", 0xf4a3c4, ...portaCasa(cv, 1.8), cv.dir, () => ativa("encomenda") && Boolean(missoes.encomenda.noCarro), { acessorios: ["vovo"] });
   if (missoes.carroNovo) { const c = CASAS.find((q) => q.cor === "verde"); quemRecebe.verde = receptor("Seu Lápis Verde, da casa verde", 0x4cae5a, ...portaCasa(c, 1.8), c.dir, () => ativa("carroNovo"), { acessorios: ["chapeu"] }); }
   quemRecebe.merendeira = receptor("Tia Lápis Amarela, a merendeira", 0xffcc1f, ...naPorta(escola, -2.5), escola.dir, () => ativa("pao"), { acessorios: ["chef"] });
-  if (missoes.exercicio) missoes.exercicio.amiga.espera = () => ativa("exercicio") && missoes.exercicio.fase === "agua";
+  // a professora espera o presente da Bella Cat na porta da escola (acena e não puxa conversa até receber)
+  if (missoes.presente) missoes.escola.npc.espera = missoes.escola.npc.calado = () => ativa("presente") && missoes.presente.fase === "levar";
   preCarregarFalas(["cid-intro", "cid-carteiro", "cid-gatos", "cid-padeiro", "cid-guarda", "cid-carta-ok", "cid-gato-ok", "cid-pao-ok", "cid-faixa-ok", "cid-espere", "cid-missao-ok", "cid-final"]); // as falas das missões novas (cid-carro, cid-corrida...) tocam sob demanda
 }
 const dist2 = (p) => (p.x - j.pos.x) ** 2 + (p.z - j.pos.z) ** 2;
@@ -1306,6 +1604,7 @@ function regras(dt, t) {
   for (const n of npcs) {
     n.p.rotation.y = Math.atan2(j.pos.x - n.x, j.pos.z - n.z);
     n.marca.position.y = 3.6 + Math.sin(t * 3) * 0.15;
+    if (n.calado?.()) { n.ultima = t; continue; } // ocupado na missão (vendedor entregando a chave, professora esperando o presente)
     if (perto(n.x, n.z, dentro ? 5 : 3) && t - n.ultima > 8) { n.ultima = t; conversar(n); }
   }
   // cartas: caixa de correio da cor certa (a pé)
@@ -1432,64 +1731,94 @@ function regras(dt, t) {
     }
     pl.dentro = em;
   }
-  // carro novo da J.E: entrar no carro do laço e dirigir até a casa verde
+  // portas das lojas com interior: pisar no tapete da porta (a pé) entra; o tapete verde de dentro sai
+  portasDasSalas(t);
+  // quem pode agir: o Rabisco e, no modo 2 jogadores, a criança do jogador 2 (botão de ação dela)
+  const acaoJ2 = dois && companheiro && aPe && amigo.acaoNova;
+  const pertoJ2 = (x, z, r) => dois && companheiro && aPe && Math.hypot(amigo.pos.x - x, amigo.pos.z - z) < r;
+  // carro novo (J.E Multimarcas): escolher no pátio, ganhar a chave, sair pelo portão e mostrar na casa verde
   const CN = missoes.carroNovo;
-  if (CN?.estado === "ativa") {
-    CN.laco.children[2].scale.setScalar(1 + Math.sin(t * 5) * 0.15);
-    if (dentro === CN.carro && !CN.dirigindo) {
-      CN.dirigindo = true; sons.moeda(); falar("cid-je-chave");
-      dizer(CN.npc.nome, "A chave é sua! Agora leve o carro novo até a casa verde, na Rua das Casas Coloridas. Siga a seta!", 4200);
+  if (CN) {
+    const P = PATIO_JE;
+    const noPatio = j.pos.x > P.x0 && j.pos.x < P.x1 && j.pos.z > P.z0 && j.pos.z < P.z1;
+    if (CN.estado === "nova" && aPe && noPatio) { CN.npc.ultima = t; conversar(CN.npc); } // entrou no pátio sem falar com ele: ele recebe
+    for (const c of CN.patio) if (c !== CN.escolhido) { c.placa.position.y = 2.35 + Math.sin(t * 2 + c.pos.z) * 0.05; c.placa.scale.setScalar(1); }
+    if (CN.estado === "ativa" && CN.fase === "escolher") {
+      // o carro mais perto (do Rabisco ou da criança do jogador 2) ganha destaque; Ação = "Quero este!"
+      const cand = CN.patio.map((c) => ({ c, d: Math.hypot(c.pos.x - j.pos.x, c.pos.z - j.pos.z), d2: dois && companheiro ? Math.hypot(c.pos.x - amigo.pos.x, c.pos.z - amigo.pos.z) : 99 }));
+      const meu = aPe ? cand.filter((q) => q.d < 3.6).sort((a, b) => a.d - b.d)[0] : null;
+      const dela = cand.filter((q) => q.d2 < 3.6).sort((a, b) => a.d2 - b.d2)[0];
+      for (const q of [meu, dela]) if (q) q.c.placa.scale.setScalar(1.25 + Math.sin(t * 6) * 0.08);
+      if (meu) contexto = { tipo: "escolher-carro", rotulo: "⭐ Quero este!", fazer: () => escolherCarro(CN, meu.c, t) };
+      if (acaoJ2 && dela) escolherCarro(CN, dela.c, t);
+    }
+    if (CN.fase === "chave") { // o vendedor vai até o carro escolhido e entrega a chave
+      const n = CN.npc, [ax, az] = CN.ponto;
+      const dx = ax - n.x, dz = az - n.z, d = Math.hypot(dx, dz);
+      if (d > 0.15) { const v = Math.min(d, 3.4 * dt); n.x += (dx / d) * v; n.z += (dz / d) * v; n.p.position.x = n.x; n.p.position.z = n.z; n.p.rotation.y = Math.atan2(dx, dz); andarLapis(n.p, t * 9, 1); }
+      else if (!CN.chave) {
+        andarLapis(n.p, 0, 0);
+        CN.chave = chave(); CN.chave.position.set(n.x, 1.6, n.z); cena.add(CN.chave); CN.chaveT = t;
+        receber(n); sons.moeda(); falar("cid-je-chave");
+        dizer(n.nome, "É seu! Cuide bem dele! Aqui está a chave. Entre no carro e saia pelo portão!", 5200);
+      }
+      if (CN.chave) {
+        const k = Math.min(1, (t - CN.chaveT) / 0.9);
+        CN.chave.position.set(n.x + (j.pos.x - n.x) * k, 1.6 + Math.sin(k * Math.PI) * 1.2 + k * 0.8, n.z + (j.pos.z - n.z) * k);
+        CN.chave.rotation.y = t * 6;
+        if (k >= 1) { CN.chave.removeFromParent(); CN.chave = null; CN.fase = "entrar"; CN.escolhido.g.userData.seta.visible = !dentro; atualizarHud(); }
+      }
+    }
+    if (CN.estado === "ativa" && CN.escolhido) CN.laco.children[2].scale.setScalar(1 + Math.sin(t * 5) * 0.15);
+    if (CN.fase === "entrar" && dentro === CN.escolhido) { CN.fase = "sair"; dizer(CN.npc.nome, "Isso! Agora saia devagar pelo portão!", 3000); atualizarHud(); }
+    if (CN.fase === "sair" && dentro === CN.escolhido && CN.escolhido.pos.x < P.x0 - 1.5) {
+      CN.fase = "levar"; CN.npc.volta = true; receber(CN.npc); sons.volta(); falar("cid-je-portao");
+      dizer(CN.npc.nome, "Boa viagem! Leve o carro novo até a casa verde: o Seu Lápis Verde quer ver! Siga a seta.", 5200);
       atualizarHud();
     }
-    if (dentro === CN.carro && perto(CN.destino.x, CN.destino.z, 8)) {
+    if (CN.npc.volta) { // o vendedor volta para o portão
+      const n = CN.npc, [ax, az] = n.casa, dx = ax - n.x, dz = az - n.z, d = Math.hypot(dx, dz);
+      if (d > 0.15) { const v = Math.min(d, 3 * dt); n.x += (dx / d) * v; n.z += (dz / d) * v; n.p.position.x = n.x; n.p.position.z = n.z; if (!n.festa) { n.p.rotation.y = Math.atan2(dx, dz); andarLapis(n.p, t * 9, 1); } }
+      else { n.volta = false; andarLapis(n.p, 0, 0); }
+    }
+    if (CN.estado === "ativa" && CN.fase === "levar" && dentro === CN.escolhido && perto(CN.destino.x, CN.destino.z, 8)) {
       CN.laco.removeFromParent(); receber(quemRecebe.verde);
-      concluir(CN); falar("cid-je-ok"); dizer("Família da casa verde", "Uau, nosso carro novo! Obrigado, Rabisco! Vamos passear juntos!", 4600);
+      concluir(CN); falar("cid-je-ok"); dizer("Seu Lápis Verde, da casa verde", `Uau, que carro ${CN.escolhido.cor} lindo! Parabéns, Rabisco! Vamos agradecer a Deus por esse presente!`, 5200);
     }
   }
-  // presente da Vovó (Bella Cat): chegar na porta da casa laranja com o presente
+  // presente para a Professora (Bella Cat): escolher o acessório, esperar o embrulho e levar até a professora
   const PV = missoes.presente;
-  if (PV?.estado === "ativa" && perto(PV.destino.x, PV.destino.z, dentro ? 8 : 4)) {
-    levar(null); receber(quemRecebe.vovo);
-    concluir(PV); falar("cid-bella-ok"); dizer("Vovó Lápis", "Um laço lindo! Que presente mais bonito! Obrigada, Rabisco, você é um amor!", 4800);
+  if (PV?.estado === "ativa") {
+    const S = salas.bella;
+    if (PV.fase === "entrar" && sala === S) { PV.fase = "escolher"; falar("cid-bella-escolha"); dizer(S.ajudante.nome, "Que bom que você veio! Escolha um presente: chegue pertinho de um pedestal e aperte o botão!", 5200); atualizarHud(); }
+    if (sala === S && PV.fase === "escolher") {
+      const [ox, oz] = S.O;
+      const ped = S.obj.pedestais.map((p) => ({ p, d: Math.hypot(ox + p.x - j.pos.x, oz + p.z - j.pos.z), d2: Math.hypot(ox + p.x - amigo.pos.x, oz + p.z - amigo.pos.z) }));
+      const meu = ped.filter((q) => q.d < 1.9).sort((a, b) => a.d - b.d)[0], dela = dois && companheiro ? ped.filter((q) => q.d2 < 1.9).sort((a, b) => a.d2 - b.d2)[0] : null;
+      for (const q of ped) q.p.anel.visible = q === meu || q === dela || Math.sin(t * 4) > 0;
+      if (meu) contexto = { tipo: "escolher-acessorio", rotulo: "💝 Este!", fazer: () => escolherAcessorio(PV, meu.p, t) };
+      if (acaoJ2 && dela) escolherAcessorio(PV, dela.p, t);
+    }
+    if (PV.fase === "embrulhar") embrulhar(PV, t);
+    if (PV.fase === "levar" && !sala && perto(missoes.escola.npc.x, missoes.escola.npc.z, dentro ? 7 : 3.5)) {
+      const prof = missoes.escola.npc;
+      prof.ultima = t; levar(null);
+      const caixinha = presente(PV.escolhido.cor); caixinha.scale.setScalar(0.75); caixinha.position.set(0, 0.72, 0.6); prof.p.add(caixinha);
+      receber(prof); concluir(PV); falar("cid-bella-ok");
+      dizer(prof.nome, `Que ${PV.escolhido.art === "a" ? "linda" : "lindo"} ${PV.escolhido.art === "a" ? "esta" : "este"} ${PV.escolhido.nome}! Obrigada por lembrar de mim, Rabisco. Deus te abençoe!`, 5600);
+    }
   }
-  // exercício (Rise Up): pulos perto da treinadora, cones em ordem (a pé) e a garrafinha para a Lápis Rosa
+  // exercício (Rise Up): esteira e halter dentro da academia
   const EX = missoes.exercicio;
   if (EX?.estado === "ativa") {
-    const quem = [[j, aPe]]; // Rabisco e, no modo 2 jogadores, a criança do jogador 2 também vale
-    if (dois && companheiro && aPe) quem.push([amigo, true]);
-    if (EX.fase === "pulos") {
-      if (!aPe && perto(EX.npc.x, EX.npc.z, 8) && t - (EX.avisou || -9) > 7) { EX.avisou = t; falar("cid-rise-pe"); dizer(EX.npc.nome, "Exercício é a pé! Saia do carro e venha pular.", 3000); }
-      quem.forEach(([p, ok], i) => {
-        if (!ok) return;
-        const pulou = p.pulos !== EX.vistos[i]; // contador de pulos de moverJogador/moverJogador2 (descer da calçada não conta)
-        EX.vistos[i] = p.pulos;
-        if (pulou && Math.hypot(p.pos.x - EX.npc.x, p.pos.z - EX.npc.z) < 7 && EX.pulos < 5) {
-          EX.pulos++; sons.moeda(); falar(`cid-num-${EX.pulos}`); dizer(EX.npc.nome, `${EX.pulos}! ${EX.pulos < 5 ? "Mais um!" : "Muito bem!"}`, 1400);
-          if (EX.pulos === 5) {
-            EX.fase = "cones"; EX.cones.forEach((c) => (c.g.visible = true));
-            setTimeout(() => { falar("cid-rise-cones"); dizer(EX.npc.nome, "Aquecimento pronto! Agora corra pelos cones laranja em volta da academia: 1, 2, 3 e 4!", 5200); }, 1300);
-          }
-          atualizarHud();
-        }
-      });
-    } else if (EX.fase === "cones") {
-      EX.cones.forEach((c, i) => { c.g.userData.num.position.y = 2 + (i === EX.cone ? Math.abs(Math.sin(t * 5)) * 0.4 : 0); });
-      const c = EX.cones[EX.cone];
-      if (!aPe && perto(c.x, c.z, 8) && t - (EX.avisou || -9) > 7) { EX.avisou = t; falar("cid-rise-pe"); dizer(EX.npc.nome, "Os cones são a pé! Saia do carro e corra.", 3000); }
-      if (quem.some(([p, ok]) => ok && Math.hypot(p.pos.x - c.x, p.pos.z - c.z) < 2.2)) {
-        c.g.visible = false; EX.cone++; sons.volta(); falar(`cid-num-${EX.cone}`);
-        if (EX.cone === EX.cones.length) {
-          EX.fase = "agua"; levar(garrafa());
-          falar("cid-rise-agua"); dizer(EX.npc.nome, "Que corrida! Depois do exercício, água! Leve esta garrafinha para a Lápis Rosa, lá na praça.", 5600);
-        }
-        atualizarHud();
-      }
-    } else if (perto(EX.amiga.x, EX.amiga.z, dentro ? 6 : 3.5)) {
-      EX.amiga.ultima = t; // ela agradece primeiro; a conversa dela vem depois
-      levar(null); receber(EX.amiga);
-      concluir(EX); falar("cid-rise-ok"); dizer("Lápis Rosa", "Água fresquinha! Obrigada, Rabisco! Exercício e água: que dupla saudável!", 4600);
+    const S = salas.rise;
+    if (EX.fase === "entrar" && sala === S) {
+      EX.fase = "esteira"; S.ajudante.alvo = S.obj.treinadora; falar("cid-rise-esteira");
+      dizer(S.ajudante.nome, "Primeiro, a esteira! Suba na esteira do meio e corra: aperte o botão ou vá para a frente!", 5600); atualizarHud();
     }
+    if (sala === S) treinar(EX, S, t, dt, aPe, acaoJ2, pertoJ2);
   }
+  if (amigo.acaoNova) amigo.acaoNova = false;
   // Hora da Aula: pegar a mochila azul na casa azul e levar ao Lápis Azulzinho antes do sino
   const ES = missoes.escola;
   if (ES.estado === "ativa") {
@@ -1554,6 +1883,7 @@ function regras(dt, t) {
     if (oracao) seguirOracao(PN, t, dt);
   }
   atualizarAmigos(t, dt);
+  atualizarAjudantes(t, dt);
   atualizarLevando(t);
   // passaporte: marca o lugar ao chegar perto (de carro, em silêncio: só um selo discreto)
   for (const l of mundo.lugares) {
@@ -1590,8 +1920,6 @@ function regras(dt, t) {
 }
 const NOMES_MISSAO = { cartas: "cartas", gatos: "gatos", pao: "pao", faixa: "faixa", corrida: "corrida", encomenda: "encomenda", fogo: "fogo", tesouro: "tesouro", patos: "patos", carroNovo: "je", presente: "bella", exercicio: "rise", escola: "professora", igreja: "igreja", painosso: "painosso" };
 function conversar(n) {
-  const EX = missoes.exercicio;
-  if (EX?.estado === "ativa" && EX.fase === "agua" && n === EX.amiga) return; // primeiro ele recebe a água (regras)
   const M = Object.values(missoes).find((m) => m.npc === n);
   if (!M) return;
   if (M.estado === "nova") {
@@ -1665,9 +1993,9 @@ function atualizarHud() {
     if (m.id === "encomenda") return m.noCarro ? " <small>📦→👵</small>" : " <small>🚗→📦</small>";
     if (m.id === "fogo") return ` <small>${"💧".repeat(m.apagados)}${"🔥".repeat(4 - m.apagados)}</small>`;
     if (m.id === "tesouro") return ` <small>pista ${Math.min(4, m.pista + 1)}/4</small>`;
-    if (m.id === "carroNovo") return m.dirigindo ? " <small>🚗→🏠</small>" : " <small>🔑→🚗</small>";
-    if (m.id === "presente") return " <small>🎁→👵</small>";
-    if (m.id === "exercicio") return m.fase === "pulos" ? ` <small>pulos ${m.pulos}/5</small>` : m.fase === "cones" ? ` <small>cones ${m.cone}/4</small>` : " <small>💧→🎀</small>";
+    if (m.id === "carroNovo") return ` <small>${{ escolher: "⭐→🚗", chave: "🔑", entrar: "🔑→🚗", sair: "🚗→🚧" }[m.fase] ?? "🚗→🏠"}</small>`;
+    if (m.id === "presente") return ` <small>${{ entrar: "🚪→💝", escolher: "💝?", embrulhar: "🎁…" }[m.fase] ?? "🎁→🏫"}</small>`;
+    if (m.id === "exercicio") return ` <small>${m.fase === "entrar" ? "🚪→🏋️" : m.fase === "peso" ? `🏋️ ${m.levantou}/5` : `🏃 ${Math.round(m.corrida * 100)}%`}</small>`;
     if (m.id === "escola") return ` <small>${m.fase === "buscar" ? "🏠→🎒" : "🎒→🏫"}${m.sino > 0 ? ` ⏰${Math.ceil(m.sino)}` : " 🔔"}</small>`;
     if (m.id === "igreja") return ` <small>${"💌".repeat(m.convidados)}${"·".repeat(3 - m.convidados)}</small>`;
     if (m.id === "painosso") return m.frase ? ` <small>${m.frase}/${ORACAO.length}</small>` : "";
@@ -1719,7 +2047,7 @@ function desenharCidade(c, S, { nomes = false } = {}) {
     c.restore();
   }
   // alvo da missão: piscando (anel que cresce + bolinha que troca de cor) e o emoji
-  const a = alvoAtual();
+  const a = sala ? { ...sala.porta, emoji: "🏠" } : alvoAtual();
   if (a) {
     const [x, y] = P(a.x, a.z);
     const f = (t * 1.6) % 1;
@@ -1731,7 +2059,7 @@ function desenharCidade(c, S, { nomes = false } = {}) {
     if (Math.floor(t * 4) % 2 === 0) c.fillText(a.emoji, x, y - S / 26);
   }
   // o Rabisco (seta rosa)
-  const [x, y] = P(j.pos.x, j.pos.z);
+  const [x, y] = sala ? P(sala.porta.x, sala.porta.z) : P(j.pos.x, j.pos.z);
   c.save(); c.translate(x, y); c.rotate(-j.dir + Math.PI);
   const e = S / 22;
   c.fillStyle = "#ec2e8c"; c.strokeStyle = "#151515"; c.lineWidth = 2;
@@ -1791,7 +2119,7 @@ function quadro() {
     tMapa -= dt;
     if (tMapa <= 0) { tMapa = 0.12; desenharMapa(); atualizarBussola(); atualizarBotaoAcao(); if (!mapaGrande.hidden) desenharCidade(mapaGrande.querySelector("canvas").getContext("2d"), 640, { nomes: true }); }
     tHud -= dt;
-    if (tHud <= 0 && ((missoes.corrida?.estado === "ativa" && missoes.corrida.proxima > 0) || (missoes.escola?.estado === "ativa" && missoes.escola.sino > 0))) { tHud = 0.5; atualizarHud(); }
+    if (tHud <= 0 && ((missoes.corrida?.estado === "ativa" && missoes.corrida.proxima > 0) || (missoes.escola?.estado === "ativa" && missoes.escola.sino > 0) || missoes.exercicio?.fase === "correndo")) { tHud = 0.5; atualizarHud(); }
   }
   r3.render(cena, cam);
   requestAnimationFrame(quadro);
@@ -1807,5 +2135,8 @@ if (params.has("teste")) window.teste = {
   volante(acel, virar) { entradaTeste = acel == null ? null : { acel, virar }; },
   aceitar(id) { const M = missoes[id]; if (M.estado === "nova") { M.npc.ultima = -99; conversar(M.npc); } return M.estado; },
   mapaGrande: () => alternarMapaGrande(), bate: (x, z) => bate(x, z, 0.1),
+  get sala() { return sala?.id ?? null; }, get salas() { return salas; }, get transicao() { return transicao; }, get trava() { return trava; },
+  entrarSala(id) { const S = salas[id]; j.pos.set(S.porta.x, 0.03, S.porta.z); }, cam: () => cam, info: () => r3.info.render,
+  acaoJ2() { amigo.acaoNova = true; },
   levarCarro(i, x, z, ang) { const v = veiculos[i]; v.pos.set(x, 0.03, z); v.ang = ang; v.vel = 0; animarCarro(v, 0); if (dentro === v) j.pos.set(x, 0.03, z); },
 };
