@@ -39,26 +39,30 @@ ok(["a arma", "foi preso", "Roblox", "namorado"].every((s) => regras.some(({ re 
 
 // ---- missões
 const bib = MISSOES.filter((m) => m.tipo === "biblica"), cid = MISSOES.filter((m) => m.tipo === "cidadania");
-ok(bib.length === 8 && cid.length === 4 && MISSOES.length === 12, `12 missões: ${bib.length} bíblicas e ${cid.length} de cidadania`);
+ok(bib.length >= 9 && cid.length >= 11 && MISSOES.length === bib.length + cid.length, `${MISSOES.length} missões: ${bib.length} bíblicas e ${cid.length} de cidadania (as da Rabiscópolis vieram junto)`);
 ok(new Set(MISSOES.map((m) => m.id)).size === MISSOES.length, "ids das missões sem repetir");
 const semVerso = bib.filter((m) => !m.verso || !/^baseado em [1-3]?\s?[A-ZÁ-Ú][a-zá-ú]+ \d+\.\d+(-\d+)?$/.test(m.verso.ref) || m.verso.texto.length < 20);
 ok(semVerso.length === 0, `toda bíblica tem versículo em paráfrase com "baseado em Livro c.v"${semVerso.length ? ": falta em " + semVerso.map((m) => m.id).join(", ") : ""}`);
-const TIPOS = new Set(["lapis", "giz", "borracha", "cola", "regua", "caderno", "clipe", "apontador", "pincel", "vovo", "ovelha", "coelho", "piquenique"]);
-const ETAPAS = new Set(["falar", "pegar", "levar", "seguir", "plantar", "dirigir", "faixa"]);
+const TIPOS = new Set(["lapis", "giz", "borracha", "cola", "regua", "caderno", "clipe", "apontador", "pincel", "vovo", "ovelha", "coelho", "piquenique", "gato"]);
+const ETAPAS = new Set(["falar", "pegar", "levar", "seguir", "plantar", "dirigir", "faixa", "achar", "seguirVarios", "contar", "bandeiras", "levarVeiculo", "apagar", "pistas", "entregar", "voltar", "orar"]);
+const vozesUsadas = new Set();
 for (const m of MISSOES) {
   const ids = Object.keys(m.npcs);
   const ult = m.etapas.at(-1);
-  const destino = ult.ate;
+  const destino = ult.ate ?? ult.entregas?.at(-1)?.ate;
   const quemEspera = destino && m.npcs[destino];
   // quem espera no fim é uma pessoa/bichinho da missão que não é carregado: fica parado no destino e reage
   const carregado = m.etapas.some((e) => (e.quem ?? e.com ?? e.passageiro) === destino && e.tipo !== "falar");
   const erros = [];
   if (!quemEspera || carregado) erros.push("ninguém esperando no destino");
   if (!m.etapas.every((e) => ETAPAS.has(e.tipo))) erros.push("etapa desconhecida");
-  for (const e of m.etapas) for (const k of ["com", "ate", "quem", "passageiro"]) if (e[k] && !m.npcs[e[k]]) erros.push(`${k}=${e[k]} não existe`);
+  for (const e of m.etapas) for (const k of ["com", "ate", "quem", "passageiro", "bichos", "de"]) for (const id of [].concat(e[k] ?? [])) if (!m.npcs[id]) erros.push(`${k}=${id} não existe`);
+  for (const e of m.etapas) for (const en of e.entregas ?? []) { if (!m.npcs[en.ate]) erros.push(`entrega para ${en.ate} não existe`); if (!m.etapas.some((q) => q.itens?.some((it) => it.id === en.item))) erros.push(`item ${en.item} não é pego antes`); }
+  // falas gravadas reaproveitadas (cid-*): a chave precisa existir em assets/voz
+  for (const k of [m.voz?.pedido, m.voz?.fim, ...m.etapas.flatMap((e) => [e.voz, e.vozErro, e.vozCarregou, e.vozAPe, e.vozTodos, ...(e.pistas ?? []).map((q) => q.voz)])]) if (k) vozesUsadas.add(k);
   if (!ids.every((i) => TIPOS.has(m.npcs[i].tipo))) erros.push("tipo de personagem desconhecido");
   if (!m.pedido || !m.fim || !m.titulo || !m.icone) erros.push("falta texto");
-  const pontos = m.etapas.flatMap((e) => [...(e.itens ?? []), ...(e.pontos ?? [])]).concat(ids.map((i) => m.npcs[i]).filter((n) => n.tipo !== "vovo"));
+  const pontos = m.etapas.flatMap((e) => [...(e.itens ?? []).filter((it) => it.x != null), ...(e.pontos ?? []).map((q) => (Array.isArray(q) ? { x: q[0], z: q[1] } : q)), ...(e.pistas ?? []), ...(e.fogos ?? []).map(([x, z]) => ({ x, z }))]).concat(ids.map((i) => m.npcs[i]).filter((n) => n.tipo !== "vovo" && n.casa == null && !n.escola));
   if (pontos.some((p) => Math.abs(p.x) > 236 || Math.abs(p.z) > 236)) erros.push("ponto fora da cidade");
   ok(erros.length === 0, `missão ${m.icone} ${m.id}: ${erros.length ? erros.join("; ") : `termina com ${quemEspera.nome} esperando (${ult.tipo})`}`);
 }
@@ -66,7 +70,9 @@ for (const m of MISSOES) {
 // ---- vozes: toda fala rp-* (inclusive as das missões) tem o MP3
 const faltam = Object.keys(falas.pt).filter((k) => !existsSync(`${RAIZ}assets/voz/${k}.mp3`));
 ok(faltam.length === 0, `${Object.keys(falas.pt).length} falas rp-* com MP3${faltam.length ? " — faltam: " + faltam.join(", ") : ""}`);
-const chavesM = MISSOES.flatMap((m) => [`rp-m-${m.id}-pedido`, `rp-m-${m.id}-fim`, ...(m.verso ? [`rp-m-${m.id}-verso`] : [])]);
+const semMp3 = [...vozesUsadas].filter((k) => !existsSync(`${RAIZ}assets/voz/${k}.mp3`));
+ok(semMp3.length === 0, `${vozesUsadas.size} falas gravadas reaproveitadas (cid-*/rp-*) existem${semMp3.length ? " — faltam: " + semMp3.join(", ") : ""}`);
+const chavesM = MISSOES.flatMap((m) => [m.voz?.pedido ? null : `rp-m-${m.id}-pedido`, m.voz?.fim ? null : `rp-m-${m.id}-fim`, ...(m.verso ? [`rp-m-${m.id}-verso`] : [])]).filter(Boolean);
 ok(chavesM.every((k) => falas.pt[k]), `${chavesM.length} falas das missões no falas.json (pedido, fim e versículo)`);
 
 console.log(falhas ? `\n${falhas} falha(s)` : "\ntudo certo");

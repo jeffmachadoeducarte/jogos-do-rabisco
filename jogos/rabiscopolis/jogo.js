@@ -187,6 +187,11 @@ let emLugar = null, sorveteUI = null; const salas = {}; // lugares por dentro (F
 let solidosDentro = []; // colisões da sala/casa em que o Rabisco está
 let entradaTeste = null;
 let acaoJ2 = null; // balãozinho rosa: o que a ação do jogador 2 faz agora
+// idade da criança do cadastro (src/motor/familia.js); ?idade=N na URL vale para testar
+function idadeCrianca() {
+  if (params.has("idade")) return Number(params.get("idade"));
+  try { const i = window.Familia?.crianca?.()?.idade; return Number.isFinite(i) ? i : null; } catch { return null; }
+}
 const nomeCrianca = () => { try { return window.Familia?.crianca?.()?.nome || null; } catch { return null; } };
 
 function iniciar() {
@@ -232,6 +237,8 @@ function iniciar() {
     chamarCarro: () => chamarVeiculo("carro", 0x00b5f0),
     aoConcluir: () => { alvoMapa = null; },
     pos2: () => (j2?.aPe ? j2.pos : null),
+    // missões que vieram da Rabiscópolis: casas (quem espera na porta), idade (escola da criança), patinhos do lago
+    casas: () => mundo.casas, idade: idadeCrianca, patos: () => mundo.anima.patos, chaoHeli: (x, z) => fis.chaoHeli(x, z),
   });
 
   // HUD

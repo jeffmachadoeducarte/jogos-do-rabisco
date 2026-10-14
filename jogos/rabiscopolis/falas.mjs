@@ -52,6 +52,9 @@ export const FALAS_PT = {
   "rp-bombeiro-apagou": "Fogo de treino apagado! Bombeiro cuida de todo mundo.",
   "rp-mercado-caixa": "Bip, bip, bip! Obrigada pela compra.",
   "rp-livro-1": "O livro das cores. Vermelho como o morango, amarelo como o sol, azul como o céu e verde como a folha. Deus pintou o mundo com muitas cores!",
+  // missões que vieram da Rabiscópolis (o resto reaproveita as falas cid-* já gravadas)
+  "rp-corrida-pe": "A corrida é de carro! Chame um carro no Rabifone e passe por baixo da bandeira.",
+  "rp-remedio-heli": "Que bom que você veio! Mas a doutora pediu para vir de helicóptero: pouse aqui pertinho.",
   "rp-livro-2": "Os bichos da arca. O leão, a girafa, o elefante e o macaquinho entraram na arca de dois em dois. Noé cuidou de todos até a chuva passar.",
 };
 // quadros de versículo da casa (paráfrases para crianças, com a referência em que se baseiam)
@@ -61,9 +64,10 @@ const versos = [...fonteMoveis.matchAll(/\{ texto: "([^"]+)", ref: "([^"]+)" \}/
 versos.forEach(([, texto, ref], i) => { FALAS_PT[`rp-versiculo-${i + 1}`] = `${texto} ${ref.replace(/^baseado/, "Baseado")}.`; });
 // Fatia 5: missões (quem pede, quem recebe e, nas bíblicas, o versículo em paráfrase)
 const { MISSOES } = await import(`data:text/javascript,${encodeURIComponent(readFileSync(new URL("./missoes-dados.js", import.meta.url), "utf8"))}`);
+// (as missões que vieram da Rabiscópolis reaproveitam as falas gravadas cid-* quando o texto é o mesmo: voz.pedido/voz.fim)
 for (const m of MISSOES) {
-  FALAS_PT[`rp-m-${m.id}-pedido`] = m.pedido;
-  FALAS_PT[`rp-m-${m.id}-fim`] = m.fim;
+  if (!m.voz?.pedido) FALAS_PT[`rp-m-${m.id}-pedido`] = m.pedido;
+  if (!m.voz?.fim) FALAS_PT[`rp-m-${m.id}-fim`] = m.fim;
   if (m.verso) FALAS_PT[`rp-m-${m.id}-verso`] = `${m.verso.texto} ${m.verso.ref.replace(/^baseado/, "Baseado")}.`;
 }
 writeFileSync(new URL("./falas.json", import.meta.url), JSON.stringify({ pt: FALAS_PT }, null, 1) + "\n");

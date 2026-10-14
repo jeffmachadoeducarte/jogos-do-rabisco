@@ -33,7 +33,9 @@ const fps = (t) => t.ev(`new Promise((r) => { let n = 0; const t0 = performance.
 // Fatia 5: joga as 12 missões de ponta a ponta (quem pede, itens, quem segue, carona, faixa, quem espera reage)
 async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   const ev = (s) => t.ev(s);
-  const M = await ev("teste.missoes.MISSOES.map((m) => ({ id: m.id, quem: m.quem, npcs: m.npcs, etapas: m.etapas, tipo: m.tipo, titulo: m.titulo }))");
+  // SO_MISSOES=gatos,patos: só essas (para conferir rápido; sem a conta final de selos)
+  const so = process.env.SO_MISSOES?.split(",");
+  const M = (await ev("teste.missoes.MISSOES.map((m) => ({ id: m.id, quem: m.quem, npcs: m.npcs, etapas: m.etapas, tipo: m.tipo, titulo: m.titulo }))")).filter((m) => !so || so.includes(m.id));
   // longe: ninguém das missões montado nem visível na largada (orçamento)
   await ev("teste.ir(0, 33); teste.olhar(Math.PI)"); await espera(1200);
   const custo = await ev("(() => { const a = teste.medir().semSombra.calls; teste.missoes.grupo.visible = false; const b = teste.medir().semSombra.calls; teste.missoes.grupo.visible = true; return { com: a, sem: b, montados: teste.missoes.montados() }; })()");
@@ -42,6 +44,96 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   const acao = async () => { await ev("teste.acao()"); await espera(300); };
   const posNpc = (mid, id) => ev(`teste.missoes.npc('${mid}', '${id}')`);
   const fotoPerto = async (nome, x, z, ang = 0.6, dist = 7, alt = 3.4, ay = 1) => { if (!fotos) return; await ev(`teste.vista([${x} + Math.sin(${ang}) * ${dist}, ${alt}, ${z} + Math.cos(${ang}) * ${dist}], [${x}, ${ay}, ${z}])`); await espera(900); await t.foto(`${FOTOS}missao-${nome}.png`); await ev("teste.vista(null)"); };
+  const info = () => ev("teste.missoes.etapaInfo()");
+  const balao = () => ev("document.querySelector('.balao-rp').textContent");
+  const esperaEtapa = async (m, e) => { for (let k = 0; k < 40 && (await ev(`teste.missoes.ativa === '${m.id}' && teste.missoes.etapa === ${e}`)); k++) await espera(250); };
+  const foto = async (nome, x, z, ang = 0.7, dist = 9, alt = 5, ay = 1) => fotos && fotoPerto(nome, x, z, ang, dist, alt, ay);
+  const veiculo = async (tipo) => { await ev(`teste.garagem('${tipo}')`); await espera(300); const iv = await ev(`teste.veiculos.length - 1`); await ev(`teste.entrar(${iv})`); await espera(300); return iv; };
+  // etapas que vieram da Rabiscópolis
+  async function etapaNova(m, E, e) {
+    if (E.tipo === "achar" || E.tipo === "seguirVarios") {
+      for (const id of E.bichos ?? E.quem) {
+        const n = await posNpc(m.id, id); await perto(n.x, n.z, 1.0, 1.0);
+        const c = await ev("teste.contexto"); await acao();
+        ok((await info()).juntos.includes(id), `${m.id}: ${E.tipo === "achar" ? "achou" : "convidou"} ${m.npcs[id].nome} ("${c}")`);
+      }
+      // anda até um lugar aberto perto de quem espera (a ~14 m): a fila vem atrás
+      const d0 = await posNpc(m.id, E.ate), p = { x: d0.x - 14, z: d0.z - 1.5 };
+      await ev(`teste.ir(${p.x}, ${p.z})`); await espera(1500);
+      const fila = await ev(`teste.missoes.etapaInfo().fila.map((id) => teste.missoes.npc('${m.id}', id)).map((n) => Math.hypot(n.x - teste.j.pos.x, n.z - teste.j.pos.z))`);
+      ok(fila.length === (E.bichos ?? E.quem).length && fila.every((d) => d < 6), `${m.id}: a fila vem atrás do Rabisco (${fila.map((d) => d.toFixed(1)).join(", ")} m)`);
+      await foto(`f1-${m.id}-fila`, p.x, p.z, 2.0, 7, 3.5);
+      const d = await posNpc(m.id, E.ate); await ev(`teste.ir(${d.x + 1.6}, ${d.z + 1.4})`); await esperaEtapa(m, e);
+    } else if (E.tipo === "contar") {
+      const i = await info();
+      ok(i.patosVisiveis === i.n && i.placas.length === 3, `patos: ${i.n} patinhos nadando e placas ${i.placas.map((q) => q.n).join(", ")}`);
+      await foto("f1-patos-placas", i.placas[1].x, i.placas[1].z + 4, 0.15, 13, 7, 0.5);
+      const errada = i.placas.find((q) => q.n !== i.n), certa = i.placas.find((q) => q.n === i.n);
+      await ev(`teste.ir(${errada.x}, ${errada.z})`); await espera(700);
+      ok(await ev(`teste.missoes.ativa === 'patos'`) && /conte de novo/i.test(await balao()), `patos: pisar no ${errada.n} só dá dica ("${(await balao()).slice(0, 60)}")`);
+      await ev(`teste.ir(${errada.x}, ${errada.z + 3})`); await espera(300);
+      await ev(`teste.ir(${certa.x}, ${certa.z})`); await esperaEtapa(m, e);
+    } else if (E.tipo === "bandeiras") {
+      const [x0, z0] = E.pontos[0];
+      await ev(`teste.ir(${x0}, ${z0 - 7})`); await espera(700);
+      ok(/de carro/.test(await balao()), `corrida: a pé perto da bandeira 1 avisa que é de carro ("${(await balao()).slice(0, 50)}")`);
+      const iv = await veiculo("carro");
+      await foto("f1-corrida-portico", x0, z0, 2.2, 14, 6, 3);
+      for (const [k, [x, z]] of E.pontos.entries()) { await ev(`teste.posVeiculo(${iv}, ${x}, ${z}, 0)`); await espera(450); ok((await info()).prox === k + 1 || !(await ev(`teste.missoes.ativa === 'corrida'`)), `corrida: passou pela bandeira ${k + 1}`); }
+      await esperaEtapa(m, e); await ev("teste.sair()");
+    } else if (E.tipo === "levarVeiculo") {
+      const dest = await posNpc(m.id, E.ate);
+      if (E.de) {
+        const n = await posNpc(m.id, E.de); await perto(n.x, n.z, 1.4, 1.4); await espera(400);
+        ok(/pesada|carro/i.test(await balao()), `${m.id}: a pé, ${m.npcs[E.de].nome} pede para vir de carro ("${(await balao()).slice(0, 50)}")`);
+        const iv = await veiculo("carro");
+        await ev(`teste.posVeiculo(${iv}, ${n.x + 4}, ${n.z + 2}, Math.PI / 2)`); await espera(600);
+        ok((await info()).carregado, `${m.id}: a caixa foi para o porta-malas`);
+        await foto(`f1-${m.id}-porta-malas`, n.x + 4, n.z + 2, 0.5, 7, 4, 1);
+        await ev(`teste.posVeiculo(${iv}, ${dest.x + 2}, ${dest.z - 6}, 0)`); await esperaEtapa(m, e); await ev("teste.sair()");
+      } else {
+        const ih = await ev("teste.veiculos.findIndex((v) => v.tipo === 'heli')");
+        await ev(`teste.entrar(${ih})`); await espera(300);
+        // chega voando (ainda no alto: não conta), foto, e pousa
+        await ev(`teste.posVeiculo(${ih}, ${dest.x + 3}, ${dest.z - 8}, 0); teste.veiculos[${ih}].alt = teste.chaoHeli(${dest.x + 3}, ${dest.z - 8}) + 5; teste.voar(true)`); await espera(400);
+        ok(await ev(`teste.missoes.ativa === '${m.id}'`), `${m.id}: voando por cima ainda não entrega (precisa pousar)`);
+        await foto(`f1-${m.id}-voando`, dest.x + 3, dest.z - 8, 0.9, 14, 9, 4);
+        await ev(`teste.voar(false, true)`); await esperaEtapa(m, e); await ev("teste.volante(null)");
+        await esperaEtapa(m, e); await ev("teste.sair()");
+      }
+    } else if (E.tipo === "apagar") {
+      const fs = (await info()).fogos;
+      for (const [k, f] of fs.entries()) {
+        await perto(f.x, f.z, 1.6, 1.4);
+        if (k === 0) await foto("f1-fogo-lixeira", f.x, f.z, 4.4, 6, 3, 1);
+        await acao(); await espera(500);
+        if (k === 0) await foto("f1-fogo-agua", f.x, f.z, 4.4, 6, 3, 1);
+        await espera(1200);
+        if (k < fs.length - 1) ok((await info()).fogos[k].apagado, `fogo: apagou o foguinho ${k + 1}`);
+      }
+      await esperaEtapa(m, e);
+    } else if (E.tipo === "pistas") {
+      for (let k = 0; k < E.pistas.length; k++) {
+        const b = (await info()).bau; if (!b) break;
+        await perto(b.x, b.z, 1.2, 1.2);
+        if (k === 0) await foto("f1-tesouro-bau", b.x, b.z, 0.6, 5, 2.6, 0.6);
+        const c = await ev("teste.contexto"); await acao(); await espera(k === E.pistas.length - 1 ? 2600 : 2000);
+        ok(c?.includes("baú"), `tesouro: abriu o baú ${k + 1} ("${c}")`);
+      }
+      await esperaEtapa(m, e);
+    } else if (E.tipo === "entregar") {
+      for (const en of E.entregas) {
+        const n = await posNpc(m.id, en.ate); await perto(n.x, n.z, 1.2, -1.2);
+        const c = await ev("teste.contexto"); await acao();
+        ok(c?.includes("Entregar"), `${m.id}: entregou ${en.item} para ${m.npcs[en.ate].nome} ("${c}")`);
+        if (en === E.entregas[0]) await foto(`f1-${m.id}-caixinha`, n.x, n.z, 0.5, 6, 3, 1);
+      }
+      await esperaEtapa(m, e);
+    } else if (E.tipo === "voltar") {
+      const n = await posNpc(m.id, E.ate); await perto(n.x, n.z); const c = await ev("teste.contexto"); await acao();
+      ok(c?.includes("Contar"), `${m.id}: voltou e contou para ${m.npcs[E.ate].nome} ("${c}")`);
+    } else ok(false, `${m.id}: etapa ${E.tipo} sem teste`);
+  }
   for (const m of M) {
     const q = await posNpc(m.id, m.quem);
     await perto(q.x, q.z);
@@ -100,22 +192,24 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
         for (let k = 0; k < 20 && (await ev(`teste.missoes.ativa === 'amigos'`)); k++) await espera(250);
         await ev("teste.sair()");
       }
+      else await etapaNova(m, E, e);
     }
     const feita = await ev(`teste.missoes.feitas.includes('${m.id}') && teste.missoes.ativa === null`);
-    const dest = m.etapas.at(-1).ate;
+    const dest = m.etapas.at(-1).ate ?? m.etapas.at(-1).entregas.at(-1).ate;
     const nd = await posNpc(m.id, dest);
     ok(feita && (nd.festa > 0 || m.id === "amigos"), `${m.id}: concluída — ${m.npcs[dest].nome} reagiu (festa ${nd.festa.toFixed(1)} s) e o selo foi para o Passaporte`);
     await espera(250);
     await fotoPerto(`${m.id}-fim`, nd.x, nd.z, { lanche: Math.PI * 0.9, noe: 2.2 }[m.id] ?? 0.7, m.id === "noe" ? 9 : 6.5, 3);
     if (m.id === "ovelha") { await espera(5200); const b = await ev("document.querySelector('.balao-rp').textContent"); ok(/baseado em Lucas 15/.test(b), `ovelha: depois aparece o versículo "${b.slice(0, 90)}…"`); }
   }
+  if (so) return;
   const salvo = await ev("teste.salvo");
-  ok(salvo.missoesFeitas.length === 12 && salvo.selos.length === 12, `12 missões feitas e 12 selos guardados (${salvo.missoesFeitas.length}/${salvo.selos.length})`);
+  ok(salvo.missoesFeitas.length === M.length && salvo.selos.length === M.length, `${M.length} missões feitas e ${M.length} selos guardados (${salvo.missoesFeitas.length}/${salvo.selos.length})`);
   // Passaporte no Rabifone
   await ev("teste.ir(0, 33); teste.fone.abrir()"); await espera(300);
   await ev("[...document.querySelectorAll('.rf-app')].find((b) => b.textContent.includes('Passaporte')).click()"); await espera(400);
   const pas = await ev("({ n: document.querySelectorAll('.rf-item-missao').length, selos: document.querySelectorAll('.rf-selo.feito').length, txt: document.querySelector('.rf-tela p')?.textContent })");
-  ok(pas.n === 12 && pas.selos === 12, `Passaporte: ${pas.n} missões, ${pas.selos} selos ("${pas.txt}")`);
+  ok(pas.n === M.length && pas.selos === M.length, `Passaporte: ${pas.n} missões, ${pas.selos} selos ("${pas.txt}")`);
   if (fotos) await t.foto(`${FOTOS}missao-passaporte.png`);
   await ev("teste.fone.fechar()");
   // largar e voltar: de novo a ovelha, larga no meio, ela volta para o parque
@@ -138,6 +232,7 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   await t.cmd("Page.navigate", { url: `${URL_JOGO}?teste&jogar&fixo` });
   ok(await ate(t, "!!window.teste?.vivo && !!teste.mundo"), "carregou e começou (1280 × 720)");
   await espera(3000);
+  if (process.env.SO_MISSOES) { await testarMissoes(t, { ok, espera, FOTOS }); ok(!errosDeVerdade(t).length, `sem erro de console ${errosDeVerdade(t).slice(0, 4).join(" ; ")}`); await t.fechar(); console.log(falhas ? `\n${falhas} falha(s)` : "\ntudo certo"); process.exit(falhas ? 1 : 0); }
   const est = await t.ev("teste.estat");
   const q = await fps(t);
   console.log(`  desempenho na largada (praça, 9 blocos): ${est.calls} chamadas de desenho, ${Math.round(est.tris / 1000)} mil triângulos, ${est.malhas} malhas mescladas, FPS headless (swiftshader) ${q}`);
@@ -566,6 +661,8 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   o = await olhar();
   ok(!PEDIDO.test(o.txt), "(h) depois de dirigir, nenhum pedido de controle/QR");
   // missão pelo toque: na praça não custa nada; perto do Pastor Lápis o botão ✋ mostra a missão e aceita
+  // (vai primeiro para a praça e espera uns quadros: quem estava à vista no heliponto some de longe)
+  await t.ev("teste.ir(0, 33); teste.olhar(Math.PI)"); await espera(800);
   const custoM = await t.ev("(() => { teste.ir(0, 33); teste.olhar(Math.PI); const a = teste.medir().semSombra.calls; teste.missoes.grupo.visible = false; const b = teste.medir().semSombra.calls; teste.missoes.grupo.visible = true; return [b, a]; })()");
   ok(custoM[1] - custoM[0] <= 0, `celular: na praça as missões não custam chamadas de desenho (${custoM[0]} → ${custoM[1]})`);
   await t.ev("(() => { const n = teste.missoes.npc('ovelha', 'pastor'); teste.ir(n.x + 1.4, n.z + 1.2); })()"); await espera(900);

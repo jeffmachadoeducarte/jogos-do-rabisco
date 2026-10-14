@@ -10,8 +10,26 @@
 //   { tipo: "plantar", pontos: [{ x, z }] }                    — plantar a semente em cada ponto (ação)
 //   { tipo: "dirigir", passageiro: npcId, ate: npcId }         — levar o amigo de carro (ele entra como carona)
 //   { tipo: "faixa", com: npcId, ate: npcId, semaforo: [x, z] } — atravessar juntos na faixa com o bonequinho verde
-// npcs: { id: { nome, tipo, cor, x, z, rot?, acessorio? } } — tipo de personagens.js (lapis, giz, borracha...);
-// o primeiro da lista é quem pede (com um "!" em cima). Só aparecem perto do Rabisco (orçamento de desenho).
+// Etapas que vieram da Rabiscópolis (a cidade antiga, que agora mora aqui):
+//   { tipo: "achar", bichos: [npcId], ate, rotulo, fala, voz }   — achar cada bichinho escondido (ação); quem foi achado
+//                                                                  vem atrás do Rabisco em fila até quem espera
+//   { tipo: "seguirVarios", quem: [npcId], ate, rotulo, fala, voz, falaTodos, vozTodos } — convidar cada amigo (ação);
+//                                                                  eles vêm em fila (de carro, vão de carona)
+//   { tipo: "contar", ate, min, max }                          — contar os patinhos do lago e pisar na placa do número
+//   { tipo: "bandeiras", pontos: [[x, z, giro]], ate }         — de carro, passar pelos pórticos na ordem (cronômetro só
+//                                                                  para mostrar: não tem tempo para perder)
+//   { tipo: "levarVeiculo", de?, carga, veiculos, ate, pousar? } — carga grande no porta-malas (ou o remédio no
+//                                                                  helicóptero): só chega de veículo, parando perto
+//   { tipo: "apagar", fogos: [[x, z]] }                        — apagar foguinhos de lixeira com água (ação ou o jato do
+//                                                                  caminhão de bombeiro)
+//   { tipo: "pistas", pistas: [{ x, z, texto, voz }] }         — caça ao tesouro: um baú por vez; cada um dá a pista
+//   { tipo: "entregar", entregas: [{ item, ate }] }            — cada carta (item pego antes) para quem tem a caixinha da cor
+//   { tipo: "voltar", ate }                                    — voltar e contar para quem pediu (ele comemora)
+// npcs: { id: { nome, tipo, cor, x, z, rot?, acessorio?, escala?, casa?: n, escola?: [dx, dz], caixa?: cor } } — tipo de
+// personagens.js (lapis, giz, borracha...) ou bichinho (ovelha, coelho, gato); casa: na porta da casa n (posição na hora);
+// escola: na porta da Educarte da idade da criança (Kids I até 4 anos, senão Kids II), deslocado [dx, dz];
+// caixa: caixinha de correio dessa cor ao lado. O primeiro da lista é quem pede (com um "!" em cima).
+// Só aparecem perto do Rabisco (orçamento de desenho). voz: { pedido?, fim? } reaproveita falas gravadas (cid-*).
 
 export const MISSOES = [
   {
@@ -83,11 +101,19 @@ export const MISSOES = [
   },
   // ---- cidadania
   {
-    id: "carta", titulo: "Uma carta para a Vovó", icone: "✉️", tipo: "cidadania",
-    npcs: { carteiro: { nome: "Carteiro Caderno", tipo: "caderno", cor: 0xffcc1f, x: 190, z: 58 }, vovo: { nome: "Vovó Lápis", tipo: "vovo", x: 0, z: 0 } },
-    pedido: "Chegou uma carta para a Vovó Lápis! Você pode entregar?",
-    etapas: [{ tipo: "pegar", itens: [{ id: "carta", nome: "carta", emoji: "✉️", x: 193, z: 58 }] }, { tipo: "levar", ate: "vovo" }],
-    fim: "Uma carta do meu neto! Que alegria. Obrigada, carteiro ajudante!",
+    id: "carta", titulo: "Cartas coloridas", icone: "✉️", tipo: "cidadania",
+    npcs: {
+      carteiro: { nome: "Carteiro Caderno", tipo: "caderno", cor: 0xffcc1f, x: 190, z: 58 },
+      rosa: { nome: "Dona Borracha", tipo: "borracha", casa: 1, caixa: 0xff6fae },
+      azul: { nome: "Seu Apontador Azul", tipo: "apontador", cor: 0x3d9af0, casa: 2, caixa: 0x3d9af0 },
+      vovo: { nome: "Vovó Lápis", tipo: "vovo", x: 0, z: 0, caixa: 0xa98ce0 },
+    },
+    pedido: "Chegaram três cartas coloridas: a rosa, a azul e a lilás! Cada uma vai para a caixinha de correio da mesma cor, no Bairro das Casas.",
+    etapas: [
+      { tipo: "pegar", itens: [{ id: "c-rosa", nome: "carta rosa", emoji: "✉️", cor: 0xff6fae, x: 193, z: 57 }, { id: "c-azul", nome: "carta azul", emoji: "✉️", cor: 0x3d9af0, x: 195, z: 57 }, { id: "c-lilas", nome: "carta lilás", emoji: "✉️", cor: 0xa98ce0, x: 197, z: 57 }] },
+      { tipo: "entregar", entregas: [{ item: "c-rosa", ate: "rosa" }, { item: "c-azul", ate: "azul" }, { item: "c-lilas", ate: "vovo" }], fala: "Carta entregue! Era a caixinha da cor certa.", voz: "cid-carta-ok" },
+    ],
+    fim: "Que alegria receber carta! Obrigado, carteiro ajudante!",
   },
   {
     id: "lixo", titulo: "Parque limpinho", icone: "🗑️", tipo: "cidadania",
@@ -109,6 +135,92 @@ export const MISSOES = [
     pedido: "A professora da Educarte Kids II pediu este livro emprestado. Você leva para ela?",
     etapas: [{ tipo: "pegar", itens: [{ id: "livro", nome: "livro", emoji: "📕", x: 8, z: -57 }] }, { tipo: "levar", ate: "professora" }],
     fim: "Era esse livro mesmo! A turma vai adorar a história. Obrigada!",
+  },
+  // ---- vieram da Rabiscópolis
+  {
+    id: "gatos", titulo: "Os gatinhos fujões", icone: "🐱", tipo: "cidadania", voz: { pedido: "cid-gatos" },
+    npcs: {
+      rosa: { nome: "Lápis Rosa", tipo: "lapis", cor: 0xec2e8c, x: -20, z: -41, acessorio: "laco" },
+      g1: { nome: "Gatinho Laranja", tipo: "gato", cor: 0xff9f43, x: -6, z: -40 },
+      g2: { nome: "Gatinho Cinza", tipo: "gato", cor: 0x9a9aa6, x: 22, z: 90 },
+      g3: { nome: "Gatinho Branco", tipo: "gato", cor: 0xfdfdfd, x: -41, z: -67 },
+    },
+    pedido: "Meus três gatinhos fugiram! Um foi para trás da Igreja Reviver, outro para o parque e outro para perto do hospital.",
+    etapas: [{ tipo: "achar", bichos: ["g1", "g2", "g3"], ate: "rosa", rotulo: "🐱 Achar o gatinho", fala: "Achei um gatinho! Miau!", voz: "cid-gato-ok" }],
+    fim: "Meus três gatinhos voltaram! Obrigada por procurar com tanto carinho.",
+  },
+  {
+    id: "tesouro", titulo: "Caça ao tesouro", icone: "🗝️", tipo: "biblica", voz: { pedido: "cid-tesouro" },
+    npcs: { professora: { nome: "Professora Lápis Roxa", tipo: "lapis", cor: 0x8e6cff, x: -8, z: -57, acessorio: "oculos" } },
+    pedido: "Vamos fazer uma caça ao tesouro? Primeira pista: procure onde o sino toca e a gente agradece a Deus!",
+    etapas: [
+      { tipo: "pistas", pistas: [
+        { x: -9, z: -14 },
+        { x: 5.5, z: 3.5, texto: "Achou! Próxima pista: onde a água dança no meio da cidade.", voz: "cid-pista-2" },
+        { x: -20, z: 80, texto: "Muito bem! Agora vá ao playground, onde tem balanço e escorregador.", voz: "cid-pista-3" },
+        { x: 100, z: -6.5, texto: "Quase lá! A última pista: onde se faz o pão quentinho.", voz: "cid-pista-4" },
+      ], achou: "Você achou o tesouro: um livro de histórias da Bíblia! Leve para a Professora Lápis Roxa, na Biblioteca." },
+      { tipo: "levar", ate: "professora" },
+    ],
+    fim: "Que tesouro lindo! Mas o maior tesouro de todos é o amor de Deus.",
+    verso: { texto: "O amor de Deus vale mais do que qualquer tesouro escondido.", ref: "baseado em Mateus 13.44" },
+  },
+  {
+    id: "patos", titulo: "Quantos patinhos?", icone: "🦆", tipo: "cidadania", voz: { pedido: "cid-patos", fim: "cid-patos-ok" },
+    npcs: { dona: { nome: "Dona Lápis Azul", tipo: "lapis", cor: 0x00b5f0, x: -8, z: 96, acessorio: "chapeu" } },
+    pedido: "Quantos patinhos estão nadando no lago? Conte bem e pise no número certo!",
+    etapas: [{ tipo: "contar", ate: "dona", min: 3, max: 5, erro: "Hmm, conte de novo, devagarinho.", vozErro: "cid-patos-erro" }],
+    fim: "Isso mesmo! Em inglês, pato é duck! Quack, quack!",
+  },
+  {
+    id: "encomenda", titulo: "A caixa de frutas", icone: "📦", tipo: "cidadania", voz: { pedido: "cid-encomenda", fim: "cid-encomenda-ok" },
+    npcs: { feirante: { nome: "Seu Lápis Marrom, o feirante", tipo: "lapis", cor: 0x9a6232, x: 78, z: -7.5, acessorio: "chapeu" }, vovo: { nome: "Vovó Lápis", tipo: "vovo", x: 0, z: 0 } },
+    pedido: "Esta caixa de frutas é grande demais para levar a pé! Venha de carro e leve para a casa da Vovó Lápis.",
+    etapas: [{ tipo: "levarVeiculo", de: "feirante", carga: { nome: "caixa de frutas", emoji: "📦", modelo: "frutas" }, veiculos: "porta-malas", ate: "vovo",
+      carregou: "A caixa de frutas está no carro! Agora, para a casa da Vovó.", vozCarregou: "cid-caixa-carro", aPe: "A caixa é pesada! Volte aqui de carro.", vozAPe: "cid-caixa-pe" }],
+    fim: "Obrigada, Rabisco! Cinco laranjas e três bananas! Deus abençoe você!",
+  },
+  {
+    id: "corrida", titulo: "Corrida dos números", icone: "🏁", tipo: "cidadania", voz: { pedido: "cid-corrida", fim: "cid-corrida-ok" },
+    npcs: { piloto: { nome: "Lápis Verde, a piloto", tipo: "lapis", cor: 0x2bb24c, x: 70, z: 42, acessorio: "bone" } },
+    pedido: "Oi, Rabisco! Pegue o carro e passe pelas bandeiras na ordem: 1, 2, 3, 4 e 5! O relógio começa na bandeira 1.",
+    etapas: [{ tipo: "bandeiras", pontos: [[100, 50, 1], [140, 15, 0], [95, 0, 1], [50, 20, 0], [62, 50, 1]], ate: "piloto" }],
+    fim: "Que corrida! Você passou por todas as bandeiras!",
+  },
+  {
+    id: "fogo", titulo: "Bombeiros na rua", icone: "🚒", tipo: "cidadania", voz: { pedido: "cid-bombeiro", fim: "cid-bombeiro-ok" },
+    npcs: { capitao: { nome: "Capitão Lápis Vermelho", tipo: "lapis", cor: 0xe63946, x: 37, z: -57.5, acessorio: "capacete" } },
+    pedido: "Socorro! Tem quatro foguinhos na cidade. Chegue pertinho e aperte o botão da água!",
+    etapas: [
+      { tipo: "apagar", fogos: [[-57, -25], [57, -30], [-100, -42.5], [100, 43]], fala: "Fogo apagado!", voz: "cid-fogo-ok" },
+      { tipo: "voltar", ate: "capitao" },
+    ],
+    fim: "A cidade está segura! Obrigado, Deus, por cuidar de nós!",
+  },
+  {
+    id: "escola", titulo: "Hora da Aula", icone: "🎒", tipo: "cidadania", voz: { pedido: "cid-professora", fim: "cid-escola-ok" },
+    npcs: {
+      professora: { nome: "Professora Lápis Turquesa", tipo: "lapis", cor: 0x2ec4b6, escola: [7, 1.5], acessorio: "oculos" },
+      mamae: { nome: "Mamãe Lápis Azul", tipo: "lapis", cor: 0x3d7ad9, casa: 2, lado: -1.6, acessorio: "laco" },
+      aluno: { nome: "Lápis Azulzinho", tipo: "lapis", cor: 0x3d7ad9, escola: [4, 1.5], escala: 0.6, acessorio: "bone" },
+    },
+    pedido: "Oi, Rabisco! O sino da aula já vai tocar e o Lápis Azulzinho esqueceu a mochila em casa! Busque a mochila azul na casa azul, a de número dois, e traga para ele aqui na porta da escola!",
+    etapas: [
+      { tipo: "pegar", itens: [{ id: "mochila", nome: "mochila azul", emoji: "🎒", casa: 2 }], fala: "A mochila azul! Obrigada, Rabisco! Agora corra para a escola!", voz: "cid-mochila", quemFala: "mamae" },
+      { tipo: "levar", ate: "aluno" },
+    ],
+    fim: "Minha mochila! Obrigado, Rabisco! Hoje a aula é das letras: A, B, C!",
+  },
+  {
+    id: "remedio", titulo: "Remédio de helicóptero", icone: "🚁", tipo: "cidadania", voz: { fim: "cid-remedio-ok" },
+    npcs: { doutora: { nome: "Doutora Lápis Branca", tipo: "lapis", cor: 0xf4f4f4, x: 17.8, z: -186, acessorio: "oculos" }, vovo: { nome: "Vovó Lápis", tipo: "vovo", x: 0, z: 0 } },
+    pedido: "Oi, Rabisco! A Vovó Lápis precisa do remédio dela! Pegue a maleta, suba no helicóptero aqui do heliponto e pouse pertinho da casa dela, no Bairro das Casas.",
+    etapas: [
+      { tipo: "pegar", itens: [{ id: "maleta", nome: "maleta do remédio", emoji: "💊", x: 19.6, z: -184.6 }] },
+      { tipo: "levarVeiculo", carga: { nome: "maleta do remédio", emoji: "💊" }, veiculos: ["heli"], ate: "vovo", pousar: true,
+        aPe: "Que bom que você veio! Mas a doutora pediu para vir de helicóptero: pouse aqui pertinho.", vozAPe: "rp-remedio-heli" },
+    ],
+    fim: "Meu remédio! Obrigada, Rabisco! Que voo lindo! Deus cuida de nós com tanto carinho.",
   },
 ];
 // palavras que não podem aparecer em nada que a criança vê ou ouve (teste rabiscopolis-conteudo.mjs)

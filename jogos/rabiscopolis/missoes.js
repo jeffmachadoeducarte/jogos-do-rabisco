@@ -12,10 +12,13 @@
 import { THREE, mat, malha, caixaRedonda, texturaCanvas, arvoreReal, mesclar } from "./base3d.js";
 import { criarMorador } from "./personagens.js";
 import { MISSOES } from "./missoes-dados.js";
+import { lugar } from "./mapa.js";
+import { gatinho, bau, foguinho, portico, placaNumero, caixaFrutas, caixaCorreio, texturaEnvelope } from "./missoes-objetos.js";
 
 // figurinha redonda com emoji (itens, buraquinhos da horta)
 const texEmoji = new Map();
-function spriteEmoji(emoji, escala = 1.2) {
+function spriteEmoji(emoji, escala = 1.2, cor = null) {
+  if (cor != null) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaEnvelope(cor) })); s.scale.setScalar(escala); return s; }
   if (!texEmoji.has(emoji)) texEmoji.set(emoji, texturaCanvas(128, 128, (c, w, h) => {
     c.clearRect(0, 0, w, h);
     c.fillStyle = "#ffffff"; c.beginPath(); c.arc(64, 64, 56, 0, 7); c.fill(); c.lineWidth = 8; c.strokeStyle = "#151515"; c.stroke();
@@ -82,13 +85,33 @@ function bichinho(tipo) {
   return g;
 }
 
+// quem fica na porta de uma casa (casa: n) ou da Educarte da idade da criança (escola: [dx, dz]) ganha a posição na hora
+// (as casas vêm de mundo.js; a idade, do cadastro ou de ?idade=N). Também os itens com casa: n.
+export function escolaDaIdade(idade) { return idade != null && idade <= 4 ? "kids1" : "kids2"; }
+function posicionarNaCidade(ctx) {
+  const casas = ctx.casas?.() ?? [];
+  const naCasa = (o, lado = 1.6) => { const c = casas.find((k) => k.lote.numero === o.casa); if (!c) return; o.x = c.porta[0] + lado; o.z = c.porta[1] - 0.6 * c.lote.dir[1]; o.rot = c.lote.rot; };
+  const esc = lugar(escolaDaIdade(ctx.idade?.() ?? null));
+  for (const M of MISSOES) {
+    for (const d of Object.values(M.npcs)) {
+      if (d.casa != null) naCasa(d, d.lado ?? 1.6);
+      if (d.escola && esc) { d.x = esc.x + d.escola[0]; d.z = esc.z + d.escola[1]; d.rot = esc.rot; }
+    }
+    for (const E of M.etapas) for (const it of E.itens ?? []) if (it.casa != null) { naCasa(it, 0); it.z += casas.find((k) => k.lote.numero === it.casa)?.lote.dir[1] * 1.2 || 0; }
+  }
+}
 export function criarMissoes(ctx) {
   const { cena, falar, dizer, sons, salvo, salvar, pos, rabisco, vovo, veiculoAtual, raio } = ctx;
+  posicionarNaCidade(ctx);
   const grupo = new THREE.Group(); grupo.name = "missoes"; cena.add(grupo);
   const npcs = new Map(); // `${missao}:${id}` → { m (morador) | bicho, g, extras, marca, dados, M, quem }
   const itens = []; // { missao, id, sprite, x, z, pego }
   const plantas = []; // { missao, x, z, sprite, broto, feito }
   let ativa = null, etapa = 0, levando = [], carona = null, aviso = 0, tChecar = 0;
+  let ultimoReceptor = null; // nas entregas em qualquer ordem, quem recebeu por último diz o "fim"
+  let est = {}; // estado da etapa atual (etapas que vieram da Rabiscópolis)
+  const fila = []; // quem vem atrás do Rabisco em fila (gatinhos achados, amigos convidados)
+  const gotas = []; // água do bombeiro (bolinhas azuis)
   const feitas = new Set(salvo.missoesFeitas ?? []);
   const sobreCabeca = new THREE.Group(); // o que o Rabisco carrega (fica em cima da cabeça)
   rabisco.grupo.add(sobreCabeca); sobreCabeca.position.y = 2.35 / (rabisco.grupo.scale.y || 1);
@@ -100,15 +123,15 @@ export function criarMissoes(ctx) {
     const d = M.npcs[id];
     const n = { dados: d, M, id, quem: id === M.quem, festa: 0 };
     if (d.tipo === "vovo") Object.assign(n, { m: vovo, g: vovo.grupo, fixo: true });
-    else if (["ovelha", "coelho", "piquenique"].includes(d.tipo)) {
-      n.g = bichinho(d.tipo); n.bicho = true; n.g.position.set(d.x, 0.03, d.z); n.g.rotation.y = d.rot ?? Math.PI;
+    else if (["ovelha", "coelho", "piquenique", "gato"].includes(d.tipo)) {
+      n.g = d.tipo === "gato" ? gatinho(d.cor) : bichinho(d.tipo); n.bicho = true; n.g.position.set(d.x, 0.03, d.z); n.g.rotation.y = d.rot ?? Math.PI;
       if (d.tipo === "piquenique") {
         n.amigos = [criarMorador("lapis", { cor: 0xec2e8c, semente: 20 }), criarMorador("giz", { cor: 0x00b5f0, semente: 21 }), criarMorador("cola", { semente: 22 })];
         n.amigos.forEach((a, i) => { a.grupo.position.set(-1.3 + i * 1.3, 0.04, -1.7); n.g.add(a.grupo); });
       }
       grupo.add(n.g);
     } else {
-      const m = criarMorador(d.tipo, { cor: d.cor ?? 0xec2e8c, nome: d.nome, semente: d.nome.length + 3 });
+      const m = criarMorador(d.tipo, { cor: d.cor ?? 0xec2e8c, nome: d.nome, semente: d.nome.length + 3, escala: d.escala ?? 0.78, acessorio: d.acessorio });
       m.grupo.position.set(d.x, d.naArvore ? 2.45 : 0.07, d.z); m.grupo.rotation.y = d.rot ?? 0;
       grupo.add(m.grupo);
       Object.assign(n, { m, g: m.grupo });
@@ -121,6 +144,13 @@ export function criarMissoes(ctx) {
         const b = malha(new THREE.SphereGeometry(0.22, 12, 8), mat(0xf4f4f4), { contorno: 0.03, sombra: false }); b.scale.set(1.1, 1, 0.55);
         b.position.set(0, (m.altura / 0.78) * 0.47, 0.34); m.grupo.children[0].add(b);
       }
+    }
+    // caixinha de correio da cor da carta, do lado de quem recebe
+    if (d.caixa != null) {
+      n.extras = new THREE.Group(); grupo.add(n.extras);
+      const cx = caixaCorreio(d.caixa), [px, pz] = d.tipo === "vovo" ? [vovo.grupo.position.x, vovo.grupo.position.z] : [d.x, d.z];
+      cx.position.set(px - 1.1, 0.03, pz); n.extras.add(cx);
+      n.casaExtras = [px, pz];
     }
     // o que fica em volta (não se mexe): a árvore do Zaqueu, a arca do Noé
     if (d.naArvore || d.acessorio === "barba") {
@@ -138,7 +168,7 @@ export function criarMissoes(ctx) {
       n.marca = new THREE.Sprite(new THREE.SpriteMaterial({ map: marcaTex(), depthTest: false }));
       n.marca.scale.setScalar(0.95); n.marca.renderOrder = 6; grupo.add(n.marca);
     }
-    n.casa = [d.x, d.z];
+    n.casa = d.tipo === "vovo" ? [vovo.grupo.position.x, vovo.grupo.position.z] : [d.x, d.z];
     npcs.set(k, n);
     return n;
   }
@@ -165,7 +195,7 @@ export function criarMissoes(ctx) {
     limparItens(M.id); // jogando de novo: os brotos da vez passada saem
     ativa = M; etapa = 0; levando = []; carona = null;
     for (const nid of Object.keys(M.npcs)) voltarAoLugar(npcDe(M, nid));
-    falar(`rp-m-${M.id}-pedido`);
+    falar(M.voz?.pedido ?? `rp-m-${M.id}-pedido`);
     dizer(M.npcs[M.quem].nome, M.pedido, 6500);
     prepararEtapa();
     return true;
@@ -173,10 +203,16 @@ export function criarMissoes(ctx) {
   function prepararEtapa() {
     const E = ativa.etapas[etapa];
     if (!E) return concluir();
-    if (E.tipo === "pegar") for (const it of E.itens) { const s = spriteEmoji(it.emoji); s.position.set(it.x, 1.3, it.z); grupo.add(s); itens.push({ missao: ativa.id, ...it, sprite: s, pego: false }); }
+    if (E.tipo === "pegar") for (const it of E.itens) { const s = spriteEmoji(it.emoji, 1.2, it.cor); s.position.set(it.x, 1.3, it.z); grupo.add(s); itens.push({ missao: ativa.id, ...it, sprite: s, pego: false }); }
     if (E.tipo === "plantar") for (const p of E.pontos) { const s = spriteEmoji("🕳️", 0.9); s.position.set(p.x, 1.0, p.z); grupo.add(s); plantas.push({ missao: ativa.id, ...p, sprite: s, feito: false }); }
+    prepararNova(E);
   }
-  function avancar() { etapa++; prepararEtapa(); }
+  function avancar() {
+    const E = ativa.etapas[etapa];
+    if (E?.tipo === "pegar" && E.fala) { dizer(nomeDe(E.quemFala ?? ativa.quem), E.fala, 3200); if (E.voz) falar(E.voz); if (E.quemFala) { const n = npcDe(ativa, E.quemFala); n.m?.acenar(2.5); n.m?.pular(); } }
+    limparEst();
+    etapa++; prepararEtapa();
+  }
   // tira tudo o que a missão pôs na cidade (itens, buraquinhos, brotos) e o que o Rabisco carrega
   function limparItens(mid) {
     for (let i = itens.length - 1; i >= 0; i--) if (itens[i].missao === mid) { grupo.remove(itens[i].sprite); itens[i].sprite.material.dispose(); itens.splice(i, 1); }
@@ -185,15 +221,16 @@ export function criarMissoes(ctx) {
   }
   function concluir() {
     const M = ativa;
+    limparEst(); fila.length = 0;
     feitas.add(M.id);
     salvo.missoesFeitas = [...feitas]; salvo.selos = [...new Set([...(salvo.selos ?? []), M.id])]; salvar(salvo);
     for (const s of sobreCabeca.children.slice()) { sobreCabeca.remove(s); s.material.dispose(); }
     for (let i = itens.length - 1; i >= 0; i--) if (itens[i].missao === M.id) { grupo.remove(itens[i].sprite); itens[i].sprite.material.dispose(); itens.splice(i, 1); }
     for (const pl of plantas) if (pl.missao === M.id && pl.sprite.parent) grupo.remove(pl.sprite); // os brotos ficam crescendo na horta
     levando = []; carona = null;
-    falar(`rp-m-${M.id}-fim`);
+    falar(M.voz?.fim ?? `rp-m-${M.id}-fim`);
     const ult = M.etapas.at(-1), destino = ult.ate ?? M.quem;
-    dizer(M.npcs[destino]?.nome ?? "Rabiscolândia", M.fim, 5200);
+    dizer(ultimoReceptor ?? M.npcs[destino]?.nome ?? "Rabiscolândia", M.fim, 5200); ultimoReceptor = null;
     clearTimeout(concluir.t);
     if (M.verso) concluir.t = setTimeout(() => { falar(`rp-m-${M.id}-verso`); dizer(`📖 ${M.titulo}`, `${M.verso.texto} <i>(${M.verso.ref})</i>`, 7500); }, 5400);
     ativa = null; etapa = 0;
@@ -221,11 +258,11 @@ export function criarMissoes(ctx) {
     if (E.tipo === "plantar") for (const pl of plantas) if (!pl.feito && pl.missao === ativa.id && Math.hypot(p.x - pl.x, p.z - pl.z) < 2) return { rotulo: "🌱 Plantar a semente", fazer: () => plantar(pl) };
     if (E.tipo === "levar") { const n = npcDe(ativa, E.ate); const [x, z] = npcPos(n); if (Math.hypot(p.x - x, p.z - z) < 3.2) return { rotulo: `🎁 Entregar para ${nomeDe(E.ate)}`, fazer: () => { reagir(n); avancar(); } }; }
     if (E.tipo === "dirigir" && !carona && ctx.chamarCarro) { const n = npcDe(ativa, E.passageiro); const [x, z] = npcPos(n); if (Math.hypot(p.x - x, p.z - z) < 3.2) return { rotulo: "📱 Chamar um carro", fazer: () => ctx.chamarCarro() }; }
-    return null;
+    return contextoNovo(E, p);
   }
   function pegar(it) {
     it.pego = true; grupo.remove(it.sprite);
-    const s = spriteEmoji(it.emoji, 0.6); s.position.set(((levando.length % 3) - 1) * 0.5, Math.floor(levando.length / 3) * 0.5, 0); sobreCabeca.add(s);
+    const s = spriteEmoji(it.emoji, 0.6, it.cor); s.position.set(((levando.length % 3) - 1) * 0.5, Math.floor(levando.length / 3) * 0.5, 0); s.userData.item = it.id; sobreCabeca.add(s);
     levando.push(it.id); sons.moeda?.();
     if (itens.every((x) => x.missao !== ativa.id || x.pego)) avancar();
   }
@@ -263,7 +300,7 @@ export function criarMissoes(ctx) {
       const daMissao = n.quem || ativa === n.M || feitas.has(n.M.id) || n.festa > 0;
       const vis = n === caronaNpc() || (daMissao && Math.hypot(p.x - x, p.z - z) < R);
       if (!n.fixo) n.g.visible = vis;
-      if (n.extras) n.extras.visible = Math.hypot(p.x - n.casa[0], p.z - n.casa[1]) < R && daMissao;
+      if (n.extras) n.extras.visible = Math.hypot(p.x - n.casa[0], p.z - n.casa[1]) < R && (n.casaExtras ? ativa === n.M : daMissao);
       if (n.marca) { const pede = !feitas.has(n.M.id) && !ativa; n.marca.visible = pede && (n.fixo ? n.g.visible : vis); n.marca.position.set(x, n.g.position.y + (n.bicho ? 1.6 : n.m?.altura ?? 1.4) + 0.75 + Math.sin(t * 4) * 0.12, z); }
       if (!vis && !n.fixo) continue;
       if (n.m && !n.fixo) {
@@ -275,9 +312,11 @@ export function criarMissoes(ctx) {
       if (n.festa > 0) { n.festa -= dt; if (n.bicho) n.g.position.y = 0.03 + Math.abs(Math.sin(t * 9)) * 0.35; if (n.m && !n.fixo && Math.random() < dt * 2) n.m.pular(); }
       else if (n.bicho) n.g.position.y = 0.03 + (n.andando ? Math.abs(Math.sin(t * 12)) * 0.15 : 0);
     }
+    animarGotas(dt);
     if (!ativa || ctx.ocupado?.()) return; // dentro de casa ou de um lugar: quem segue espera na porta
     const E = ativa.etapas[etapa];
     if (!E) return;
+    atualizarNova(E, dt, t, p);
     // seguir / faixa: quem a gente achou vem atrás do Rabisco (a ovelhinha, os coelhinhos, o Zaqueu, o Caderninho)
     if (E.tipo === "seguir" || E.tipo === "faixa") {
       const quem = E.quem ?? E.com, n = npcDe(ativa, quem);
@@ -335,6 +374,7 @@ export function criarMissoes(ctx) {
     const E = ativa.etapas[etapa]; if (!E) return null;
     if (E.tipo === "pegar") { const it = itens.find((x) => !x.pego && x.missao === ativa.id); return it && { x: it.x, z: it.z, emoji: it.emoji }; }
     if (E.tipo === "plantar") { const pl = plantas.find((x) => !x.feito && x.missao === ativa.id); return pl && { x: pl.x, z: pl.z, emoji: "🌱" }; }
+    const novo = alvoNovo(E); if (novo !== undefined) return novo;
     const nid = E.tipo === "falar" ? E.com : E.tipo === "levar" ? E.ate : E.tipo === "dirigir" ? (carona ? E.ate : E.passageiro) : npcDe(ativa, E.quem ?? E.com).seguindo ? E.ate : E.quem ?? E.com;
     const n = npcDe(ativa, nid);
     if (n.fixo) return { x: n.g.position.x, z: n.g.position.z, emoji: ativa.icone };
@@ -350,16 +390,250 @@ export function criarMissoes(ctx) {
       seguir: seguindo ? `Leve até ${nomeDe(E?.ate)}` : `Encontre ${nomeDe(E?.quem)}`, plantar: "Plante nos buraquinhos da horta",
       dirigir: carona ? `Leve até ${nomeDe(E?.ate)}` : `Busque ${nomeDe(E?.passageiro)} de carro`,
       faixa: seguindo ? `Atravesse na faixa até ${nomeDe(E?.ate)}` : `Encontre ${nomeDe(E?.com)}`,
-    }[E?.tipo];
+    }[E?.tipo] ?? textoNovo(E);
     return { icone: ativa.icone, titulo: ativa.titulo, passo: t };
   }
   function largar() {
     if (!ativa) return;
     const M = ativa;
+    limparEst(); fila.length = 0;
     limparItens(M.id);
     for (const nid of Object.keys(M.npcs)) { const n = npcs.get(`${M.id}:${nid}`); if (n) voltarAoLugar(n); }
     ativa = null; etapa = 0; levando = []; carona = null;
   }
+  // ================================================================== etapas que vieram da Rabiscópolis
+  const temp = (o) => { grupo.add(o); (est.objs ??= []).push(o); return o; };
+  function limparEst() {
+    const soltar = (o) => { o.removeFromParent(); o.traverse((q) => { if (q.isSprite) q.material.dispose(); if (q.geometry && !q.geometry.userData.compartilhada) q.geometry.dispose(); }); };
+    for (const o of est.objs ?? []) soltar(o);
+    if (est.carga) soltar(est.carga);
+    if (est.patos) for (const q of est.patos) q.p.visible = true; // os patinhos do lago voltam todos
+    for (const n of npcs.values()) if (n.coracao) { n.coracao.removeFromParent(); n.coracao = null; }
+    est = {};
+  }
+  const pendentes = (E) => (E.bichos ?? E.quem).filter((id) => !est.juntos.has(id));
+  function prepararNova(E) {
+    est = { t: 0 };
+    if (E.tipo === "achar" || E.tipo === "seguirVarios") {
+      est.juntos = new Set(); fila.length = 0;
+      if (E.tipo === "seguirVarios") for (const id of E.quem) { const n = npcDe(ativa, id); n.coracao = spriteEmoji("💗", 0.85); n.coracao.renderOrder = 5; n.coracao.material.depthTest = false; grupo.add(n.coracao); }
+    }
+    if (E.tipo === "contar") {
+      const todos = ctx.patos?.() ?? [];
+      const n = Math.min(todos.length || E.max, E.min + Math.floor(Math.random() * (E.max - E.min + 1)));
+      est.n = n; est.patos = todos;
+      todos.forEach((q, i) => (q.p.visible = i < n));
+      const d = npcDe(ativa, E.ate), [dx, dz] = d.casa;
+      const opcoes = [n - 1, n, n + 1].sort(() => Math.random() - 0.5);
+      est.placas = opcoes.map((v, i) => { const g = temp(placaNumero(v)); const x = dx - 3 + i * 3, z = dz - 3.6; g.position.set(x, 0.03, z); return { n: v, x, z, g, dentro: false }; });
+    }
+    if (E.tipo === "bandeiras") {
+      est.prox = 0; est.t0 = null;
+      est.porticos = E.pontos.map(([x, z, giro], i) => { const g = temp(portico(i + 1)); g.position.set(x, 0.03, z); g.rotation.y = giro ? Math.PI / 2 : 0; return { x, z, g }; });
+    }
+    if (E.tipo === "levarVeiculo") {
+      est.carregado = !E.de; est.veiculo = null;
+      if (E.de && E.carga.modelo === "frutas") { const n = npcDe(ativa, E.de); est.carga = caixaFrutas(); est.carga.position.set(n.casa[0] + 1.3, 0.03, n.casa[1] + 0.4); grupo.add(est.carga); }
+    }
+    if (E.tipo === "apagar") est.fogos = E.fogos.map(([x, z]) => { const g = temp(foguinho()); g.position.set(x, 0.03, z); return { x, z, g, agua: 0, jato: 0, perto: 0, apagado: false, fumaca: 0 }; });
+    if (E.tipo === "pistas") { est.i = 0; est.baus = E.pistas.map((q) => { const g = temp(bau()); g.position.set(q.x, 0.03, q.z); g.rotation.y = Math.PI * 0.15; g.visible = false; return { ...q, g, aberto: 0 }; }); }
+    if (E.tipo === "entregar") est.feitas = new Set();
+  }
+  const veiculoServe = (E, v) => v && (E.veiculos === "porta-malas" ? !["bici", "patinete", "barco", "heli"].includes(v.tipo) : E.veiculos.includes(v.tipo));
+  function avisar(quem, texto, voz = null, cada = 6) { if (aviso > 0) return; aviso = cada; dizer(quem, texto, 3200); if (voz) falar(voz); }
+  function juntar(E, n) {
+    est.juntos.add(n.id); fila.push(n); n.seguindo = true;
+    sons.moeda?.(); n.m?.acenar(2); n.m?.pular?.();
+    if (n.coracao) { n.coracao.removeFromParent(); n.coracao = null; }
+    const todos = !pendentes(E).length;
+    if (todos && E.falaTodos) { dizer(n.dados.nome, E.falaTodos, 3800); if (E.vozTodos) falar(E.vozTodos); }
+    else { dizer(n.dados.nome, E.fala ?? "Oba! Vou com você.", 2600); if (E.voz) falar(E.voz); }
+  }
+  function contextoNovo(E, p) {
+    const perto = (x, z, r) => Math.hypot(p.x - x, p.z - z) < r;
+    if (E.tipo === "achar" || E.tipo === "seguirVarios") {
+      for (const id of pendentes(E)) { const n = npcDe(ativa, id); if (perto(n.g.position.x, n.g.position.z, 2.8)) return { rotulo: E.rotulo ?? "💌 Convidar", fazer: () => juntar(E, n) }; }
+    }
+    if (E.tipo === "contar") for (const pl of est.placas) if (perto(pl.x, pl.z, 1.7)) return { rotulo: `🔢 São ${pl.n}!`, fazer: () => escolherNumero(E, pl) };
+    if (E.tipo === "levarVeiculo" && !est.carregado && E.de && ctx.chamarCarro) { const n = npcDe(ativa, E.de); if (perto(n.casa[0], n.casa[1], 3.4)) return { rotulo: "📱 Chamar um carro", fazer: () => { ctx.chamarCarro(); } }; }
+    if (E.tipo === "apagar") for (const f of est.fogos) if (!f.apagado && perto(f.x, f.z, 3.6)) return { rotulo: "💧 Jogar água", fazer: () => { f.jato = 1.4; sons.pulo?.(); } };
+    if (E.tipo === "pistas") { const b = est.baus[est.i]; if (b && !b.aberto && perto(b.x, b.z, 2.6)) return { rotulo: "🗝️ Abrir o baú", fazer: () => abrirBau(E, b) }; }
+    if (E.tipo === "entregar") for (const en of E.entregas) {
+      if (est.feitas.has(en.item) || !levando.includes(en.item)) continue;
+      const n = npcDe(ativa, en.ate), [x, z] = npcPos(n), it = E.entregas && itensDa(en.item);
+      if (perto(x, z, 3.2)) return { rotulo: `✉️ Entregar a ${it?.nome ?? "carta"}`, fazer: () => entregarItem(E, en, n) };
+    }
+    if (E.tipo === "voltar") { const n = npcDe(ativa, E.ate), [x, z] = npcPos(n); if (perto(x, z, 3.2)) return { rotulo: `🙌 Contar para ${nomeDe(E.ate)}`, fazer: () => { reagir(n); avancar(); } }; }
+    return null;
+  }
+  const itensDa = (id) => ativa.etapas.flatMap((e) => e.itens ?? []).find((it) => it.id === id);
+  function entregarItem(E, en, n) {
+    est.feitas.add(en.item);
+    const s = sobreCabeca.children.find((q) => q.userData.item === en.item); if (s) { sobreCabeca.remove(s); s.material.dispose(); }
+    levando = levando.filter((x) => x !== en.item);
+    reagir(n);
+    if (est.feitas.size === E.entregas.length) { ultimoReceptor = n.dados.nome; avancar(); return; }
+    dizer(n.dados.nome, E.fala ?? "Obrigado!", 2600); if (E.voz) falar(E.voz);
+  }
+  function escolherNumero(E, pl) {
+    if (pl.n === est.n) { sons.moeda?.(); reagir(npcDe(ativa, E.ate)); avancar(); }
+    else { sons.erro?.(); aviso = 0; avisar(nomeDe(E.ate), E.erro ?? "Conte de novo, devagarinho.", E.vozErro, 2.5); }
+  }
+  function abrirBau(E, b) {
+    b.aberto = 0.01; sons.porta?.() ?? sons.moeda?.();
+    const prox = E.pistas[est.i + 1];
+    if (prox) { dizer("Pista do tesouro", prox.texto, 6000); if (prox.voz) falar(prox.voz); }
+    else { b.g.userData.brilho.visible = true; dizer("Tesouro!", E.achou ?? "Você achou o tesouro!", 6000); ctx.confete?.(); sons.vitoria?.(); }
+    setTimeout(() => { if (ativa && est.baus?.includes(b)) { est.i++; if (prox) b.g.visible = false; else avancar(); } }, prox ? 1600 : 2200);
+  }
+  function soltarGota(de, para) {
+    if (gotas.length > 40) return;
+    const m = malha(new THREE.SphereGeometry(0.09, 6, 4), mat(0x4fc3ff), { sombra: false });
+    m.position.copy(de); grupo.add(m);
+    const dx = para.x - de.x, dz = para.z - de.z, T = 0.45 + Math.random() * 0.15;
+    gotas.push({ m, v: new THREE.Vector3(dx / T + (Math.random() - 0.5), (para.y - de.y) / T + 9.8 * T * 0.5, dz / T + (Math.random() - 0.5)), vida: T });
+  }
+  function animarGotas(dt) {
+    for (let i = gotas.length - 1; i >= 0; i--) {
+      const g = gotas[i]; g.vida -= dt; g.v.y -= 9.8 * dt; g.m.position.addScaledVector(g.v, dt);
+      if (g.vida <= 0) { g.m.removeFromParent(); g.m.geometry.dispose(); gotas.splice(i, 1); }
+    }
+  }
+  const _de = new THREE.Vector3(), _para = new THREE.Vector3();
+  function atualizarNova(E, dt, t, p) {
+    aviso -= dt; est.t += dt;
+    const v = veiculoAtual(), p2 = ctx.pos2?.();
+    // fila: cada um vai atrás do anterior (o Rabisco é o primeiro); de carro, vão de carona (somem até ele descer)
+    if ((E.tipo === "achar" || E.tipo === "seguirVarios") && fila.length) {
+      let ant = { x: p.x, z: p.z };
+      for (const n of fila) {
+        const g = n.g;
+        if (v) { g.position.x = p.x; g.position.z = p.z; n.andando = false; ant = { x: p.x, z: p.z }; continue; }
+        const dx = ant.x - g.position.x, dz = ant.z - g.position.z, d = Math.hypot(dx, dz);
+        if (d > 16) { const a = rabisco.grupo.rotation.y; g.position.x = ant.x - Math.sin(a) * 1.6; g.position.z = ant.z - Math.cos(a) * 1.6; }
+        else if (d > 1.5) { const vel = Math.min(7, (d - 1.5) * 3.2) * dt; g.position.x += (dx / d) * vel; g.position.z += (dz / d) * vel; g.rotation.y = Math.atan2(dx, dz); n.andando = true; }
+        else n.andando = false;
+        ant = { x: g.position.x, z: g.position.z };
+      }
+      const dest = npcDe(ativa, E.ate), [dx2, dz2] = npcPos(dest);
+      if (!pendentes(E).length && !v && Math.hypot(p.x - dx2, p.z - dz2) < 4.5) {
+        // chegaram: cada um fica em volta de quem esperava
+        fila.forEach((n, i) => { const a = (i - (fila.length - 1) / 2) * 0.8 + Math.atan2(p.x - dx2, p.z - dz2); n.g.position.set(dx2 + Math.sin(a) * 1.6, n.g.position.y, dz2 + Math.cos(a) * 1.6); n.g.rotation.y = Math.atan2(dx2 - n.g.position.x, dz2 - n.g.position.z); n.seguindo = false; n.andando = false; reagir(n); });
+        fila.length = 0; reagir(dest); avancar(); return;
+      }
+    }
+    if (E.tipo === "achar" || E.tipo === "seguirVarios") for (const n of fila) if (n.g) n.g.visible = !v;
+    // coraçõezinhos em cima de quem ainda falta convidar
+    for (const n of npcs.values()) if (n.coracao) { n.coracao.position.set(n.g.position.x, n.g.position.y + (n.m?.altura ?? 1.2) + 0.7 + Math.sin(t * 4) * 0.1, n.g.position.z); n.coracao.visible = n.g.visible; }
+    if (E.tipo === "achar") for (const id of pendentes(E)) { const n = npcDe(ativa, id); if (n.g.userData.rabo) n.g.userData.rabo.rotation.z = Math.sin(t * 5 + n.casa[0]) * 0.5; }
+    if (E.tipo === "contar") {
+      for (const q of est.patos) q.p.visible = est.patos.indexOf(q) < est.n;
+      for (const pl of est.placas) {
+        pl.g.visible = Math.hypot(p.x - pl.x, p.z - pl.z) < raio();
+        const em = !v && (Math.hypot(p.x - pl.x, p.z - pl.z) < 1.05 || (p2 && Math.hypot(p2.x - pl.x, p2.z - pl.z) < 1.05));
+        if (em && !pl.dentro) { pl.dentro = true; escolherNumero(E, pl); return; }
+        pl.dentro = em;
+      }
+    }
+    if (E.tipo === "bandeiras") {
+      est.porticos.forEach((b, i) => { b.g.visible = i >= est.prox && i <= est.prox + 1 && Math.hypot(p.x - b.x, p.z - b.z) < 140; b.g.userData.num.position.y = 4.3 + (i === est.prox ? Math.sin(t * 5) * 0.25 : 0); b.g.userData.num.scale.setScalar(i === est.prox ? 2.4 + Math.sin(t * 8) * 0.15 : 1.8); });
+      const b = est.porticos[est.prox];
+      if (b) {
+        if (v && Math.hypot(v.pos.x - b.x, v.pos.z - b.z) < 7.5) {
+          est.prox++; sons.moeda?.(); falar(`cid-num-${est.prox}`);
+          if (est.prox === 1) est.t0 = est.t;
+          if (est.prox === est.porticos.length) {
+            const seg = Math.round(est.t - est.t0);
+            reagir(npcDe(ativa, E.ate)); avancar();
+            setTimeout(() => dizer("Corrida dos números", `1, 2, 3, 4, 5! Você fez a volta em ${seg} segundos. 🏁`, 3600), 5300);
+            return;
+          }
+        } else if (!v && est.prox === 0 && Math.hypot(p.x - b.x, p.z - b.z) < 9) avisar(nomeDe(E.ate), "A corrida é de carro! Chame um carro no Rabifone 📱 e passe por baixo da bandeira.", "rp-corrida-pe");
+      }
+    }
+    if (E.tipo === "levarVeiculo") {
+      const dest = npcDe(ativa, E.ate), [dx2, dz2] = npcPos(dest);
+      if (!est.carregado) {
+        const n = npcDe(ativa, E.de);
+        if (v && veiculoServe(E, v) && Math.abs(v.vel) < 2 && Math.hypot(v.pos.x - n.casa[0], v.pos.z - n.casa[1]) < 9) {
+          est.carregado = true; est.veiculo = v;
+          if (est.carga) { v.g.add(est.carga); est.carga.position.set(0, 1.0, -v.comp * 0.6); est.carga.rotation.set(0, 0, 0); est.carga.scale.setScalar(0.85 / (v.g.scale.x || 1)); }
+          sons.moeda?.(); n.m?.acenar(2); dizer(n.dados.nome, E.carregou ?? "Está no carro!", 3200); if (E.vozCarregou) falar(E.vozCarregou);
+        } else if (!v && Math.hypot(p.x - n.casa[0], p.z - n.casa[1]) < 3.4) avisar(n.dados.nome, E.aPe ?? "Venha de carro!", E.vozAPe, 7);
+        else if (v && !veiculoServe(E, v) && Math.hypot(v.pos.x - n.casa[0], v.pos.z - n.casa[1]) < 9) avisar(n.dados.nome, "Aqui não cabe a caixa! Venha de carro. 🚗", null, 6);
+      } else {
+        const certo = E.de ? v === est.veiculo : veiculoServe(E, v);
+        const pousou = !E.pousar || (v && v.alt - (ctx.chaoHeli?.(v.pos.x, v.pos.z) ?? 0) < 0.4);
+        if (certo && Math.abs(v.vel) < 2 && pousou && Math.hypot(v.pos.x - dx2, v.pos.z - dz2) < (E.pousar ? 16 : 12)) {
+          if (est.carga) { est.carga.removeFromParent(); est.carga.traverse((q) => q.geometry?.dispose()); est.carga = null; }
+          for (const s of sobreCabeca.children.slice()) { sobreCabeca.remove(s); s.material.dispose(); }
+          levando = []; reagir(dest); avancar(); return;
+        }
+        if (!v && E.aPe && Math.hypot(p.x - dx2, p.z - dz2) < 4) avisar(nomeDe(E.ate), E.aPe, E.vozAPe, 7);
+      }
+    }
+    if (E.tipo === "apagar") {
+      let falta = 0;
+      for (const f of est.fogos) {
+        const vis = Math.hypot(p.x - f.x, p.z - f.z) < raio() + 10; f.g.visible = vis;
+        if (f.apagado) { if (f.fumaca > 0) { f.fumaca -= dt; f.g.userData.fumaca.position.y = 1.2 + (2 - f.fumaca) * 0.5; f.g.userData.fumaca.visible = f.fumaca > 0; } continue; }
+        falta++;
+        const resta = Math.max(0.12, 1 - f.agua / 1.2);
+        f.g.userData.chamas.children.forEach((c, i) => c.scale.set(resta * (1 + Math.sin(t * 12 + i) * 0.12), resta * (1 + Math.sin(t * 9 + i * 2) * 0.2), resta * (1 + Math.cos(t * 11 + i) * 0.12)));
+        // a pé, esperando pertinho, a água sai sozinha (para os pequenos)
+        if (!v && Math.hypot(p.x - f.x, p.z - f.z) < 3.6) { f.perto += dt; if (f.perto > 3) f.jato = Math.max(f.jato, 0.1); } else f.perto = 0;
+        // caminhão de bombeiro com o jato ligado, de frente para o foguinho
+        if (v?.jatoLigado) { const fx = Math.sin(v.ang), fz = Math.cos(v.ang), ex = f.x - v.pos.x, ez = f.z - v.pos.z, d = Math.hypot(ex, ez); if (d < 12 && (ex * fx + ez * fz) / (d || 1) > 0.5) { f.agua += dt * 0.9; if (Math.random() < 0.8) soltarGota(_de.set(v.pos.x + fx * v.comp, 2.2, v.pos.z + fz * v.comp), _para.set(f.x, 1.2, f.z)); } }
+        if (f.jato > 0) { f.jato -= dt; f.agua += dt; if (Math.random() < 0.8) soltarGota(_de.set(p.x, 1.3, p.z), _para.set(f.x, 1.2, f.z)); }
+        if (f.agua >= 1.2) {
+          f.apagado = true; f.g.userData.chamas.visible = false; f.fumaca = 2; f.g.userData.fumaca.visible = true; falta--;
+          const k = est.fogos.filter((q) => q.apagado).length;
+          sons.moeda?.(); if (E.voz) falar(E.voz); dizer(ativa.npcs[ativa.quem].nome, `${E.fala ?? "Fogo apagado!"} (${k} de ${est.fogos.length})`, 2600);
+        }
+      }
+      if (!falta) { avancar(); return; }
+    }
+    if (E.tipo === "pistas") {
+      est.baus.forEach((b, i) => {
+        if (i !== est.i) return;
+        b.g.visible = Math.hypot(p.x - b.x, p.z - b.z) < raio() + 5;
+        if (b.aberto) { b.aberto = Math.min(1, b.aberto + dt * 2.5); b.g.userData.tampa.rotation.x = -1.6 * b.aberto; }
+        else b.g.position.y = 0.03 + Math.abs(Math.sin(t * 3)) * 0.12;
+      });
+    }
+  }
+  function alvoNovo(E) {
+    const npcAlvo = (id) => { const n = npcDe(ativa, id), [x, z] = n.fixo ? npcPos(n) : n.casa; return { x, z, emoji: ativa.icone }; };
+    if (E.tipo === "achar" || E.tipo === "seguirVarios") {
+      const falta = pendentes(E);
+      if (!falta.length) return npcAlvo(E.ate);
+      const p = pos(), n = falta.map((id) => npcDe(ativa, id)).sort((a, b) => Math.hypot(a.g.position.x - p.x, a.g.position.z - p.z) - Math.hypot(b.g.position.x - p.x, b.g.position.z - p.z))[0];
+      return { x: n.g.position.x, z: n.g.position.z, emoji: E.tipo === "achar" ? "🐱" : "💌" };
+    }
+    if (E.tipo === "contar") return { ...npcAlvo(E.ate), emoji: "🦆" };
+    if (E.tipo === "bandeiras") { const b = est.porticos[est.prox]; return b ? { x: b.x, z: b.z, emoji: String(est.prox + 1) } : null; }
+    if (E.tipo === "levarVeiculo") return est.carregado ? { ...npcAlvo(E.ate), emoji: E.pousar ? "🚁" : "📦" } : { ...npcAlvo(E.de), emoji: "📦" };
+    if (E.tipo === "apagar") { const p = pos(), f = est.fogos.filter((q) => !q.apagado).sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z))[0]; return f ? { x: f.x, z: f.z, emoji: "🔥" } : null; }
+    if (E.tipo === "pistas") { const b = est.baus[est.i]; return b ? { x: b.x, z: b.z, emoji: "🗝️" } : null; }
+    if (E.tipo === "entregar") { const p = pos(); const n = E.entregas.filter((en) => !est.feitas.has(en.item)).map((en) => npcDe(ativa, en.ate)).sort((a, b) => Math.hypot(npcPos(a)[0] - p.x, npcPos(a)[1] - p.z) - Math.hypot(npcPos(b)[0] - p.x, npcPos(b)[1] - p.z))[0]; if (!n) return null; const [x, z] = npcPos(n); return { x, z, emoji: "✉️" }; }
+    if (E.tipo === "voltar") return npcAlvo(E.ate);
+    return undefined;
+  }
+  function textoNovo(E) {
+    if (!E) return "";
+    const n = (E.bichos ?? E.quem ?? []).length, k = est.juntos?.size ?? 0;
+    if (E.tipo === "achar") return k < n ? `Ache os gatinhos: ${k} de ${n}` : `Leve todos até ${nomeDe(E.ate)}`;
+    if (E.tipo === "seguirVarios") return k < n ? `Convide os amigos: ${k} de ${n}` : `Leve todos até ${nomeDe(E.ate)}`;
+    if (E.tipo === "contar") return "Conte os patinhos do lago e pise no número certo";
+    if (E.tipo === "bandeiras") return est.prox === 0 ? (veiculoAtual() ? "Passe por baixo da bandeira 1" : "Pegue um carro e vá até a bandeira 1") : `Bandeira ${est.prox + 1} de ${E.pontos.length} · ⏱️ ${Math.floor(est.t - est.t0)} s`;
+    if (E.tipo === "levarVeiculo") return !est.carregado ? `Venha de carro buscar a ${E.carga.nome}` : E.pousar ? `Voe e pouse perto de ${nomeDe(E.ate)}` : `Leve de carro até ${nomeDe(E.ate)}`;
+    if (E.tipo === "apagar") return `Apague os foguinhos: ${est.fogos.filter((f) => f.apagado).length} de ${est.fogos.length}`;
+    if (E.tipo === "pistas") return `Pista ${est.i + 1} de ${E.pistas.length}: ache o baú`;
+    if (E.tipo === "entregar") return `Entregue as cartas: ${est.feitas.size} de ${E.entregas.length}`;
+    if (E.tipo === "voltar") return `Volte e conte para ${nomeDe(E.ate)}`;
+    return "";
+  }
+
   // onde está quem pede cada missão (Passaporte: "mostrar o caminho")
   const ondePede = (id) => { const M = MISSOES.find((x) => x.id === id); const d = M.npcs[M.quem]; return d.tipo === "vovo" ? { x: vovo.grupo.position.x, z: vovo.grupo.position.z } : { x: d.x, z: d.z }; };
   const api = {
@@ -373,6 +647,10 @@ export function criarMissoes(ctx) {
     visiveis: () => { let c = 0; grupo.traverse((o) => { if ((o.isMesh || o.isSprite) && o.visible) { let v = true; for (let q = o; q; q = q.parent) if (!q.visible) v = false; if (v) c++; } }); return c; },
     itensDe: (mid) => itens.filter((x) => x.missao === mid).map((x) => ({ id: x.id, x: x.x, z: x.z, pego: x.pego })),
     plantasDe: (mid) => plantas.filter((x) => x.missao === mid).map((x) => ({ x: x.x, z: x.z, feito: x.feito })),
+    // estado da etapa atual (testes): fila, contagem, bandeiras, carga, foguinhos, baús, entregas
+    etapaInfo: () => ({ tipo: ativa?.etapas[etapa]?.tipo ?? null, fila: fila.map((n) => n.id), juntos: [...(est.juntos ?? [])], n: est.n, placas: est.placas?.map((q) => ({ n: q.n, x: q.x, z: q.z })), prox: est.prox,
+      carregado: est.carregado, fogos: est.fogos?.map((f) => ({ x: f.x, z: f.z, apagado: f.apagado })), bau: est.baus?.[est.i] ? { x: est.baus[est.i].x, z: est.baus[est.i].z, i: est.i } : null,
+      entregues: [...(est.feitas ?? [])], patosVisiveis: est.patos?.filter((q) => q.p.visible).length }),
   };
   return api;
 }

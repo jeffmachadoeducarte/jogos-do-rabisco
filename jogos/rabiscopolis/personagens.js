@@ -119,7 +119,7 @@ const CORPOS = {
 };
 
 // ---------- montagem do morador
-export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome = "", semente = 0, vovo = false, escala = 0.78 } = {}) {
+export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome = "", semente = 0, vovo = false, escala = 0.78, acessorio = null } = {}) {
   const grupo = new THREE.Group();
   grupo.scale.setScalar(escala); // um pouco menores que o Rabisco (ele é o herói)
   const raiz = new THREE.Group(); // pulinho, estica e achata
@@ -164,6 +164,9 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
     const laco = malha(new THREE.SphereGeometry(0.08, 10, 8), mat(0x8e5cc9), { contorno: 0.02 }); laco.position.set(0, PERNA + 0.3, info.r + 0.2); raiz.add(laco);
   }
 
+  // acessórios (vieram da Rabiscópolis): laço, óculos, gravata, chapéu de palha, boné, capacete de bombeiro, touca de chef
+  if (acessorio) enfeitarMorador(raiz, acessorio, info, PERNA);
+
   // bracinhos (pivô no ombro) e perninhas com tênis (pivô no quadril)
   const braco = (s) => {
     const p = new THREE.Group(); p.position.set(s * (info.larg + 0.04), PERNA + info.ombro, 0);
@@ -189,11 +192,13 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
   grupo.add(sombra);
   grupo.userData = { tipo, nome, altura: (PERNA + info.alto) * escala };
 
-  let fase = semente * 1.7, tempo = semente * 3.1, piscar = 2 + (semente % 3), aceno = 0, pulinho = 0, vy = 0, py = 0;
+  let fase = semente * 1.7, tempo = semente * 3.1, piscar = 2 + (semente % 3), aceno = 0, pulinho = 0, vy = 0, py = 0, juntas = false;
   const api = {
     grupo, nome, tipo, altura: (PERNA + info.alto) * escala,
     pular() { if (py <= 0.001) { vy = 3.4; pulinho = 1; } },
     acenar(s = 1.8) { aceno = Math.max(aceno, s); },
+    // mãos juntinhas na frente do peito (orar): os dois bracinhos vêm para o meio
+    orar(sim = true) { juntas = sim; },
     atualizar(dt, { vel = 0 } = {}) {
       tempo += dt;
       // piscar
@@ -220,7 +225,12 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
         if (py > 0) sy = 1 + Math.min(0.12, vy * 0.03);
       }
       aceno -= dt;
-      if (aceno > 0) { bD.rotation.z = -2.5 + Math.sin(tempo * 12) * 0.35; bD.rotation.x = 0; } else bD.rotation.z += (-0.25 - bD.rotation.z) * Math.min(1, dt * 8);
+      if (juntas && aceno <= 0) {
+        const k = Math.min(1, dt * 8);
+        bE.rotation.x += (-0.95 - bE.rotation.x) * k; bD.rotation.x += (-0.95 - bD.rotation.x) * k;
+        bE.rotation.z += (-0.55 - bE.rotation.z) * k; bD.rotation.z += (0.55 - bD.rotation.z) * k;
+      } else if (aceno > 0) { bD.rotation.z = -2.5 + Math.sin(tempo * 12) * 0.35; bD.rotation.x = 0; }
+      else { bD.rotation.z += (-0.25 - bD.rotation.z) * Math.min(1, dt * 8); bE.rotation.z += (0.25 - bE.rotation.z) * Math.min(1, dt * 8); }
       raiz.position.y = y;
       raiz.scale.set(1 / Math.sqrt(sy), sy, 1 / Math.sqrt(sy));
       sombra.scale.setScalar(1 - Math.min(0.4, y * 0.6));
@@ -228,6 +238,32 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
     },
   };
   return api;
+}
+
+// ---------- acessórios dos moradores das missões (no traço da cidade, com contorno)
+function enfeitarMorador(raiz, qual, info, PERNA) {
+  const r = info.r ?? info.larg, topo = PERNA + info.rostoY + 0.36, frente = info.plano ?? r;
+  const g = new THREE.Group(); raiz.add(g);
+  if (qual === "laco") {
+    const fita = mat(0xff4f9a);
+    for (const s of [-1, 1]) { const a = malha(new THREE.SphereGeometry(0.11, 10, 8), fita, { contorno: 0.02 }); a.scale.set(1.3, 0.8, 0.5); a.position.set(r * 0.55 + s * 0.12, topo + 0.06, 0.1); a.rotation.z = s * 0.4; g.add(a); }
+    const no = malha(new THREE.SphereGeometry(0.06, 8, 6), fita, { contorno: 0.02 }); no.position.set(r * 0.55, topo + 0.06, 0.12); g.add(no);
+  } else if (qual === "oculos") {
+    const aro = mat(0x3a2a1c);
+    for (const s of [-1, 1]) { const o = malha(new THREE.TorusGeometry(0.1, 0.016, 8, 22), aro); o.position.set(s * 0.115, PERNA + info.rostoY + 0.05, frente + 0.05); g.add(o); }
+    const ponte = malha(new THREE.CylinderGeometry(0.012, 0.012, 0.05, 6), aro); ponte.rotation.z = Math.PI / 2; ponte.position.set(0, PERNA + info.rostoY + 0.07, frente + 0.05); g.add(ponte);
+  } else if (qual === "gravata") {
+    const gr = malha(new THREE.ConeGeometry(0.08, 0.32, 4), mat(0x1f3a8a), { contorno: 0.02 }); gr.rotation.x = Math.PI; gr.position.set(0, PERNA + info.ombro - 0.12, frente + 0.03); gr.scale.z = 0.35; g.add(gr);
+    const no = malha(new THREE.SphereGeometry(0.05, 8, 6), mat(0x1f3a8a)); no.position.set(0, PERNA + info.ombro + 0.06, frente + 0.03); g.add(no);
+  } else if (qual === "chapeu" || qual === "bone" || qual === "capacete" || qual === "chef") {
+    const cor = { chapeu: 0xf2d27a, bone: 0x00b5f0, capacete: 0xe63946, chef: 0xffffff }[qual];
+    const aba = malha(new THREE.CylinderGeometry(r + (qual === "chapeu" ? 0.2 : 0.06), r + (qual === "chapeu" ? 0.2 : 0.06), 0.05, 20), mat(cor), { contorno: 0.025 });
+    aba.position.y = topo; if (qual === "bone") { aba.scale.set(0.8, 1, 1.25); aba.position.z = 0.12; } g.add(aba);
+    const copa = malha(new THREE.SphereGeometry(r + 0.02, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(cor), { contorno: 0.03 });
+    copa.position.y = topo; if (qual === "chef") copa.scale.set(1, 1.9, 1); g.add(copa);
+    if (qual === "capacete") { const placa = malha(geoCaixaRedonda(0.2, 0.16, 0.04, 0.03), mat(0xffcc1f), { contorno: 0.015 }); placa.position.set(0, topo + 0.14, r + 0.02); g.add(placa); }
+  }
+  mesclar(g);
 }
 
 // ---------- Vovó Lápis (para as entregas: fica esperando na porta de casa e reage quando recebe)
