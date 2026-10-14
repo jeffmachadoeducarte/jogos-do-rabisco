@@ -22,7 +22,7 @@
 //
 // Unidade: o Rabisco tem 1,8 de altura. x para a direita, z para baixo (vista de cima). dir = para onde a fachada olha.
 
-import { PARCEIROS } from "../cidade-do-rabisco/parceiros.js";
+import { PARCEIROS } from "../../src/parceiros.js";
 
 export const BORDA = 250;
 export const NBLOCOS = 5;
@@ -136,7 +136,7 @@ export const LUGARES = [
   L("fazendinha", "Fazendinha", -95, 59.5, 0, -1, { raio: 18, recuo: 3, pegada: [44, 30], bairro: "Fazendinha" }),
 ];
 
-// lojas das empresas parceiras (../cidade-do-rabisco/parceiros.js), na ordem da lista: lado sul da Rua do Comércio
+// lojas das empresas parceiras (src/parceiros.js), na ordem da lista: lado sul da Rua do Comércio
 // e, sobrando parceira, na Avenida da Esperança (bloco das Torres). A loja tem no máximo LOJA_MAX m de largura.
 export const LOJA_MAX = 19;
 export const PONTOS_PARCEIROS = [[70, 9, 0, -1], [93, 9, 0, -1], [116, 9, 0, -1], [95, -59.5, 0, 1], [118, -59.5, 0, 1]];

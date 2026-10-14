@@ -17,7 +17,7 @@ import { pistaAtual, PISTAS, decoracao, estrelas } from "./pistas.js";
 import { botaoVoltar } from "../../src/motor/voltar.js";
 import { criarRemapear } from "../../src/motor/remapear.js";
 import { Jogadores, CODIGOS_J2, COR_J2 } from "../../src/motor/jogadores.js";
-import { PARCEIROS, ESTILO_PARCEIRO } from "../cidade-do-rabisco/parceiros.js";
+import { PARCEIROS, ESTILO_PARCEIRO } from "../../src/parceiros.js";
 
 const RAIZ = "../..";
 const MEIA_PISTA = 9;          // metade da largura do asfalto
@@ -275,7 +275,7 @@ function construirMundo(img) {
   escola.rotation.y = Math.atan2(centro[kEsc].x - lugarEscola.x, centro[kEsc].z - lugarEscola.z);
   cena.add(escola);
 
-  // Lojas parceiras (fonte única: ../cidade-do-rabisco/parceiros.js): um prédio de cada uma logo depois da largada
+  // Lojas parceiras (fonte única: src/parceiros.js): um prédio de cada uma logo depois da largada
   // e outdoors espalhados pela beira da pista. A textura de cada parceira carrega UMA vez e é reaproveitada;
   // sem sombra e com material simples, para não pesar em TV e tela dividida.
   const ocupados = [{ x: lugarEscola.x, z: lugarEscola.z, r: 34 }, { x: bus.position.x, z: bus.position.z, r: 14 }];

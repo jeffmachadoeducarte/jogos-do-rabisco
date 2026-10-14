@@ -8,7 +8,7 @@
 import { THREE, mat, malha, caixa, caixaRedonda, geoCaixaRedonda, MAT, TEX, letreiro, lojaParceira, arvoreReal, texturaCanvas, mesclar, r as rnd } from "./base3d.js";
 import { escolaEducarte3D, onibus3D } from "../../src/motor3d/objetos.js";
 import { carregarTextura } from "../../src/motor3d/toon.js";
-import { ESTILO_PARCEIRO } from "../cidade-do-rabisco/parceiros.js";
+import { ESTILO_PARCEIRO } from "../../src/parceiros.js";
 import { cerquinha } from "./casas.js";
 
 const BRANCO = 0xfffdf6;

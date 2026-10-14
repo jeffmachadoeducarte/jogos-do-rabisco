@@ -9,7 +9,7 @@
 // Mesma interface do carroAberto de cidade.js: frente = +z; g.userData = { rodas, seta, motorista, carona, volante }.
 // O que não mexe vira poucas malhas (mesclar); rodas, volante e seta ficam soltos.
 
-import { THREE, mat, malha, caixa, caixaRedonda, mesclar, MAT, texturaCanvas } from "./base3d.js";
+import { THREE, mat, std, malha, caixa, caixaRedonda, mesclar, MAT, texturaCanvas } from "./base3d.js";
 import { carregarTextura } from "../../src/motor3d/toon.js";
 
 const R_RODA = 0.44;
@@ -332,3 +332,26 @@ export function trator() {
 }
 
 void MAT;
+
+// Carro da rua (trânsito da cidade): COPIADO de jogos/cidade-do-rabisco/cidade.js (carro), para a Rabiscolândia
+// não depender daquele jogo. Mudou: usa o std de base3d.js e não chama mesclarLocal (veiculos.js mescla o grupo).
+export function carro(cor) {
+  const g = new THREE.Group();
+  const lata = std(cor, { metalness: 0.4, roughness: 0.35 });
+  const corpo = caixa(2.2, 0.9, 4.4, lata); corpo.position.y = 0.85;
+  const cabine = caixa(1.9, 0.8, 2.3, std(0x9fc8e8, { metalness: 0.2, roughness: 0.15 })); cabine.position.set(0, 1.65, -0.2);
+  const teto = caixa(1.95, 0.12, 2.0, lata); teto.position.set(0, 2.08, -0.2);
+  g.add(corpo, cabine, teto);
+  for (const [x, z] of [[-1.05, 1.4], [1.05, 1.4], [-1.05, -1.4], [1.05, -1.4]]) {
+    const roda = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.3, 16), std(0x1d1d1d, { roughness: 0.9 }));
+    roda.rotation.z = Math.PI / 2; roda.position.set(x, 0.42, z); roda.castShadow = true;
+    g.add(roda);
+  }
+  for (const x of [-0.7, 0.7]) {
+    const farolC = new THREE.Mesh(new THREE.CircleGeometry(0.18, 12), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff2c0, emissiveIntensity: 0.6 }));
+    farolC.position.set(x, 0.95, 2.21); g.add(farolC);
+    const lant = new THREE.Mesh(new THREE.CircleGeometry(0.15, 12), new THREE.MeshStandardMaterial({ color: 0xaa0000, emissive: 0xff2020, emissiveIntensity: 0.4 }));
+    lant.position.set(x, 0.95, -2.21); lant.rotation.y = Math.PI; g.add(lant);
+  }
+  return g;
+}

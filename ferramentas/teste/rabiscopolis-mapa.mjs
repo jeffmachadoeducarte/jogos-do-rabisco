@@ -9,9 +9,9 @@ import { readFileSync } from "node:fs";
 // os módulos do jogo são do navegador (sem package.json "type": "module"): importa pelo texto, trocando o import relativo
 const raiz = new URL("../../", import.meta.url);
 const texto = (p) => readFileSync(new URL(p, raiz), "utf8");
-const parceirosSrc = texto("jogos/cidade-do-rabisco/parceiros.js");
+const parceirosSrc = texto("src/parceiros.js");
 const urlParceiros = `data:text/javascript,${encodeURIComponent(parceirosSrc)}`;
-const mapaSrc = texto("jogos/rabiscopolis/mapa.js").replace(/from\s+["']\.\.\/cidade-do-rabisco\/parceiros\.js["']/, `from "${urlParceiros}"`);
+const mapaSrc = texto("jogos/rabiscopolis/mapa.js").replace(/from\s+["']\.\.\/\.\.\/src\/parceiros\.js["']/, `from "${urlParceiros}"`);
 const M = await import(`data:text/javascript,${encodeURIComponent(mapaSrc)}`);
 const { PARCEIROS } = await import(urlParceiros);
 

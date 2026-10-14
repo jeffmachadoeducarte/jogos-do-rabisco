@@ -10,7 +10,7 @@
 // ?teste expõe window.teste.
 
 import { THREE, MAT, mesclar } from "./base3d.js";
-import { PARCEIROS } from "../cidade-do-rabisco/parceiros.js";
+import { PARCEIROS } from "../../src/parceiros.js";
 import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
 import { criarCasca, el } from "../../src/motor/casca.js";
 import { sons } from "../../src/motor/sons.js";

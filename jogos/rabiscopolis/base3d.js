@@ -4,7 +4,7 @@
 // mesclagem de malhas estáticas por material, que corta as chamadas de desenho) é novo.
 
 import { THREE, texturaCanvas, toon, comContorno, aleatorio } from "../../src/motor3d/toon.js";
-import { ESTILO_PARCEIRO } from "../cidade-do-rabisco/parceiros.js";
+import { ESTILO_PARCEIRO } from "../../src/parceiros.js";
 import { LOJA_MAX } from "./mapa.js";
 
 export const r = aleatorio(2027);

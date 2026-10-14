@@ -8,7 +8,7 @@
 import { THREE, texturaCanvas, aleatorio, carregarTextura } from "../../src/motor3d/toon.js";
 import { escolaEducarte3D, pilotoLapis } from "../../src/motor3d/objetos.js";
 import { RUAS, CALCADA, distRua, LUGARES, CASAS, SEMAFOROS, PARQUE, LAGO, PLAYGROUND, PRACA, VAGAS, LARGADA, PATIO_JE, HELIPONTO } from "./mapa.js";
-import { ESTILO_PARCEIRO, IGREJA } from "./parceiros.js";
+import { ESTILO_PARCEIRO, IGREJA } from "../../src/parceiros.js";
 import { chaveMaterial, chaveVC, corLisa, materialVC, juntarGeometrias, mesclarLocal } from "./mesclar.js";
 
 export { BORDA } from "./mapa.js";

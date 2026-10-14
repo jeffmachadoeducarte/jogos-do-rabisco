@@ -1,11 +1,10 @@
 // Rabiscolândia: veículos. O Rabisco dirige o carro fofo (carroFofo, em carros.js) ou o ônibus da escola (onibusFofo).
-// Os carros da cidade (carro, de ../cidade-do-rabisco/cidade.js) andam sozinhos nas ROTAS, na faixa da direita, param
+// Os carros da cidade (carro, em carros.js) andam sozinhos nas ROTAS, na faixa da direita, param
 // no sinal fechado e quando tem alguém na frente. A IA de trânsito foi copiada e adaptada de
 // jogos/cidade-do-rabisco/jogo.js (faixaDireita, pontoNaRota, atualizarCarros, luzDe).
 
 import { THREE, mesclar } from "./base3d.js";
-import { carro } from "../cidade-do-rabisco/cidade.js";
-import { carroFofo, onibusFofo, helicoptero, carroJE, ambulancia, vanSorvete, caminhaoBombeiro, bicicleta, patinete, barquinho, trator } from "./carros.js";
+import { carro, carroFofo, onibusFofo, helicoptero, carroJE, ambulancia, vanSorvete, caminhaoBombeiro, bicicleta, patinete, barquinho, trator } from "./carros.js";
 import { ROTAS } from "./mapa.js";
 
 export const CORES_CARRO = [0xec2e8c, 0x00b5f0, 0xff7a00, 0x58c43a, 0x8e6cff, 0xffcc1f];

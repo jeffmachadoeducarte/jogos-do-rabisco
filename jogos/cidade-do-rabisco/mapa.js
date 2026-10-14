@@ -8,7 +8,7 @@
 //  - a Rua das Casas Coloridas, curtinha, e a Rua do Contorno em volta de tudo (cantos arredondados).
 // Unidade: o Rabisco tem 1,8 de altura.
 
-import { PARCEIROS } from "./parceiros.js";
+import { PARCEIROS } from "../../src/parceiros.js";
 
 export const BORDA = 125;
 

@@ -1,5 +1,5 @@
-// Empresas parceiras que aparecem na Cidade do Rabisco: cada uma ganha um prédio cuja frente inteira é a foto
-// real da fachada, nos pontos de PONTOS_PARCEIROS (mapa.js), na ordem desta lista.
+// Empresas parceiras que aparecem na Rabiscolândia (e no Rabisco Kart): cada uma ganha um prédio cuja frente inteira é a foto
+// real da fachada, nos pontos de PONTOS_PARCEIROS (jogos/rabiscopolis/mapa.js), na ordem desta lista.
 // Para incluir uma parceira nova: pôr a foto em assets/parceiros/ (webp leve, recortada só na fachada: de canto
 // a canto e do chão ao topo, sem céu nem rua) e acrescentar uma linha aqui. O prédio pega a proporção da foto.
 // Trocou a foto de uma parceira? Suba o número do ?v= dela.
