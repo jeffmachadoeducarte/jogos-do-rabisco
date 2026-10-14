@@ -33,6 +33,7 @@
     <button id="ant">◀</button><button id="liga">⏻</button><button id="prox">▶</button><br>
     <label>Volume <input id="vol" type="range" min="0" max="1" step="0.05" value="0.55"></label>
     <button id="fala">🗣️ Segurar "fala" (ducking)</button>
+    <div id="fonte">Fonte: —</div>
     <pre id="estado"></pre>
   </div>
 <script type="module">
@@ -50,7 +51,14 @@
   $("#vol").oninput = (e) => radio.volume(e.target.value);
   let falando = false;
   $("#fala").onclick = () => { falando = !falando; radio.pausarPorFala(falando); $("#fala").textContent = falando ? "🗣️ Soltar fala" : "🗣️ Segurar \"fala\" (ducking)"; };
-  setInterval(() => { $("#estado").textContent = JSON.stringify(radio.estado(), null, 1); }, 300);
+  // mostra se está tocando a faixa gravada (MP3 de assets/radio) ou a reserva sintetizada (sem internet)
+  setInterval(() => {
+    const e = radio.estado();
+    $("#fonte").textContent = !e.ligado ? "Fonte: desligado" : e.modo === "faixas"
+      ? `Fonte: faixa gravada — ${(e.faixa?.src || "").split("/assets/radio/")[1] || "carregando…"} (${e.faixa?.tempo ?? 0}s)`
+      : `Fonte: reserva sintetizada${e.ultimaFalha ? ` (${e.ultimaFalha})` : ""}`;
+    $("#estado").textContent = JSON.stringify(e, null, 1);
+  }, 300);
   if (new URLSearchParams(location.search).has("painel")) ui.mostrar();
 </script>
 </body>

@@ -1,6 +1,8 @@
-// Rádio gospel do carro: hinos de DOMÍNIO PÚBLICO em versões instrumentais geradas aqui (Web Audio),
-// mais melodias originais. Nada de arquivo de música de terceiros, nada de streaming.
-// As melodias (com a harmonia a 4 vozes dos hinários antigos) ficam em ./hinos.js.
+// Rádio gospel do carro: hinos de DOMÍNIO PÚBLICO (e 3 melodias originais) em ARRANJOS INSTRUMENTAIS
+// gravados em MP3 (assets/radio/<estacao>/<hino>.mp3), renderizados com instrumentos amostrados por
+// ferramentas/radio/gerar_radio.py (FluidSynth + SoundFont GeneralUser GS — créditos em assets/radio/CREDITOS.md).
+// Só baixa a faixa da estação que está tocando (e pré-carrega a próxima). Se a faixa não carregar
+// (sem internet), cai na RESERVA: as mesmas melodias sintetizadas aqui mesmo (Web Audio), a partir de ./hinos.js.
 //
 //   import { criarRadio } from "../../src/radio/radio.js";
 //   const radio = criarRadio({ audioCtx });   // usa o AudioContext do jogo, se houver (senão cria um ao ligar)
@@ -10,8 +12,10 @@
 //   radio.pausarPorFala(true/false)    // "ducking": abaixa ~70% enquanto a anfitriã fala
 //   radio.vigiarFalas()                // ducking automático para os MP3 de assets/voz tocados por src/motor/voz.js
 //
-// Leve em CPU: 1 oscilador + 1 ganho por nota (envelopes sem clique), um filtro e um eco por estação,
-// agendamento com antecedência (lookahead) no relógio do AudioContext.
+// Faixas: um único <audio> (destravado no toque que liga o rádio, o que o iPhone exige) ligado ao
+// AudioContext por MediaElementSource → ganho da faixa → ducking → volume mestre.
+// Reserva sintetizada: 1 oscilador + 1 ganho por nota (envelopes sem clique), um filtro e um eco por estação,
+// agendamento com antecedência (lookahead) no relógio do AudioContext. Em OfflineAudioContext usa sempre a reserva.
 
 import { HINOS } from "./hinos.js";
 import { sons } from "../motor/sons.js";
@@ -25,6 +29,11 @@ export const ESTACOES = [
 // vinheta falada (voz Francisca, gerada por ferramentas/gerar_vozes.py, BLOCO Rádio): duas variações por estação
 const urlVoz = (chave) => new URL(`../../assets/voz/${chave}.mp3`, import.meta.url).href;
 const VINHETAS = Object.fromEntries(ESTACOES.map((e) => [e.id, [`radio-${e.id}`, `radio-${e.id}-2`]]));
+// faixas gravadas: assets/radio/<estação>/<hino>.mp3 e assets/radio/<estação>/vinheta-1|2.mp3 (fundo musical + a mesma voz)
+const urlFaixa = (estacao, nome) => new URL(`../../assets/radio/${estacao}/${nome}.mp3`, import.meta.url).href;
+const NIVEL_FAIXA = 1.0;      // ganho das faixas (masterizadas a -18 LUFS)
+const ESPERA_FAIXA = 9000;    // ms sem começar a tocar → usa a reserva sintetizada
+const PAUSA_RESERVA = 30000;  // depois de uma falha, as trocas de estação vão direto para a reserva por 30 s
 
 const ANTECEDENCIA = 0.35; // s agendados à frente
 const PASSO = 60;          // ms entre agendamentos
@@ -120,6 +129,11 @@ export function criarRadio({ audioCtx = null, saida = null, volume: volInicial =
   const duckFontes = new Set();
   const buffers = new Map();                  // chave → AudioBuffer | null | Promise
   let vozesAtivas = 0, notasDoHino = 0;
+  // faixas gravadas
+  let player = null, ganhoFaixa = null;       // <audio> único + seu ganho no grafo
+  let faixa = null;                           // { sessao, tipo, url, proximo, tocando, timer, preProx }
+  let faixaSessao = 0, falhouEm = -Infinity, modo = "faixas", ultimaFalha = null;
+  const preCarregadas = new Set();
 
   function prepararContexto() {
     if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -292,9 +306,129 @@ export function criarRadio({ audioCtx = null, saida = null, volume: volInicial =
     agendarAte(ctx.currentTime + ANTECEDENCIA);
   }
 
-  // cada estação toca no seu próprio "barramento" (filtro + eco), que some suave na troca
-  function abrirSessao({ vinheta = true, chiado = true } = {}) {
+  // ---------- faixas gravadas (MP3)
+  const agora = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+  const podeFaixas = () => !offline && typeof Audio !== "undefined" && typeof ctx?.createMediaElementSource === "function";
+  function prepararPlayer() {
+    if (player) return true;
+    try {
+      const el = new Audio();
+      el.preload = "auto";
+      const fonte = ctx.createMediaElementSource(el);
+      ganhoFaixa = ctx.createGain();
+      ganhoFaixa.gain.value = 0;
+      fonte.connect(ganhoFaixa).connect(duck);
+      el.addEventListener("ended", () => { if (faixa) tocarProximaFaixa(); });
+      el.addEventListener("error", () => { if (faixa && el.getAttribute("src")) falhaFaixa("erro de rede/arquivo"); });
+      el.addEventListener("playing", () => { if (faixa) { clearTimeout(faixa.timer); faixa.tocando = true; } });
+      el.addEventListener("timeupdate", () => {
+        // perto do fim do hino: pré-carrega o hino seguinte da estação (a vinheta já foi pré-carregada)
+        if (faixa?.tipo === "hino" && !faixa.preProx && el.duration - el.currentTime < 25) {
+          faixa.preProx = true;
+          const e = ESTACOES[est];
+          preCarregar(urlFaixa(e.id, e.hinos[posicao[est] % e.hinos.length]));
+        }
+      });
+      player = el;
+      return true;
+    } catch { player = null; return false; }
+  }
+  function preCarregar(url) {
+    if (preCarregadas.has(url) || typeof fetch === "undefined") return;
+    preCarregadas.add(url);
+    fetch(url).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status)))).catch(() => preCarregadas.delete(url));
+  }
+  function rampaFaixa(alvo, dur) {
+    const t = ctx.currentTime, g = ganhoFaixa.gain;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(alvo, t + dur);
+  }
+  // chiadinho de sintonia ao trocar de estação (uma fonte só, que se desliga sozinha)
+  function chiadoTroca() {
+    const t = ctx.currentTime;
+    const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    s.buffer = ruido; f.type = "bandpass"; f.frequency.value = 2200;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.05, t + 0.01);
+    g.gain.setTargetAtTime(0, t + 0.03, 0.1);
+    s.connect(f).connect(g).connect(duck);
+    s.start(t); s.stop(t + 0.5);
+    s.onended = () => { try { g.disconnect(); f.disconnect(); } catch { /* ok */ } };
+  }
+  function abrirFaixas({ vinheta = true, chiado = true } = {}) {
     fecharSessao();
+    const tocandoAntes = faixa && !player.paused;
+    clearTimeout(faixa?.timer);
+    faixa = { sessao: ++faixaSessao, proximo: vinheta ? "vinheta" : "hino", tocando: false };
+    modo = "faixas";
+    if (chiado) chiadoTroca();
+    if (!tocandoAntes) { tocarProximaFaixa(); return; } // direto: mantém o "toque" do usuário (iPhone)
+    rampaFaixa(0, 0.12);
+    const s = faixa.sessao;
+    setTimeout(() => { if (faixa?.sessao === s) tocarProximaFaixa(); }, 140);
+  }
+  function tocarProximaFaixa() {
+    const e = ESTACOES[est];
+    if (faixa.proximo === "vinheta") {
+      faixa.tipo = "vinheta";
+      faixa.url = urlFaixa(e.id, `vinheta-${(vinhetaN[est]++ % 2) + 1}`);
+      faixa.proximo = "hino";
+    } else {
+      const id = e.hinos[posicao[est] % e.hinos.length];
+      posicao[est]++;
+      hinoAtual = id;
+      faixa.tipo = "hino";
+      faixa.url = urlFaixa(e.id, id);
+      faixa.proximo = "vinheta";
+    }
+    faixa.tocando = false; faixa.preProx = false;
+    const s = faixa.sessao;
+    clearTimeout(faixa.timer);
+    faixa.timer = setTimeout(() => { if (faixa?.sessao === s && !faixa.tocando) falhaFaixa("demorou para carregar"); }, ESPERA_FAIXA);
+    player.src = faixa.url;
+    rampaFaixa(NIVEL_FAIXA, 0.06);
+    const p = player.play();
+    p?.catch?.((err) => { if (faixa?.sessao === s && err?.name !== "AbortError") falhaFaixa(err?.name || "play"); });
+    if (faixa.tipo === "hino") {
+      emitir();
+      preCarregar(urlFaixa(e.id, `vinheta-${(vinhetaN[est] % 2) + 1}`));
+    } else {
+      preCarregar(urlFaixa(e.id, e.hinos[posicao[est] % e.hinos.length]));
+    }
+  }
+  function pararFaixa() {
+    if (!faixa) return;
+    clearTimeout(faixa.timer);
+    faixa = null;
+    if (!player) return;
+    rampaFaixa(0, 0.1);
+    const s = faixaSessao;
+    setTimeout(() => { if (!faixa && faixaSessao === s) player.pause(); }, 160);
+  }
+  // sem internet (ou arquivo faltando): a mesma estação continua com a reserva sintetizada
+  function falhaFaixa(motivo) {
+    if (!faixa) return;
+    const f = faixa;
+    clearTimeout(f.timer);
+    faixa = null;
+    ultimaFalha = motivo;
+    falhouEm = agora();
+    try { player.pause(); player.removeAttribute("src"); player.load(); } catch { /* ok */ }
+    if (f.tipo === "hino") posicao[est] = Math.max(0, posicao[est] - 1); // repete o mesmo hino na reserva
+    if (ligado) abrirSessaoSint({ vinheta: f.tipo === "vinheta", chiado: false });
+  }
+
+  function abrirSessao(opcoes = {}) {
+    if (podeFaixas() && agora() - falhouEm > PAUSA_RESERVA && prepararPlayer()) abrirFaixas(opcoes);
+    else { pararFaixa(); abrirSessaoSint(opcoes); }
+  }
+
+  // cada estação toca no seu próprio "barramento" (filtro + eco), que some suave na troca
+  function abrirSessaoSint({ vinheta = true, chiado = true } = {}) {
+    fecharSessao();
+    modo = "sintetizado";
+    for (const chs of Object.values(VINHETAS)) for (const c of chs) carregarVoz(c);
     const st = ESTILOS[ESTACOES[est].estilo];
     const t = ctx.currentTime;
     const entrada = ctx.createGain();
@@ -364,7 +498,6 @@ export function criarRadio({ audioCtx = null, saida = null, volume: volInicial =
       if (e != null) est = ((e % ESTACOES.length) + ESTACOES.length) % ESTACOES.length;
       if (ligado) { if (e != null) abrirSessao({ vinheta }); return info(); }
       prepararContexto();
-      for (const chs of Object.values(VINHETAS)) for (const c of chs) carregarVoz(c);
       ligado = true;
       aplicarVolume(0.05);
       aplicarDuck();
@@ -380,6 +513,7 @@ export function criarRadio({ audioCtx = null, saida = null, volume: volInicial =
       clearInterval(timer); timer = null;
       aplicarVolume(0.06);
       fecharSessao();
+      pararFaixa();
       if (lfo) { const l = lfo; lfo = null; setTimeout(() => { try { l.stop(); lfoGanho.disconnect(); } catch { /* ok */ } }, 1500); }
       emitir();
     },
@@ -409,7 +543,13 @@ export function criarRadio({ audioCtx = null, saida = null, volume: volInicial =
     get contexto() { return ctx; },
     // para testes e renderização offline
     agendarAte(t) { agendarAte(t); },
-    estado() { return { ...info(), notasDoHino, vozesAtivas, abaixado: duckFontes.size > 0, ganhoDuck: duck?.gain.value ?? 1, ganhoMestre: mestre?.gain.value ?? 0 }; },
+    estado() {
+      return {
+        ...info(), modo: ligado ? modo : null, notasDoHino, vozesAtivas, abaixado: duckFontes.size > 0, ganhoDuck: duck?.gain.value ?? 1, ganhoMestre: mestre?.gain.value ?? 0,
+        faixa: faixa ? { tipo: faixa.tipo, src: player?.currentSrc || faixa.url, tocando: !!player && !player.paused && faixa.tocando, tempo: player ? Math.round(player.currentTime * 10) / 10 : 0 } : null,
+        audioTocando: !!player && !player.paused, ultimaFalha,
+      };
+    },
   };
   return radio;
 }
