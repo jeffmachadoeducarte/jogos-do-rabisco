@@ -612,6 +612,25 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   } finally { await t.fechar(); }
 }
 
+// ------------------------------------------------------------------ carro da cidade nunca prende o Rabisco (completo: carro-preso-rabiscolandia.mjs)
+{
+  const t = await abrir("about:blank");
+  try {
+    await t.cmd("Page.addScriptToEvaluateOnNewDocument", { source: `${FAMILIA}; navigator.getGamepads = () => [null, null, null, null];` });
+    await t.cmd("Page.navigate", { url: `${URL_JOGO}?teste&jogar&fixo` });
+    ok(await ate(t, "!!window.teste?.vivo && !!teste.mundo"), "carro preso: começou");
+    await espera(1500);
+    // o carro do jogador em cima de um carro da cidade parado: frente e ré têm que andar mais de 2 m (tempo de jogo)
+    const anda = (acel) => t.ev(`(async () => { const T = teste, k = T.transito[0]; k.vel = 0; k.vAtual = 0;
+      const v = T.veiculos[0]; T.sair(); T.entrar(0); T.posVeiculo(0, k.g.position.x + 0.8, k.g.position.z + 0.5, k.g.rotation.y); v.vel = 0;
+      const p0 = [v.pos.x, v.pos.z], t0 = T.tempo; T.volante(${acel}, 0);
+      while (T.tempo - t0 < 3.5) await new Promise((r) => setTimeout(r, 30));
+      T.volante(null); k.vel = 9; k.vAtual = 9; return Math.hypot(v.pos.x - p0[0], v.pos.z - p0[1]); })()`);
+    const f = await anda(1), r = await anda(-1);
+    ok(f > 2 && r > 2, `carro preso: em cima de um carro da cidade, frente anda ${f.toFixed(1)} m e ré ${r.toFixed(1)} m (> 2 m)`);
+  } finally { await t.fechar(); }
+}
+
 clearTimeout(vigia);
 console.log(falhas ? `${falhas} falha(s)` : "tudo certo");
 process.exit(falhas ? 1 : 0);

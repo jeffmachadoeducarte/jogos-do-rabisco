@@ -25,6 +25,8 @@ export function criarFisica(mundo) {
   };
   // j = { pos, vel, noChao, coyote, buffer, dir }; ent = { ix, iy (−1..1), pular (novo), segura }; camYaw
   function andar(j, ent, camYaw, dt) {
+    // anti-deadlock a pé: se já está dentro de algo (nasceu/foi empurrado), sai para o ponto livre mais próximo
+    if (bate(j.pos.x, j.pos.z, j.pos.y) && (Math.abs(ent.ix) > 0.1 || Math.abs(ent.iy) > 0.1)) { const [lx, lz] = livre(j.pos.x, j.pos.z, LARG + 0.05); j.pos.x = lx; j.pos.z = lz; j.vel.x = j.vel.z = 0; }
     const fx = Math.sin(camYaw), fz = Math.cos(camYaw);
     const wx = fx * ent.iy - fz * ent.ix, wz = fz * ent.iy + fx * ent.ix;
     const k = Math.min(1, dt * (j.noChao ? 12 : 5));
@@ -47,22 +49,60 @@ export function criarFisica(mundo) {
     if (v > 0.4) { let d = Math.atan2(j.vel.x, j.vel.z) - j.dir; d = Math.atan2(Math.sin(d), Math.cos(d)); j.dir += d * Math.min(1, dt * 12); }
     return { v, pulou };
   }
-  // colisão do veículo: círculos ao longo do comprimento, contra prédios, árvores, lago e outros carros
-  function veiculoBate(v, x, z, ang, outros = []) {
+  // colisão do veículo: círculos ao longo do comprimento, contra prédios, árvores, lago e outros veículos/gente.
+  // veiculoPen devolve a PROFUNDIDADE da sobreposição (> 0 = preso dentro de algo; 0 = livre): é o que deixa o
+  // anti-deadlock aceitar o movimento que sai de dentro. Carro da IA nunca entra aqui (o jogador o atravessa
+  // como fantasma; é a IA que freia): quem monta "outros" não passa o trânsito, e o que vier com fantasma é ignorado.
+  const FOLGA = 0.04; // tolerância de encosto: raspar de lado (tangente) não conta como bater
+  function veiculoPen(v, x, z, ang, outros = []) {
     const fx = Math.sin(ang), fz = Math.cos(ang), L = v.larg + 0.05;
     const passos = v.comp > 3 ? [-v.comp + 1.4, -v.comp / 2, 0, v.comp / 2, v.comp - 1.4] : v.comp < 1.6 ? [-v.comp * 0.6, 0, v.comp * 0.6] : [-1.5, 0, 1.5];
-    // barquinho: só na água (todo o casco dentro de um dos lagos)
-    if (v.tipo === "barco") {
-      const naAgua = (px, pz) => [LAGO, LAGO2].some((l) => Math.hypot(px - l.x, pz - l.z) < l.r - 0.5 - L);
-      return passos.some((k) => !naAgua(x + fx * k, z + fz * k)) || outros.some((o) => o !== v && Math.hypot(o.x - x, o.z - z) < (o.raio ?? 2.4) + v.larg + 0.6);
-    }
+    let pen = 0;
     for (const k of passos) {
       const px = x + fx * k, pz = z + fz * k;
-      if (solidos.some((s) => s.y1 > 0.3 && px > s.x0 - L && px < s.x1 + L && pz > s.z0 - L && pz < s.z1 + L)) return true;
-      if (circulos.some((c) => Math.hypot(px - c.x, pz - c.z) < c.r + L)) return true;
+      for (const s of solidos) {
+        if (s.y1 <= 0.3 || px <= s.x0 - L || px >= s.x1 + L || pz <= s.z0 - L || pz >= s.z1 + L) continue;
+        const d = Math.min(px - (s.x0 - L), s.x1 + L - px, pz - (s.z0 - L), s.z1 + L - pz);
+        if (d > pen) pen = d;
+      }
+      for (const c of circulos) { const d = c.r + L - Math.hypot(px - c.x, pz - c.z); if (d > pen) pen = d; }
     }
-    for (const o of outros) if (o !== v && Math.hypot(o.x - x, o.z - z) < (o.raio ?? 2.4) + v.larg + 0.6) return true;
-    return Math.abs(x) > BORDA + 6 || Math.abs(z) > BORDA + 6;
+    for (const o of outros) {
+      if (o === v || o.fantasma) continue;
+      const d = (o.raio ?? 2.4) + v.larg + 0.6 - Math.hypot(o.x - x, o.z - z);
+      if (d > pen) pen = d;
+    }
+    const b = Math.max(Math.abs(x), Math.abs(z)) - (BORDA + 6);
+    return b > pen ? b : pen;
+  }
+  function veiculoBate(v, x, z, ang, outros = []) {
+    // barquinho: só na água (todo o casco dentro de um dos lagos)
+    if (v.tipo === "barco") {
+      const fx = Math.sin(ang), fz = Math.cos(ang), L = v.larg + 0.05;
+      const passos = [-1.5, 0, 1.5];
+      const naAgua = (px, pz) => [LAGO, LAGO2].some((l) => Math.hypot(px - l.x, pz - l.z) < l.r - 0.5 - L);
+      return passos.some((k) => !naAgua(x + fx * k, z + fz * k)) || outros.some((o) => o !== v && !o.fantasma && Math.hypot(o.x - x, o.z - z) < (o.raio ?? 2.4) + v.larg + 0.6);
+    }
+    return veiculoPen(v, x, z, ang, outros) > FOLGA;
+  }
+  // ponto livre mais próximo do veículo (mantendo o ângulo) para o empurrãozinho anti-preso: prefere um ponto de
+  // onde dá para andar para frente E para trás (folga de 2,6 m nos dois sentidos); senão, o primeiro livre
+  function pontoLivreVeiculo(v, outros) {
+    let simples = null;
+    const fx = Math.sin(v.ang), fz = Math.cos(v.ang);
+    for (let r = 0.2; r < 24; r += 0.2) {
+      const n = Math.max(8, Math.round(r * 8));
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * 6.2832, px = v.pos.x + Math.cos(a) * r, pz = v.pos.z + Math.sin(a) * r;
+        if (veiculoBate(v, px, pz, v.ang, outros)) continue;
+        if (!simples) simples = [px, pz];
+        let limpo = true; // o caminho todo (não só as pontas) tem que estar livre nos dois sentidos
+        for (let d = 0.4; d <= 2.6 && limpo; d += 0.4) limpo = !veiculoBate(v, px + fx * d, pz + fz * d, v.ang, outros) && !veiculoBate(v, px - fx * d, pz - fz * d, v.ang, outros);
+        if (limpo) return [px, pz];
+      }
+      if (simples && r > 4) break;
+    }
+    return simples;
   }
   // ent = { ix, iy } · devolve true se bateu forte
   function dirigir(v, ent, dt, outros) {
@@ -76,10 +116,30 @@ export function criarFisica(mundo) {
     const nx = v.pos.x + Math.sin(v.ang) * v.vel * dt, nz = v.pos.z + Math.cos(v.ang) * v.vel * dt;
     v.batida -= dt;
     let forte = false;
-    if (veiculoBate(v, nx, nz, v.ang, outros)) {
-      if (Math.abs(v.vel) > 4 && v.batida <= 0) { forte = true; v.batida = 0.8; }
-      v.vel *= -0.25;
-    } else { v.pos.x = nx; v.pos.z = nz; }
+    const barco = v.tipo === "barco";
+    // anti-deadlock: se já está sobreposto a algo, vale todo movimento que reduz a sobreposição
+    const pen0 = barco ? 0 : veiculoPen(v, v.pos.x, v.pos.z, v.ang, outros);
+    const pen1 = barco ? (veiculoBate(v, nx, nz, v.ang, outros) ? 1 : 0) : veiculoPen(v, nx, nz, v.ang, outros);
+    const sai = pen0 > FOLGA && pen1 < pen0 - 1e-4;
+    const dx0 = v.pos.x, dz0 = v.pos.z;
+    if (pen1 <= FOLGA || sai) { v.pos.x = nx; v.pos.z = nz; }
+    else {
+      if (Math.abs(v.vel) > 4 && v.batida <= 0 && pen0 <= FOLGA) { forte = true; v.batida = 0.8; }
+      v.vel *= pen0 > FOLGA ? 0.5 : -0.25;
+    }
+    // anti-deadlock 2: preso (sobreposto, acelerador apertado, quase sem sair do lugar) por 0,5 s: empurra suave
+    // para o ponto livre mais próximo
+    if (!barco && pen0 > FOLGA && iy !== 0 && Math.hypot(v.pos.x - dx0, v.pos.z - dz0) < 0.4 * dt * 6) v.preso = (v.preso ?? 0) + dt;
+    else if (pen0 <= FOLGA || iy === 0) v.preso = 0;
+    if (v.preso > 0.5 && !v.saida) { v.saida = pontoLivreVeiculo(v, outros); v.saidaT = 0; v.preso = 0; }
+    if (v.saida && iy === 0) v.saida = null;
+    if (v.saida) {
+      const ex = v.saida[0] - v.pos.x, ez = v.saida[1] - v.pos.z, d = Math.hypot(ex, ez), m = Math.min(d, 7 * dt);
+      v.saidaT += dt;
+      if (d > 1e-6) { v.pos.x += (ex / d) * m; v.pos.z += (ez / d) * m; }
+      v.vel = 0;
+      if (d <= 7 * dt || v.saidaT > 3) v.saida = null;
+    }
     return forte;
   }
   // Helicóptero: subir/descer, frente/ré e virar. O chão embaixo dele é o topo do que estiver ali (dá para pousar
@@ -112,5 +172,5 @@ export function criarFisica(mundo) {
   }
   // motor desligando quando ninguém pilota
   function pararHeli(v, dt) { v.rotor = Math.max(0, v.rotor - dt * 0.5); v.vel = 0; v.vs = 0; }
-  return { chaoEm, bate, livre, andar, dirigir, veiculoBate, voar, pararHeli, chaoHeli };
+  return { chaoEm, bate, livre, andar, dirigir, veiculoBate, veiculoPen, voar, pararHeli, chaoHeli };
 }

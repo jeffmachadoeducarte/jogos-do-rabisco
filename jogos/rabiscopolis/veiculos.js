@@ -122,7 +122,7 @@ export function atualizarTransito(carros, semaforos, alvos, dt, t) {
     }
     for (const a of alvos) {
       const ah = (a.x - px) * dx + (a.z - pz) * dz, l = Math.abs((a.x - px) * dz - (a.z - pz) * dx);
-      if (ah > 0 && ah < 10 && l < a.raio + 1.3) alvoVel = Math.min(alvoVel, Math.max(0, (ah - a.raio - 3) * 2));
+      if (ah > 0 && ah < 10 && l < a.raio + 1.3) alvoVel = Math.min(alvoVel, Math.max(0, (ah - a.raio - (a.comp ?? 0) - 3) * 2));
     }
     for (const o of carros) {
       if (o === k) continue;

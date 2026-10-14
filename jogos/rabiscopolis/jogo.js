@@ -735,6 +735,7 @@ function quadro() {
   const doisToque = Boolean(j2?.ativo) && qualidade.perfil.toque;
   if (doisToque !== quadro.doisToque) { quadro.doisToque = doisToque; if (qualidade.perfil.toque) { mundo.alcance = doisToque ? 78 : 95; mundo.detalheAte = doisToque ? 28 : 35; cena.fog.far = mundo.alcance; } }
   for (let p = 0; p < passos; p++) passo(total / passos, p === passos - 1);
+  estat.tj = (estat.tj ?? 0) + total; // tempo de jogo (o que os passos simularam), para os testes
   r3.render(cena, cam);
   estat.calls = r3.info.render.calls; estat.tris = r3.info.render.triangles;
   estat.n++;
@@ -759,7 +760,8 @@ function passo(dt, ultimo) {
       if (vovo) gente.push({ x: vovo.grupo.position.x, z: vovo.grupo.position.z, raio: 0.5 });
       if (missoes) gente.push(...missoes.obstaculos());
       if (j2?.pos && !j2.sentado) gente.push({ x: j2.pos.x, z: j2.pos.z, raio: 0.6 });
-      const outros = transito.map((k) => ({ x: k.g.position.x, z: k.g.position.z, raio: 2.2 })).concat(veiculos.filter((v) => v !== dentro).map((v) => ({ x: v.pos.x, z: v.pos.z, raio: v.comp })), gente);
+      // carro da IA NÃO entra aqui (nunca bloqueia o Rabisco): é ele que freia antes de encostar
+      const outros = veiculos.filter((v) => v !== dentro).map((v) => ({ x: v.pos.x, z: v.pos.z, raio: v.comp })).concat(gente);
       if (fis.dirigir(dentro, ent, dt, outros)) { sons.batida(); navigator.vibrate?.(30); }
       const segurando = tem("pular") || pad.pulo || toque?.carro.especial || entradaTeste?.especial;
       if ((pad.puloNovo || toque?.puloNovo || toque?.especialNovo || entradaTeste?.especialNovo) && dentro.buzina <= 0) { acionarEspecial(dentro); dentro.buzina = dentro.g.userData.especial === "buzina" ? 0.8 : 1.5; if (entradaTeste) entradaTeste.especialNovo = false; }
@@ -787,11 +789,12 @@ function passo(dt, ultimo) {
       rabisco.atualizar(dt, { modo: !j.noChao ? "pular" : v > 0.6 ? "andar" : "parado", vel: v, vmax: VEL });
       andando = ent.m > 0.2 && ent.iy > -0.3;
       // carro da cidade encostando no Rabisco a pé: empurra devagar
-      for (const k of transito) { const ex = j.pos.x - k.g.position.x, ez = j.pos.z - k.g.position.z, d = Math.hypot(ex, ez); if (d < 2.4 && d > 0.01 && j.pos.y < 2) { j.pos.x += (ex / d) * dt * 4; j.pos.z += (ez / d) * dt * 4; } }
+      for (const k of transito) { const ex = j.pos.x - k.g.position.x, ez = j.pos.z - k.g.position.z, d = Math.hypot(ex, ez); if (d < 2.4 && d > 0.01 && j.pos.y < 2) { const px = j.pos.x + (ex / d) * dt * 4, pz = j.pos.z + (ez / d) * dt * 4; if (!fis.bate(px, pz, j.pos.y)) { j.pos.x = px; j.pos.z = pz; } } }
     }
     for (const v of veiculos) { if (v.tipo === "heli" && v !== dentro) fis.pararHeli(v, dt); animarVeiculo(v, dt, t); }
     atualizarSemaforos(mundo.semaforos, t);
     const alvos = [{ x: j.pos.x, z: j.pos.z, raio: dentro ? 1.6 : 0.6 }, ...(j2?.pos && !j2.sentado ? [{ x: j2.pos.x, z: j2.pos.z, raio: 0.6 }] : []), ...veiculos.filter((v) => v !== dentro && v.alt < 1.5).map((v) => ({ x: v.pos.x, z: v.pos.z, raio: v.larg }))];
+    if (dentro) { alvos[0].raio = Math.max(1.0, dentro.larg); alvos[0].comp = dentro.comp; } // a IA freia antes do para-choque
     atualizarTransito(transito, mundo.semaforos, alvos, dt, t);
     for (const k of transito) k.g.visible = Math.hypot(k.g.position.x - j.pos.x, k.g.position.z - j.pos.z) < (qualidade.perfil.toque ? 60 : mundo.alcance - 20);
     // a seta "entre aqui" só aparece perto (e nunca no veículo que ele dirige)
@@ -912,7 +915,7 @@ if (params.has("teste")) window.teste = {
   get mundo() { return mundo; }, get dentro() { return dentro; }, get contexto() { return contexto?.rotulo ?? null; },
   get salvo() { return carregar(); }, get fone() { return fone; }, get transito() { return transito; }, get moradores() { return moradores; },
   get ceu() { return ceu; }, get estat() { return { ...estat, fps: qualidade?.fps ?? 0, blocos: mundo.blocosVisiveis(), malhas: mundo.malhas }; },
-  get vivo() { return vivo; },
+  get vivo() { return vivo; }, get tempo() { return estat.tj ?? 0; }, get fis() { return fis; },
   get emLugar() { return emLugar ? { id: emLugar.id, est: emLugar.est, interativos: emLugar.interativos.map((i) => ({ id: i.id, rotulo: i.rotulo, pos: i.pos })) } : null; },
   get sorveteUI() { return sorveteUI; },
   entrarLugar(id) { if (dentro) sair(); if (emCasa) sairCasa(true); entrarLugar(id, true); },
