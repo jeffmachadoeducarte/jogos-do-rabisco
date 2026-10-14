@@ -18,7 +18,7 @@ const temGamepad = typeof navigator.getGamepads === "function"; // Smart TV Sams
 // Jogos com 2 jogadores ao mesmo tempo (por enquanto). Capas do portal (assets/portal-capas/).
 const JOGOS = [
   { id: "rabisco-kart", nome: "Rabisco Kart", dois: "🏁 Corrida a 2" },
-  { id: "cidade-do-rabisco", nome: "Cidade do Rabisco", dois: "🏙️ Passeio a 2" },
+  { id: "cidade-do-rabisco", nome: "Rabiscópolis", dois: "🏙️ Passeio a 2" },
   { id: "rabiscopolis", nome: "Rabiscolândia", dois: "🏙️ Passeio a 2" },
 ];
 
