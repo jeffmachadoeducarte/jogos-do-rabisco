@@ -5,7 +5,8 @@
 // Os moradores são amigos do estojo (personagens.js). Tudo o que é guardado fica no aparelho (salvar.js).
 //
 // Módulos: mapa.js (dados) · mundo.js (montagem em blocos) · predios.js · casas.js · personagens.js · veiculos.js
-// · fisica.js · camera.js · ceu.js · rabifone.js · toque.js · salvar.js · qualidade.js. ?teste expõe window.teste.
+// · fisica.js · camera.js · ceu.js · rabifone.js · toque.js · salvar.js · qualidade.js · missoes.js (+ missoes-dados.js).
+// ?teste expõe window.teste.
 
 import { THREE, MAT, mesclar } from "./base3d.js";
 import { PARCEIROS } from "../cidade-do-rabisco/parceiros.js";
@@ -17,7 +18,8 @@ import { montarMundo } from "./mundo.js";
 import { criarFisica, VEL } from "./fisica.js";
 import { criarCamera } from "./camera.js";
 import { criarCeu } from "./ceu.js";
-import { criarVeiculo, animarVeiculo, criarTransito, atualizarTransito, atualizarSemaforos } from "./veiculos.js";
+import { criarVeiculo, animarVeiculo, criarTransito, atualizarTransito, atualizarSemaforos, luzDe } from "./veiculos.js";
+import { criarMissoes } from "./missoes.js";
 import { criarMorador, criarVovo } from "./personagens.js";
 import { criarRabifone } from "./rabifone.js";
 import { criarToque } from "./toque.js";
@@ -164,7 +166,7 @@ let r3, cena, cam, ceu, mundo, fis, camera, rabisco, relogio, qualidade, vivo = 
 let hud, minimapa, mapaGrande, balao, bussola, caixa;
 const j = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), noChao: true, coyote: 0, buffer: 0, dir: 0 };
 const veiculos = []; let garagem = null; // veículo chamado pelo Rabifone (só um por vez)
-let transito = [], moradores = [], vovo = null;
+let transito = [], moradores = [], vovo = null, missoes = null;
 let dentro = null, contexto = null, salvo = carregar(), alvoMapa = null;
 let emCasa = null, deco = null, fade = null; const interiores = {}; // casa por dentro (montada uma vez por planta)
 let emLugar = null, sorveteUI = null; const salas = {}; // lugares por dentro (Fatia 3), montados na primeira visita
@@ -204,6 +206,17 @@ function iniciar() {
   transito = criarTransito(cena);
   criarMoradores();
   aplicarCasa();
+  missoes = criarMissoes({
+    cena, rabisco, vovo, salvo, sons, dizer: (...a) => dizer(...a),
+    salvar: (d) => { Object.assign(salvo, { missoesFeitas: d.missoesFeitas, selos: d.selos }); salvar(salvo); },
+    falar: (k) => { radio?.pausarPorFala(true); falar(k); },
+    confete: () => jogo.confete?.(),
+    pos: () => j.pos, veiculoAtual: () => dentro, ocupado: () => Boolean(emCasa || emLugar),
+    raio: () => (qualidade.perfil.toque ? 35 : 45),
+    distRua, luzDe, semaforos: () => mundo.semaforos,
+    chamarCarro: () => chamarVeiculo("carro", 0x00b5f0),
+    aoConcluir: () => { alvoMapa = null; },
+  });
 
   // HUD
   hud = el("div", { class: "hud-rp" });
@@ -235,6 +248,12 @@ function iniciar() {
     aoMapa: () => alternarMapa(true),
     infoCasa: () => ({ tem: salvo.casa != null, nome: salvo.casa != null ? `Casa ${salvo.casa}` : "" }),
     coresCasa: () => CORES_PAREDE,
+    missoes: () => ({ lista: missoes.MISSOES.map((m) => ({ id: m.id, titulo: m.titulo, icone: m.icone, tipo: m.tipo, feita: missoes.feitas.includes(m.id) })), ativa: missoes.ativa }),
+    aoMissao: (acao, id) => {
+      if (acao === "largar") { missoes.largar(); dizer("Passaporte", "Tudo bem! Dá para voltar quando quiser.", 2400); return; }
+      const o = missoes.ondePede(id); alvoMapa = { x: o.x, z: o.z, emoji: "❗" };
+      dizer("Passaporte", "Siga a setinha até quem tem o ponto de exclamação!", 2600);
+    },
     aoCasa: (acao, extra) => {
       if (acao === "cor") { trocarCorCasa(extra); return; }
       if (emCasa && acao === "ir") return;
@@ -259,7 +278,7 @@ function parar() {
   emLugar = null; solidosDentro = []; for (const k of Object.keys(salas)) delete salas[k];
   radioUI?.sairDoCarro();
   if (r3) { r3.dispose(); r3 = null; }
-  veiculos.length = 0; transito = []; moradores = []; vovo = null; garagem = null;
+  veiculos.length = 0; transito = []; moradores = []; vovo = null; garagem = null; missoes = null;
   dentro = null; contexto = null; alvoMapa = null;
   teclas.clear();
 }
@@ -633,6 +652,7 @@ function regras() {
     if (Math.hypot(emCasa.int.porta[0] - j.pos.x, emCasa.int.porta[1] - j.pos.z) < 1.6) contexto = { rotulo: "🚪 Sair de casa", fazer: () => sairCasa() };
     else if (p) contexto = { rotulo: p.escolha ? "🛋️ Trocar" : "🛋️ Decorar", fazer: () => abrirDeco(p) };
   } else if (dentro) contexto = { rotulo: "🚪 Sair", fazer: sair };
+  else if ((contexto = missoes?.contexto() ?? null)) { /* missão: pedir, pegar, entregar, plantar */ }
   else {
     const v = pertoDeVeiculo();
     const lp = mundo.lugares.find((l) => SALAS[l.id] && Math.hypot(l.x - j.pos.x, l.z - j.pos.z) < 3.2);
@@ -702,6 +722,7 @@ function passo(dt, ultimo) {
       // sem atropelar: os moradores (e a Vovó) também são obstáculo; o veículo para antes
       const gente = moradores.filter((m) => m.p.grupo.visible).map((m) => ({ x: m.p.grupo.position.x, z: m.p.grupo.position.z, raio: 0.5 }));
       if (vovo) gente.push({ x: vovo.grupo.position.x, z: vovo.grupo.position.z, raio: 0.5 });
+      if (missoes) gente.push(...missoes.obstaculos());
       const outros = transito.map((k) => ({ x: k.g.position.x, z: k.g.position.z, raio: 2.2 })).concat(veiculos.filter((v) => v !== dentro).map((v) => ({ x: v.pos.x, z: v.pos.z, raio: v.comp })), gente);
       if (fis.dirigir(dentro, ent, dt, outros)) { sons.batida(); navigator.vibrate?.(30); }
       const segurando = tem("pular") || pad.pulo || toque?.carro.especial || entradaTeste?.especial;
@@ -745,12 +766,13 @@ function passo(dt, ultimo) {
       v.g.userData.seta.visible = v !== dentro && d < 9;
     }
     atualizarMoradores(dt);
+    missoes?.atualizar(dt, t);
     mundo.atualizar(dt, t);
     if (emLugar) emLugar.atualizar(dt, t);
     regras();
     posicionarCamera(Math.min(1, dt * 6), dt, andando);
     tMapa -= dt;
-    if (ultimo && tMapa <= 0) { tMapa = 0.15; desenharMapa(minimapa.getContext("2d"), 200); atualizarBussola(); atualizarBotaoAcao(); if (!mapaGrande.hidden) desenharMapa(mapaGrande.querySelector("canvas").getContext("2d"), 640, true); }
+    if (ultimo && tMapa <= 0) { tMapa = 0.15; desenharMapa(minimapa.getContext("2d"), 200); atualizarBussola(); atualizarBotaoAcao(); atualizarMissaoHud(); if (!mapaGrande.hidden) desenharMapa(mapaGrande.querySelector("canvas").getContext("2d"), 640, true); }
     if (ultimo && !params.has("fixo")) qualidade.medir(t);
   }
 }
@@ -763,7 +785,15 @@ function dizer(nome, texto, ms = 4200) {
   clearTimeout(dizer.t);
   dizer.t = setTimeout(() => balao.classList.remove("ativo"), ms);
 }
-function atualizarHud() { hud.innerHTML = `<div class="chip-rp">🏙️ Rabiscolândia</div>`; }
+function atualizarHud() { hud.innerHTML = `<div class="chip-rp">🏙️ Rabiscolândia</div><div class="missao-rp" hidden></div>`; }
+// faixa da missão ativa (embaixo do nome da cidade): o que fazer agora
+function atualizarMissaoHud() {
+  const box = hud.querySelector(".missao-rp"), m = !emCasa && !emLugar ? missoes?.texto() : null;
+  if (!m) { box.hidden = true; return; }
+  const html = `<b>${m.icone} ${m.titulo}</b><span>${m.passo}</span>`;
+  if (box.innerHTML !== html) box.innerHTML = html;
+  box.hidden = false;
+}
 function atualizarBotaoAcao() {
   const b = hud.btnAcao;
   const touch = document.body.classList.contains("touch");
@@ -777,7 +807,7 @@ function atualizarBotaoAcao() {
   if (b.innerHTML !== html) b.innerHTML = html;
 }
 function atualizarBussola() {
-  const a = alvoMapa;
+  const a = alvoMapa ?? (!emCasa && !emLugar ? missoes?.alvo() : null);
   if (!a) { bussola.hidden = true; return; }
   bussola.hidden = false;
   const ang = Math.atan2(a.x - j.pos.x, a.z - j.pos.z);
@@ -818,6 +848,8 @@ function desenharMapa(c, S, nomes = false) {
     c.fillText(minha ? "🏠" : "⌂", x, y); c.textBaseline = "alphabetic";
   }
   for (const v of veiculos) { const [x, y] = P(v.pos.x, v.pos.z); c.save(); c.translate(x, y); c.rotate(Math.PI - v.ang); c.fillStyle = `#${new THREE.Color(v.cor ?? 0xffcc1f).getHexString()}`; c.strokeStyle = "#151515"; c.lineWidth = 1.5; const w = S / 60, h = S / (v.tipo === "onibus" ? 22 : 34); c.fillRect(-w / 2, -h / 2, w, h); c.strokeRect(-w / 2, -h / 2, w, h); c.restore(); }
+  const am = !emCasa && !emLugar && !alvoMapa ? missoes?.alvo() : null;
+  if (am) { const [x, y] = P(am.x, am.z); c.fillStyle = "#ffcc1f"; c.strokeStyle = "#151515"; c.lineWidth = 2; c.beginPath(); c.arc(x, y, S / 45 + Math.sin(relogio.elapsedTime * 6) * 1.5, 0, 7); c.fill(); c.stroke(); }
   if (alvoMapa) { const [x, y] = P(alvoMapa.x, alvoMapa.z); c.strokeStyle = "#ff2a6a"; c.lineWidth = 3; c.beginPath(); c.arc(x, y, S / 30 + Math.sin(relogio.elapsedTime * 6) * 2, 0, 7); c.stroke(); }
   const [x, y] = P(j.pos.x, j.pos.z);
   c.save(); c.translate(x, y); c.rotate(-j.dir + Math.PI);
@@ -857,6 +889,8 @@ if (params.has("teste")) window.teste = {
   corCasa(hex) { trocarCorCasa(hex); },
   get corParedes() { const c = mundo.casas.find((k) => k.lote.numero === salvo.casa); return c?.grupo.userData.paredes.userData.cor; },
   get radio() { return radio; }, get radioUI() { return radioUI; }, falar: (k) => falar(k),
+  get missoes() { return missoes; },
+  luzPedestreVerde: (s, eixo) => luzDe(s, eixo, relogio.elapsedTime) === "vermelho",
   get r3() { return r3; }, get cena() { return cena; }, get cam() { return cam; }, get rabisco() { return rabisco; }, get vovo() { return vovo; },
   // desenha um quadro agora e devolve o custo (com e sem o passe de sombra)
   medir() { r3.render(cena, cam); const a = { calls: r3.info.render.calls, tris: r3.info.render.triangles }; const s = ceu.sol.castShadow; ceu.sol.castShadow = false; r3.shadowMap.needsUpdate = true; r3.render(cena, cam); const b = { calls: r3.info.render.calls, tris: r3.info.render.triangles }; ceu.sol.castShadow = s; return { total: a, semSombra: b }; },

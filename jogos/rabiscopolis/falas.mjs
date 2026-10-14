@@ -59,5 +59,12 @@ import { readFileSync } from "node:fs";
 const fonteMoveis = readFileSync(new URL("./moveis.js", import.meta.url), "utf8");
 const versos = [...fonteMoveis.matchAll(/\{ texto: "([^"]+)", ref: "([^"]+)" \}/g)];
 versos.forEach(([, texto, ref], i) => { FALAS_PT[`rp-versiculo-${i + 1}`] = `${texto} ${ref.replace(/^baseado/, "Baseado")}.`; });
+// Fatia 5: missões (quem pede, quem recebe e, nas bíblicas, o versículo em paráfrase)
+const { MISSOES } = await import(`data:text/javascript,${encodeURIComponent(readFileSync(new URL("./missoes-dados.js", import.meta.url), "utf8"))}`);
+for (const m of MISSOES) {
+  FALAS_PT[`rp-m-${m.id}-pedido`] = m.pedido;
+  FALAS_PT[`rp-m-${m.id}-fim`] = m.fim;
+  if (m.verso) FALAS_PT[`rp-m-${m.id}-verso`] = `${m.verso.texto} ${m.verso.ref.replace(/^baseado/, "Baseado")}.`;
+}
 writeFileSync(new URL("./falas.json", import.meta.url), JSON.stringify({ pt: FALAS_PT }, null, 1) + "\n");
 console.log(`${Object.keys(FALAS_PT).length} falas em português`);

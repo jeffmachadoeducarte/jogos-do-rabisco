@@ -1,4 +1,5 @@
-// Rabiscolândia: o Rabifone, o celular do jogo. Menu HTML com 4 apps (Casa, Garagem, Mapa, Dia/Noite) que dá para
+// Rabiscolândia: o Rabifone, o celular do jogo. Menu HTML com 5 apps (Casa, Garagem, Mapa, Dia/Noite e o Passaporte
+// das missões, com os selos) que dá para
 // usar no toque, no mouse, no teclado (setas, Enter, Esc) e no controle (direcional, A confirma, B volta): os itens
 // têm data-foco e o foco anda pela grade, como nos menus da casca.
 //
@@ -10,6 +11,7 @@ const APPS = [
   { id: "garagem", icone: "🚗", nome: "Garagem", cor: "#00b5f0" },
   { id: "mapa", icone: "🗺️", nome: "Mapa", cor: "#58c43a" },
   { id: "hora", icone: "🌗", nome: "Dia/Noite", cor: "#8e6cff" },
+  { id: "passaporte", icone: "📘", nome: "Passaporte", cor: "#ff7a00" },
 ];
 const VEICULOS = [
   { tipo: "carro", cor: 0xec2e8c, nome: "Carro rosa", emoji: "🚗" },
@@ -61,6 +63,18 @@ export function criarRabifone(onde, cb) {
         for (const o of HORAS) lista.append(botao(`<span class="rf-emoji">${o.emoji}</span>${o.nome}`, () => { cb.aoHora?.(o.h); api.fechar(); }));
       } else if (id === "mapa") {
         cb.aoMapa?.(); api.fechar(); return;
+      } else if (id === "passaporte") {
+        const { lista: ms = [], ativa } = cb.missoes?.() ?? {};
+        const p = document.createElement("p");
+        const n = ms.filter((m) => m.feita).length;
+        p.innerHTML = `Selos: <b>${n} de ${ms.length}</b>. Quem tem <b class="rf-excl">!</b> em cima está pedindo ajuda.`;
+        tela.insertBefore(p, lista);
+        if (ativa) lista.append(botao(`<span class="rf-emoji">🛑</span>Largar a missão de agora`, () => { cb.aoMissao?.("largar"); api.fechar(); }));
+        for (const m of ms) {
+          const b = botao(`<span class="rf-emoji">${m.icone}</span><span class="rf-missao">${m.titulo}<small>${m.tipo === "biblica" ? "📖 História da Bíblia" : "🏙️ Cidadania"}</small></span><span class="rf-selo${m.feita ? " feito" : ""}">${m.feita ? "✅" : m.id === ativa ? "▶️" : "🧭"}</span>`, () => { if (m.id !== ativa) cb.aoMissao?.("caminho", m.id); api.fechar(); }, "rf-item-missao");
+          b.dataset.missao = m.id;
+          lista.append(b);
+        }
       } else if (id === "casa") {
         const info = cb.infoCasa?.() ?? {};
         const p = document.createElement("p");

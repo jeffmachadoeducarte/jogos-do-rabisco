@@ -1,4 +1,4 @@
-// Rabiscolândia (Fatia 1): carrega sem erro, escolhe casa (e guarda), dirige sem atravessar sólidos, Garagem do
+// Rabiscolândia (Fatias 1 a 5): carrega sem erro, escolhe casa (e guarda), dirige sem atravessar sólidos, Garagem do
 // Rabifone, noite com janelas acesas, lojas parceiras, controles de toque e celular sozinho sem pedir controle/QR.
 // Tira as fotos em .claude/tmp/rabiscopolis/.
 // Uso: python3 -m http.server 8097 &  node --experimental-websocket ferramentas/teste/rabiscopolis.mjs [http://localhost:8097]
@@ -12,7 +12,7 @@ const FOTOS = fileURLToPath(new URL("../../.claude/tmp/rabiscopolis/", import.me
 mkdirSync(FOTOS, { recursive: true });
 let falhas = 0;
 // se o navegador cair, uma chamada fica esperando para sempre: o vigia encerra com falha em vez de sair calado
-const vigia = setTimeout(() => { console.log("✗ o teste travou (o navegador caiu?)"); process.exit(2); }, 50 * 60 * 1000);
+const vigia = setTimeout(() => { console.log("✗ o teste travou (o navegador caiu?)"); process.exit(2); }, 65 * 60 * 1000);
 const ok = (c, msg) => { console.log(c ? "✓" : "✗", msg); if (!c) falhas++; };
 const ate = async (t, expr, ms = 40000, passo = 250) => { const fim = Date.now() + ms; while (Date.now() < fim) { if (await t.ev(expr).catch(() => false)) return true; await espera(passo); } return false; };
 // 404 das vozes ainda não geradas (rp-*) e do banco de nomes é esperado
@@ -29,6 +29,104 @@ async function orcamento(t, maxCalls, rotulo) {
   }
 }
 const fps = (t) => t.ev(`new Promise((r) => { let n = 0; const t0 = performance.now(); const f = () => { n++; if (performance.now() - t0 < 3000) requestAnimationFrame(f); else r(Math.round((n / 3) * 10) / 10); }; requestAnimationFrame(f); })`);
+
+// Fatia 5: joga as 12 missões de ponta a ponta (quem pede, itens, quem segue, carona, faixa, quem espera reage)
+async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
+  const ev = (s) => t.ev(s);
+  const M = await ev("teste.missoes.MISSOES.map((m) => ({ id: m.id, quem: m.quem, npcs: m.npcs, etapas: m.etapas, tipo: m.tipo, titulo: m.titulo }))");
+  // longe: ninguém das missões montado nem visível na largada (orçamento)
+  await ev("teste.ir(0, 33); teste.olhar(Math.PI)"); await espera(1200);
+  const custo = await ev("(() => { const a = teste.medir().semSombra.calls; teste.missoes.grupo.visible = false; const b = teste.medir().semSombra.calls; teste.missoes.grupo.visible = true; return { com: a, sem: b, montados: teste.missoes.montados() }; })()");
+  ok(custo.com - custo.sem <= 0, `na praça as missões não custam chamadas de desenho (${custo.sem} → ${custo.com}; montados perto: ${custo.montados.join(", ") || "nenhum"})`);
+  const perto = async (x, z, dx = 1.6, dz = 1.2) => { await ev(`teste.ir(${x + dx}, ${z + dz})`); await espera(700); };
+  const acao = async () => { await ev("teste.acao()"); await espera(300); };
+  const posNpc = (mid, id) => ev(`teste.missoes.npc('${mid}', '${id}')`);
+  const fotoPerto = async (nome, x, z, ang = 0.6, dist = 7, alt = 3.4, ay = 1) => { if (!fotos) return; await ev(`teste.vista([${x} + Math.sin(${ang}) * ${dist}, ${alt}, ${z} + Math.cos(${ang}) * ${dist}], [${x}, ${ay}, ${z}])`); await espera(900); await t.foto(`${FOTOS}missao-${nome}.png`); await ev("teste.vista(null)"); };
+  for (const m of M) {
+    const q = await posNpc(m.id, m.quem);
+    await perto(q.x, q.z);
+    const ctx = await ev("teste.contexto");
+    const marca = await ev(`(() => { const g = teste.missoes.grupo; return g.children.some((o) => o.isSprite && o.visible && o.material.depthTest === false); })()`);
+    ok(ctx && ctx.includes(m.titulo), `${m.id}: perto de quem pede aparece "${ctx}"${marca ? " (com o ! em cima)" : ""}`);
+    if (m.id === "ovelha" || m.id === "zaqueu" || m.id === "noe") await fotoPerto(`${m.id}-pede`, q.x, q.z, m.id === "noe" ? 2.2 : 0.5, m.id === "noe" ? 10 : 6.5, m.id === "zaqueu" ? 4.2 : 3.2, m.id === "zaqueu" ? 2.6 : 1);
+    await acao();
+    ok(await ev(`teste.missoes.ativa === '${m.id}'`), `${m.id}: missão aceita — ${(await ev("JSON.stringify(teste.missoes.texto())"))}`);
+    for (let e = 0; e < m.etapas.length; e++) {
+      const E = m.etapas[e];
+      if (E.tipo === "falar") { const n = await posNpc(m.id, E.com); await perto(n.x, n.z); await acao(); }
+      else if (E.tipo === "pegar") { for (const it of E.itens) { await perto(it.x, it.z, 0.8, 0.6); const c = await ev("teste.contexto"); await acao(); if (!(await ev(`teste.missoes.levando.includes('${it.id}')`))) ok(false, `${m.id}: pegar ${it.id} (contexto "${c}")`); } ok(true, `${m.id}: pegou ${E.itens.length} item(ns), na cabeça: ${(await ev("teste.missoes.levando.length"))}`); }
+      else if (E.tipo === "plantar") { for (const p of E.pontos) { await perto(p.x, p.z, 0.6, 0.6); await acao(); } ok(await ev(`teste.missoes.plantasDe('${m.id}').every((p) => p.feito)`), `${m.id}: plantou nos ${E.pontos.length} canteiros`); }
+      else if (E.tipo === "levar") { const n = await posNpc(m.id, E.ate); await perto(n.x, n.z); const c = await ev("teste.contexto"); await acao(); ok(c?.includes("Entregar"), `${m.id}: entregou para ${m.npcs[E.ate].nome} ("${c}")`); }
+      else if (E.tipo === "seguir" || E.tipo === "faixa") {
+        const quem = E.quem ?? E.com, n = await posNpc(m.id, quem);
+        await perto(n.x, n.z, 1.2, 1.2); await espera(500);
+        ok((await posNpc(m.id, quem)).seguindo, `${m.id}: ${m.npcs[quem].nome} começou a seguir o Rabisco`);
+        const d = await posNpc(m.id, E.ate);
+        if (E.tipo === "faixa") {
+          // espera o vermelho para os pedestres e vai para o outro lado: o Caderninho não pisa na rua até ficar verde
+          for (let k = 0; k < 40 && (await ev("(() => { const s = teste.mundo.semaforos.find((q) => q.x === -50 && q.z === 50); return teste.luzPedestreVerde(s, 'x'); })()")); k++) await espera(250);
+          await ev(`teste.ir(${d.x + 1.5}, ${d.z - 1.5})`);
+          let naRuaVermelho = false, esperou = false, chegou = false;
+          for (let k = 0; k < 120 && !chegou; k++) {
+            await espera(250);
+            const st = await ev(`(() => { const n = teste.missoes.npc('faixa', 'caderninho'); const s = teste.mundo.semaforos.find((q) => q.x === -50 && q.z === 50); return { naRua: n.z > 44 && n.z < 56 && n.x > -44.5, verde: teste.luzPedestreVerde(s, 'x'), ativa: teste.missoes.ativa, x: n.x, z: n.z }; })()`);
+            if (st.naRua && !st.verde && !esperou) naRuaVermelho = true;
+            if (!st.naRua && !st.verde) esperou = true;
+            if (st.ativa !== "faixa") chegou = true;
+            if (k === 6 && fotos) await t.foto(`${FOTOS}missao-faixa-esperando.png`);
+          }
+          ok(esperou && !naRuaVermelho, `faixa: o Caderninho esperou o bonequinho verde na calçada (pisou na rua no vermelho: ${naRuaVermelho})`);
+          ok(chegou, "faixa: atravessaram juntos e chegaram na Mamãe Caderno");
+        } else {
+          await ev(`teste.ir(${d.x + 1.6}, ${d.z + 1.4})`);
+          for (let k = 0; k < 40 && (await ev(`teste.missoes.ativa === '${m.id}'`)); k++) await espera(250);
+        }
+      }
+      else if (E.tipo === "dirigir") {
+        const n = await posNpc(m.id, E.passageiro);
+        await perto(n.x, n.z, 1.4, 1.0);
+        const c = await ev("teste.contexto");
+        ok(c?.includes("Chamar um carro"), `amigos: perto do Lápis Azul aparece "${c}"`);
+        await acao(); await espera(400);
+        const iv = await ev("teste.veiculos.length - 1");
+        await ev(`teste.entrar(${iv})`); await espera(300);
+        await ev(`teste.posVeiculo(${iv}, ${n.x + 2.5}, ${n.z + 1}, 0)`); await espera(800);
+        ok(await ev("teste.missoes.carona"), "amigos: o Lápis Azul entrou de carona no carro");
+        if (fotos) { await ev(`teste.vista([${n.x + 2.5} - 2.5, 3.6, ${n.z + 1} - 5], [${n.x + 2.5}, 1, ${n.z + 1}])`); await espera(700); await t.foto(`${FOTOS}missao-amigos-carona.png`); await ev("teste.vista(null)"); }
+        const d = await posNpc(m.id, E.ate);
+        await ev(`teste.posVeiculo(${iv}, ${d.x + 2}, -50, Math.PI / 2)`); await espera(400);
+        for (let k = 0; k < 20 && (await ev(`teste.missoes.ativa === 'amigos'`)); k++) await espera(250);
+        ok(await ev("teste.missoes.npc('amigos', 'medico').festa > 0"), "amigos: parou na frente do hospital, o Lápis Azul desceu e o Doutor Apontador comemorou");
+        for (let k = 0; k < 20 && (await ev(`teste.missoes.ativa === 'amigos'`)); k++) await espera(250);
+        await ev("teste.sair()");
+      }
+    }
+    const feita = await ev(`teste.missoes.feitas.includes('${m.id}') && teste.missoes.ativa === null`);
+    const dest = m.etapas.at(-1).ate;
+    const nd = await posNpc(m.id, dest);
+    ok(feita && (nd.festa > 0 || m.id === "amigos"), `${m.id}: concluída — ${m.npcs[dest].nome} reagiu (festa ${nd.festa.toFixed(1)} s) e o selo foi para o Passaporte`);
+    await espera(250);
+    await fotoPerto(`${m.id}-fim`, nd.x, nd.z, { lanche: Math.PI * 0.9, noe: 2.2 }[m.id] ?? 0.7, m.id === "noe" ? 9 : 6.5, 3);
+    if (m.id === "ovelha") { await espera(5200); const b = await ev("document.querySelector('.balao-rp').textContent"); ok(/baseado em Lucas 15/.test(b), `ovelha: depois aparece o versículo "${b.slice(0, 90)}…"`); }
+  }
+  const salvo = await ev("teste.salvo");
+  ok(salvo.missoesFeitas.length === 12 && salvo.selos.length === 12, `12 missões feitas e 12 selos guardados (${salvo.missoesFeitas.length}/${salvo.selos.length})`);
+  // Passaporte no Rabifone
+  await ev("teste.ir(0, 33); teste.fone.abrir()"); await espera(300);
+  await ev("[...document.querySelectorAll('.rf-app')].find((b) => b.textContent.includes('Passaporte')).click()"); await espera(400);
+  const pas = await ev("({ n: document.querySelectorAll('.rf-item-missao').length, selos: document.querySelectorAll('.rf-selo.feito').length, txt: document.querySelector('.rf-tela p')?.textContent })");
+  ok(pas.n === 12 && pas.selos === 12, `Passaporte: ${pas.n} missões, ${pas.selos} selos ("${pas.txt}")`);
+  if (fotos) await t.foto(`${FOTOS}missao-passaporte.png`);
+  await ev("teste.fone.fechar()");
+  // largar e voltar: de novo a ovelha, larga no meio, ela volta para o parque
+  const q = await posNpc("lixo", "gari");
+  await perto(q.x, q.z); await acao();
+  const it = (await ev("teste.missoes.itensDe('lixo')"))[0];
+  await perto(it.x, it.z, 0.8, 0.6); await acao();
+  await ev("teste.missoes.largar()"); await espera(200);
+  ok(await ev("teste.missoes.ativa === null && teste.missoes.itensDe('lixo').length === 0 && teste.missoes.levando.length === 0"), "largar a missão no meio: tira os itens e a cabeça fica vazia");
+  await ev("teste.ir(0, 33); teste.olhar(Math.PI)"); await espera(900);
+}
 
 // ------------------------------------------------------------------ computador/TV: 1280 × 720, sem toque
 {
@@ -384,6 +482,8 @@ const fps = (t) => t.ev(`new Promise((r) => { let n = 0; const t0 = performance.
   ok(await t.ev("teste.garagem('barco') != null"), "Garagem: perto do lago, o barquinho chega na água");
   await t.ev("teste.ir(0, 33)"); await espera(200);
   ok(await t.ev("teste.garagem('barco') == null"), "Garagem: longe do lago, o barquinho não vem (avisa para ir ao lago)");
+  // ---------- Fatia 5: missões
+  await testarMissoes(t, { ok, espera, FOTOS });
   // praça de dia e de noite
   await t.ev("teste.hora(13); teste.ir(0, 36); teste.olhar(Math.PI)");
   await espera(1500);
@@ -465,6 +565,17 @@ const fps = (t) => t.ev(`new Promise((r) => { let n = 0; const t0 = performance.
   ok(await t.ev("teste.dentro === null"), "(g) depois de pousar, Sair tira o Rabisco do helicóptero");
   o = await olhar();
   ok(!PEDIDO.test(o.txt), "(h) depois de dirigir, nenhum pedido de controle/QR");
+  // missão pelo toque: na praça não custa nada; perto do Pastor Lápis o botão ✋ mostra a missão e aceita
+  const custoM = await t.ev("(() => { teste.ir(0, 33); teste.olhar(Math.PI); const a = teste.medir().semSombra.calls; teste.missoes.grupo.visible = false; const b = teste.medir().semSombra.calls; teste.missoes.grupo.visible = true; return [b, a]; })()");
+  ok(custoM[1] - custoM[0] <= 0, `celular: na praça as missões não custam chamadas de desenho (${custoM[0]} → ${custoM[1]})`);
+  await t.ev("(() => { const n = teste.missoes.npc('ovelha', 'pastor'); teste.ir(n.x + 1.4, n.z + 1.2); })()"); await espera(900);
+  const rot = await t.ev("document.querySelector('.rp-acao').textContent");
+  await t.toque(".rp-acao"); await espera(500);
+  ok(rot.includes("ovelhinha") && await t.ev("teste.missoes.ativa === 'ovelha'"), `celular: o botão ✋ mostra "${rot}" e aceita a missão`);
+  const faixaM = await t.ev("(() => { const a = document.querySelector('.missao-rp').getBoundingClientRect(), b = document.querySelector('.minimapa-rp').getBoundingClientRect(); return { vis: !document.querySelector('.missao-rp').hidden, cruza: !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom) }; })()");
+  ok(faixaM.vis && !faixaM.cruza, "celular: a faixa da missão aparece no HUD sem tapar o minimapa");
+  await t.foto(`${FOTOS}missao-celular.png`);
+  await t.ev("teste.missoes.largar()");
   // decorar pelo toque: mora na casa 1, entra, abre o carrossel e toca ▶ e ✓
   await t.ev("(() => { const l = teste.LOTES[0]; teste.ir(l.x, l.z + l.dir[1] * 0.5); teste.acao(); })()");
   await espera(800);
