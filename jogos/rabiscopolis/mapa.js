@@ -189,6 +189,16 @@ export const VAGAS = [
   { x: -18, z: 37, ang: -Math.PI / 2, tipo: "carro", cor: 0x00b5f0 },
   { x: 30, z: -40, ang: Math.PI / 2, tipo: "onibus" },
   { x: HELIPONTO.x, z: HELIPONTO.z, ang: -Math.PI / 2, tipo: "heli" },
+  // Fatia 4: cada veículo perto do lugar dele
+  { x: 60.8, z: 7.4, ang: Math.PI / 2, tipo: "je" },                 // carro da J.E Multimarcas, na frente da loja
+  { x: -40, z: -40.5, ang: Math.PI / 2, tipo: "ambulancia" },        // ambulância, do outro lado da rua do hospital
+  { x: 14, z: -40.5, ang: Math.PI / 2, tipo: "bombeiro" },           // caminhão de bombeiro
+  { x: 127, z: -20, ang: 0, tipo: "sorvete" },                       // van de sorvete, ao lado da sorveteria
+  { x: -8, z: 32, ang: Math.PI, tipo: "bici", cor: 0xec2e8c },       // bicicleta e patinete na praça
+  { x: -11, z: 32, ang: Math.PI, tipo: "patinete", cor: 0x00b5f0 },
+  { x: LAGO.x, z: LAGO.z + LAGO.r - 3, ang: Math.PI, tipo: "barco" }, // barquinhos: só andam no lago
+  { x: LAGO2.x, z: LAGO2.z - LAGO2.r + 3, ang: 0, tipo: "barco" },
+  { x: -75, z: 108, ang: Math.PI, tipo: "trator" },                  // trator da Fazendinha
 ];
 export const LARGADA = { x: 0, z: 33, dir: Math.PI }; // na frente da praça, olhando para a igreja
 
@@ -207,7 +217,7 @@ export const PEGADAS_FIXAS = [
   { id: "heliponto-area", x0: HELIPONTO.x - HELIPONTO.r, x1: HELIPONTO.x + HELIPONTO.r, z0: HELIPONTO.z - HELIPONTO.r, z1: HELIPONTO.z + HELIPONTO.r },
   // pontos de parceira ainda livres ficam reservados (a próxima parceira já tem lugar)
   ...PONTOS_PARCEIROS.slice(PARCEIROS.length).map(([x, z, dx, dz], i) => ({ id: `reserva-parceira-${i}`, ...pegadaDe(x, z, [dx, dz], LOJA_MAX, 7.5, 1) })),
-  ...VAGAS.filter((v) => v.tipo !== "heli").map((v, i) => { const meioC = v.tipo === "onibus" ? 7.5 : 2.6, meioL = v.tipo === "onibus" ? 3 : 1.4, deitado = Math.abs(Math.sin(v.ang)) > 0.5; return { id: `vaga-${i}`, x0: v.x - (deitado ? meioC : meioL), x1: v.x + (deitado ? meioC : meioL), z0: v.z - (deitado ? meioL : meioC), z1: v.z + (deitado ? meioL : meioC) }; }),
+  ...VAGAS.map((v, i) => [v, i]).filter(([v]) => !["heli", "barco", "trator"].includes(v.tipo)).map(([v, i]) => { const [meioC, meioL] = { onibus: [7.5, 3], bombeiro: [3.8, 1.4], ambulancia: [2.9, 1.4], sorvete: [2.9, 1.4], bici: [1.0, 0.5], patinete: [0.8, 0.4] }[v.tipo] ?? [2.6, 1.4]; const deitado = Math.abs(Math.sin(v.ang)) > 0.5; return { id: `vaga-${i}`, x0: v.x - (deitado ? meioC : meioL), x1: v.x + (deitado ? meioC : meioL), z0: v.z - (deitado ? meioL : meioC), z1: v.z + (deitado ? meioL : meioC) }; }),
   { id: "largada", x0: LARGADA.x - 3, x1: LARGADA.x + 3, z0: LARGADA.z - 3, z1: LARGADA.z + 3 },
 ];
 export const PREDIOS = [];

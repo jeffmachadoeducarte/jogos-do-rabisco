@@ -64,6 +64,8 @@ body.touch .rp-toque { display: block; }
 .rp-no-carro .rp-pe, .rp-no-carro .jd-camada, .rp-no-heli .rp-pe, .rp-no-heli .jd-camada { display: none !important; }
 .rp-pedais [data-b="subir"] { bottom: 150px; background: rgba(0,181,240,0.75); }
 .rp-pedais [data-b="descer"] { bottom: 30px; background: rgba(236,46,140,0.7); }
+.rp-pedais .rp-especial { right: 150px; bottom: 210px; width: 80px; height: 80px; font-size: 34px; background: rgba(255,204,31,0.85); }
+.rp-pedais .rp-especial[hidden] { display: none; }
 .rp-pedais .rp-voar { right: 150px !important; bottom: 210px; width: 90px; height: 90px; background: rgba(88,196,58,0.8); }
 .rp-volante button { bottom: 34px; width: 108px; height: 108px; font-size: 44px; }
 .rp-volante button:first-child { left: 28px; } .rp-volante button:last-child { left: 150px; }
@@ -89,6 +91,7 @@ body.touch .rp-toque { display: block; }
   .rp-pedais button { width: 80px; height: 80px; font-size: 34px; right: 18px; }
   .rp-pedais [data-b="frente"], .rp-pedais [data-b="subir"] { bottom: 112px; } .rp-pedais [data-b="re"], .rp-pedais [data-b="descer"] { bottom: 18px; }
   .rp-pedais .rp-voar { right: 112px !important; bottom: 160px; width: 64px; height: 64px; }
+  .rp-pedais .rp-especial { right: 112px; bottom: 160px; width: 60px; height: 60px; font-size: 26px; }
   .rp-pedais .rp-sair { right: 112px; bottom: 26px; width: 84px; height: 56px; font-size: 18px; }
   .rp-pedais .rp-fone { right: 112px; bottom: 100px; width: 56px; height: 56px; font-size: 24px; }
 }

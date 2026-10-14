@@ -101,7 +101,7 @@ export function tocarNotas(notas, bpm = 100, { onda = "triangle", vol = 0.12, at
   return fim * s;
 }
 // musiquinha original (composição própria, 8 compassos simples em dó maior)
-const MUSIQUINHA = [0, 1, 60, 1, 1, 64, 2, 1, 67, 3, 1, 64, 4, 2, 65, 6, 2, 62, 8, 1, 64, 9, 1, 67, 10, 1, 72, 11, 1, 67, 12, 4, 69, 16, 1, 67, 17, 1, 65, 18, 1, 64, 19, 1, 62, 20, 4, 60];
+export const MUSIQUINHA = [0, 1, 60, 1, 1, 64, 2, 1, 67, 3, 1, 64, 4, 2, 65, 6, 2, 62, 8, 1, 64, 9, 1, 67, 10, 1, 72, 11, 1, 67, 12, 4, 69, 16, 1, 67, 17, 1, 65, 18, 1, 64, 19, 1, 62, 20, 4, 60];
 
 // ---------- montagem
 export function montarSala(id) {
@@ -119,7 +119,8 @@ export function montarSala(id) {
   parede(fixo, solidosL, "x", D / 2, -W / 2, W / 2, [[-1.2, 1.2]], 0xffffff, 0.7);
   const faixa = caixa(W, 0.3, 0.05, mat(def.acento), { sombra: false }); faixa.position.set(0, 2.6, -D / 2 + 0.16); fixo.add(faixa);
   const placa = letreiro(def.nome, 5, { cor: `#${new THREE.Color(def.acento).getHexString()}` }); placa.position.set(0, 2.1, -D / 2 + 0.14); fixo.add(placa);
-  for (const x of [-4.5, 4.5]) { const j = caixaRedonda(1.6, 1.1, 0.12, MAT.janela, { raio: 0.06, contorno: 0.03 }); j.position.set(x, 1.9, -D / 2 + 0.15); fixo.add(j); }
+  // na igreja o lado direito do fundo é do letreiro (a cruz fica no meio): janela só à esquerda
+  for (const x of id === "igreja" ? [-4.5] : [-4.5, 4.5]) { const j = caixaRedonda(1.6, 1.1, 0.12, MAT.janela, { raio: 0.06, contorno: 0.03 }); j.position.set(x, 1.9, -D / 2 + 0.15); fixo.add(j); }
   const tap = caixa(1.8, 0.03, 0.9, mat(def.acento), { sombra: false }); tap.position.set(0, 0.03, D / 2 - 0.8); fixo.add(tap);
   const solido = (x, z, w, d, h = 1.2) => solidosL.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, y1: h });
   const add = (o, x, z, rot = 0, dinamico = false) => { o.position.set(x, 0, z); o.rotation.y = rot; if (dinamico) o.userData.dinamico = true; g.add(o); return o; };

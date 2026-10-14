@@ -15,7 +15,7 @@ export function criarToque(caixa) {
     <div class="rp-pe"><button class="rp-acao" data-b="acao" aria-label="Ação">✋</button><button class="rp-fone" data-b="fone" aria-label="Rabifone">📱</button></div>
     <div class="rp-carro">
       <div class="rp-volante"><button data-b="esq" aria-label="Virar à esquerda">◀</button><button data-b="dir" aria-label="Virar à direita">▶</button></div>
-      <div class="rp-pedais"><button class="rp-sair" data-b="sair" aria-label="Sair do carro">Sair</button><button data-b="frente" aria-label="Acelerar">▲</button><button data-b="re" aria-label="Ré">▼</button><button class="rp-fone" data-b="fone" aria-label="Rabifone">📱</button></div>
+      <div class="rp-pedais"><button class="rp-sair" data-b="sair" aria-label="Sair do carro">Sair</button><button data-b="frente" aria-label="Acelerar">▲</button><button data-b="re" aria-label="Ré">▼</button><button class="rp-fone" data-b="fone" aria-label="Rabifone">📱</button><button class="rp-especial" data-b="especial" aria-label="Buzina" hidden>📯</button></div>
     </div>
     <div class="rp-heli">
       <div class="rp-volante"><button data-b="esq" aria-label="Virar à esquerda">◀</button><button data-b="dir" aria-label="Virar à direita">▶</button></div>
@@ -27,7 +27,10 @@ export function criarToque(caixa) {
     get pulo() { return js.pulo; },
     get puloNovo() { return js.puloNovo; }, set puloNovo(v) { js.puloNovo = v; },
     girar: () => js.girar(),
-    carro: { esq: false, dir: false, frente: false, re: false, subir: false, descer: false, voar: false },
+    carro: { esq: false, dir: false, frente: false, re: false, subir: false, descer: false, voar: false, especial: false },
+    especialNovo: false,
+    // botão especial do veículo (📯 buzina, 🚨 sirene, 🎵 música, 💧 água) ou null para esconder
+    especial(rotulo) { const b = camada.querySelector(".rp-especial"); b.hidden = !rotulo; if (rotulo) b.textContent = rotulo; },
     acaoNova: false, foneNovo: false, sairNovo: false,
     elAcao: camada.querySelector(".rp-acao"),
     // modo "pe" | "carro" | "heli": troca o que aparece
@@ -42,6 +45,7 @@ export function criarToque(caixa) {
       b.classList.add("apertado");
       try { b.setPointerCapture(e.pointerId); } catch { /* dedo simulado */ }
       navigator.vibrate?.(10);
+      if (nome === "especial") api.especialNovo = true;
       if (nome in api.carro) api.carro[nome] = true;
       else if (nome === "acao") api.acaoNova = true;
       else if (nome === "fone") api.foneNovo = true;

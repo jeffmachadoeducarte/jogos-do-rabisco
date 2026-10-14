@@ -5,20 +5,31 @@
 
 import { THREE, mesclar } from "./base3d.js";
 import { carro } from "../cidade-do-rabisco/cidade.js";
-import { carroFofo, onibusFofo, helicoptero } from "./carros.js";
+import { carroFofo, onibusFofo, helicoptero, carroJE, ambulancia, vanSorvete, caminhaoBombeiro, bicicleta, patinete, barquinho, trator } from "./carros.js";
 import { ROTAS } from "./mapa.js";
 
 export const CORES_CARRO = [0xec2e8c, 0x00b5f0, 0xff7a00, 0x58c43a, 0x8e6cff, 0xffcc1f];
 // veículo que o Rabisco pode dirigir: { g, tipo, pos, ang, vel, virar, giro, comp (meio comprimento), larg }
 export function criarVeiculo(tipo = "carro", cor = CORES_CARRO[0]) {
-  const g = tipo === "onibus" ? onibusFofo() : tipo === "heli" ? helicoptero() : carroFofo(cor);
+  const fab = { onibus: onibusFofo, heli: helicoptero, je: carroJE, ambulancia, sorvete: vanSorvete, bombeiro: caminhaoBombeiro, bici: () => bicicleta(cor), patinete: () => patinete(cor), barco: barquinho, trator }[tipo];
+  const g = fab ? fab() : carroFofo(cor);
   if (tipo === "heli") g.rotation.order = "YXZ"; // inclina para a frente/lados sem embolar o giro
-  const medidas = { onibus: [4.4, 1.5, 11], heli: [3.0, 1.9, 14], carro: [2.4, 1.2, 15] }[tipo] ?? [2.4, 1.2, 15];
-  return { g, tipo, cor: tipo === "heli" ? 0x00b5f0 : cor, pos: new THREE.Vector3(), ang: 0, vel: 0, virar: 0, giro: 0, batida: 0, buzina: 0, comp: medidas[0], larg: medidas[1], vmax: medidas[2], alt: 0.03, vs: 0, rotor: 0 };
+  // meio comprimento, meia largura e velocidade máxima de cada um
+  const medidas = { onibus: [4.4, 1.5, 11], heli: [3.0, 1.9, 14], carro: [2.4, 1.2, 15], je: [2.3, 1.25, 16], ambulancia: [2.7, 1.3, 13], sorvete: [2.7, 1.3, 11], bombeiro: [3.6, 1.35, 11], bici: [0.85, 0.35, 8], patinete: [0.55, 0.3, 6], barco: [1.9, 1.3, 4.5], trator: [1.8, 1.0, 7] }[tipo] ?? [2.4, 1.2, 15];
+  const ud = g.userData; g.userData = {}; // (o userData do grupo tem objetos: não entra na cópia)
+  const parado = g.clone(true);
+  g.userData = ud;
+  parado.traverse((o) => { if (o.userData.dinamico && o !== parado && !o.userData.cima) o.visible = false; });
+  for (const o of [...parado.children]) if (!o.visible) parado.remove(o);
+  mesclar(parado);
+  parado.visible = false;
+  if (tipo === "heli") parado.rotation.order = "YXZ";
+  return { g, parado, tipo, cor: tipo === "heli" ? 0x00b5f0 : cor, pos: new THREE.Vector3(), ang: 0, vel: 0, virar: 0, giro: 0, batida: 0, buzina: 0, comp: medidas[0], larg: medidas[1], vmax: medidas[2], alt: 0.03, vs: 0, rotor: 0 };
 }
 export function animarVeiculo(v, dt, t) {
   v.g.position.copy(v.pos);
   v.g.rotation.y = v.ang;
+  v.parado.position.copy(v.g.position); v.parado.rotation.copy(v.g.rotation);
   if (v.tipo === "heli") {
     // hélices giram com o motor; inclina um pouco para onde vai
     v.g.userData.rotor.rotation.y += v.rotor * dt * 28;
@@ -28,7 +39,14 @@ export function animarVeiculo(v, dt, t) {
   }
   v.giro += (v.vel * dt) / 0.44;
   for (const r of v.g.userData.rodas) r.rotation.x = v.giro;
-  if (v.g.userData.seta.visible) v.g.userData.seta.position.y = (v.tipo === "onibus" ? 5.2 : v.tipo === "heli" ? 5.6 : 3.2) + Math.sin(t * 4) * 0.2;
+  if (v.g.userData.seta.visible) v.g.userData.seta.position.y = (v.tipo === "onibus" ? 5.2 : v.tipo === "heli" ? 5.6 : v.tipo === "bombeiro" ? 4.0 : ["ambulancia", "sorvete"].includes(v.tipo) ? 4.2 : 3.0) + Math.sin(t * 4) * 0.2;
+  if (v.tipo === "barco") { v.g.position.y = 0.05 + Math.sin(t * 2) * 0.05; v.g.rotation.z = Math.sin(t * 1.6) * 0.04; }
+  // sirene (ambulância e bombeiro): luzes piscando enquanto liga
+  const lz = v.g.userData.luzes;
+  if (lz) { const on = v.sirene > 0; if (on) v.sirene -= dt; lz.forEach((m, i) => (m.material.emissiveIntensity = on && Math.floor(t * 6 + i) % 2 ? 2.5 : 0)); }
+  // canhão d'água do caminhão de bombeiro
+  const jt = v.g.userData.jato;
+  if (jt) { jt.visible = v.jatoLigado; if (jt.visible) jt.children.forEach((gt, i) => { const f = (t * 1.6 + i / jt.children.length) % 1; gt.position.set(0, 0.6 + f * 3 - f * f * 3.4, 1 + f * 7); gt.scale.setScalar(0.6 + f); }); }
 }
 
 // ---------- trânsito

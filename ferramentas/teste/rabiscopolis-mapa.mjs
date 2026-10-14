@@ -84,6 +84,8 @@ ok(!M.lugar("escola"), "a escola única saiu: agora são Educarte Kids I e Kids 
 const k1 = M.lugar("kids1"), k2 = M.lugar("kids2");
 ok(k1 && k2 && Math.sign(k1.x) !== Math.sign(k2.x) && Math.hypot(k1.x - k2.x, k1.z - k2.z) > 300, `as duas escolas ficam em lados opostos, a ${k1 && k2 ? Math.round(Math.hypot(k1.x - k2.x, k1.z - k2.z)) : "?"} m uma da outra`);
 ok(M.VAGAS.some((v) => v.tipo === "heli" && Math.hypot(v.x - M.HELIPONTO.x, v.z - M.HELIPONTO.z) < 1), "o helicóptero fica no heliponto");
+ok(M.VAGAS.filter((v) => v.tipo === "barco").every((v) => [M.LAGO, M.LAGO2].some((l) => Math.hypot(v.x - l.x, v.z - l.z) < l.r - 2)), "os barquinhos começam dentro dos lagos");
+ok(["je", "ambulancia", "bombeiro", "sorvete", "bici", "patinete", "barco", "trator", "heli", "onibus", "carro"].every((t) => M.VAGAS.some((v) => v.tipo === t)), "cada tipo de veículo tem a sua vaga");
 ok(M.NBLOCOS === 5 && M.BORDA === 250, "cidade de 5 × 5 blocos (500 m)");
 ok(M.blocoDe(0, 0).join() === "2,2" && M.blocoDe(-249, 249).join() === "0,4" && M.blocoDe(160, -60).join() === "4,1", "blocos de 100 m (5 × 5)");
 

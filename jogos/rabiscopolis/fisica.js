@@ -2,7 +2,7 @@
 // dos sólidos baixos) e do veículo (acelera, freia, ré, vira proporcional à velocidade, bate e volta).
 // Copiado e adaptado de jogos/cidade-do-rabisco/jogo.js (chaoEm, bate, livre, moverJogador, carroBate, dirigirCarro).
 
-import { BORDA } from "./mapa.js";
+import { BORDA, LAGO, LAGO2 } from "./mapa.js";
 
 export const VEL = 6.5, PULO = 9.6, GRAV = 25, LARG = 0.35;
 
@@ -50,10 +50,15 @@ export function criarFisica(mundo) {
   // colisão do veículo: círculos ao longo do comprimento, contra prédios, árvores, lago e outros carros
   function veiculoBate(v, x, z, ang, outros = []) {
     const fx = Math.sin(ang), fz = Math.cos(ang), L = v.larg + 0.05;
-    const passos = v.comp > 3 ? [-v.comp + 1.4, -v.comp / 2, 0, v.comp / 2, v.comp - 1.4] : [-1.5, 0, 1.5];
+    const passos = v.comp > 3 ? [-v.comp + 1.4, -v.comp / 2, 0, v.comp / 2, v.comp - 1.4] : v.comp < 1.6 ? [-v.comp * 0.6, 0, v.comp * 0.6] : [-1.5, 0, 1.5];
+    // barquinho: só na água (todo o casco dentro de um dos lagos)
+    if (v.tipo === "barco") {
+      const naAgua = (px, pz) => [LAGO, LAGO2].some((l) => Math.hypot(px - l.x, pz - l.z) < l.r - 0.5 - L);
+      return passos.some((k) => !naAgua(x + fx * k, z + fz * k)) || outros.some((o) => o !== v && Math.hypot(o.x - x, o.z - z) < (o.raio ?? 2.4) + v.larg + 0.6);
+    }
     for (const k of passos) {
       const px = x + fx * k, pz = z + fz * k;
-      if (solidos.some((s) => s.y1 > 0.6 && px > s.x0 - L && px < s.x1 + L && pz > s.z0 - L && pz < s.z1 + L)) return true;
+      if (solidos.some((s) => s.y1 > 0.3 && px > s.x0 - L && px < s.x1 + L && pz > s.z0 - L && pz < s.z1 + L)) return true;
       if (circulos.some((c) => Math.hypot(px - c.x, pz - c.z) < c.r + L)) return true;
     }
     for (const o of outros) if (o !== v && Math.hypot(o.x - x, o.z - z) < (o.raio ?? 2.4) + v.larg + 0.6) return true;

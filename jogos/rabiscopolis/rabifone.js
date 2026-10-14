@@ -17,6 +17,14 @@ const VEICULOS = [
   { tipo: "carro", cor: 0xff7a00, nome: "Carro laranja", emoji: "🏎️" },
   { tipo: "onibus", cor: 0xffcc1f, nome: "Ônibus da escola", emoji: "🚌" },
   { tipo: "heli", cor: 0x00b5f0, nome: "Helicóptero", emoji: "🚁" },
+  { tipo: "je", cor: 0xf4f4f4, nome: "Carro da J.E", emoji: "🚙" },
+  { tipo: "ambulancia", cor: 0xffffff, nome: "Ambulância", emoji: "🚑" },
+  { tipo: "bombeiro", cor: 0xe8413c, nome: "Caminhão de bombeiro", emoji: "🚒" },
+  { tipo: "sorvete", cor: 0xffb3d4, nome: "Van de sorvete", emoji: "🍦" },
+  { tipo: "trator", cor: 0x3c9a4a, nome: "Trator", emoji: "🚜" },
+  { tipo: "bici", cor: 0xec2e8c, nome: "Bicicleta", emoji: "🚲" },
+  { tipo: "patinete", cor: 0x00b5f0, nome: "Patinete", emoji: "🛴" },
+  { tipo: "barco", cor: 0xffcc1f, nome: "Barquinho (no lago)", emoji: "🚣" },
 ];
 const HORAS = [{ h: 8, nome: "Manhã", emoji: "🌅" }, { h: 13, nome: "Tarde", emoji: "☀️" }, { h: 18.6, nome: "Pôr do sol", emoji: "🌇" }, { h: 22, nome: "Noite", emoji: "🌙" }];
 

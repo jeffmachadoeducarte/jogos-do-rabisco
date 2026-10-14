@@ -328,6 +328,62 @@ const fps = (t) => t.ev(`new Promise((r) => { let n = 0; const t0 = performance.
   const memL1 = await t.ev("teste.memoria()"), naCenaL = await t.ev("teste.geometriasNaCena()");
   ok(memL1.geometries <= naCenaL && memL1.textures <= memL0.textures + 1, `entrar e sair dos lugares 10× sem vazar (placa ${memL1.geometries} ≤ cena ${naCenaL})`);
   ok(await t.ev("teste.profissao") !== undefined && await t.ev("JSON.stringify(teste.salvo.roupas)") !== undefined, "o uniforme fica guardado para a próxima vez");
+  // ---------- Fatia 4: veículos
+  const tipos = await t.ev("teste.veiculos.map((v) => v.tipo)");
+  ok(["je", "ambulancia", "bombeiro", "sorvete", "bici", "patinete", "barco", "trator"].every((x) => tipos.includes(x)), `veículos na cidade: ${[...new Set(tipos)].join(", ")}`);
+  for (const tipo of ["je", "ambulancia", "bombeiro", "sorvete", "bici", "patinete", "trator"]) {
+    const i = tipos.indexOf(tipo);
+    await t.ev(`teste.entrar(${i}); teste.volante(1, 0)`);
+    const p0 = await t.ev(`[teste.veiculos[${i}].pos.x, teste.veiculos[${i}].pos.z]`);
+    let furou = false;
+    for (let k = 0; k < 6; k++) { await espera(250); if (await t.ev("teste.dentroDeSolido(teste.dentro.pos.x, teste.dentro.pos.z)")) furou = true; }
+    await t.ev("teste.volante(null)");
+    const p1 = await t.ev(`[teste.veiculos[${i}].pos.x, teste.veiculos[${i}].pos.z]`);
+    const d = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+    ok(d > 2 && !furou, `${tipo}: andou ${d.toFixed(1)} m sem atravessar nada`);
+    if (tipo === "ambulancia") { await t.ev("teste.especial(true)"); await espera(700); ok(await t.ev("teste.dentro.sirene > 0"), "ambulância: a sirene liga e as luzes piscam"); await t.ev("teste.especial(false); teste.volante(null)"); }
+    if (tipo === "bombeiro") { await t.ev("teste.especial(true)"); await espera(600); ok(await t.ev("teste.dentro.g.userData.jato.visible === true"), "caminhão de bombeiro: o canhão solta o jato d'água enquanto segura"); await t.foto(`${FOTOS}veiculo-bombeiro-jato.png`); await t.ev("teste.especial(false); teste.volante(null)"); await espera(300); ok(await t.ev("teste.dentro.g.userData.jato.visible === false"), "caminhão de bombeiro: soltou, o jato para"); }
+    if (tipo === "sorvete") { await t.ev("teste.especial(true)"); await espera(300); await t.ev("teste.especial(false); teste.volante(null)"); }
+    await t.ev("teste.sair()"); await espera(200);
+    ok(await t.ev("teste.dentro === null"), `${tipo}: o Rabisco sai`);
+  }
+  // barquinho: anda no lago e não sai dele
+  const ib = tipos.indexOf("barco");
+  await t.ev(`teste.entrar(${ib}); teste.volante(1, 0.3)`);
+  await espera(4000);
+  await t.ev("teste.volante(null)");
+  const naAgua = await t.ev(`(() => { const v = teste.veiculos[${ib}]; return [{ x: 8, z: 104, r: 15 }, { x: 0, z: 202, r: 24 }].some((l) => Math.hypot(v.pos.x - l.x, v.pos.z - l.z) < l.r); })()`);
+  ok(naAgua, "barquinho: remou por 4 s e continua dentro do lago");
+  await t.ev(`(() => { const v = teste.veiculos[${ib}]; teste.vista([v.pos.x + 6, 4, v.pos.z + 7], [v.pos.x, 0.5, v.pos.z]); })()`);
+  await espera(800);
+  await t.foto(`${FOTOS}veiculo-barquinho.png`);
+  await t.ev("teste.vista(null)");
+  await t.ev(`teste.posVeiculo(${ib}, 8, 104 + 15 - 2.6, Math.PI / 2)`); await espera(300);
+  await t.ev("teste.sair()"); await espera(300);
+  ok(await t.ev("teste.dentro === null"), "barquinho: na beirinha, o Rabisco desce");
+  // sem atropelar: a Vovó Lápis atravessando a Avenida da Alegria; o carro para antes dela
+  const iv = tipos.indexOf("je");
+  const vo0 = await t.ev("[teste.vovo.grupo.position.x, teste.vovo.grupo.position.z]");
+  await t.ev("teste.vovo.grupo.position.set(-30, 0.07, 52)");
+  await t.ev(`teste.entrar(${iv}); teste.posVeiculo(${iv}, -30, 45, 0); teste.volante(1, 0)`);
+  await espera(3000);
+  await t.ev("teste.volante(null)");
+  const dv = await t.ev(`Math.hypot(teste.veiculos[${iv}].pos.x + 30, teste.veiculos[${iv}].pos.z - 52)`);
+  const andouV = await t.ev(`teste.veiculos[${iv}].pos.z - 45`);
+  ok(dv > 1.2 && andouV > 1, `sem atropelar: o carro andou ${andouV.toFixed(1)} m e parou a ${dv.toFixed(1)} m da Vovó Lápis`);
+  await t.ev(`teste.sair(); teste.vovo.grupo.position.set(${vo0[0]}, 0.25, ${vo0[1]})`);
+  // vitrine para a foto: todos lado a lado na Avenida da Alegria
+  const lista = ["carro", "je", "ambulancia", "bombeiro", "sorvete", "onibus", "trator", "bici", "patinete"];
+  await t.ev(`(() => { const L = ${JSON.stringify(lista)}; let x = -40; for (const tp of L) { const i = teste.veiculos.findIndex((v) => v.tipo === tp); const v = teste.veiculos[i]; x += v.larg + 1.6; teste.posVeiculo(i, x, 56.5 + (tp === "onibus" ? 0.6 : 0), Math.PI / 2 * 0); x += v.larg + 1.6; } teste.ir(-14, 64); teste.vista([-14, 9, 72], [-14, 1, 56]); })()`);
+  await espera(1500);
+  await t.foto(`${FOTOS}veiculos-vitrine.png`);
+  await t.ev("teste.vista(null)");
+  // garagem: cada veículo novo aparece do lado
+  for (const tp of ["ambulancia", "bombeiro", "bici"]) { await t.ev("teste.ir(4, 33); teste.olhar(Math.PI)"); await espera(200); const d = await t.ev(`teste.garagem('${tp}')`); ok(d != null && d < 9, `Garagem: ${tp} chega a ${d?.toFixed?.(1)} m`); }
+  await t.ev("teste.ir(8, 124)"); await espera(200);
+  ok(await t.ev("teste.garagem('barco') != null"), "Garagem: perto do lago, o barquinho chega na água");
+  await t.ev("teste.ir(0, 33)"); await espera(200);
+  ok(await t.ev("teste.garagem('barco') == null"), "Garagem: longe do lago, o barquinho não vem (avisa para ir ao lago)");
   // praça de dia e de noite
   await t.ev("teste.hora(13); teste.ir(0, 36); teste.olhar(Math.PI)");
   await espera(1500);
