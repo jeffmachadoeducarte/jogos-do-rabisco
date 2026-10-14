@@ -34,7 +34,12 @@ export function linkDoControle(codigo) {
 const num = (v) => (typeof v === "number" && Number.isFinite(v) ? Math.max(-1, Math.min(1, v)) : 0);
 // o que vem do celular passa por aqui: só números de -1 a 1 e sim/não
 // start: botão ⏸ do celular (só aparece quando a tela pede, ex.: jogando na TV)
-const limpar = (d) => ({ x: num(d?.x), y: num(d?.y), pulo: d?.pulo === true, acao: d?.acao === true, baixo: d?.baixo === true, start: d?.start === true, seq: Number(d?.seq) || 0 });
+// nome: resposta ao "Qual é o seu nome?" (recado { pedirNome: true } da tela; src/motor/nomes.js). "" = pulou.
+const limpar = (d) => {
+  const r = { x: num(d?.x), y: num(d?.y), pulo: d?.pulo === true, acao: d?.acao === true, baixo: d?.baixo === true, start: d?.start === true, seq: Number(d?.seq) || 0 };
+  if (typeof d?.nome === "string") r.nome = d.nome.normalize("NFC").replace(/[^\p{L}\p{M} '-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 14);
+  return r;
+};
 
 export function criarSala({ url = SALA_JOGOS, retomar = null } = {}) {
   if (!url || typeof WebSocket === "undefined") return null;

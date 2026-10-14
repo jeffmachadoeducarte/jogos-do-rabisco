@@ -15,7 +15,7 @@ let porta = 9400 + Math.floor(Math.random() * 400);
 export async function abrir(url, { mobile = false, largura = 1280, altura = 800, agente = null } = {}) {
   const perfil = mkdtempSync(join(tmpdir(), "rabisco-teste-"));
   const p = porta++;
-  const chrome = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${p}`, `--user-data-dir=${perfil}`, "--use-gl=swiftshader", "--enable-unsafe-swiftshader",
+  const chrome = spawn(CHROME, ["--headless=new", "--mute-audio", `--remote-debugging-port=${p}`, `--user-data-dir=${perfil}`, "--use-gl=swiftshader", "--enable-unsafe-swiftshader",
     // sem o Chaveiro do Mac: com ele trancado, o Chrome travava esperando a senha
     "--use-mock-keychain", "--password-store=basic",
     "--autoplay-policy=no-user-gesture-required", ...(process.env.CHROME_ARGS ? [process.env.CHROME_ARGS] : []), "about:blank"], { stdio: "ignore" });

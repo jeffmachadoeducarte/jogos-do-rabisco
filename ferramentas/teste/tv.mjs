@@ -2,6 +2,7 @@
 // controle (gamepad simulado) e com "celulares" simulados (página do controle de verdade, toques de verdade) e confere:
 //  (a) /tv mostra QR (decodificado = atalho curto /c/) e o código;  (b) controle aperta botão → vaga 1 (Rabisco), celular → vaga 2;
 //  (c) sem controle, 2 celulares → vagas 1 e 2;  (d) escolhe o Kart pelas setas + celular → jogo em modo TV, cada kart só pelo seu celular;
+//  (n) 2 jogadores: "Qual é o seu nome?" (no celular de cada um e/ou no teclado da tela pelas setas), nomes nas vagas, HUD e avisos;
 //  (e) celular cai e volta na mesma vaga;  (f) "Voltar ao menu da TV" (pela pausa, só com o celular) volta com os jogadores;  (g) Cidade em modo TV.
 // Uso: node --experimental-websocket ferramentas/teste/tv.mjs [http://localhost:8080]
 // Fotos em .claude/tmp/tv/.
@@ -15,6 +16,7 @@ const RAIZ = fileURLToPath(new URL("../../", import.meta.url));
 const PASTA = RAIZ + ".claude/tmp/tv/";
 mkdirSync(PASTA, { recursive: true });
 let falhas = 0;
+const quer = (k) => !process.env.SO || [...k].some((c) => process.env.SO.includes(c)); // SO=i roda só a parte (i)
 const ok = (c, msg) => { console.log(c ? "✓" : "✗", msg); if (!c) falhas++; };
 const ate = async (t, expr, ms = 20000, passo = 250) => { const fim = Date.now() + ms; while (Date.now() < fim) { if (await t.ev(expr).catch(() => false)) return true; await espera(passo); } return false; };
 const foto = (t, nome) => t.foto(PASTA + nome);
@@ -111,7 +113,7 @@ const lerQr = (t) => t.ev(`(async () => {
 const vagas = (t) => t.ev("JSON.stringify(window.tvTeste?.vagas ?? Jogadores.salaTV?.vagas)").then((s) => JSON.parse(s || "[]"));
 
 // ------------------------------------------------------------------ (a) + (b): QR e código; controle → vaga 1, celular → vaga 2
-{
+if (quer("ab")) {
   // "/tv" sem barra e sem nada no aparelho: o caminho curto tem que abrir a tela da TV
   const t = await telaTV(`${BASE}/tv?teste&sala=${encodeURIComponent(SALA)}`);
   ok(await ate(t, "location.pathname.endsWith('/tv/') && window.tvTeste?.sala?.estado === 'aberta'"), "(a) /tv abre a tela da TV e a sala")
@@ -161,6 +163,7 @@ const vagas = (t) => t.ev("JSON.stringify(window.tvTeste?.vagas ?? Jogadores.sal
 }
 
 // ------------------------------------------------------------------ (c) sem controle: 2 celulares → vagas 1 e 2
+if (quer("cdefgn")) {
 const t = await telaTV(`${BASE}/tv/?teste&sala=${encodeURIComponent(SALA)}`);
 await ate(t, "window.tvTeste?.sala?.estado === 'aberta'");
 const link = await t.ev("tvTeste.sala.link");
@@ -178,17 +181,47 @@ ok(await t.ev("tvTeste.foco === 'cidade-do-rabisco'"), "(d) seta → (controle r
 await tecla(t, "ArrowLeft", "ArrowLeft", 37);
 ok(await t.ev("tvTeste.foco === 'rabisco-kart'"), "(d) seta ← volta ao Kart");
 await segurar(c1, ".btn[data-btn=pulo]", 150); // botão do celular confirma (como o A do controle)
+// ------------------------------------------------------------------ (n) 2 jogadores: "Qual é o seu nome?" antes de abrir o jogo
+// jogador 1 responde no PRÓPRIO celular (vem com o primeiro nome do cadastro); jogador 2 escreve na TV com as setas (teclado da tela)
+ok(await ate(t, "document.querySelector('.nomes-tela')?.dataset.jogador === '1' && location.pathname.endsWith('/tv/')", 5000), "(n) 2 jogadores: a TV pergunta o nome do jogador 1 antes de abrir o jogo");
+ok(await ate(c1, "!document.getElementById('tela-nome').hidden && document.getElementById('nome').value === 'Alice'", 5000), "(n) o celular 1 pergunta 'Qual é o seu nome?' já com 'Alice' (cadastro)");
+await foto(t, "tv-nome-j1.png");
+await foto(c1, "controle-nome.png");
+await c1.ev(`document.querySelector('#form-nome button[type=submit]').click()`);
+ok(await ate(t, "document.querySelector('.nomes-tela')?.dataset.jogador === '2'", 5000), "(n) celular 1 respondeu (OK); agora o jogador 2");
+ok(await ate(c1, "document.getElementById('tela-nome').hidden && !document.getElementById('pad').hidden", 3000), "(n) celular 1 voltou ao controle");
+ok(await ate(c2, "!document.getElementById('tela-nome').hidden", 5000), "(n) celular 2 também pergunta");
+// teclado da tela pelas setas do controle remoto da TV: B, I, A e OK
+const campoTV = () => t.ev("document.querySelector('.nomes-campo')?.value ?? null");
+const andarAte = async (letra) => {
+  for (let i = 0; i < 25; i++) {
+    const [fx, fy, ax, ay] = await t.ev(`(() => { const r = (e) => { const b = e.getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2]; };
+      return [...r(document.activeElement), ...r(document.querySelector('.nomes-teclado [data-letra="${letra}"]'))]; })()`);
+    if (Math.abs(fx - ax) < 3 && Math.abs(fy - ay) < 3) return true;
+    if (Math.abs(fy - ay) > 3) await tecla(t, fy < ay ? "ArrowDown" : "ArrowUp", fy < ay ? "ArrowDown" : "ArrowUp", fy < ay ? 40 : 38);
+    else await tecla(t, fx < ax ? "ArrowRight" : "ArrowLeft", fx < ax ? "ArrowRight" : "ArrowLeft", fx < ax ? 39 : 37);
+  }
+  return false;
+};
+for (const l of ["B", "I", "A"]) { await andarAte(l); await tecla(t, "Enter", "Enter", 13); }
+ok(await campoTV() === "Bia", `(n) setas + OK no teclado da tela escrevem o nome (${await campoTV()})`);
+await foto(t, "tv-nome-j2-teclado.png");
+await t.ev("document.querySelector('.nomes-ok').focus()"); await tecla(t, "Enter", "Enter", 13);
+ok(await ate(c2, "document.getElementById('tela-nome').hidden", 4000), "(n) respondeu na TV: o celular 2 fecha a pergunta sozinho");
 ok(await ate(t, "location.pathname.includes('/jogos/rabisco-kart/') && new URLSearchParams(location.search).get('tv') === '1'", 10000), "(d) Kart abriu em modo TV (?tv=1)");
 ok(await ate(t, "!!window.teste && window.Jogadores?.tv === true", 30000), "(d) jogo sabe que está na TV");
 ok(await ate(t, "Jogadores.salaTV.vagas.every((v) => v.tipo === 'celular' && v.conectado) && Jogadores.salaTV.sala.codigo === " + JSON.stringify(link.match(/s=(\w+)/)[1]), 10000), "(d) mesma sala da TV: os 2 celulares voltaram nas mesmas vagas");
 const v1 = await vagas(t);
 ok(v1[0].cel === v0[0].cel && v1[1].cel === v0[1].cel, `(d) celular 1 = Rabisco, celular 2 = companheiro (${v1.map((v) => v.cel).join(", ")})`);
 ok(await ate(c1, "controleTeste.layout === 'kart' && !document.getElementById('pausar').hidden") && await ate(c2, "controleTeste.layout === 'kart'"), "(d) celulares passaram sozinhos para o layout 'kart' (com ⏸)");
-ok(await t.ev("Jogadores.modo === 2 && Jogadores.j1.entrada === 'celular' && Jogadores.j2.entrada === 'celular'"), "(d) 2 jogadores: Rabisco 📱 e Alice 📱");
+ok(await t.ev("Jogadores.modo === 2 && Jogadores.j1.entrada === 'celular' && Jogadores.j2.entrada === 'celular'"), "(d) 2 jogadores: 📱 e 📱");
+ok(await t.ev("Jogadores.j1.nome === 'Alice' && Jogadores.j2.nome === 'Bia'"), `(n) no jogo os nomes valem: ${await t.ev("Jogadores.j1.nome + ' / ' + Jogadores.j2.nome")}`);
+ok(await ate(c1, "document.getElementById('chip-nome').textContent === 'Alice'") && await ate(c2, "document.getElementById('chip-nome').textContent === 'Bia'"), "(n) chips dos celulares: Alice e Bia");
 ok(await t.ev("getComputedStyle(document.querySelector('.toque')).display === 'none' && getComputedStyle(document.getElementById('som')).display === 'none' && document.documentElement.classList.contains('modo-tv')"), "(d) sem botões de toque na tela (HUD limpo do Modo TV)");
 ok(await ate(t, "document.activeElement?.id === 'jogar'", 3000), "(d) foco já no 'CORRER'");
 await segurar(c1, ".btn[data-btn=acao]", 120); // buzina = confirma no menu
 ok(await ate(t, "teste.estado === 'corrida' && teste.dividida && teste.j2?.humano === 2", 30000), "(d) corrida em 2 (tela dividida) começou pelo celular");
+ok(await ate(t, "document.querySelector('#hud-j2 .tag-j1')?.textContent.includes('Alice') && document.querySelector('#hud-j2 .tag-j2')?.textContent.includes('Bia') && teste.j2.nome === 'Bia'", 5000), "(n) nomes no HUD (cada metade da tela)");
 await espera(800);
 const e1 = await segurarAte(c1, ".btn[data-btn=esq]", t, "teste.jogador.virar > 0.3", "[teste.jogador.virar, teste.j2.virar]");
 ok(e1[0] > 0.3 && Math.abs(e1[1]) < 0.3, `(d) ◀ no celular 1 vira só o kart do Rabisco (j1 ${e1[0].toFixed(2)}, j2 ${e1[1].toFixed(2)})`);
@@ -208,7 +241,7 @@ await foto(c1, "controle-kart-tv.png");
 // ------------------------------------------------------------------ (e) celular 2 cai e volta na mesma vaga
 const antes = await c2.ev("controleTeste.sessao");
 await c2.ev("controleTeste.derrubar()");
-ok(await ate(t, "!!document.querySelector('.jog-aviso:not([hidden])')?.textContent.includes('celular da Alice Souza desconectou')", 3000, 50), "(e) celular da Alice caiu → aviso amigável na TV");
+ok(await ate(t, "!!document.querySelector('.jog-aviso:not([hidden])')?.textContent.includes('celular de Bia desconectou')", 3000, 50), "(e) celular da Bia caiu → aviso amigável na TV, com o nome que ela escreveu");
 await foto(t, "tv-kart-celular-caiu.png");
 ok(await ate(t, "!document.querySelector('.jog-aviso:not([hidden])') && Jogadores.salaTV.vagas[1].conectado", 8000), "(e) celular voltou sozinho e o aviso fechou");
 ok(await ate(c2, "controleTeste.conectado", 5000) && JSON.stringify(await c2.ev("controleTeste.sessao")) === JSON.stringify(antes) && (await vagas(t))[1].cel === v0[1].cel, "(e) voltou na mesma vaga (mesmo id)");
@@ -216,7 +249,7 @@ const e3 = await segurarAte(c2, ".btn[data-btn=esq]", t, "teste.j2.virar > 0.3",
 ok(e3 > 0.3, `(e) depois de voltar, o celular 2 ainda pilota o kart da Alice (${e3.toFixed(2)})`);
 // celular 1 cai também: pausa e aviso com o nome do Rabisco
 await c1.ev("controleTeste.derrubar()");
-ok(await ate(t, "!!document.querySelector('.jog-aviso:not([hidden])')?.textContent.includes('celular do Rabisco desconectou') && !document.querySelector('.pausa-tela').hidden", 3000, 50), "(e) celular do Rabisco caiu → pausa + aviso");
+ok(await ate(t, "!!document.querySelector('.jog-aviso:not([hidden])')?.textContent.includes('celular da Alice desconectou') && !document.querySelector('.pausa-tela').hidden", 3000, 50), "(e) celular da Alice (jogador 1) caiu → pausa + aviso");
 ok(await ate(t, "!document.querySelector('.jog-aviso:not([hidden])') && Jogadores.salaTV.vagas[0].conectado", 8000), "(e) celular do Rabisco voltou e o aviso fechou");
 
 // ------------------------------------------------------------------ (f) "Voltar ao menu da TV" pela pausa, só com o celular 1
@@ -237,6 +270,7 @@ await segurar(c1, ".btn[data-btn=acao]", 120);
 ok(await ate(t, "location.pathname.endsWith('/tv/') && !!window.tvTeste", 10000), "(f) voltou para /tv");
 ok(await ate(t, "tvTeste.vagas.every((v) => v.tipo === 'celular' && v.conectado)", 10000), "(f) os 2 jogadores continuam conectados nas mesmas vagas");
 ok(JSON.stringify((await vagas(t)).map((v) => v.cel)) === JSON.stringify(v0.map((v) => v.cel)), "(f) mesmos celulares, mesmas vagas");
+ok(await ate(t, "document.getElementById('vaga-1').textContent.includes('1 · Alice') && document.getElementById('vaga-2').textContent.includes('2 · Bia')", 4000), "(n) menu da TV mostra os nomes nas vagas (1 · Alice, 2 · Bia)");
 ok(await ate(c1, "controleTeste.layout === 'padrao' && document.getElementById('pausar').hidden") && await ate(c2, "controleTeste.layout === 'padrao'"), "(f) celulares voltaram ao layout 'padrao' do menu");
 await foto(t, "tv-menu-de-volta.png");
 
@@ -266,9 +300,10 @@ await foto(c2, "controle-cidade-tv.png");
 ok(!errosDe(t).length, "TV: sem erros " + errosDe(t).join(" ; "));
 ok(!c1.erros.length && !c2.erros.length, "celulares: sem erros " + [...c1.erros, ...c2.erros].join(" ; "));
 await c1.fechar(); await c2.fechar(); await t.fechar();
+}
 
 // ------------------------------------------------------------------ (h) 1 jogador só, com UM controle físico: escolha 1/2 na TV e Kart sem tela dividida
-{
+if (quer("h")) {
   const t = await telaTV(`${BASE}/tv/?teste&sala=${encodeURIComponent(SALA)}`);
   await ate(t, "window.tvTeste?.sala?.estado === 'aberta'");
   ok(await t.ev("!!document.getElementById('jog-1') && !!document.getElementById('jog-2') && tvTeste.jogadores === 1"), "(h) a TV tem 'Quantos vão jogar?' (1 / 2) e começa em 1 jogador");
@@ -306,7 +341,7 @@ await c1.fechar(); await c2.fechar(); await t.fechar();
 }
 
 // ------------------------------------------------------------------ (i) 1 jogador só, com UM celular: Cidade sem companheiro
-{
+if (quer("i")) {
   const t = await telaTV(`${BASE}/tv/?teste&sala=${encodeURIComponent(SALA)}`);
   await ate(t, "window.tvTeste?.sala?.estado === 'aberta'");
   const c = await celular(await t.ev("tvTeste.sala.link"));

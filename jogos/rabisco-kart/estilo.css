@@ -148,7 +148,7 @@ body.touch .toque { display: flex; }
   100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0; }
 }
 
-/* botão de som: canto direito, logo abaixo do mapa (fora do meio da tela, longe do kart e dos botões de toque) */
+/* ⚙️ configurações (som e jogar na TV): canto direito, logo abaixo do mapa (fora do meio da tela, longe do kart e dos botões de toque) */
 #som {
   position: fixed; top: calc(env(safe-area-inset-top, 0px) + clamp(120px, 16vw, 200px) + 32px); right: 20px;
   z-index: 20;

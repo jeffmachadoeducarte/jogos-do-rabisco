@@ -137,3 +137,12 @@ body.jogando .pausar { width: 48px; height: 48px; font-size: 22px; }
   .logo { height: 30px; }
   .chip { font-size: 18px; }
 }
+
+/* ------------------------------------------------------------ "Qual é o seu nome?" */
+#nome { font: 800 40px var(--texto); text-align: center; width: 320px; max-width: 84vw; border: 5px solid var(--tinta); border-radius: 20px;
+  padding: 2px 12px 6px; background: #fff8d6; color: var(--tinta); }
+#nome:focus { outline: 4px solid var(--cor); outline-offset: 2px; }
+.nome-botoes { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.botao.branco { background: #fff; color: var(--tinta); }
+#tela-nome .cartao { border-color: var(--cor); }
+@media (max-height: 420px) { #tela-nome .cartao { padding-top: 8px; padding-bottom: 10px; gap: 8px; } #tela-nome h1 { font-size: 26px; } #nome { font-size: 30px; } .nome-botoes .botao { font-size: 22px; padding-top: 0; padding-bottom: 2px; } }

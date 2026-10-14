@@ -7,6 +7,7 @@ import { iniciarSalaTV, urlJogoTV } from "../src/motor/salatv.js";
 import { ligarControle, focar, navegarComTeclado } from "../src/motor/controle.js";
 import { qrSvg } from "../vendor/qr.js";
 import { SALA_JOGOS } from "../src/config.js";
+import { botaoEngrenagem } from "../src/motor/engrenagem.js";
 import { CAPAS } from "../src/portal-capas.js";
 import "../src/motor/familia.js"; // window.Familia: nome e foto da criança (a foto só aparece aqui, nunca sai do aparelho)
 
@@ -49,8 +50,8 @@ $("quantos").addEventListener("click", (e) => {
   if (n === 2 && !tv.vagas[1].tipo) recado(SALA_JOGOS ? "Para jogar a 2, o jogador 2 entra: controle 🎮 ou QR 📱" : "Para jogar a 2, ligue um segundo controle 🎮", 3200);
 });
 
-let saindo = false;
-function abrirJogo(id) {
+let saindo = false, perguntando = false;
+function abrirJogo(id, { nomesProntos = false } = {}) {
   if (saindo) return;
   const [v1, v2] = tv.vagas;
   if (!v1.tipo && !v2.tipo) {
@@ -62,6 +63,13 @@ function abrirJogo(id) {
     return;
   }
   if (!v1.tipo) tv.subirVaga2(); // só tem o jogador 2: ele vira o Rabisco
+  // 2 jogadores: antes de abrir, cada um diz o nome (uma vez por pessoa nesta TV; pode pular)
+  if (quantos() === 2 && !nomesProntos && !perguntando) {
+    perguntando = true;
+    tv.pedirNomes({ sugestao1: crianca()?.nome || "", quantos: 2 }).then(() => { perguntando = false; desenharVagas(); abrirJogo(id, { nomesProntos: true }); });
+    return;
+  }
+  if (perguntando) return;
   saindo = true;
   tv.guardar();
   recado(`Abrindo ${JOGOS.find((j) => j.id === id)?.nome ?? "o jogo"}…`, 4000);
@@ -96,7 +104,9 @@ function desenharSala() {
 }
 
 // ------------------------------------------------------------------ Vagas
-const nomeJ2 = () => crianca()?.nome?.trim().split(/\s+/)[0] || "Jogador 2";
+// nome de cada vaga: o que o jogador escreveu (src/motor/nomes.js) ou "Rabisco" / o primeiro nome do cadastro
+const nomeVaga = (n) => tv.nomeDe(n).trim().split(/\s+/)[0] || (n === 1 ? "Rabisco" : "Jogador 2");
+const nomeJ2 = () => nomeVaga(2);
 function rosto(n) {
   if (n === 1) return '<span class="rosto" style="background-image:url(\'../assets/rabisco/poses/frente.png\');background-size:250%;background-position:50% 27%"></span>';
   const f = crianca()?.foto;
@@ -121,7 +131,7 @@ function desenharVagas() {
     el.className = `vaga ${c.classe ?? ""}${n === 1 && v.n === 2 && v.tipo ? " fora" : ""}`.trim();
     el.dataset.tipo = v.tipo ?? "";
     el.dataset.conectado = String(Boolean(v.conectado));
-    el.innerHTML = `${rosto(v.n)}<span><span class="nome">${v.n} · ${esc(v.n === 1 ? "Rabisco" : nomeJ2())}</span>
+    el.innerHTML = `${rosto(v.n)}<span><span class="nome">${v.n} · ${esc(nomeVaga(v.n))}</span>
       <span class="como"><span class="ic" aria-hidden="true">${c.ic}</span>${esc(c.txt)}</span></span>${c.selo ? `<span class="selo" aria-hidden="true">${c.selo}</span>` : ""}`;
   }
   // dica do controle: o navegador só "vê" o controle depois que alguém aperta um botão nele
@@ -145,7 +155,7 @@ const antes = tv.vagas.map((v) => `${v.tipo}:${v.conectado}`);
 function anunciarEntradas() {
   tv.vagas.forEach((v, i) => {
     const agora = `${v.tipo}:${v.conectado}`;
-    if (agora !== antes[i] && v.conectado && !saindo) recado(`${v.n === 1 ? "Rabisco" : nomeJ2()} entrou ${v.tipo === "controle" ? "com o controle 🎮" : "pelo celular 📱"}!${v.n === 2 && quantos() === 2 ? " Vão jogar 2!" : ""}`, 1800);
+    if (agora !== antes[i] && v.conectado && !saindo) recado(`${nomeVaga(v.n)} entrou ${v.tipo === "controle" ? "com o controle 🎮" : "pelo celular 📱"}!${v.n === 2 && quantos() === 2 ? " Vão jogar 2!" : ""}`, 1800);
     antes[i] = agora;
   });
 }
@@ -154,6 +164,9 @@ tv.on("mudou", () => { desenharSala(); desenharVagas(); anunciarEntradas(); });
 tv.on("recado", (t) => recado(t, 4000));
 desenharSala();
 desenharVagas();
+
+// ⚙️ no canto (som e "Voltar ao normal", para quem transformou o tablet/celular em tela pela engrenagem do portal)
+document.querySelector(".topo").append(botaoEngrenagem({ classe: "tv-engrenagem" }));
 
 // ------------------------------------------------------------------ Navegação: controle remoto, gamepad e celular
 const menu = $("menu");

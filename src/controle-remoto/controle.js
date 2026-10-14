@@ -17,6 +17,8 @@ const limparCodigo = (c) => [...String(c || "").toUpperCase()].filter((l) => ALF
 
 // ------------------------------------------------------------------ Telas
 function mostrar(qual) {
+  if (qual === "pad" && pedindoNome) qual = "nome"; // o jogo está esperando o nome: a tela do nome fica por cima
+  $("tela-nome").hidden = qual !== "nome";
   $("tela-entrar").hidden = qual !== "entrar";
   $("tela-recado").hidden = qual !== "recado";
   $("pad").hidden = qual !== "pad";
@@ -128,9 +130,38 @@ function doHost(d) {
   if (typeof d.pausar === "boolean") $("pausar").hidden = !d.pausar;
   if (Number(d.vibrar) > 0) vibrar(Math.min(1000, Number(d.vibrar)));
   if (typeof d.msg === "string") { recadoDoJogo = d.msg.slice(0, 120); mostrarAviso(avisoAtual); }
+  if (d.pedirNome === true) pedirNome(d);
+  else if (d.pedirNome === false) fecharNome();
   if (d.fim) fimDaSala("Obrigado por jogar! 💙", recadoDoJogo || "O jogo terminou.");
 }
 let recadoDoJogo = "", avisoAtual = "";
+
+// ------------------------------------------------------------------ "Qual é o seu nome?" (2 jogadores na TV)
+// A tela pede com { pedirNome: true, sugestao, n }; a resposta vai como { t: "in", d: { ...botões soltos, nome } }
+// ("" = pulou). Só o nome escrito sai do celular, e só para a tela do jogo.
+let pedindoNome = false;
+function pedirNome(d) {
+  pedindoNome = true;
+  soltarTudo?.();
+  $("nome").value = typeof d.sugestao === "string" ? d.sugestao.slice(0, 14) : "";
+  if (!$("pad").hidden || !$("tela-nome").hidden) mostrar("nome");
+  vibrar(40);
+  setTimeout(() => { try { $("nome").focus(); $("nome").select(); } catch { /* */ } }, 80);
+}
+function fecharNome() {
+  if (!pedindoNome) return;
+  pedindoNome = false;
+  try { $("nome").blur(); } catch { /* */ }
+  if (!$("tela-nome").hidden) mostrar("pad");
+}
+function responderNome(nome) {
+  const limpo = String(nome || "").replace(/[^\p{L}\p{M} '-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 14);
+  enviar({ t: "in", d: { x: 0, y: 0, pulo: false, acao: false, baixo: false, nome: limpo, seq: ++seq } });
+  vibrar(20);
+  fecharNome();
+}
+$("form-nome").addEventListener("submit", (e) => { e.preventDefault(); responderNome($("nome").value); });
+$("nome-pular").addEventListener("click", () => responderNome(""));
 // faixa no alto do controle: problema de conexão tem prioridade sobre o recado do jogo
 function mostrarAviso(texto) {
   avisoAtual = texto;

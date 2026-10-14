@@ -3,7 +3,7 @@
 // (metade esquerda = mover, direita = ação/pulo). Lembra a escolha no aparelho (localStorage "rabisco.modoTV").
 //
 // Páginas web não conseguem saber com certeza se a tela está espelhada (a Apple não expõe isso). Então:
-//   1. o botão 📺 no portal e na pausa de todo jogo (src/motor/pausa.js) liga e desliga;
+//   1. a ⚙️ (src/motor/engrenagem.js: portal, casca, pausa e Kart) → "Jogar na TV" → "Jogar aqui mesmo" liga; "Voltar ao normal" desliga;
 //   2. detecção oportunista, onde a API existir: screen.isExtended + evento "change" (Chrome/Android),
 //      Presentation API (há uma tela de apresentação disponível) e mudança brusca de tamanho/densidade da tela.
 //      Qualquer sinal só SUGERE ("Parece que você conectou numa TV — ativar o Modo TV?"). No iPhone não há sinal:

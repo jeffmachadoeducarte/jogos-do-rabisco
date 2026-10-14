@@ -24,6 +24,7 @@ import { prepararCelular } from "./celular.js";
 import { botaoVoltar, linkPortal } from "./voltar.js";
 import { criarRemapear } from "./remapear.js";
 import { Jogadores } from "./jogadores.js";
+import { botaoEngrenagem, Engrenagem } from "./engrenagem.js";
 
 const RAIZ = "../..";
 const el = (tag, props = {}, filhos = []) => {
@@ -60,7 +61,10 @@ export function criarCasca({
   const palco = el("main", { id: "palco", class: "escondido" });
   const placar = el("div", { class: "casca-placar", "aria-live": "polite" });
   const btnSair = el("button", { class: "casca-redondo", "aria-label": "Sair do jogo", texto: "✕", onclick: () => sair() });
-  const btnSom = el("button", { class: "casca-redondo", "aria-label": "Ligar ou desligar o som", texto: sons.mudo ? "🔇" : "🔊", onclick: () => { btnSom.textContent = sons.alternarMudo() ? "🔇" : "🔊"; } });
+  // ⚙️ Configurações (src/motor/engrenagem.js): som liga/desliga e "Jogar na TV". O M liga/desliga o som, menos
+  // nos jogos que usam o M para outra coisa (ex.: mapa da Rabiscópolis)
+  const usaM = (controles || []).some((a) => a.teclas?.includes("KeyM"));
+  const btnSom = botaoEngrenagem({ classe: "casca-redondo casca-engrenagem", atalhoM: !usaM });
   // configurações de teclas/botões (só computador/TV; no toque o botão não existe)
   let pausouPeloRemap = false;
   const remap = controles ? criarRemapear({
@@ -68,7 +72,9 @@ export function criarCasca({
     aoAbrir: () => { if (estado === "jogando" && !pausa.ativa && pausa.podePausar()) { pausa.pausar(); pausouPeloRemap = true; } },
     aoFechar: () => { if (pausouPeloRemap) { pausouPeloRemap = false; pausa.continuar(); } },
   }) : null;
-  const ladoDireito = remap?.botao ? el("div", { style: "display:flex;gap:10px;align-items:center" }, [remap.botao, btnSom]) : btnSom;
+  // trocar teclas/botões (computador/TV) mora dentro da ⚙️: uma engrenagem só no topo
+  if (remap?.botao) Engrenagem.extra({ id: "botoes", ic: "🎮", texto: "Trocar teclas e botões", sub: "Para quem joga no teclado ou com controle", acao: () => remap.abrir() });
+  const ladoDireito = btnSom;
   const vezEl = el("div", { class: "casca-vez", style: "display:contents" }); // revezamento: de quem é a vez
   const topo = el("div", { class: "casca-topo" }, [el("div", { style: "display:flex;gap:10px;align-items:center" }, [btnSair, placar, vezEl]), ladoDireito]);
   const avisoEl = el("div", { class: "casca-aviso", "aria-live": "assertive" });
@@ -133,6 +139,8 @@ export function criarCasca({
   marcarFeitos();
 
   function comecar(n) {
+    // TV como tela ainda sem ninguém (ex.: "Usar só controles" da ⚙️): primeiro alguém entra
+    if (jogadores && Jogadores.semJogadorTV) { aviso(Jogadores.textoSemJogadorTV, "", 3600); return; }
     // 2 jogadores ao mesmo tempo precisa de algo para o jogador 2 (controle ou teclado dividido)
     if (jogadores === "simultaneo" && Jogadores.ativo && !Jogadores.j2Pronto) {
       aviso(Jogadores.textoFaltaJ2, "", 3600);
@@ -240,6 +248,7 @@ export function criarCasca({
     aoSair: () => irParaAbertura(),
   });
   remap?.naPausa();
+  { const b = document.querySelector(".remap-na-pausa"); if (b) b.textContent = "🎮 Trocar botões"; }
   const telaDoMenu = () => (estado === "abertura" ? abertura : estado === "vitoria" ? vitoria : menuNoJogo ? palco : null);
   const controle = ligarControle({
     mapa: {},

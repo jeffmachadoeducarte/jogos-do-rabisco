@@ -68,8 +68,9 @@ export function juntarGeometrias(malhas) {
     for (const nome of nomes) {
       const a = g.attributes[nome], tam = a.itemSize, dst = saida[nome];
       for (let k = 0; k < n; k++) {
-        if (nome === "position") { v.fromBufferAttribute(a, k).applyMatrix4(m); dst.set([v.x, v.y, v.z], (v0 + k) * 3); }
-        else if (nome === "normal") { v.fromBufferAttribute(a, k).applyMatrix3(nm).normalize(); dst.set([v.x, v.y, v.z], (v0 + k) * 3); }
+        // escreve direto no destino (sem criar um array por vértice: bem mais rápido em aparelho fraco)
+        if (nome === "position") { v.fromBufferAttribute(a, k).applyMatrix4(m); const o = (v0 + k) * 3; dst[o] = v.x; dst[o + 1] = v.y; dst[o + 2] = v.z; }
+        else if (nome === "normal") { v.fromBufferAttribute(a, k).applyMatrix3(nm).normalize(); const o = (v0 + k) * 3; dst[o] = v.x; dst[o + 1] = v.y; dst[o + 2] = v.z; }
         else for (let c = 0; c < tam; c++) dst[(v0 + k) * tam + c] = a.array[k * tam + c];
       }
     }

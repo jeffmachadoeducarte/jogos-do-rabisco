@@ -32,6 +32,7 @@ import { SALA_JOGOS } from "../config.js";
 import { criarSala } from "./sala.js";
 import { qrSvg } from "../../vendor/qr.js";
 import { emModoTV, iniciarSalaTV, voltarParaTV } from "./salatv.js";
+import { nomeDoJogador, pedirNomes, receberNome, aoMudarNome, nomeGuardado, nomesAbertos } from "./nomes.js";
 
 const RAIZ = new URL("../..", import.meta.url).href.replace(/\/$/, "");
 const CHAVE = "rabisco.jogadores"; // 1 ou 2, lembrado só nesta visita (sessionStorage) e SÓ onde não é aparelho de toque
@@ -45,7 +46,9 @@ const ehToque = () => "ontouchstart" in window || navigator.maxTouchPoints > 0;
 const crianca = () => { try { return window.Familia?.crianca?.() || null; } catch { return null; } };
 // Celular/tablet (toque) SEMPRE abre em 1 jogador: ali o jogador 2 depende de controle ou QR, e lembrar o "2" de outro jogo
 // fazia o próximo pedir "conecte um controle" a quem só queria jogar pelo toque. No computador o teclado dividido não pede nada.
-const lerModo = () => { if (ehToque()) return 1; try { return Number(sessionStorage.getItem(CHAVE)) === 2 ? 2 : 1; } catch { return 1; } };
+// "Jogar na TV" pela ⚙️ (src/motor/engrenagem.js): "mais1" = o aparelho no toque + o jogador 2 pelo celular/controle
+const telaLocal = () => { try { const v = sessionStorage.getItem("rabisco.telaTV"); return v === "aqui" || v === "mais1" ? v : null; } catch { return null; } };
+const lerModo = () => { if (telaLocal() === "mais1") return 2; if (ehToque()) return 1; try { return Number(sessionStorage.getItem(CHAVE)) === 2 ? 2 : 1; } catch { return 1; } };
 const params = new URLSearchParams(location.search);
 
 const ICONES = { controle: "🎮", teclado: "⌨️", toque: "👆", qr: "📱", celular: "📱", revezar: "🔄" };
@@ -74,6 +77,14 @@ let sala = null, cel = null;
 function padsConectados() {
   return [...(navigator.getGamepads?.() ?? [])].filter((g) => g && g.connected !== false).map((g, i) => g.index ?? i).sort((a, b) => a - b);
 }
+// quem está em cada lugar, para o nome escrito ficar preso à pessoa (src/motor/nomes.js)
+const quemJ = (j) => (j.entrada === "controle" ? `pad:${j.pad}` : j.entrada === "celular" ? String(cel?.id ?? "celular") : j.entrada);
+function nomear() {
+  const c = crianca();
+  if (tv) { j1.nome = tv.nomeDe(1); j2.nome = tv.nomeDe(2); return; }
+  j1.nome = nomeDoJogador(1, quemJ(j1), c?.nome || "");
+  j2.nome = nomeDoJogador(2, quemJ(j2), c?.nome || "");
+}
 function atribuir() {
   const c = crianca();
   j2.nome = c?.nome || "Jogador 2";
@@ -88,8 +99,10 @@ function atribuir() {
   } else if (pads.length >= 2) { j1.entrada = "controle"; j1.pad = pads[0]; j2.entrada = "controle"; j2.pad = pads[1]; }
   else if (pads.length === 1) { j1.entrada = toque ? "toque" : "teclado"; j1.pad = null; j2.entrada = "controle"; j2.pad = pads[0]; }
   else { j1.entrada = toque ? "toque" : "teclado"; j1.pad = null; j2.entrada = cel ? "celular" : toque ? "qr" : "teclado"; j2.pad = null; }
+  nomear();
   aplicarReserva();
   cuidarDaSala();
+  talvezPedirNomes();
   // o celular fica sabendo quando um controle físico assume (e quando volta a valer)
   if (cel && sala) {
     const vale = j2.entrada === "celular";
@@ -145,6 +158,7 @@ function abrirSala() {
   });
   s.on("in", (c, d) => {
     if (!minha() || cel?.id !== c.id) return;
+    if (typeof d.nome === "string") { receberNome(c.id, d.nome); return; } // resposta ao "Qual é o seu nome?"
     if (d.pulo && !cel.d.pulo) cel.puloPend = true;
     if (d.acao && !cel.d.acao) cel.acaoPend = true;
     cel.d = d; cel.visto = performance.now();
@@ -187,9 +201,40 @@ function atribuirTV() {
   j2.entrada = v2.tipo || "qr"; j2.pad = v2.tipo === "controle" ? v2.pad : null;
   // o modo vem da escolha na TV (1 jogador) ou das vagas: com alguém na vaga 2 são 2 jogadores (durante a partida não muda sozinho)
   if (!emJogo) modo = tv.jogadores;
+  nomear();
   aplicarReserva();
+  talvezPedirNomes();
   for (const cb of ouvintes) { try { cb(api); } catch { /* ouvinte com erro não trava */ } }
 }
+// ------------------------------------------------------------------ "Qual é o seu nome?" (2 jogadores na TV)
+// Na TV como tela (vindo da página tv/ ou do "Usar só controles" da ⚙️) e no "Jogar na TV" do aparelho (aqui/mais1):
+// quando o jogo vai ser a 2 e ainda não sabe o nome de quem está em cada lugar, pergunta (no celular de quem tem celular
+// e na tela, com teclado navegável pelo controle). Fora da TV não pergunta nada.
+let tNomes = 0;
+function talvezPedirNomes() {
+  if (emJogo || modo !== 2 || tipo !== "simultaneo" || nomesAbertos()) return;
+  if (!tv && !telaLocal()) return;
+  clearTimeout(tNomes);
+  tNomes = setTimeout(() => {
+    if (emJogo || modo !== 2 || nomesAbertos()) return;
+    const sug = crianca()?.nome || "";
+    if (tv) {
+      if (!tv.vagas[0].tipo || !tv.vagas[1].tipo) return;
+      tv.pedirNomes({ sugestao1: sug, quantos: 2 }).then(() => atribuir());
+      return;
+    }
+    if (!(j2.entrada === "controle" || j2.entrada === "celular")) return;
+    const q1 = quemJ(j1), q2 = quemJ(j2);
+    if (nomeGuardado(1, q1) != null && nomeGuardado(2, q2) != null) return;
+    const celular = j2.entrada === "celular" && cel && sala ? (d) => sala?.enviar(cel.id, d) : null;
+    pedirNomes([
+      { n: 1, quem: q1, cor: j1.cor, sugestao: sug.split(/\s+/)[0] || "" },
+      { n: 2, quem: q2, cor: j2.cor, celular },
+    ]).then(() => atribuir());
+  }, 700);
+}
+aoMudarNome(() => { nomear(); if (cel && sala) configurarCelular(); for (const cb of ouvintes) { try { cb(api); } catch { /* */ } } });
+
 // pausa do jogo quando o jogador 1 cai na TV (o jogo informa em configurar({ aoPausar }); senão, a pausa comum)
 let pausaDoJogo = null;
 
@@ -348,7 +393,13 @@ function rostoDe(j) {
   return rostoGenerico;
 }
 // "do Rabisco", "da Alice" (menina), "do Pedro" (menino), "de Sam" (sem gênero no cadastro)
-const artigo = (j) => (j.n === 1 ? "do" : ({ menina: "da", menino: "do" })[crianca()?.genero] ?? (j.nome === "Jogador 2" ? "do" : "de"));
+const primeiroDe = (t) => String(t || "").trim().split(/\s+/)[0].toLowerCase();
+const artigo = (j) => {
+  if (j.nome === "Rabisco" || j.nome === "Jogador 2") return "do";
+  const c = crianca();
+  if (c?.nome && primeiroDe(c.nome) === primeiroDe(j.nome)) return ({ menina: "da", menino: "do" })[c.genero] ?? "de";
+  return "de";
+};
 const fundoRosto = (j) => { const u = rostoDe(j); return u ? `background-image:url("${u}");${j.n === 1 ? "background-size:250%;background-position:50% 27%;" : ""}` : ""; };
 
 function cartao(j, { revezar = false } = {}) {
@@ -414,17 +465,39 @@ function escolha() {
   return raiz;
 }
 // Na TV não tem "quantos vão jogar?": quem está nas vagas joga. Mostra quem é quem (com 🎮/📱) e o código da sala.
+// Com vaga livre (ex.: "Usar só controles" da ⚙️, que abre o jogo direto como TV), mostra também o QR e o código para
+// os celulares entrarem e o lembrete do controle, aqui mesmo na abertura do jogo.
 function escolhaTV() {
   const quem = h("div", { class: "jog-quem", "aria-live": "polite" });
   const nota = h("p", { class: "jog-pergunta jog-tv-nota" });
+  const qr = h("div", { class: "jog-qr jog-qr-tv", "aria-live": "polite" });
+  let qrDe = null;
   const desenhar = () => {
-    quem.replaceChildren(cartao(j1), ...(modo === 2 ? [cartao(j2)] : []));
+    const [v1, v2] = tv.vagas;
+    const ninguem = !v1.tipo && !v2.tipo;
+    quem.replaceChildren(...(ninguem ? [] : [cartao(j1), ...(modo === 2 ? [cartao(j2)] : [])]));
     const s = tv.sala;
-    nota.textContent = `📺 Jogando na TV${s?.codigo ? ` · sala ${s.codigo}` : ""}`;
+    nota.textContent = ninguem ? "📺 Este aparelho é a tela. Entrem para jogar:" : `📺 Jogando na TV${s?.codigo ? ` · sala ${s.codigo}` : ""}`;
+    const livre = !v1.tipo || !v2.tipo;
+    const chave = !livre ? "" : s?.estado === "aberta" && s.codigo ? s.codigo : s ? "espera" : "sem";
+    qr.classList.toggle("ativo", livre && !emJogo);
+    if (chave === qrDe) return;
+    qrDe = chave;
+    if (!livre) { qr.replaceChildren(); return; }
+    const dicaPad = h("span", { html: "🎮 <b>Controle:</b> aperte qualquer botão nele." });
+    if (chave === "sem") { qr.replaceChildren(dicaPad); return; }
+    if (chave === "espera") { qr.replaceChildren(h("span", { class: "caixa", texto: "…" }), h("span", { texto: "Preparando o QR code do celular…" }), dicaPad); return; }
+    const img = h("span", { class: "qr-img", role: "img", "aria-label": `QR code do controle, código ${s.codigo}` });
+    try { img.innerHTML = qrSvg(s.link, { nivel: "M" }); } catch { img.textContent = "QR"; }
+    qr.replaceChildren(img, h("span", { class: "qr-txt" }, [
+      h("span", { html: "📱 <b>Celular:</b> leia o QR com a câmera." }),
+      h("span", { class: "codigo", html: `<small>Código</small><span class="jog-qr-codigo">${s.codigo}</span>` }),
+      dicaPad,
+    ]));
   };
   ouvintes.add(desenhar);
   desenhar();
-  return h("div", { class: "jog-escolha jog-escolha-tv", role: "group", "aria-label": "Quem vai jogar" }, [nota, quem]);
+  return h("div", { class: "jog-escolha jog-escolha-tv", role: "group", "aria-label": "Quem vai jogar" }, [nota, quem, qr]);
 }
 function definirModo(n) {
   if (tv) { atribuir(); return; } // na TV o modo vem das vagas
@@ -585,6 +658,13 @@ const api = {
   },
   // TV como tela (src/motor/salatv.js): true quando o jogo veio da página tv/
   get tv() { return Boolean(tv); },
+  // TV como tela sem ninguém nas vagas ainda (o jogo avisa em vez de começar). Só o jogador 2 entrou: ele vira o Rabisco.
+  get semJogadorTV() {
+    if (!tv) return false;
+    if (!tv.vagas[0].tipo && tv.vagas[1].tipo) tv.subirVaga2();
+    return !tv.vagas[0].tipo;
+  },
+  textoSemJogadorTV: SALA_JOGOS ? "Primeiro, alguém entra: aperte um botão do controle 🎮 ou leia o QR com o celular 📱" : "Primeiro, aperte um botão do controle 🎮",
   // para o teste e para quem quiser mostrar: as vagas da TV ({ n, tipo, pad, cel, conectado }) ou null
   get salaTV() { return tv ? { sala: tv.sala, vagas: tv.vagas.map(({ n, tipo, pad, cel, conectado }) => ({ n, tipo, pad, cel, conectado })) } : null; },
   voltarParaTV,

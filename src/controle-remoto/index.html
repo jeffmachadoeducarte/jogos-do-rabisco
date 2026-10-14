@@ -42,6 +42,20 @@
     </div>
   </section>
 
+  <!-- "Qual é o seu nome?": a tela do jogo pede (recado { pedirNome: true }) quando vão jogar a 2 na TV. Pode pular. -->
+  <section class="tela" id="tela-nome" hidden>
+    <div class="cartao">
+      <h1>Qual é o seu nome?</h1>
+      <form id="form-nome" autocomplete="off">
+        <input id="nome" inputmode="text" autocapitalize="words" spellcheck="false" maxlength="14" placeholder="Seu nome" aria-label="Seu nome">
+        <div class="nome-botoes">
+          <button class="botao rosa" type="submit">OK ✓</button>
+          <button class="botao branco" type="button" id="nome-pular">Pular</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
   <!-- O controle -->
   <main class="pad" id="pad" hidden data-layout="padrao">
     <p class="recado-jogo" id="recado-jogo" aria-live="polite" hidden></p>

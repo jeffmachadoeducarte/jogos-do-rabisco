@@ -26,6 +26,10 @@ body {
 .topo h1 small { font-family: var(--texto); font-weight: 800; font-size: 0.6em; color: #fff; }
 .estado-sala { margin-left: auto; font-weight: 800; font-size: calc(var(--u) * 1.7); background: #fff; border: calc(var(--u) * 0.3) solid var(--tinta); border-radius: 999px; padding: 0 calc(var(--u) * 1.4); }
 .estado-sala:empty { display: none; }
+.tv-engrenagem { margin-left: auto; flex: none; width: calc(var(--u) * 5.4); height: calc(var(--u) * 5.4); border-radius: 50%; font-size: calc(var(--u) * 2.6); line-height: 1; padding: 0;
+  background: #fff; color: var(--tinta); border: calc(var(--u) * 0.35) solid var(--tinta); box-shadow: 0 calc(var(--u) * 0.4) 0 var(--tinta); cursor: pointer; }
+.estado-sala:not(:empty) + .tv-engrenagem { margin-left: calc(var(--u) * 1); }
+.tv-engrenagem.controle-foco, .tv-engrenagem:focus-visible { outline: calc(var(--u) * 0.6) solid var(--rosa) !important; outline-offset: calc(var(--u) * 0.2); }
 
 /* ------------------------------------------------------------ grade principal: QR | vagas, e os jogos embaixo */
 main {

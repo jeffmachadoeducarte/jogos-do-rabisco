@@ -167,16 +167,21 @@ if (quer("revezamento")) {
 // ------------------------------------------------------------------ Modo TV
 if (quer("tv")) {
   const t = await abrir2(`${BASE}/index.html?semcadastro`, { pads: 0, largura: 1280, altura: 720 });
-  await ate(t, "!!document.querySelector('.tv-botao-portal')");
+  // o 📺 do portal agora mora na ⚙️ (src/motor/engrenagem.js): Jogar na TV → "Jogar aqui mesmo" liga o Modo TV
+  await ate(t, "!!document.querySelector('#som.eng-botao') && !!window.Engrenagem");
   await espera(1500);
-  await t.ev(`document.querySelector('.tv-botao-portal').click()`);
+  await t.ev(`document.querySelector('#som.eng-botao').click()`);
+  await espera(300);
+  await t.ev(`document.querySelector('[data-eng=tv]').click()`);
+  await espera(300);
+  await t.ev(`document.querySelector('[data-eng=aqui]').click()`);
   await espera(500);
-  ok(await t.ev("document.documentElement.classList.contains('modo-tv') && localStorage.getItem('rabisco.modoTV') === '1'"), "TV: botão do portal liga o Modo TV e lembra no aparelho");
+  ok(await t.ev("document.documentElement.classList.contains('modo-tv') && localStorage.getItem('rabisco.modoTV') === '1'"), "TV: ⚙️ → Jogar na TV → 'Jogar aqui mesmo' liga o Modo TV e lembra no aparelho");
   await foto(t, "modo-tv-portal.png");
   const ld = await abrir2(`${BASE}/index.html?semcadastro`, { pads: 0, mobile: true, largura: 375, altura: 740 });
-  await ate(ld, "!!document.querySelector('.tv-botao-portal')");
+  await ate(ld, "!!document.querySelector('#som.eng-botao')");
   await espera(1500);
-  ok(!(await ld.transborda()), "TV: portal em 375 px não transborda com o botão 📺");
+  ok(!(await ld.transborda()), "TV: portal em 375 px não transborda com a ⚙️");
   await foto(ld, "modo-tv-botao-portal-375.png");
   await ld.fechar();
   await t.fechar();
@@ -188,7 +193,7 @@ if (quer("tv")) {
   await foto(k, "modo-tv-kart.png");
   await k.ev("document.querySelector('.pausa-botao').click()");
   await espera(500);
-  ok(await k.ev(`document.querySelector('.pausa-cartao .tv-botao')?.textContent.includes('ligado')`), "TV: pausa mostra '📺 Modo TV: ligado'");
+  ok(await k.ev(`!!document.querySelector('.pausa-cartao .engrenagem-pausa')`), "TV: pausa mostra '⚙️ Configurações' (som e Jogar na TV)");
   await foto(k, "modo-tv-pausa.png");
   ok(!k.erros.length, "TV Kart: sem erros " + k.erros.join(" ; "));
   await k.fechar();

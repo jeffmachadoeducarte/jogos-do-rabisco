@@ -9,7 +9,8 @@ import { falar, preCarregarFalas, saudar, parabenizar, falarNome } from "../../s
 import "../../src/motor/familia.js"; // window.Familia: nome e foto da criança
 import { criarCompanheiro3D } from "../../src/motor3d/companheiro3d.js";
 import { criarPausa } from "../../src/motor/pausa.js";
-import { ligarControle } from "../../src/motor/controle.js";
+import { ligarControle, modalAtivo } from "../../src/motor/controle.js";
+import { botaoEngrenagem, Engrenagem } from "../../src/motor/engrenagem.js";
 import { prepararCelular } from "../../src/motor/celular.js";
 import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
 import { modoAtual } from "./modos.js";
@@ -17,6 +18,8 @@ import { pistaAtual, PISTAS, decoracao, estrelas } from "./pistas.js";
 import { botaoVoltar } from "../../src/motor/voltar.js";
 import { criarRemapear } from "../../src/motor/remapear.js";
 import { Jogadores, CODIGOS_J2, COR_J2 } from "../../src/motor/jogadores.js";
+import { emModoTV } from "../../src/motor/salatv.js";
+import { mesclarLocal } from "../cidade-do-rabisco/mesclar.js";
 import { PARCEIROS, ESTILO_PARCEIRO } from "../../src/parceiros.js";
 
 const RAIZ = "../..";
@@ -73,23 +76,34 @@ const anguloDe = (v) => Math.atan2(v.x, v.z);
 const difAngulo = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 
 // ------------------------------------------------------------------ Render
+// Qualidade: TV (página aberta pela TV ou Modo TV ligado) e aparelho fraco começam mais leves, e o jogo baixa sozinho
+// um degrau quando fica lento (mede os quadros a cada 2 s; nunca sobe de novo, para não ficar piscando).
+//   0 = cheia (antialias, sombra suave) · 1 = leve (sem antialias, até ~1280×720 desenhados) · 2 = sem sombras · 3 = mínima (~960×540)
+// ?qualidade=0..3 força um nível (testes e medição).
 const canvas = $("cena");
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+const lerModoTV = () => { try { return localStorage.getItem("rabisco.modoTV") === "1"; } catch { return false; } };
+const naTV = emModoTV || lerModoTV();
+const fraco = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
+const qualidadeFixa = params.has("qualidade") ? Math.max(0, Math.min(3, Number(params.get("qualidade")) || 0)) : null;
+let qualidade = qualidadeFixa ?? (naTV || fraco ? 1 : 0);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: qualidade === 0, powerPreference: "high-performance" });
 let dividida = false; // tela dividida (2 jogadores)
 const semToque = navigator.maxTouchPoints === 0; // TV e computador de mesa: caminho mais leve (menos pixels e sombra mais barata)
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = semToque ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled = qualidade < 2;
+renderer.shadowMap.type = semToque || qualidade > 0 ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 
 const cena = new THREE.Scene();
 cena.fog = new THREE.Fog(TEMA.neblina, 220, 720);
 const camera = new THREE.PerspectiveCamera(62, 16 / 9, 0.3, 1600);
 
-// Sem toque (TV): até 1,25× com uma tela e 1× dividida, e no máximo ~1920×1080 pixels desenhados
+// Sem toque (TV): até 1,25× com uma tela e 1× dividida, e no máximo ~1920×1080 pixels desenhados;
+// qualidade leve: no máximo ~1280×720 (a TV estica sem perder muito); mínima: ~960×540
+const TETO_PIXELS = [1920 * 1080, 1280 * 720, 1280 * 720, 960 * 540];
 function ajustarPixelRatio(w, h) {
-  const teto = dividida ? 1 : semToque ? 1.25 : 1.75;
+  const teto = dividida ? 1 : qualidade > 0 ? 1 : semToque ? 1.25 : 1.75;
   let dpr = Math.min(window.devicePixelRatio, teto);
-  if (semToque) dpr *= Math.min(1, Math.sqrt((1920 * 1080) / (w * h * dpr * dpr)));
+  if (semToque || qualidade > 0) dpr *= Math.min(1, Math.sqrt(TETO_PIXELS[qualidade] / (w * h * dpr * dpr)));
   renderer.setPixelRatio(dpr);
 }
 function ajustarTela() {
@@ -99,8 +113,30 @@ function ajustarTela() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 }
-window.addEventListener("resize", ajustarTela);
+window.addEventListener("resize", () => { ajustarTela(); pausaDesenhada = false; });
 ajustarTela();
+// um degrau abaixo (ficou lento): 1 → menos pixels; 2 → sem sombras; 3 → ainda menos pixels
+function baixarQualidade() {
+  if (qualidade >= 3 || qualidadeFixa != null) return;
+  qualidade++;
+  if (qualidade >= 2 && renderer.shadowMap.enabled) {
+    renderer.shadowMap.enabled = false;
+    sol.castShadow = false;
+    cena.traverse((o) => { for (const m of [].concat(o.material || [])) m.needsUpdate = true; });
+  }
+  ajustarTela();
+}
+// FPS medido a cada 2 s com a cena em movimento (fora da pausa e com a página visível)
+const ritmo = { quadros: 0, desde: 0 };
+function medirRitmo(agora) {
+  if (document.hidden) { ritmo.desde = 0; return; }
+  if (!ritmo.desde) { ritmo.desde = agora; ritmo.quadros = 0; return; }
+  ritmo.quadros++;
+  if (agora - ritmo.desde < 2000) return;
+  const fps = (ritmo.quadros * 1000) / (agora - ritmo.desde);
+  ritmo.desde = agora; ritmo.quadros = 0;
+  if (fps < 26) baixarQualidade();
+}
 
 // Céu em degradê
 {
@@ -118,8 +154,8 @@ ajustarTela();
 }
 
 const sol = new THREE.DirectionalLight(TEMA.corLuz ?? 0xffffff, TEMA.luz);
-sol.castShadow = true;
-sol.shadow.mapSize.set(semToque ? 1024 : 2048, semToque ? 1024 : 2048);
+sol.castShadow = qualidade < 2;
+sol.shadow.mapSize.set(semToque || qualidade > 0 ? 1024 : 2048, semToque || qualidade > 0 ? 1024 : 2048);
 Object.assign(sol.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 300 });
 sol.shadow.bias = -0.0005;
 sol.shadow.normalBias = 0.04;
@@ -311,6 +347,7 @@ function construirMundo(img) {
   const matPoste = new THREE.MeshLambertMaterial({ color: 0x6b7280 }), matVerso = new THREE.MeshLambertMaterial({ color: 0x4b5563 });
   function predioParceiro(o) {
     const g = new THREE.Group(), l = o.lado;
+    g.userData.dinamico = true; // muda de tamanho quando a foto chega: fica fora da junção do cenário
     const corpo = new THREE.Mesh(CAIXA, [l, l, l, l, o.frente, l]); // face +z = frente
     const beiral = new THREE.Mesh(CAIXA, o.beiral);
     g.add(corpo, beiral);
@@ -324,6 +361,7 @@ function construirMundo(img) {
   }
   function outdoorParceiro(o) {
     const g = new THREE.Group();
+    g.userData.dinamico = true;
     const painel = new THREE.Mesh(CAIXA, [matVerso, matVerso, matVerso, matVerso, o.frente, matVerso]);
     const postes = [new THREE.Mesh(POSTE, matPoste), new THREE.Mesh(POSTE, matPoste)];
     g.add(painel, ...postes);
@@ -491,6 +529,7 @@ function criarPorticos() {
       linha.position.set(lat, 0.1, -13);
       g.add(linha);
     }
+    mesclarLocal(g, placas); // lápis, trave, cordas e listras viram poucas malhas; as placas (que trocam de conta) ficam soltas
     const p = { i, grupo: g, placas, conta: null };
     trocarConta(p);
     porticos.push(p);
@@ -532,6 +571,9 @@ function criarKart({ nome, corKart, piloto, ehJogador, humano = 0, linhaLargada,
     p.scale.setScalar(1.05);
     chassi.add(p);
   }
+  // peças paradas do kart (carroceria, capô, piloto-lápis) viram poucas malhas; ficam soltos o que se mexe ou é medido:
+  // volante, escapamentos (de onde sai o turbo), o Rabisco/a criança e as rodas (que estão fora do chassi)
+  mesclarLocal(chassi, [g.userData.volante, ...(g.userData.escapes || []), rabisco?.grupo, motorista2?.grupo].filter(Boolean));
   cena.add(g);
   const kart = { nome, g, chassi, rabisco, motorista2, ehJogador, humano: ehJogador ? 1 : humano, cor: piloto ?? corKart, linhaLargada, colunaLargada };
   naLargada(kart);
@@ -687,12 +729,14 @@ const remap = criarRemapear({
   ],
   aoAbrir: () => { entrada.esq = entrada.dir = false; if (estado === "corrida" && !pausa.ativa) pausa.pausar(); },
 });
-if (remap.botao) { remap.botao.classList.add("remap-kart"); $("abertura").append(remap.botao); }
+// trocar teclas/botões fica dentro da ⚙️ (uma engrenagem só na tela)
+if (remap.botao) Engrenagem.extra({ id: "botoes", ic: "🎮", texto: "Trocar teclas e botões", sub: "Para quem joga no teclado ou com controle", acao: () => remap.abrir() });
 let buzinaEspera = 0, buzinaEspera2 = 0;
 function buzinar() { if (estado !== "corrida" || buzinaEspera > 0) return; buzinaEspera = 0.8; sons.buzina(); }
 function buzinar2() { if (estado !== "corrida" || buzinaEspera2 > 0) return; buzinaEspera2 = 0.8; sons.buzina(); navigator.vibrate?.(15); Jogadores.vibrar2(60); } // vibra também o celular do jogador 2
 addEventListener("keydown", (e) => {
   // TV como tela (página tv/): os karts são dos controles e celulares; o teclado/controle remoto da TV só começa a corrida
+  if (modalAtivo()) return; // ⚙️ ou "qual é o seu nome?" aberto: as teclas são dele
   if (Jogadores.tv) { if ((e.key === "Enter" || e.key === " ") && estado === "abertura" && !document.activeElement?.closest?.(".pista")) comecar(); return; }
   if (Jogadores.tecladoDividido && CODIGOS_J2.has(e.code)) return; // A/D/F/Espaço são do jogador 2
   const acao = remap.acaoDaTecla(e.code);
@@ -718,7 +762,8 @@ for (const [id, chave] of [["btn-esq", "esq"], ["btn-dir", "dir"]]) {
   b.addEventListener("pointercancel", desliga);
   b.addEventListener("pointerleave", desliga);
 }
-$("som").addEventListener("click", () => { $("som").textContent = sons.alternarMudo() ? "🔇" : "🔊"; });
+// ⚙️ Configurações (src/motor/engrenagem.js): som liga/desliga (M no teclado) e "Jogar na TV"
+{ const b = botaoEngrenagem({ id: "som", atalhoM: true }); $("som").replaceWith(b); }
 $("jogar").addEventListener("click", () => comecar());
 // Correr de novo / sair: tudo na própria página (em páginas publicadas recarregar é bloqueado)
 function reiniciarCorrida() {
@@ -751,6 +796,7 @@ function mensagem(texto, classe = "", ms = 1600) {
 
 function comecar() {
   if (estado !== "abertura") return;
+  if (Jogadores.semJogadorTV) { Jogadores.avisar(Jogadores.textoSemJogadorTV); return; }
   if (Jogadores.ativo && !Jogadores.j2Pronto) { Jogadores.avisar(Jogadores.textoFaltaJ2, COR_J2); return; }
   ajustarDois();
   if (kartJ2) { Jogadores.emJogo(true); Jogadores.mostrarQuemEQuem(3200, { comLegenda: false }); } // as etiquetas ficam em cada metade da tela
@@ -1153,7 +1199,7 @@ function ajustarTelaDividida() {
   if (hudJ2) {
     hudJ2.hidden = !dividida;
     const ic = { controle: "🎮", teclado: "⌨️", toque: "👆", celular: "📱" };
-    hudJ2.querySelector(".tag-j1").innerHTML = `<i></i>1 · Rabisco ${ic[Jogadores.j1.entrada] ?? ""}`;
+    hudJ2.querySelector(".tag-j1").innerHTML = `<i></i>1 · ${Jogadores.j1.nome} ${ic[Jogadores.j1.entrada] ?? ""}`;
     hudJ2.querySelector(".tag-j2").innerHTML = `<i></i>2 · ${Jogadores.j2.nome} ${ic[Jogadores.j2.entrada] ?? ""}`;
   }
 }
@@ -1211,7 +1257,7 @@ function chegou(k) {
   if (!kartJ2?.humano) { if (k === jogador) terminar(); return; }
   const outro = k === jogador ? kartJ2 : jogador;
   if (outro.terminou) { clearTimeout(esperaSegundo); terminar(); return; }
-  mensagem(`${k === jogador ? "Rabisco" : k.nome} chegou! 🏁`, "acerto", 2400);
+  mensagem(`${k === jogador ? Jogadores.j1.nome : k.nome} chegou! 🏁`, "acerto", 2400);
   sons.volta();
   esperaSegundo = setTimeout(() => { if (estado === "corrida") terminar(); }, 25000);
 }
@@ -1290,7 +1336,7 @@ function terminar() {
     if (!med[PISTA.numero] || lugar < med[PISTA.numero]) { med[PISTA.numero] = lugar; try { localStorage.setItem(CHAVE_MEDALHAS, JSON.stringify(med)); } catch { /* sem armazenamento */ } }
     $("res-trofeu").textContent = ["🏆", "🥈", "🥉", "🏁"][lugar - 1];
     $("res-acertos").textContent = MODO.amigos ? `Você levou ${amigos} amigos para a escola!` : `Você acertou ${acertos} de ${perguntasFeitas} ${MODO.unidade}!`;
-    if (lugar2) $("res-acertos").textContent = `Rabisco: ${lugar}º · ${kartJ2.nome}: ${lugar2}º${kartJ2.terminou ? "" : " (ainda correndo)"} — ${MODO.amigos ? `${amigos} amigos na escola!` : `${acertos} de ${perguntasFeitas} ${MODO.unidade} certos!`}`;
+    if (lugar2) $("res-acertos").textContent = `${Jogadores.j1.nome}: ${lugar}º · ${kartJ2.nome}: ${lugar2}º${kartJ2.terminou ? "" : " (ainda correndo)"} — ${MODO.amigos ? `${amigos} amigos na escola!` : `${acertos} de ${perguntasFeitas} ${MODO.unidade} certos!`}`;
     $("resultado").classList.remove("escondido");
     falar(`chegada-${lugar}`);
     // narradora com o nome da criança, depois da fala da chegada (fila da voz)
@@ -1325,7 +1371,13 @@ if (Jogadores.tv) setTimeout(() => { if (estado === "abertura") controle.control
 
 // ------------------------------------------------------------------ Laço principal
 const relogio = new THREE.Clock();
-function quadro() {
+// Atrás do menu (abertura e resultado) a cena só "respira": na TV e em aparelho leve ela é desenhada a ~20 quadros por
+// segundo, sobrando processador para o menu. Na pausa, nada se mexe: desenha uma vez e espera.
+let ultimoQuadro = 0, pausaDesenhada = false;
+function quadro(agora = performance.now()) {
+  const atrasDoMenu = (estado === "abertura" || estado === "fim") && (naTV || qualidade > 0);
+  if (atrasDoMenu && agora - ultimoQuadro < 48) { controle.atualizar(); requestAnimationFrame(quadro); return; }
+  ultimoQuadro = agora;
   const dt = Math.min(relogio.getDelta(), 1 / 20);
   const leitura = controle.atualizar();
   entrada.eixo = leitura.eixoX;
@@ -1337,7 +1389,9 @@ function quadro() {
     if (!pausa.ativa && (e.acaoNova || e.puloNovo)) buzinar2();
   }
   pausa.atualizar();
-  if (pausa.ativa) { desenhar(); requestAnimationFrame(quadro); return; }
+  if (pausa.ativa) { if (!pausaDesenhada) { desenhar(); pausaDesenhada = true; } requestAnimationFrame(quadro); return; }
+  pausaDesenhada = false;
+  if (estado === "corrida" || estado === "contagem") medirRitmo(agora); else ritmo.desde = 0;
   const t = relogio.elapsedTime;
   if (estado === "corrida") tempoCorrida += dt;
 
@@ -1353,6 +1407,17 @@ function quadro() {
 
   desenhar();
   requestAnimationFrame(quadro);
+}
+
+// O cenário parado (chão, pista, árvores, morros, nuvens, escola...) vira poucas malhas: peças de material igual
+// juntas numa só (bem menos chamadas de desenho por quadro, o que mais pesa na TV). O visual não muda.
+function juntarCenario(doCenario) {
+  const ceu = cena.userData.ceu;
+  const g = new THREE.Group();
+  g.name = "cenario-junto";
+  for (const o of [...cena.children]) if (doCenario.has(o) && o !== ceu && !o.isLight && o !== sol.target && (o.isMesh || o.isGroup) && !o.userData.dinamico) g.attach(o);
+  cena.add(g);
+  mesclarLocal(g);
 }
 
 // ------------------------------------------------------------------ Início
@@ -1372,6 +1437,7 @@ async function iniciar() {
   };
 
   construirMundo(img);
+  const doCenario = new Set(cena.children); // só o que o construirMundo pôs (karts, pórticos e partículas vêm depois)
   criarPorticos();
   createGrid(img);
 
@@ -1379,11 +1445,14 @@ async function iniciar() {
   camPos.copy(jogador.pos).add(new THREE.Vector3(0, 3, 10));
   camAlvo.copy(jogador.pos);
   requestAnimationFrame(quadro);
+  // junta o cenário logo depois do primeiro quadro (a pista aparece antes; a junção leva um instante em aparelho fraco)
+  const juntar = () => juntarCenario(doCenario);
+  if ("requestIdleCallback" in window) requestIdleCallback(juntar, { timeout: 600 }); else setTimeout(juntar, 200);
 
   if (params.has("auto")) comecar();
   if (params.has("fim")) { comecar(); setTimeout(() => { jogador.volta = VOLTAS; jogador.terminou = true; terminar(); }, 5000); }
   if (params.has("porticos")) { const k = jogador; const i = idx(POSICOES_PORTICO[Number(params.get("porticos"))] - 60); k.pos.copy(centro[i]); k.amostra = i; k.ang = anguloDe(tangente[i]); }
-  if (params.has("teste")) window.teste = { get jogador() { return jogador; }, get j2() { return kartJ2; }, get dividida() { return dividida; }, karts, porticos, cena, get estado() { return estado; }, renderer, set angulo(a) { anguloTeste = a; },
+  if (params.has("teste")) window.teste = { get qualidade() { return qualidade; }, get jogador() { return jogador; }, get j2() { return kartJ2; }, get dividida() { return dividida; }, karts, porticos, cena, get estado() { return estado; }, renderer, set angulo(a) { anguloTeste = a; },
     get menorDistancia() { return menorDistancia; }, zerarDistancia() { menorDistancia = Infinity; }, get batidas() { return batidas; }, idx, centro, lado, tangente, AMOSTRAS, PASSO,
     colocar(k, i, lat, vel = 0) { const a = idx(i); k.pos.copy(centro[a]).addScaledVector(lado[a], lat); k.amostra = a; k.ang = anguloDe(tangente[a]); k.vel = vel; } };
 }

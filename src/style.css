@@ -71,17 +71,6 @@ body {
   background: var(--rosa); color: #fff; border: 3px solid var(--tinta); border-radius: 999px; padding: 6px 14px; box-shadow: 0 4px 0 var(--tinta);
 }
 .instalar[hidden] { display: none; }
-.tv-botao-portal {
-  pointer-events: auto; flex: none; width: 44px; height: 44px; border-radius: 50%; font-size: 21px; line-height: 1; cursor: pointer; padding: 0;
-  background: #fff; border: 3px solid var(--tinta); box-shadow: 0 4px 0 var(--tinta);
-}
-.tv-botao-portal:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tinta); }
-.jogar-tv-portal {
-  pointer-events: auto; flex: none; display: inline-flex; align-items: center; gap: 4px; height: 36px; cursor: pointer; padding: 0 12px 2px 9px;
-  font: 800 14px "Baloo 2", system-ui, sans-serif; color: var(--tinta); background: rgba(255, 255, 255, 0.88);
-  border: 3px solid var(--tinta); border-radius: 999px; box-shadow: 0 3px 0 var(--tinta);
-}
-.jogar-tv-portal:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--tinta); }
 .filtro-ingles input { width: 20px; height: 20px; accent-color: var(--rosa); }
 
 /* ------------------------------------------------------------------ título */
@@ -288,8 +277,9 @@ body {
   position: fixed; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 74px); z-index: 3;
   width: 48px; height: 48px; font-size: 22px;
   background: rgba(255, 255, 255, 0.92); border: 3px solid var(--tinta); border-radius: 50%; cursor: pointer;
-  box-shadow: 0 6px 14px -4px rgba(8, 30, 52, 0.4);
+  box-shadow: 0 4px 0 var(--tinta);
 }
+.som:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tinta); }
 
 /* ------------------------------------------------------------------ telas menores */
 @media (max-width: 1100px) {
@@ -317,8 +307,6 @@ body {
   .familia-botao-portal span:not(.roda) { display: none; }
   .familia-botao-portal { padding: 3px; }
   .familia-botao-portal .roda { width: 30px; height: 30px; }
-  .tv-botao-portal { width: 36px; height: 36px; font-size: 16px; }
-  .jogar-tv-portal { height: 32px; padding: 0 8px; } .jogar-tv-portal .txt { display: none; }
   .instalar { font-size: 13px; padding: 5px 9px; }
   .filtro-ingles { font-size: 13px; padding: 5px 9px; gap: 5px; white-space: nowrap; }
   .filtro-ingles input { width: 16px; height: 16px; }

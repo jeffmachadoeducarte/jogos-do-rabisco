@@ -22,6 +22,12 @@ export const botoesPadrao = (nome) => [...(BOTOES[nome] || [])];
 // Enquanto a tela de configurações está aberta, o jogo não recebe nada do controle
 let bloqueado = false;
 export function bloquearControle(v) { bloqueado = Boolean(v); }
+// Janela por cima de tudo (configurações ⚙️, "qual é o seu nome?"): enquanto existe, o controle e as setas só andam
+// dentro dela (o jogo e o menu de trás não recebem nada). B fecha (aoVoltar da janela).
+//   definirModal(el, { aoVoltar }) / definirModal(null)
+let modal = null;
+export function definirModal(el, { aoVoltar = null } = {}) { modal = el ? { el, aoVoltar, quadro: 0 } : null; }
+export const modalAtivo = () => Boolean(modal?.el?.isConnected && !modal.el.hidden);
 const ZONA_MORTA = 0.5;
 // Dois jogadores (src/motor/jogadores.js): o controle do jogador 2 fica "reservado" durante a partida.
 // O ler() comum (jogador 1, menus) ignora os botões dele, menos o Start (qualquer um pode pausar).
@@ -33,6 +39,10 @@ export const gamepadReservado = (i) => reservados.has(i);
 // "reservado" (o celular do jogador 2 durante a partida) só vale para o Start, igual ao gamepad reservado.
 const fontes = new Set();
 export function adicionarFonte(fn) { fontes.add(fn); return () => fontes.delete(fn); }
+// Controles que o ler() comum deve ignorar agora (TV como tela: o controle que ainda não tem vaga, ou o aperto que acabou
+// de ganhar a vaga, não clica no menu). filtro(gamepad) → true = ignora.
+let filtroPad = null;
+export function definirFiltroGamepad(fn) { filtroPad = fn; }
 // Leitura de UM controle (pelo índice do Gamepad API), com os mesmos nomes de botão do ler() comum.
 export function lerGamepad(indice) {
   const g = (navigator.getGamepads?.() ?? [])[indice] ?? [...(navigator.getGamepads?.() ?? [])].find((p) => p?.index === indice);
@@ -68,6 +78,7 @@ export function criarControle({ aoConectar = () => {}, aoDesconectar = () => {} 
       let eixoX = 0, eixoY = 0; // alavanca esquerda de -1 a 1 (kart vira aos poucos; aventura 3D anda em qualquer direção)
       for (const g of navigator.getGamepads?.() ?? []) {
         if (!g) continue;
+        if (filtroPad?.(g)) continue;
         if (reservados.has(g.index)) { if (g.buttons[9]?.pressed) segura.start = true; continue; } // controle do jogador 2
         for (const [nome, idx] of Object.entries({ ...BOTOES, ...trocados })) {
           if (idx.some((i) => g.buttons[i]?.pressed)) segura[nome] = true;
@@ -170,6 +181,12 @@ export function moverFoco(tela, dx, dy) {
 
 // Teclado nas telas de menu e nos jogos de tocar: setas andam, Enter/Espaço clica.
 export function navegarComTeclado(tela, e) {
+  if (modalAtivo()) {
+    tela = modal.el;
+    if (e.key === "Escape" && modal.aoVoltar) { e.preventDefault(); e.stopImmediatePropagation?.(); modal.aoVoltar(); return true; }
+    // digitando num campo: as letras e o ⌫ ficam com o campo; setas ainda andam pelos botões
+    if (e.target?.matches?.("input") && !/^Arrow/.test(e.key)) return false;
+  }
   if (!tela) return false;
   const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
   if (d) { e.preventDefault(); moverFoco(tela, ...d); return true; }
@@ -197,6 +214,18 @@ export function ligarControle({ entrada = {}, mapa = { esq: "esq", dir: "dir", b
     controle,
     atualizar() {
       const leitura = controle.ler();
+      if (modalAtivo()) {
+        // uma vez por quadro, mesmo com dois laços de controle na página
+        soltarTudo();
+        const agora = performance.now();
+        if (agora - modal.quadro > 8) {
+          modal.quadro = agora;
+          const { apertou } = leitura;
+          if ((apertou.voltar || apertou.start) && modal.aoVoltar) modal.aoVoltar();
+          else controle.navegar(modal.el, apertou);
+        }
+        return { segura: {}, apertou: {}, soltou: {}, eixoX: 0, eixoY: 0 };
+      }
       if (bloqueado) { soltarTudo(); return { segura: {}, apertou: {}, soltou: {}, eixoX: 0, eixoY: 0 }; }
       const { apertou, soltou } = leitura;
       // só mexe na entrada quando o botão muda, para não apagar o que vem do teclado ou do toque

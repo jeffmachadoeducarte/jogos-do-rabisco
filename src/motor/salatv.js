@@ -21,7 +21,8 @@
 
 import { SALA_JOGOS } from "../config.js";
 import { criarSala } from "./sala.js";
-import { lerGamepad, adicionarFonte } from "./controle.js";
+import { lerGamepad, adicionarFonte, definirFiltroGamepad } from "./controle.js";
+import { nomeDoJogador, pedirNomes, receberNome, aoMudarNome } from "./nomes.js";
 
 const RAIZ = new URL("../..", import.meta.url).href.replace(/\/$/, "");
 const CHAVE = "rabisco.tv";
@@ -40,6 +41,8 @@ function comSalaDeTeste(u) {
 export const urlTV = () => comSalaDeTeste(new URL(`${RAIZ}/tv/`));
 export const urlJogoTV = (id) => { const u = new URL(`${RAIZ}/jogos/${id}/`); u.searchParams.set("tv", "1"); return comSalaDeTeste(u); };
 export function voltarParaTV() { location.href = urlTV(); }
+// quem está numa vaga (para o nome ficar preso à pessoa): id do celular, "pad:0" do controle
+export const quemDaVaga = (v) => (v?.tipo === "celular" ? String(v.cel) : v?.tipo === "controle" ? `pad:${v.pad}` : null);
 
 const primeiroNome = (n) => String(n || "").trim().split(/\s+/)[0].slice(0, 20); // para o celular vai só o primeiro nome
 
@@ -78,7 +81,8 @@ export function iniciarSalaTV({ layout = "padrao", pausar = false, permitirNovos
 
   // ------------------------------------------------------------------ Celulares (sala do relay)
   const sala = SALA_JOGOS ? criarSala({ retomar: salvo.codigo && salvo.token ? { codigo: salvo.codigo, token: salvo.token } : null }) : null;
-  const nomeDaVaga = (v) => (v.n === 1 ? "Rabisco" : primeiroNome(nomeJ2()) || "Jogador 2");
+  // nome no chip do celular: o que o jogador escreveu (src/motor/nomes.js) ou "Rabisco" / o primeiro nome do cadastro
+  const nomeDaVaga = (v) => primeiroNome(nomeDoJogador(v.n, quemDaVaga(v), nomeJ2())) || (v.n === 1 ? "Rabisco" : "Jogador 2");
   function configurar(v) {
     if (sala && v.tipo === "celular" && v.conectado) sala.enviar(v.cel, { layout, nome: nomeDaVaga(v), cor: CORES_TV[v.n - 1], pausar, vibrar: 80, msg: "" });
   }
@@ -130,6 +134,7 @@ export function iniciarSalaTV({ layout = "padrao", pausar = false, permitirNovos
     sala.on("in", (c, d) => {
       const v = vagas.find((x) => x.tipo === "celular" && x.cel === c.id && x.conectado);
       if (!v) return;
+      if (typeof d.nome === "string") { receberNome(v.cel, d.nome); return; } // resposta ao "Qual é o seu nome?"
       for (const k of ["pulo", "acao", "start"]) if (d[k] && !v.d[k]) { v.pf[k] = true; v.pl[k] = true; } // toque rápido entre dois quadros ainda conta
       // direção também: numa TV box lenta (poucos quadros por segundo) um toque curto no ▶ ainda move o foco do menu
       const a = direcoes(v.d), b = direcoes(d);
@@ -142,6 +147,10 @@ export function iniciarSalaTV({ layout = "padrao", pausar = false, permitirNovos
 
   // ------------------------------------------------------------------ Controles físicos
   addEventListener("gamepadconnected", (e) => { if (e.gamepad) novosPads.add(e.gamepad.index); });
+  // o aperto que dá a vaga não vale como clique: o controle sem vaga e o que acabou de ganhar uma (até soltar os botões)
+  // ficam fora do controle comum (menus e jogador 1)
+  const soltando = new Set();
+  definirFiltroGamepad((g) => soltando.has(g.index) || !vagas.some((v) => v.tipo === "controle" && v.pad === g.index));
   const padsVisiveis = () => [...(navigator.getGamepads?.() ?? [])].filter((g) => g && g.connected !== false);
   const algumBotao = (g) => g.buttons?.some((b) => b?.pressed);
   function vigiar() {
@@ -167,10 +176,12 @@ export function iniciarSalaTV({ layout = "padrao", pausar = false, permitirNovos
       zerar(v);
       v.tipo = "controle"; v.pad = g.index; v.conectado = true; v.visto = true;
       api.ultimaEntrada = { n: v.n, pad: g.index, em: performance.now() };
+      soltando.add(g.index);
       mexeu = true;
       if (voltou) emitir("voltou", v);
     }
     novosPads.clear();
+    for (const i of soltando) { const g = pads.find((p) => p.index === i); if (!g || !algumBotao(g)) soltando.delete(i); }
     const agora = performance.now();
     for (const v of vagas) {
       // celular que estava na vaga e não voltou depois da troca de página (6 s): avisa como queda
@@ -255,7 +266,18 @@ export function iniciarSalaTV({ layout = "padrao", pausar = false, permitirNovos
       mudou();
     },
     guardar,
+    // "Qual é o seu nome?" para cada jogador nas vagas que ainda não tem nome (1 por vez; o celular também pergunta)
+    // sugestao1: primeiro nome do cadastro para o jogador 1. Devolve uma Promise que termina quando todos responderam.
+    pedirNomes({ sugestao1 = "", quantos = api.jogadores } = {}) {
+      const lista = vagas.filter((v) => v.tipo && v.n <= quantos).map((v) => ({
+        n: v.n, quem: quemDaVaga(v), cor: CORES_TV[v.n - 1], sugestao: v.n === 1 ? primeiroNome(sugestao1) : "",
+        celular: v.tipo === "celular" && sala ? (d) => { if (v.conectado) sala.enviar(v.cel, d); } : null,
+      }));
+      return pedirNomes(lista);
+    },
+    nomeDe(n) { return nomeDoJogador(n, quemDaVaga(vagas[n - 1]), nomeJ2()); },
   };
+  aoMudarNome(() => { for (const v of vagas) configurar(v); emitir("mudou", api); });
   instancia = api;
   guardar();
   return api;
