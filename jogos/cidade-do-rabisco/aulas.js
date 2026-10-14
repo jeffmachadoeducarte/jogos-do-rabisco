@@ -86,7 +86,7 @@ function matematica(nivel, aleatorio) {
       { tipo: "contar", n: 3, lousa: "1  2  3", fala: ["cid-conta-3"] },
     ];
   }
-  if (nivel === "k5") return sortear([3, 4, 5], 2, aleatorio).map((n) => ({ tipo: "contar", n, lousa: "🍎".repeat(n), fala: [`cid-conta-${n}`] }));
+  if (nivel === "k5") return sortear([3, 4, 5], 2, aleatorio).map((n) => ({ tipo: "contar", n, lousa: `${n} maçãs`, fala: [`cid-conta-${n}`] }));
   return sortear(CONTAS[nivel], 2, aleatorio).map(([conta, n, fala]) => ({ tipo: "contar", n, lousa: `${conta} = ?`, fala: [fala] }));
 }
 

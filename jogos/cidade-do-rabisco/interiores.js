@@ -342,6 +342,7 @@ export function montarBellaCat() {
 // onde as maçãs são entregues), bandeja de maçãs, estante de livros e o tapete de atividades com os lugares (vagas)
 // onde aparecem os objetos de cada aula. Kids I (berçário até 4 anos): tons suaves, piso de EVA, quadro branco
 // colorido, arco-íris na parede, berço, ursinho, blocos macios, mesinhas baixas e o mesmo tapete de atividades.
+export const PROFESSORA_AULA = { x: -2.8, z: -4.6 }; // onde a professora fica na sala de aula (perto da lousa)
 const COR_LETRA = ["#ec2e8c", "#ff9f43", "#ffcc1f", "#58c43a", "#00b5f0", "#8e6cff"];
 export function montarSalaAula({ kids1 = false } = {}) {
   const W = 16, D = 14, H = 4.6;
@@ -406,8 +407,7 @@ export function montarSalaAula({ kids1 = false } = {}) {
   const tampo = std(kids1 ? 0xffffff : 0xd9b98c, { roughness: 0.6 }), ferro = std(kids1 ? 0xa9d6f5 : 0x3d7ad9, { roughness: 0.5 });
   const cadeiraCor = [0xec2e8c, 0xffcc1f, 0x58c43a, 0x00b5f0, 0x8e6cff, 0xff9f43];
   let k = 0;
-  for (const z of [2.4, 4.6]) for (const x of [-4.6, 0, 4.6]) {
-    if (z === 4.6 && x === 0) continue; // corredor da porta
+  for (const z of [2.4, 4.6]) for (const x of [-5.2, -2.7, 2.7, 5.2]) { // corredor livre no meio (da porta até o tapete)
     const alt = kids1 ? 0.5 : 0.75;
     bloco(g, 1.4, 0.08, 0.8, tampo, x, alt, z); for (const s of [-1, 1]) bloco(g, 0.08, alt, 0.7, ferro, x + s * 0.6, alt / 2, z);
     const cad = std(cadeiraCor[k++ % 6], { roughness: 0.5 });
@@ -446,7 +446,7 @@ export function montarSalaAula({ kids1 = false } = {}) {
   const rel = new THREE.Mesh(new THREE.CircleGeometry(0.45, 24), new THREE.MeshBasicMaterial({ map: relogio })); rel.position.set(3.0, 3.9, D / 2 - 0.02); rel.rotation.y = Math.PI; g.add(rel);
   // vagas dos objetos da aula: duas fileiras no tapete (6 na da frente da lousa e 5 atrás)
   const vagas = [...[-5, -3, -1, 1, 3, 5].map((x) => ({ x, z: -2.6 })), ...[-4, -2, 0, 2, 4].map((x) => ({ x, z: -0.4 }))];
-  return { ...S, escrever, lousa, mesa: { x: mesa.x + 0.4, z: mesa.z + 0.9, cesta }, bandeja: { x: bandeja.x, z: bandeja.z + 0.9 }, macasBandeja, vagas, professora: { x: -2.8, z: -4.6 }, kids1 };
+  return { ...S, escrever, lousa, mesa: { x: mesa.x + 0.4, z: mesa.z + 0.9, cesta }, bandeja: { x: bandeja.x, z: bandeja.z + 0.9 }, macasBandeja, vagas, professora: PROFESSORA_AULA, kids1 };
 }
 export function maca() {
   const g = new THREE.Group();
@@ -471,13 +471,13 @@ export function objetoAula({ tipo, valor }) {
     if (valor === "pato") {
       const c = bola(g, 0.36, m, 0, 0.34, 0); c.scale.set(1, 0.8, 1.25); bola(g, 0.24, m, 0, 0.78, 0.18);
       const bico = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.22, 8), std(0xff8a1f)); bico.rotation.x = Math.PI / 2; bico.position.set(0, 0.76, 0.46); g.add(bico);
-      for (const s of [-1, 1]) bola(g, 0.035, preto, s * 0.1, 0.85, 0.38);
+      for (const s of [-1, 1]) { bola(g, 0.065, std(0xffffff), s * 0.1, 0.85, 0.35); bola(g, 0.035, preto, s * 0.1, 0.86, 0.41); }
     } else {
       const c = bola(g, 0.34, m, 0, 0.36, 0); c.scale.set(1, 0.9, 1.1); bola(g, 0.27, m, 0, 0.82, 0.12);
       for (const s of [-1, 1]) {
         if (valor === "gato") { const o = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.2, 4), m); o.position.set(s * 0.14, 1.07, 0.1); g.add(o); }
         else { const o = bola(g, 1, std(0x6b4224), s * 0.26, 0.8, 0.08); o.scale.set(0.07, 0.17, 0.11); }
-        bola(g, 0.04, preto, s * 0.1, 0.88, 0.36);
+        bola(g, 0.07, std(0xffffff), s * 0.1, 0.88, 0.33); bola(g, 0.04, preto, s * 0.1, 0.89, 0.39);
       }
       bola(g, 0.05, valor === "gato" ? std(0xec2e8c) : preto, 0, 0.8, 0.39);
       const rabo = new THREE.Mesh(GEO.cil, m); rabo.scale.set(0.04, 0.4, 0.04); rabo.position.set(0, 0.5, -0.38); rabo.rotation.x = -0.7; g.add(rabo);
@@ -488,9 +488,11 @@ export function objetoAula({ tipo, valor }) {
   } else if (tipo === "forma") {
     const cor = { circulo: 0xe53935, quadrado: 0x1e6fe0, triangulo: 0xffc928 }[valor];
     const m = std(cor, { roughness: 0.5 });
-    const geo = valor === "circulo" ? new THREE.CylinderGeometry(0.42, 0.42, 0.14, 28) : valor === "triangulo" ? new THREE.CylinderGeometry(0.52, 0.52, 0.14, 3) : new THREE.BoxGeometry(0.72, 0.14, 0.72);
-    const f = new THREE.Mesh(geo, m); f.rotation.x = Math.PI / 2; if (valor === "triangulo") f.rotation.y = Math.PI / 2; f.position.y = 0.62; f.castShadow = true; g.add(f);
-    if (valor === "triangulo") { f.rotation.set(Math.PI / 2, 0, Math.PI / 2); }
+    let geo;
+    if (valor === "triangulo") { const t = new THREE.Shape([new THREE.Vector2(0, 0.46), new THREE.Vector2(-0.48, -0.36), new THREE.Vector2(0.48, -0.36)]); geo = new THREE.ExtrudeGeometry(t, { depth: 0.14, bevelEnabled: false }); geo.translate(0, 0, -0.07); }
+    else if (valor === "circulo") { geo = new THREE.CylinderGeometry(0.42, 0.42, 0.14, 28); geo.rotateX(Math.PI / 2); }
+    else geo = new THREE.BoxGeometry(0.72, 0.72, 0.14);
+    const f = new THREE.Mesh(geo, m); f.position.y = 0.66; f.castShadow = true; g.add(f);
     bloco(g, 0.5, 0.1, 0.3, std(0xffffff), 0, 0.05, 0); bloco(g, 0.06, 0.2, 0.06, std(0xffffff), 0, 0.18, 0);
   } else if (tipo === "letra") {
     const tex = texturaCanvas(128, 128, (c, w, h) => { c.fillStyle = "#fffaf0"; c.fillRect(0, 0, w, h); c.lineWidth = 10; c.strokeStyle = COR_LETRA[valor.charCodeAt(0) % 6]; c.strokeRect(5, 5, w - 10, h - 10); c.font = "900 96px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = COR_LETRA[valor.charCodeAt(0) % 6]; c.fillText(valor, w / 2, h / 2 + 6); });

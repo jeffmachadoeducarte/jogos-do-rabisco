@@ -424,6 +424,32 @@ falas.update({
     "cid-rise-corre": "Isso! Continue correndo!",
     "cid-rise-peso": "Que corrida! Agora vamos levantar o halter. Vá até o colchonete laranja e aperte o botão cinco vezes!",
     "cid-rise-ok": "Parabéns, Rabisco! Você foi forte e corajoso! Corpo saudável, coração alegre!",
+    # aulas na sala da Educarte (Kids I até 4 anos; Kids II 5–6, 7–8 e 9–12): jogos/cidade-do-rabisco/aulas.js
+    "cid-aula-bemvindo": "Bem-vindo à sala de aula! Venha falar comigo para começar a aula!",
+    "cid-aula-outra-kids1": "Aqui é a Educarte Kids Um, a escolinha dos pequenininhos! A sua turma estuda na Educarte Kids Dois.",
+    "cid-aula-outra-kids2": "Aqui é a Educarte Kids Dois, a escola dos maiores! A sua turma estuda na Educarte Kids Um, do outro lado da cidade.",
+    "cid-aula-ingles": "Aula de inglês! Escute bem e ache o que eu pedir. Depois aperte o botão!",
+    "cid-aula-ingles-bebe": "Vamos aprender as cores em inglês! Escute e ache a bola da cor certa. Depois aperte o botão!",
+    "cid-aula-portugues": "Aula de português! Vamos escrever uma palavra: pegue as letras na ordem certa!",
+    "cid-aula-portugues-bebe": "Vamos ouvir os bichinhos! Escute o som e ache o bichinho certo!",
+    "cid-aula-matematica": "Aula de matemática! Pegue as maçãs na bandeja e leve para a minha mesa!",
+    "cid-aula-matematica-bebe": "Vamos brincar com as formas e contar até três!",
+    "cid-aula-bola-vermelho": "Ache a bola vermelha!", "cid-aula-bola-azul": "Ache a bola azul!", "cid-aula-bola-amarelo": "Ache a bola amarela!",
+    "cid-som-gato": "Quem faz miau, miau?", "cid-som-cachorro": "Quem faz au-au?", "cid-som-pato": "Quem faz quá-quá?",
+    "cid-forma-circulo": "Ache o círculo, bem redondinho!", "cid-forma-quadrado": "Ache o quadrado!", "cid-forma-triangulo": "Ache o triângulo!",
+    "cid-aula-certo": "Muito bem!", "cid-aula-dica": "Quase! Escute de novo e tente outra vez.", "cid-aula-procure": "Quase! Procure a letra",
+    "cid-aula-conta-de-novo": "Hmm, vamos contar de novo, devagarinho!",
+    "cid-aula-fim": "Parabéns, Rabisco! Você aprendeu muito hoje! O sábio ouve e aprende ainda mais. Baseado em Provérbios um, versículo cinco.",
+    "cid-soma-2-3": "Quanto é dois mais três? Traga essa quantidade de maçãs para a minha mesa!",
+    "cid-soma-4-1": "Quanto é quatro mais um? Traga essa quantidade de maçãs para a minha mesa!",
+    "cid-soma-3-3": "Quanto é três mais três? Traga essa quantidade de maçãs para a minha mesa!",
+    "cid-soma-5-2": "Quanto é cinco mais dois? Traga essa quantidade de maçãs para a minha mesa!",
+    "cid-soma-4-4": "Quanto é quatro mais quatro? Traga essa quantidade de maçãs para a minha mesa!",
+    "cid-soma-6-4": "Quanto é seis mais quatro? Traga essa quantidade de maçãs para a minha mesa!",
+    "cid-vezes-2-3": "Quanto é duas vezes três? Traga essa quantidade de maçãs para a minha mesa!",
+    "cid-vezes-2-4": "Quanto é duas vezes quatro? Traga essa quantidade de maçãs para a minha mesa!",
+    "cid-vezes-3-3": "Quanto é três vezes três? Traga essa quantidade de maçãs para a minha mesa!",
+    "cid-vezes-5-2": "Quanto é cinco vezes dois? Traga essa quantidade de maçãs para a minha mesa!",
     # helicóptero (heliponto do hospital) e a missão do remédio da Vovó
     "cid-heli": "Helicóptero ligado! Para subir, aperte o botão de pular. Para descer, o botão de descer. Para a frente, vá para a frente!",
     "cid-remedio": "Oi, Rabisco! A Vovó Lápis precisa do remédio dela! Leve de helicóptero: suba no helicóptero aqui do heliponto e pouse pertinho da casa laranja.",
@@ -452,6 +478,10 @@ for i, frase in enumerate(PAI_NOSSO, 1):
     RITMO_FALA[f"cid-pai-{i}"] = "-15%"
 for n in range(1, 11):
     falas[f"cid-num-{n}"] = f"{NUMEROS[n].capitalize()}!"
+for n in (3, 4, 5):
+    falas[f"cid-conta-{n}"] = f"Traga {NUMEROS[n]} maçãs para a minha mesa!"
+for palavra in ["sol", "lua", "bola", "pato", "gato", "casa", "livro", "escola", "caderno", "amizade", "borboleta"]:
+    falas[f"cid-palavra-{palavra}"] = f"Vamos escrever a palavra {palavra}! Olhe na lousa e pegue as letras na ordem."
 
 # Falas em inglês (voz americana): chave -> texto
 VOZ_EN = "en-US-AnaNeural"
@@ -467,6 +497,19 @@ for parte in ["head", "shoulders", "knees", "toes", "eyes", "mouth", "hands", "t
     falas_en[f"en-{parte}"] = f"{parte.capitalize()}!"
     falas_en[f"en-touch-{parte}"] = f"Touch your {parte}!"
 falas_en["en-great-job"] = "Great job!"
+# aulas de inglês da Cidade do Rabisco (sala da Educarte)
+for cor in ["red", "blue", "yellow", "green"]:
+    falas_en[f"en-cid-{cor}"] = f"{cor.capitalize()}!"
+    falas_en[f"en-cid-book-{cor}"] = f"Find the {cor} book!"
+for bicho in ["cat", "dog", "duck"]:
+    falas_en[f"en-cid-where-{bicho}"] = f"Where is the {bicho}?"
+falas_en.update({
+    "en-cid-q-sky": "Find the book that is the color of the sky!", "en-cid-q-sun": "Find the book that is the color of the sun!",
+    "en-cid-q-grass": "Find the book that is the color of the grass!", "en-cid-q-strawberry": "Find the book that is the color of a strawberry!",
+    "en-cid-q-woof": "What animal says woof? Find it!", "en-cid-q-meow": "What animal says meow? Find it!",
+    "en-cid-q-quack": "Which animal can swim and says quack? Find it!",
+    "en-cid-yes": "Yes! Great job!", "en-cid-try": "Oops! Try again!",
+})
 for c in ["red", "blue", "yellow", "green", "pink", "orange", "purple"]:
     falas_en[f"en-{c}"] = f"{c.capitalize()}!"
 for w in ["apple", "dog", "cat", "ball", "car", "sun", "fish", "book", "star", "house", "tree", "banana", "bird", "cake", "duck", "moon"]:

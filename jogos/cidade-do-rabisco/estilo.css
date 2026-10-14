@@ -57,10 +57,20 @@ body:not(.touch) .acao-cidade { bottom: 30px; }
 /* fade curtinho ao entrar e sair das lojas */
 .fade-cidade { position: absolute; inset: 0; z-index: 7; background: #fff8ee; opacity: 0; pointer-events: none; transition: opacity 0.28s ease; }
 .fade-cidade.ativo { opacity: 1; }
-/* helicóptero no celular: ▲ subir, ⏩ frente, ▼ descer (à direita, acima do botão de ação) */
-.heli-cidade { position: absolute; z-index: 8; right: 30px; bottom: 236px; display: flex; flex-direction: column; gap: 10px; }
-.heli-cidade[hidden], body:not(.touch) .heli-cidade { display: none; }
-.heli-cidade button { width: 64px; height: 64px; border-radius: 50%; border: 5px solid var(--tinta); box-shadow: 0 4px 0 var(--tinta); background: #7fd6ff; font: 900 26px var(--texto); color: var(--tinta); touch-action: none; }
+/* veículo no toque: o joystick some; ◀ ▶ à esquerda; ▲ ▼ (carro) ou ▲ ⏩ ▼ (helicóptero) à direita, embaixo do Sair */
+.veiculo-cidade, .heli-cidade, .pedais-cidade { display: none; }
+body.touch .cena-cidade.no-veiculo .jd-camada { display: none; }
+body.touch .cena-cidade.no-veiculo .veiculo-cidade { display: block; }
+body.touch .cena-cidade.no-veiculo .pedais-cidade { display: flex; }
+body.touch .cena-cidade.no-heli .pedais-cidade { display: none; }
+body.touch .cena-cidade.no-heli .heli-cidade:not([hidden]) { display: flex; }
+.volante-cidade { position: absolute; z-index: 8; left: 22px; bottom: 22px; display: flex; gap: 14px; }
+.pedais-cidade, .heli-cidade { position: absolute; z-index: 8; right: 22px; bottom: 22px; flex-direction: row-reverse; align-items: flex-end; gap: 12px; }
+.veiculo-cidade button, .heli-cidade button { width: 84px; height: 84px; border-radius: 50%; border: 5px solid var(--tinta); box-shadow: 0 4px 0 var(--tinta); background: rgba(255,255,255,0.9);
+  font: 900 34px var(--texto); color: var(--tinta); touch-action: none; }
+.veiculo-cidade button.apertado, .heli-cidade button.apertado { transform: translateY(3px) scale(0.95); box-shadow: 0 1px 0 var(--tinta); }
+.pedais-cidade .p-frente, .heli-cidade .heli-subir { width: 96px; height: 96px; background: #7fd6ff; }
+.pedais-cidade .p-re, .heli-cidade .heli-descer { background: #ffd0e4; }
 .heli-cidade .heli-frente { background: #ffcc1f; }
 /* barrinha da esteira (Rise Up) */
 .barra-cidade { position: absolute; z-index: 6; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 140px); transform: translateX(-50%); width: min(420px, 60vw); height: 30px;
@@ -77,7 +87,8 @@ body:not(.touch) .acao-cidade { bottom: 30px; }
   :root { --radio-topo: calc(env(safe-area-inset-top, 0px) + 174px); }
   .balao-cidade { font-size: 14px; bottom: 10px; padding: 6px 12px 8px; max-width: 56vw; }
   .selos-cidade { font-size: 14px; }
-  .heli-cidade { right: 20px; bottom: 170px; gap: 6px; } .heli-cidade button { width: 48px; height: 48px; font-size: 20px; border-width: 3px; }
+  .volante-cidade { left: 14px; bottom: 14px; gap: 10px; } .pedais-cidade, .heli-cidade { right: 14px; bottom: 14px; gap: 8px; }
+  .veiculo-cidade button, .heli-cidade button { width: 64px; height: 64px; font-size: 26px; border-width: 4px; } .pedais-cidade .p-frente, .heli-cidade .heli-subir { width: 74px; height: 74px; }
   .barra-cidade { top: 104px; height: 22px; border-width: 3px; }
   .oracao-cidade { top: 8px; padding: 8px 14px 6px; border-width: 3px; width: min(640px, 64vw); }
 }

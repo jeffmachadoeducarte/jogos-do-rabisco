@@ -36,12 +36,19 @@ const texGrama = texturaCanvas(256, 256, (c, w, h) => {
   ruido(c, w, h, 6000, ["#4f9433", "#6cb84a", "#7cc456", "#57a03a"]);
 }, { repetir: true });
 const fachadas = new Map();
-function texFachada(cor, { andares = 6, colunas = 4, luzes = 0.15 } = {}) {
+// a mesma textura (e o mesmo material) para prédios de cor e repetição iguais: assim a junção das peças paradas
+// (mesclarEstaticos) consegue juntar as fachadas iguais numa malha só
+const fachadasRep = new Map(), matFachada = new Map();
+function texFachada(cor, { andares = 6, colunas = 4, luzes = 0.15, rx = 1, ry = 1 } = {}) {
   const chave = `${cor}|${andares}|${colunas}|${luzes}`;
   if (!fachadas.has(chave)) fachadas.set(chave, desenharFachada(cor, { andares, colunas, luzes }));
-  const t = fachadas.get(chave).clone(); // mesma imagem; só a repetição muda
-  t.needsUpdate = true;
-  return t;
+  const k2 = `${chave}|${rx}|${ry}`;
+  if (!fachadasRep.has(k2)) {
+    const t = fachadas.get(chave).clone(); // mesma imagem; só a repetição muda
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.needsUpdate = true;
+    fachadasRep.set(k2, t);
+  }
+  return fachadasRep.get(k2);
 }
 function desenharFachada(cor, { andares, colunas, luzes }) {
   return texturaCanvas(256, 256, (c, w, h) => {
@@ -93,10 +100,10 @@ function porta(grupo, { z, cor = 0x7a4a2a, w = 2.2, h = 3.4 }) {
 function predio(w, d, andares, cor, luzes) {
   const g = new THREE.Group();
   const h = andares * 3.2;
-  const tex = texFachada(cor, { andares: 4, colunas: 4, luzes });
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(Math.max(1, Math.round(w / 6)), andares / 4);
-  const fachada = std(0xffffff, { map: tex, roughness: 0.7 });
+  const tex = texFachada(cor, { andares: 4, colunas: 4, luzes, rx: Math.max(1, Math.round(w / 6)), ry: andares / 4 });
+  const k = tex.uuid;
+  if (!matFachada.has(k)) matFachada.set(k, std(0xffffff, { map: tex, roughness: 0.7 }));
+  const fachada = matFachada.get(k);
   const corpo = caixa(w, h, d, [fachada, fachada, std(0x6b6b6b), std(0x6b6b6b), fachada, fachada]);
   corpo.position.y = h / 2;
   const beiral = caixa(w + 0.6, 0.5, d + 0.6, std(0xe8e2d6));
@@ -479,7 +486,8 @@ function escolaKids1() {
   const borda = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.6, 24, 1, true), std(0xa8e6cf, { side: THREE.DoubleSide })); borda.position.set(1.6, 0.3, -4.2); pq.add(borda);
   const bolas = new THREE.InstancedMesh(new THREE.SphereGeometry(0.16, 8, 6), std(0xffffff, { roughness: 0.4 }), 60);
   const m4 = new THREE.Matrix4(), cor = new THREE.Color(), cs = [0xf7b5cf, 0xa8e6cf, 0xa9d6f5, 0xffe08a, 0xffffff];
-  for (let i = 0; i < 60; i++) { const a = r() * 6.28, rr = Math.sqrt(r()) * 1.4; m4.makeTranslation(1.6 + Math.cos(a) * rr, 0.35 + r() * 0.15, -4.2 + Math.sin(a) * rr); bolas.setMatrixAt(i, m4); bolas.setColorAt(i, cor.setHex(cs[i % 5])); }
+  const rb = aleatorio(77); // sorteio próprio: não mexe na sequência da cidade (os prédios continuam onde estavam)
+  for (let i = 0; i < 60; i++) { const a = rb() * 6.28, rr = Math.sqrt(rb()) * 1.4; m4.makeTranslation(1.6 + Math.cos(a) * rr, 0.35 + rb() * 0.15, -4.2 + Math.sin(a) * rr); bolas.setMatrixAt(i, m4); bolas.setColorAt(i, cor.setHex(cs[i % 5])); }
   pq.add(bolas);
   // patinho de balanço (mola) e caixa de areia
   const mola = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.5, 8), std(0x999999, { metalness: 0.5 })); mola.position.set(-2, 0.25, 0.6); pq.add(mola);
@@ -628,7 +636,14 @@ export function montarCidade(cena) {
   const arvores = [];
   const tex = { logo: carregarTextura("../../assets/marca/logos/azul-icone-rosa.png"), icone: carregarTextura("../../assets/marca/logos/icone-branco.png") };
   const solido = (cx, cz, w, d, h = 20) => solidos.push({ x0: cx - w / 2, x1: cx + w / 2, z0: cz - d / 2, z1: cz + d / 2, y1: h });
-  const ocupado = (x, z, folga = 0) => solidos.some((s) => x > s.x0 - folga && x < s.x1 + folga && z > s.z0 - folga && z < s.z1 + folga);
+  const ocupado = (x, z, folga = 0, quais = solidos) => quais.some((s) => x > s.x0 - folga && x < s.x1 + folga && z > s.z0 - folga && z < s.z1 + folga);
+  // lugares que chegaram depois da cidade aprovada (Educarte Kids I e heliponto): os prédios de enchimento e as
+  // árvores são sorteados como se eles não existissem (a mesma sequência da semente = a mesma cidade de antes) e
+  // só no fim deixam de ser postos onde atrapalhariam um lugar novo
+  const NOVOS = new Set(["kids1", "heliponto"]);
+  const lugaresAntigos = LUGARES.filter((l) => !NOVOS.has(l.id)), lugaresNovos = LUGARES.filter((l) => NOVOS.has(l.id));
+  const antigos = () => solidos.filter((q) => !q.novo), novos = () => solidos.filter((q) => q.novo);
+  const pertoDeNovo = (x, z, raio = 20) => lugaresNovos.some((l) => Math.hypot(x - (l.x - l.dir[0] * (l.recuo + 6)), z - (l.z - l.dir[1] * (l.recuo + 6))) < raio);
   // local (lx, lz) de um grupo girado em rot (múltiplos de 90°) → mundo
   const mundoDe = (ox, oz, rot, lx, lz) => [ox + lx * Math.cos(rot) + lz * Math.sin(rot), oz - lx * Math.sin(rot) + lz * Math.cos(rot)];
   const solidoGirado = (ox, oz, rot, lx, lz, w, d, h = 20) => {
@@ -743,10 +758,12 @@ export function montarCidade(cena) {
       solidoGirado(ox, oz, l.rot, 0, -2, 24, 12);
       const t = totemEscola("Educarte Kids II", "5 a 12 anos", { borda: "#1d6fe0", fundo: "#ffffff", texto: "#1d6fe0", idade: "#ec2e8c" }); t.position.set(-9, 0, 5.4); grupo.add(t);
     } else if (l.id === "kids1") {
+      const n0 = solidos.length;
       grupo.add(escolaKids1());
       solidoGirado(ox, oz, l.rot, 0, 3.08 - 4.5, 16.4, 9.4, 8);
       for (const [x, z, w, d] of [[12.6, -7.6, 8, 0.4], [16.6, -1.6, 0.4, 12], [8.6, -1.6, 0.4, 12]]) solidoGirado(ox, oz, l.rot, x, z, w, d, 1.2);
       const t = totemEscola("Educarte Kids I", "4 meses a 4 anos", { borda: "#f7b5cf", fundo: "#fffaf2", texto: "#ec2e8c", idade: "#3d9a7a" }); t.position.set(-7, 0, 5.4); grupo.add(t);
+      for (let i = n0; i < solidos.length; i++) solidos[i].novo = true;
     } else {
       const [nome, cor, andares, corPlaca] = info[l.id];
       const { g: pr, h } = predio(20, 14, andares, cor, 0.1);
@@ -809,7 +826,7 @@ export function montarCidade(cena) {
   const coresCasa = [0xd9a3c9, 0x9fd0e8, 0xf2d49b, 0xb6dba0, 0xf0b49a];
   const reservado = (x, z) =>
     (x > PARQUE.x0 - 4 && x < PARQUE.x1 + 4 && z > PARQUE.z0 - 6 && z < PARQUE.z1 + 4) || Math.hypot(x, z) < 34 ||
-    LUGARES.some((l) => Math.hypot(x - (l.x - l.dir[0] * (l.recuo + 6)), z - (l.z - l.dir[1] * (l.recuo + 6))) < 20) ||
+    lugaresAntigos.some((l) => Math.hypot(x - (l.x - l.dir[0] * (l.recuo + 6)), z - (l.z - l.dir[1] * (l.recuo + 6))) < 20) ||
     CASAS.some((c) => Math.hypot(x - c.x, z - c.z) < 12) || VAGAS.some((v) => Math.hypot(x - v.x, z - v.z) < 9) || Math.hypot(x - LARGADA.x, z - LARGADA.z) < 9;
   for (let gx = -114; gx <= 114; gx += 15) for (let gz = -114; gz <= 114; gz += 15) {
     const x = gx + (r() - 0.5) * 3, z = gz + (r() - 0.5) * 3;
@@ -823,11 +840,13 @@ export function montarCidade(cena) {
     const ehCasa = z > 20 && r() < 0.5;
     const w = ehCasa ? 7.4 : 10 + r() * 3, d = ehCasa ? 7.4 : 10 + r() * 2;
     const cantos = [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(([lx, lz]) => mundoDe(x, z, rot, lx, lz));
-    if (cantos.some(([cx, cz]) => distRua(cx, cz).d < CALCADA + 1.5 || ocupado(cx, cz, 1.5) || Math.abs(cx) > 118 || Math.abs(cz) > 118)) continue;
-    if (ocupado(x, z, 2)) continue;
+    const velhos = antigos();
+    if (cantos.some(([cx, cz]) => distRua(cx, cz).d < CALCADA + 1.5 || ocupado(cx, cz, 1.5, velhos) || Math.abs(cx) > 118 || Math.abs(cz) > 118)) continue;
+    if (ocupado(x, z, 2, velhos)) continue;
     let g;
     if (ehCasa) g = casa(coresCasa[Math.floor(r() * coresCasa.length)], r() < 0.5 ? 0x7a3a2a : 0x5a4a3a, 10 + Math.floor(r() * 80));
     else g = predio(w, d, 3 + Math.floor(r() * 7), coresPredio[Math.floor(r() * coresPredio.length)], 0.2).g;
+    if (pertoDeNovo(x, z) || cantos.some(([cx, cz]) => pertoDeNovo(cx, cz) || ocupado(cx, cz, 1.5, novos()))) continue; // lugar novo ali: não põe
     g.position.set(x, 0.03, z); g.rotation.y = rot;
     cena.add(g);
     const deitado = Math.abs(Math.sin(rot)) > 0.5;
@@ -841,11 +860,13 @@ export function montarCidade(cena) {
     pts.forEach(([x, z], i) => {
       for (const s of [1, -1]) {
         const ax = x + ns[i][0] * s * (rua.w / 2 + CALCADA - 0.7), az = z + ns[i][1] * s * (rua.w / 2 + CALCADA - 0.7);
-        if (distRua(ax, az, rua).d < 2.5 || ocupado(ax, az, 1) || SEMAFOROS.some((q) => Math.hypot(q.x - ax, q.z - az) < 14) || Math.hypot(ax, az) < 30) continue;
-        if (VAGAS.some((v) => Math.hypot(v.x - ax, v.z - az) < 5) || LUGARES.some((l) => Math.hypot(l.x - ax, l.z - az) < 6) || CASAS.some((c) => Math.hypot(c.x - ax, c.z - az) < 4)) continue;
+        if (distRua(ax, az, rua).d < 2.5 || ocupado(ax, az, 1, antigos()) || SEMAFOROS.some((q) => Math.hypot(q.x - ax, q.z - az) < 14) || Math.hypot(ax, az) < 30) continue;
+        if (VAGAS.some((v) => Math.hypot(v.x - ax, v.z - az) < 5) || lugaresAntigos.some((l) => Math.hypot(l.x - ax, l.z - az) < 6) || CASAS.some((c) => Math.hypot(c.x - ax, c.z - az) < 4)) continue;
         if (Math.hypot(ax - LARGADA.x, az - LARGADA.z) < 6) continue;
         if (ax > PATIO_JE.x0 - 4 && ax < PATIO_JE.x1 && az > PATIO_JE.z0 && az < PATIO_JE.z1) continue; // portão do pátio da J.E
-        const a = arvoreReal(0.9 + r() * 0.3); a.position.set(ax, 0.03, az); cena.add(a); arvores.push(a);
+        const a = arvoreReal(0.9 + r() * 0.3);
+        if (lugaresNovos.some((l) => Math.hypot(l.x - ax, l.z - az) < 6) || ocupado(ax, az, 1, novos())) continue; // lugar novo ali: não põe
+        a.position.set(ax, 0.03, az); cena.add(a); arvores.push(a);
         solido(ax, az, 0.9, 0.9, 6);
       }
     });

@@ -30,7 +30,8 @@ import { criarJoystick } from "../../src/motor/joystick.js";
 import { CODIGOS_J2, TECLAS_J1_EXTRA } from "../../src/motor/jogadores.js";
 import { montarCidade, carro, carroAberto, BORDA } from "./cidade.js";
 import { RUAS, segmentos, ROTAS, CASAS, LAGO, PARQUE, PRACA, VAGAS, LARGADA, PATIO_JE, HELIPONTO, lugar as lugarDoMapa } from "./mapa.js";
-import { montarAcademia, montarBellaCat, halter } from "./interiores.js";
+import { montarAcademia, montarBellaCat, halter, montarSalaAula, objetoAula, maca, PROFESSORA_AULA } from "./interiores.js";
+import { MATERIAS, nivelDaIdade } from "./aulas.js";
 import { carroFofo, helicoptero } from "./veiculos3d.js";
 import { mesclarLocal } from "./mesclar.js";
 import { criarRadio } from "../../src/radio/radio.js";
@@ -80,7 +81,7 @@ const jogo = criarCasca({
   jogadores: "simultaneo",
   aoComecar: iniciar,
   aoSair: parar,
-  aoPausar: () => { teclas.clear(); toque?.zerar(); radioUI?.sairDoCarro(); },
+  aoPausar: () => { teclas.clear(); toque?.zerar(); radioUI?.sairDoCarro(); for (const o of [carroBtn, heliBtn]) for (const k in o) o[k] = false; },
   aoContinuar: () => { if (dentro && !dentro.heli) radioUI?.entrarNoCarro(); },
   aoControle: lerControle,
 });
@@ -214,7 +215,7 @@ function iniciar() {
   barraEl = el("div", { class: "barra-cidade", hidden: "" }, [el("i")]);
   caixa.append(hud, mapa, bussola, balao, btnAcao, mapaGrande, painelOracao, barraEl, fadeEl);
   toque = criarJoystick(caixa);
-  botoesHeli();
+  botoesVeiculo();
   atualizarHud();
 
   const ajustar = () => { const w = caixa.clientWidth || innerWidth, h = caixa.clientHeight || innerHeight; ajustarPixels(w, h); r3.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); };
@@ -231,7 +232,7 @@ function parar() {
   radioUI?.sairDoCarro();
   if (r3) { r3.dispose(); r3 = null; }
   carros.length = moradores.length = selos.length = npcs.length = veiculos.length = receptores.length = convidados.length = 0;
-  oracao = null; quemRecebe = { cartas: {} }; salas = {}; sala = null; transicao = false; bloqueioPorta = null; trava = null;
+  oracao = null; aula = null; quemRecebe = { cartas: {} }; salas = {}; sala = null; transicao = false; bloqueioPorta = null; trava = null;
   paradoDesde = null; ultimaFalaLugar = -99; falouLugar = new Set(); missoes = {}; visitados = new Set(); selosPegos = 0; fim = false; foco = null; dentro = null; levando = null;
   teclas.clear();
 }
@@ -256,6 +257,7 @@ function entradaAndar() {
   let ix = (tem("dir") ? 1 : 0) - (tem("esq") ? 1 : 0);
   let iy = (tem("frente") ? 1 : 0) - (tem("tras") ? 1 : 0);
   ix += pad.x + (toque?.x ?? 0); iy += pad.y + (toque?.y ?? 0);
+  if (dentro) { ix += (carroBtn.dir ? 1 : 0) - (carroBtn.esq ? 1 : 0); if (!dentro.heli) iy += (carroBtn.frente ? 1 : 0) - (carroBtn.re ? 1 : 0); }
   if (entradaTeste) { ix = entradaTeste.virar; iy = entradaTeste.acel; }
   const m = Math.hypot(ix, iy);
   if (m > 1) { ix /= m; iy /= m; }
@@ -548,7 +550,8 @@ function animarCarro(v, dt) {
 // mais alto na frente, para e sobe sozinho), não desce em cima de nada (só para no ar) e pousa suave no chão plano.
 const HELI = { vmax: 13, sobe: 5, desce: 4, giro: 1.7, teto: 48 };
 const heliBtn = { subir: false, descer: false, frente: false };
-let heliBotoes = null;
+const carroBtn = { esq: false, dir: false, frente: false, re: false };
+let heliBotoes = null, carroBotoes = null;
 function criarHelicoptero() {
   const g = helicoptero();
   g.rotation.order = "YXZ";
@@ -611,15 +614,29 @@ function animarHeli(v, dt, ligado) {
   if (u.seta.visible) u.seta.position.y = v.setaY + Math.sin(relogio.elapsedTime * 4) * 0.2;
 }
 const heliPousado = (v) => v.pos.y <= v.chao + 0.08 && plano(v.chao);
-function botoesHeli() {
+// No toque, dentro de um veículo o joystick some: ◀ ▶ à esquerda viram; à direita ▲ acelera e ▼ dá ré (carro) ou
+// ▲ sobe, ⏩ vai para a frente e ▼ desce (helicóptero); o botão amarelo de ação vira "Sair" (igual ao kart e à
+// Rabiscolândia). A pé continua o joystick de arrastar.
+function botoesVeiculo() {
+  const caixa = jogo.palco.querySelector(".cena-cidade");
+  carroBotoes = el("div", { class: "veiculo-cidade" });
+  const botao = (alvo, k, txt, rot, classe) => {
+    const b = el("button", { class: classe, "aria-label": rot, texto: txt });
+    const on = (e) => { e.preventDefault(); e.stopPropagation(); alvo[k] = true; b.classList.add("apertado"); try { b.setPointerCapture(e.pointerId); } catch { /* dedo simulado */ } navigator.vibrate?.(10); };
+    const off = () => { alvo[k] = false; b.classList.remove("apertado"); };
+    b.addEventListener("pointerdown", on); for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) b.addEventListener(ev, off);
+    b.addEventListener("click", (e) => e.preventDefault());
+    return b;
+  };
+  carroBotoes.append(el("div", { class: "volante-cidade" }, [botao(carroBtn, "esq", "◀", "Virar à esquerda", "v-esq"), botao(carroBtn, "dir", "▶", "Virar à direita", "v-dir")]),
+    el("div", { class: "pedais-cidade" }, [botao(carroBtn, "frente", "▲", "Acelerar", "p-frente"), botao(carroBtn, "re", "▼", "Ré", "p-re")]));
+  caixa.append(carroBotoes);
+  botoesHeli(botao);
+}
+function botoesHeli(botao) {
   const caixa = jogo.palco.querySelector(".cena-cidade");
   heliBotoes = el("div", { class: "heli-cidade", hidden: "" });
-  for (const [k, txt, rot] of [["subir", "▲", "Subir"], ["frente", "⏩", "Frente"], ["descer", "▼", "Descer"]]) {
-    const b = el("button", { class: `heli-${k}`, "aria-label": rot, texto: txt });
-    const on = (e) => { e.preventDefault(); e.stopPropagation(); heliBtn[k] = true; }, off = () => { heliBtn[k] = false; };
-    b.addEventListener("pointerdown", on); for (const ev of ["pointerup", "pointercancel", "pointerleave"]) b.addEventListener(ev, off);
-    heliBotoes.append(b);
-  }
+  for (const [k, txt, rot] of [["subir", "▲", "Subir"], ["frente", "⏩", "Voar para a frente"], ["descer", "▼", "Descer"]]) heliBotoes.append(botao(heliBtn, k, txt, rot, `heli-${k}`));
   caixa.append(heliBotoes);
 }
 
@@ -1207,6 +1224,10 @@ function escolherCarro(CN, c, t) {
 const SALAS_DEF = {
   rise: { lugar: "parceiro-rise-up", origem: [-90, 430], montar: montarAcademia, lado: 1.0, ajudante: ["Treinadora Lápis Laranja", 0xff7a00, ["bone"], "treinadora"] },
   bella: { lugar: "parceiro-bella-cat", origem: [0, 430], montar: montarBellaCat, lado: 0, ajudante: ["Lápis Lilás", 0xa98ce0, ["laco"], "vendedora"] },
+  // salas de aula: na escola da idade da criança quem recebe é a Professora Lápis Turquesa (com as aulas);
+  // na outra escola, uma professora da outra turma explica que a aula é na outra Educarte
+  kids2: { lugar: "escola", origem: [90, 430], montar: () => montarSalaAula({ kids1: false }), lado: 0, frente: 4, escola: true, ajudante: ["Professora Lápis Coral", 0xff8a80, ["laco"], "professora"] },
+  kids1: { lugar: "kids1", origem: [180, 430], montar: () => montarSalaAula({ kids1: true }), lado: 0, escola: true, ajudante: ["Tia Lápis Lavanda", 0xc8b6ff, ["laco"], "professora"] },
 };
 let salas = {}, sala = null, transicao = false, bloqueioPorta = null, trava = null, fadeEl = null, barraEl = null;
 const naBorda = (v) => Boolean(sala) || Math.abs(v) < BORDA + 10;
@@ -1219,7 +1240,7 @@ function criarSalas() {
     const l = lugar(def.lugar);
     if (!l) continue;
     // tapete na frente da porta da foto (1,3 m da fachada), virado para a rua
-    const lat = [Math.cos(l.rot), -Math.sin(l.rot)], recuo = l.recuo - 3.08 - 1.3;
+    const lat = [Math.cos(l.rot), -Math.sin(l.rot)], recuo = l.recuo - (def.frente ?? 3.08) - 1.3;
     const px = l.x - l.dir[0] * recuo + lat[0] * def.lado, pz = l.z - l.dir[1] * recuo + lat[1] * def.lado;
     const tapete = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.05, 1.3), new THREE.MeshStandardMaterial({ map: TEX_TAPETE, roughness: 0.95 }));
     tapete.position.set(px, 0.07, pz); tapete.rotation.y = l.rot; tapete.receiveShadow = true; cena.add(tapete);
@@ -1233,6 +1254,8 @@ function montarSala(S) {
   const [ox, oz] = S.O;
   o.g.position.set(ox, 0, oz); cena.add(o.g);
   for (const s of o.solidos) mundo.solidos.push({ x0: s.x0 + ox, x1: s.x1 + ox, z0: s.z0 + oz, z1: s.z1 + oz, y1: s.y1 });
+  if (S.def.escola) o.escrever(...(S.id === "kids1" ? ["Educarte Kids I", "Bem-vindo, Rabisco!"] : ["Educarte Kids II", "Bem-vindo à sala de aula!"]));
+  if (aulasEm() === S.id) return void (S.obj = o, S.saida = o.saida); // aqui quem recebe é a professora das aulas (npc)
   const [nome, cor, aces, onde] = S.def.ajudante, pos = o[onde];
   const p = lapis(cor, { acessorios: aces });
   p.position.set(ox + pos.x, 0.03, oz + pos.z); o.g.parent.add(p);
@@ -1241,7 +1264,7 @@ function montarSala(S) {
 }
 function portasDasSalas(t) {
   for (const S of Object.values(salas)) {
-    const M = S.id === "rise" ? missoes.exercicio : missoes.presente;
+    const M = S.id === "rise" ? missoes.exercicio : S.id === "bella" ? missoes.presente : null;
     S.seta.visible = !sala && M?.estado === "ativa" && M.fase === "entrar";
     if (S.seta.visible) S.seta.position.y = 3.4 + Math.sin(t * 4) * 0.2;
     if (transicao || dentro || fim || oracao) continue;
@@ -1267,13 +1290,18 @@ function fade(meio) {
 function entrarSala(S) {
   fade(() => {
     if (!S.obj) montarSala(S);
-    S.obj.g.visible = S.ajudante.p.visible = true;
+    S.obj.g.visible = true; if (S.ajudante) S.ajudante.p.visible = true;
     sala = S;
     const [ox, oz] = S.O;
     j.pos.set(ox + S.obj.entrada.x, 0.03, oz + S.obj.entrada.z); j.vel.set(0, 0, 0); j.dir = Math.PI; camYaw = Math.PI; camManual = 0;
     if (companheiro) { amigo.pos.set(j.pos.x + 1.3, 0.03, j.pos.z + 0.6); amigo.vel = amigo.vx = amigo.vz = 0; }
     cam.far = 90; cam.updateProjectionMatrix();
     sons.porta();
+    if (S.def.escola) {
+      if (!S.ajudante) { if (!aula) { falar("cid-aula-bemvindo"); dizer("Professora Lápis Turquesa", "Bem-vindo à sala de aula! Venha falar comigo para começar a aula!", 4200); } }
+      else { falar(`cid-aula-outra-${S.id}`); dizer(S.ajudante.nome, S.id === "kids1" ? "Aqui é a Educarte Kids I, a escolinha dos pequenininhos! A sua turma estuda na Educarte Kids II." : "Aqui é a Educarte Kids II, a escola dos maiores! A sua turma estuda na Educarte Kids I, do outro lado da cidade.", 5600); }
+      return;
+    }
     const M = S.id === "rise" ? missoes.exercicio : missoes.presente;
     if (!M || M.estado !== "ativa") dizer(S.ajudante.nome, S.id === "rise" ? "Bem-vindo à Academia Rise Up! Fique à vontade!" : "Bem-vindo à Bella Cat! Que bom ver você!", 3000);
   });
@@ -1281,7 +1309,7 @@ function entrarSala(S) {
 function sairSala(S) {
   fade(() => {
     sala = null; trava = null;
-    S.obj.g.visible = S.ajudante.p.visible = false;
+    S.obj.g.visible = false; if (S.ajudante) S.ajudante.p.visible = false;
     j.pos.set(S.porta.x + S.dir[0] * 1.7, 0.03, S.porta.z + S.dir[1] * 1.7); j.vel.set(0, 0, 0);
     j.dir = Math.atan2(S.dir[0], S.dir[1]); camYaw = j.dir; camManual = 0;
     if (companheiro) { const [cx, cz] = livre(j.pos.x - S.dir[1] * 1.3, j.pos.z + S.dir[0] * 1.3, 0.5); amigo.pos.set(cx, 0.03, cz); amigo.vel = amigo.vx = amigo.vz = 0; }
@@ -1303,6 +1331,170 @@ function atualizarAjudantes(t, dt) {
   if (!andando) { let r = Math.atan2(j.pos.x - a.x, j.pos.z - a.z) - a.p.rotation.y; r = Math.atan2(Math.sin(r), Math.cos(r)); a.p.rotation.y += r * Math.min(1, dt * 5); }
   andarLapis(a.p, t * 9, andando ? 1 : 0);
   if (!andando) animarLapis(a, t, dt, false);
+}
+
+// ------------------------------------------------------------------ Aulas na sala da Educarte (aulas.js)
+// A Professora Lápis Turquesa fica dentro da sala da escola da idade (Kids I até 4 anos; Kids II de 5 a 12 e
+// quando a idade não é conhecida). Cada matéria é uma missão; as rodadas aparecem no tapete (objetos), na lousa
+// (a tarefa) e na voz. Não tem erro que perde: errar só dá uma dica e repete a pergunta.
+const ORDEM_VAGAS = [2, 3, 1, 4, 7, 8, 6, 9, 0, 5, 10];
+const TEXTO_AULA = {
+  aulaIngles: { bebe: "Vamos aprender as cores em inglês! Escute e ache a bola da cor certa. Depois aperte o botão!", k: "Aula de inglês! Escute bem e ache o que eu pedir. Depois aperte o botão!" },
+  aulaPortugues: { bebe: "Vamos ouvir os bichinhos! Escute o som e ache o bichinho certo!", k: "Aula de português! Vamos escrever uma palavra: pegue as letras na ordem certa!" },
+  aulaMatematica: { bebe: "Vamos brincar com as formas e contar até três!", k: "Aula de matemática! Pegue as maçãs na bandeja e leve para a minha mesa!" },
+};
+const FALA_AULA = { aulaIngles: "cid-aula-ingles", aulaPortugues: "cid-aula-portugues", aulaMatematica: "cid-aula-matematica" };
+let aula = null; // aula em andamento: { M, rod, i, R, objs, pos, carregando, espera }
+let filaFala = [], filaT = null;
+// várias falas em sequência (uma espera a outra acabar, pela duração do MP3)
+function falarFila(chaves) {
+  filaFala = [...chaves]; clearTimeout(filaT);
+  const passo = () => {
+    if (!filaFala.length) return;
+    if (performance.now() < falaAte - 60) { filaT = setTimeout(passo, 120); return; }
+    falar(filaFala.shift()); filaT = setTimeout(passo, 350);
+  };
+  passo();
+}
+function criarAulas(L) {
+  const nivel = nivelDaIdade(idadeCrianca());
+  const onde = nivel === "bebe" && L("kids1") ? "kids1" : "kids2";
+  const [ox, oz] = SALAS_DEF[onde].origem;
+  const prof = npc("Professora Lápis Turquesa", 0x2ec4b6, ox + PROFESSORA_AULA.x, oz + PROFESSORA_AULA.z, "cid-aula-bemvindo", ["laco", "oculos"]);
+  prof.aulas = onde;
+  prof.calado = () => Boolean(aula);
+  for (const mat of MATERIAS) {
+    missoes[mat.id] = { id: mat.id, nome: mat.nome, icone: mat.icone, estado: "nova", npc: prof, materia: mat, nivel, sala: onde,
+      texto: TEXTO_AULA[mat.id][nivel === "bebe" ? "bebe" : "k"], fala: `${FALA_AULA[mat.id]}${nivel === "bebe" ? "-bebe" : ""}`,
+      aoAceitar() { iniciarAula(this); },
+      alvo() { return alvoAula(this); } };
+  }
+}
+function alvoAula(M) {
+  const S = salas[M.sala];
+  if (sala !== S) return { x: S.porta.x, z: S.porta.z, emoji: "🏫" };
+  const [ox, oz] = S.O, o = S.obj;
+  if (aula?.M !== M || !aula.R) return { x: M.npc.x, z: M.npc.z, emoji: "👩‍🏫" };
+  if (aula.R.tipo === "contar") return aula.carregando >= aula.R.n ? { x: ox + o.mesa.x, z: oz + o.mesa.z, emoji: "🧺" } : { x: ox + o.bandeja.x, z: oz + o.bandeja.z, emoji: "🍎" };
+  return { x: ox, z: oz - 1.4, emoji: "✋" };
+}
+function iniciarAula(M) {
+  aula = { M, rod: M.materia.gerar(M.nivel, Math.random), i: -1, objs: [], pos: 0, carregando: 0, espera: true };
+  setTimeout(() => { if (aula?.M === M) { aula.espera = false; proximaRodada(); } }, 900);
+}
+function limparObjsAula() {
+  for (const o of aula?.objs ?? []) o.g.removeFromParent();
+  if (aula) aula.objs = [];
+}
+const embaralhar = (l) => { const a = [...l]; for (let i = a.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [a[i], a[k]] = [a[k], a[i]]; } return a; };
+function proximaRodada() {
+  limparObjsAula();
+  aula.i++;
+  const R = aula.R = aula.rod[aula.i];
+  if (!R) return terminarAula();
+  const S = salas[aula.M.sala], o = S.obj, [ox, oz] = S.O;
+  aula.pos = 0; aula.carregando = 0;
+  const por = (itens) => itens.forEach((op, k) => { const v = o.vagas[ORDEM_VAGAS[k]]; const g = objetoAula(op); g.position.set(v.x, 0.05, v.z); o.g.add(g); aula.objs.push({ ...op, g, x: ox + v.x, z: oz + v.z }); });
+  if (R.tipo === "achar") { por(embaralhar(R.opcoes)); o.escrever(R.lousa, R.sub ?? ""); }
+  else if (R.tipo === "letras") { por(R.blocos.map((l) => ({ tipo: "letra", valor: l, nome: `a letra ${l}` }))); escreverPalavra(); }
+  else { o.escrever(R.lousa, `Traga ${R.n === 1 ? "1 maçã" : "as maçãs"} para a mesa`); o.macasBandeja.forEach((m) => (m.visible = true)); }
+  falarFila(R.fala);
+  atualizarHud();
+}
+function escreverPalavra() {
+  const R = aula.R, o = salas[aula.M.sala].obj;
+  o.escrever([...R.palavra].map((l, i) => (i < aula.pos ? l : "_")).join(" "), `Palavra: ${R.palavra}`);
+}
+const ehIngles = () => aula?.M.id === "aulaIngles";
+function acertou(espera = 2300) {
+  const prof = aula.M.npc;
+  aula.espera = true; sons.moeda(); receber(prof);
+  falar(ehIngles() ? "en-cid-yes" : "cid-aula-certo");
+  dizer(prof.nome, ehIngles() ? "Yes! Great job! Muito bem!" : ["Muito bem!", "Isso mesmo!", "Que capricho!"][aula.i % 3], 2000);
+  const M = aula.M;
+  setTimeout(() => { if (aula?.M === M) { aula.espera = false; proximaRodada(); } }, espera);
+}
+function errou(texto, falas) {
+  sons.erro?.();
+  dizer(aula.M.npc.nome, texto, 3400);
+  falarFila([...(falas ?? [ehIngles() ? "en-cid-try" : "cid-aula-dica"]), ...aula.R.fala]);
+}
+function escolherAula(obj) {
+  if (!aula?.R || aula.espera) return;
+  const R = aula.R;
+  if (R.tipo === "achar") {
+    if (obj.valor === R.certo) { obj.g.position.y += 0.35; acertou(); }
+    else errou(`Esse é ${obj.nome}. Escute de novo e tente outra vez!`);
+  } else if (R.tipo === "letras") {
+    const certa = R.palavra[aula.pos];
+    if (obj.valor === certa) {
+      aula.pos++; sons.letra?.(); falar(`letra-${certa}`); escreverPalavra(); obj.festa = 0.5;
+      if (aula.pos === R.palavra.length) { aula.espera = true; setTimeout(() => { if (aula) { falarFila(R.fala.slice(0, 0)); acertou(2600); } }, 900); }
+      atualizarHud();
+    } else errou(`Essa é a letra ${obj.valor}. Procure a letra ${certa}!`, ["cid-aula-procure", `letra-${certa}`]);
+  }
+}
+function pilhaDeMacas(n) {
+  const g = new THREE.Group();
+  for (let i = 0; i < n; i++) { const m = maca(); m.position.set(((i % 3) - 1) * 0.3, Math.floor(i / 3) * 0.26, 0); g.add(m); }
+  return g;
+}
+function pegarMaca() {
+  if (!aula?.R || aula.espera || aula.R.tipo !== "contar") return;
+  if (aula.carregando >= 10) { dizer(aula.M.npc.nome, "Já está bem cheio! Leve para a mesa.", 2200); return; }
+  aula.carregando++;
+  const o = salas[aula.M.sala].obj;
+  o.macasBandeja.forEach((m, i) => (m.visible = i >= aula.carregando));
+  sons.moeda(); falar(`cid-num-${aula.carregando}`);
+  levar(pilhaDeMacas(aula.carregando));
+  atualizarHud();
+}
+function entregarMacas() {
+  if (!aula?.R || aula.espera || aula.R.tipo !== "contar" || !aula.carregando) return;
+  const R = aula.R, o = salas[aula.M.sala].obj, c = aula.carregando;
+  levar(null);
+  if (c === R.n) {
+    const p = pilhaDeMacas(c); p.scale.setScalar(0.7); p.position.set(o.mesa.cesta.position.x, 1.25, o.mesa.cesta.position.z); o.g.add(p); aula.objs.push({ g: p });
+    acertou(2600);
+  } else {
+    aula.carregando = 0; o.macasBandeja.forEach((m) => (m.visible = true));
+    errou(`Você trouxe ${c}. ${R.lousa.includes("?") ? "Faça a conta de novo, devagarinho!" : `Eu pedi ${R.n}.`} Vamos contar de novo!`, ["cid-aula-conta-de-novo"]);
+  }
+  atualizarHud();
+}
+function terminarAula() {
+  const M = aula.M, prof = M.npc, o = salas[M.sala].obj;
+  limparObjsAula(); levar(null);
+  o.macasBandeja.forEach((m) => (m.visible = true));
+  o.escrever("Parabéns!", `★ ${M.nome} ★`);
+  aula = null;
+  receber(prof); prof.ultima = relogio.elapsedTime;
+  concluir(M); jogo.confete?.();
+  falar("cid-aula-fim");
+  dizer(prof.nome, "Parabéns, Rabisco! Você aprendeu muito hoje! “O sábio ouve e aprende ainda mais.” (baseado em Provérbios 1:5)", 6400);
+  if (Object.values(missoes).some((m) => m.npc === prof && m.estado === "nova")) { prof.marca.material.map = MARCA; prof.marca.material.needsUpdate = true; prof.marca.visible = true; }
+}
+// botão de ação dentro da sala: escolher objeto, pegar maçã ou entregar na mesa (a criança do jogador 2 também)
+function regrasDaAula(aPe, acaoJ2) {
+  if (!aula?.R || aula.espera || sala?.id !== aula.M.sala) return;
+  const S = sala, o = S.obj, [ox, oz] = S.O, R = aula.R;
+  const maisPerto = (p) => aula.objs.filter((q) => q.tipo).map((q) => ({ q, d: Math.hypot(q.x - p.x, q.z - p.z) })).filter((q) => q.d < 1.7).sort((a, b) => a.d - b.d)[0]?.q;
+  if (R.tipo !== "contar") {
+    const meu = aPe ? maisPerto(j.pos) : null, dela = dois && companheiro ? maisPerto(amigo.pos) : null;
+    for (const q of aula.objs) if (q.g.userData.anel) q.g.userData.anel.visible = q === meu || q === dela;
+    if (meu) contexto = { tipo: "aula", rotulo: "✋ Este!", fazer: () => escolherAula(meu) };
+    if (acaoJ2 && dela) escolherAula(dela);
+    return;
+  }
+  const bx = ox + o.bandeja.x, bz = oz + o.bandeja.z, mx = ox + o.mesa.x, mz = oz + o.mesa.z;
+  for (const p of [j.pos, ...(dois && companheiro ? [amigo.pos] : [])]) {
+    const ehJ2 = p === amigo.pos;
+    let fazer = null, rotulo = "";
+    if (Math.hypot(p.x - bx, p.z - bz) < 1.9) { fazer = pegarMaca; rotulo = `🍎 Pegar (${aula.carregando})`; }
+    else if (Math.hypot(p.x - mx, p.z - mz) < 2.1 && aula.carregando) { fazer = entregarMacas; rotulo = `🧺 Entregar ${aula.carregando}`; }
+    if (!fazer) continue;
+    if (ehJ2) { if (acaoJ2) fazer(); } else contexto = { tipo: fazer === pegarMaca ? "aula-pegar" : "aula-entregar", rotulo, fazer };
+  }
 }
 
 // ------------------------------------------------------------------ Bella Cat: escolher e embrulhar
@@ -1588,7 +1780,9 @@ function criarMissoes() {
     texto: "Oi, Rabisco! A Vovó Lápis precisa do remédio dela! Leve de helicóptero: suba no helicóptero aqui do heliponto e pouse pertinho da casa laranja, perto da Rua Leste.",
     aoAceitar() { levar(maleta()); },
     alvo() { const v = quemRecebe.vovo; return dentro === heli || this.voou ? { x: v.x, z: v.z, emoji: "👵" } : { x: heli.pos.x, z: heli.pos.z, emoji: "🚁" }; } };
+  criarAulas(L);
   criarSalas();
+  for (const n of npcs) if (n.aulas) n.mapa = salas[n.aulas].porta; // no minimapa, a professora das aulas aparece na porta da escola
   // 16. passaporte: visitar todos os lugares
   missoes.passaporte = { id: "passaporte", nome: "Passeio", icone: "🗺️", estado: "ativa",
     alvo() { const l = mundo.lugares.filter((q) => !visitados.has(q.id)).sort((a, b) => dist2(a) - dist2(b))[0]; return l && { x: l.x, z: l.z, emoji: "📍" }; } };
@@ -1706,6 +1900,9 @@ function seguirOracao(PN, t, dt) {
   contexto = pode ? { tipo: "orar", rotulo: "🙏 Amém, próxima", fazer: () => proximaFrase(PN, t) } : { tipo: "orar-espera", rotulo: "🙏 Orando…", fazer: () => {} };
   if (passou > oracao.dur + (oracao.i < 0 ? 0.6 : ESPERA_REPETIR)) proximaFrase(PN, t);
 }
+// a professora das aulas fica na sala (longe da cidade): no mapa e na seta ela "mora" na porta da escola
+const posNoMapa = (n) => (n.mapa && sala?.id !== n.aulas ? [n.mapa.x, n.mapa.z] : [n.x, n.z]);
+const aulasEm = () => (nivelDaIdade(idadeCrianca()) === "bebe" && lugar("kids1") ? "kids1" : "kids2");
 function carroMaisPerto() {
   const v = [...veiculos].sort((a, b) => dist2(a.pos) - dist2(b.pos))[0];
   return v && { x: v.pos.x, z: v.pos.z, emoji: "🚗" };
@@ -1714,7 +1911,7 @@ function alvoAtual() {
   const M = foco && missoes[foco];
   if (M && M.estado === "ativa") return M.alvo();
   // sem missão em foco: o amigo com "!" mais perto
-  const n = npcs.filter((q) => q.marca.visible && Object.values(missoes).some((m) => m.npc === q && m.estado === "nova")).sort((a, b) => dist2(a) - dist2(b))[0];
+  const n = npcs.filter((q) => q.marca.visible && Object.values(missoes).some((m) => m.npc === q && m.estado === "nova")).map((q) => { const [x, z] = posNoMapa(q); return { x, z }; }).sort((a, b) => dist2(a) - dist2(b))[0];
   return n ? { x: n.x, z: n.z, emoji: "❗" } : missoes.passaporte.alvo();
 }
 function dizer(nome, texto, ms = 5200) {
@@ -1947,6 +2144,8 @@ function regras(dt, t) {
     }
     if (sala === S) treinar(EX, S, t, dt, aPe, acaoJ2, pertoJ2);
   }
+  // aulas na sala da Educarte
+  regrasDaAula(aPe, acaoJ2);
   if (amigo.acaoNova) amigo.acaoNova = false;
   // Hora da Aula: pegar a mochila azul na casa azul e levar ao Lápis Azulzinho antes do sino
   const ES = missoes.escola;
@@ -2060,12 +2259,13 @@ function regras(dt, t) {
 }
 const NOMES_MISSAO = { remedio: "remedio", cartas: "cartas", gatos: "gatos", pao: "pao", faixa: "faixa", corrida: "corrida", encomenda: "encomenda", fogo: "fogo", tesouro: "tesouro", patos: "patos", carroNovo: "je", presente: "bella", exercicio: "rise", escola: "professora", igreja: "igreja", painosso: "painosso" };
 function conversar(n) {
-  const M = Object.values(missoes).find((m) => m.npc === n);
+  const dela = Object.values(missoes).filter((m) => m.npc === n);
+  const M = n.aulas ? (dela.find((m) => m.estado === "ativa") ?? dela.find((m) => m.estado === "nova") ?? dela[0]) : dela[0]; // a professora: uma aula de cada vez
   if (!M) return;
   if (M.estado === "nova") {
     aceitar(M);
     n.marca.material.map = MARCA_OK; n.marca.material.needsUpdate = true;
-    falar(n.fala);
+    falar(M.fala ?? n.fala);
     dizer(n.nome, M.texto, 7600);
     if (M === missoes.pao) carregando = "pao";
     M.aoAceitar?.();
@@ -2101,7 +2301,7 @@ function concluir(M) {
   M.estado = "feita";
   if (foco === M.id) foco = Object.values(missoes).find((m) => m.estado === "ativa" && m.id !== "passaporte")?.id ?? null;
   if (companheiro) setTimeout(async () => { radio?.pausarPorFala(true); try { await parabenizar({ gravada: false }); } finally { radio?.pausarPorFala(false); } }, 900);
-  if (M.npc) M.npc.marca.visible = false;
+  if (M.npc && !Object.values(missoes).some((m) => m !== M && m.npc === M.npc && m.estado !== "feita")) M.npc.marca.visible = false;
   sons.porta();
   // o letreiro é imediato; a voz "Missão cumprida" espera a fala em andamento acabar (ou é omitida se faltar mais de 6 s: versículo, Amém)
   setTimeout(() => {
@@ -2134,6 +2334,7 @@ function atualizarHud() {
     if (m.id === "fogo") return ` <small>${"💧".repeat(m.apagados)}${"🔥".repeat(4 - m.apagados)}</small>`;
     if (m.id === "tesouro") return ` <small>pista ${Math.min(4, m.pista + 1)}/4</small>`;
     if (m.id === "carroNovo") return ` <small>${{ escolher: "⭐→🚗", chave: "🔑", entrar: "🔑→🚗", sair: "🚗→🚧" }[m.fase] ?? "🚗→🏠"}</small>`;
+    if (m.materia) return aula?.M === m && aula.R ? ` <small>${aula.R.tipo === "letras" ? `${aula.pos}/${aula.R.palavra.length}` : aula.R.tipo === "contar" ? `🍎${aula.carregando}` : ""} ${aula.i + 1}/${aula.rod.length}</small>` : ` <small>🏫</small>`;
     if (m.id === "remedio") return ` <small>${m.voou ? "🚁→👵" : "🩺→🚁"}</small>`;
     if (m.id === "presente") return ` <small>${{ entrar: "🚪→💝", escolher: "💝?", embrulhar: "🎁…" }[m.fase] ?? "🎁→🏫"}</small>`;
     if (m.id === "exercicio") return ` <small>${m.fase === "entrar" ? "🚪→🏋️" : m.fase === "peso" ? `🏋️ ${m.levantou}/5` : `🏃 ${Math.round(m.corrida * 100)}%`}</small>`;
@@ -2178,7 +2379,7 @@ function desenharCidade(c, S, { nomes = false } = {}) {
     if (nomes) { c.font = `800 ${Math.round(S / 40)}px 'Baloo 2', sans-serif`; c.textAlign = "center"; c.lineWidth = 4; c.strokeStyle = "#fff"; c.strokeText(l.nome, x, y - S / 45); c.fillStyle = "#151515"; c.fillText(l.nome, x, y - S / 45); }
   }
   // amigos com missão nova
-  for (const n of npcs) { if (!n.marca.visible || !Object.values(missoes).some((m) => m.npc === n && m.estado === "nova")) continue; const [x, y] = P(n.x, n.z); c.fillStyle = "#ffcc1f"; c.strokeStyle = "#151515"; c.lineWidth = 3; c.font = `900 ${Math.round(S / 11)}px 'Baloo 2'`; c.textAlign = "center"; c.strokeText("!", x, y + S / 40); c.fillText("!", x, y + S / 40); }
+  for (const n of npcs) { if (!n.marca.visible || !Object.values(missoes).some((m) => m.npc === n && m.estado === "nova")) continue; const [x, y] = P(...posNoMapa(n)); c.fillStyle = "#ffcc1f"; c.strokeStyle = "#151515"; c.lineWidth = 3; c.font = `900 ${Math.round(S / 11)}px 'Baloo 2'`; c.textAlign = "center"; c.strokeText("!", x, y + S / 40); c.fillText("!", x, y + S / 40); }
   // carros que dá para dirigir
   for (const v of veiculos) {
     const [x, y] = P(v.pos.x, v.pos.z);
@@ -2262,6 +2463,8 @@ function quadro() {
     const t = relogio.elapsedTime;
     const { andando } = dentro ? (dentro.heli ? pilotarHeli(dt) : dirigirCarro(dt)) : moverJogador(dt);
     if (heliBotoes) heliBotoes.hidden = !dentro?.heli;
+    jogo.palco.querySelector(".cena-cidade")?.classList.toggle("no-veiculo", Boolean(dentro));
+    jogo.palco.querySelector(".cena-cidade")?.classList.toggle("no-heli", Boolean(dentro?.heli));
     atualizarSemaforos(t);
     atualizarCarros(dt, t);
     atualizarMoradores(dt, t);
@@ -2291,7 +2494,7 @@ if (params.has("teste")) window.teste = {
   volante(acel, virar, extra = {}) { entradaTeste = acel == null ? null : { acel, virar, ...extra }; }, get heli() { return veiculos.find((v) => v.heli); },
   aceitar(id) { const M = missoes[id]; if (M.estado === "nova") { M.npc.ultima = -99; conversar(M.npc); } return M.estado; },
   mapaGrande: () => alternarMapaGrande(), bate: (x, z) => bate(x, z, 0.1),
-  get cena() { return cena; }, get radio() { return radio; }, get sala() { return sala?.id ?? null; }, get salas() { return salas; }, get transicao() { return transicao; }, get trava() { return trava; },
+  get cena() { return cena; }, carroBtn, heliBtn, get aula() { return aula; }, aulasEm: () => aulasEm(), get radio() { return radio; }, get sala() { return sala?.id ?? null; }, get salas() { return salas; }, get transicao() { return transicao; }, get trava() { return trava; },
   entrarSala(id) { const S = salas[id]; j.pos.set(S.porta.x, 0.03, S.porta.z); }, cam: () => cam, info: () => r3.info.render,
   acaoJ2() { amigo.acaoNova = true; },
   levarCarro(i, x, z, ang) { const v = veiculos[i]; v.pos.set(x, 0.03, z); v.ang = ang; v.vel = 0; animarCarro(v, 0); if (dentro === v) j.pos.set(x, 0.03, z); },
