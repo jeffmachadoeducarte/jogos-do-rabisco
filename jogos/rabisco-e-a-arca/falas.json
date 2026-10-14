@@ -13,12 +13,12 @@
   "arca-recomeca": "Vamos começar de novo, lá de baixo. Você consegue!",
   "arca-pulo": "Boa! Pulou o barril!",
   "arca-pule": "Pule para pegar!",
-  "arca-v1": "Deus viu tudo o que havia feito, e era muito bom! Gênesis um, trinta e um.",
-  "arca-v2": "Noé fez tudo como Deus tinha mandado. Gênesis seis, vinte e dois.",
-  "arca-v3": "Quantas são as tuas obras, Senhor! Salmo cento e quatro, vinte e quatro.",
-  "arca-v4": "Os animais entraram na arca de dois em dois. Gênesis sete, nove.",
-  "arca-v5": "Quem é justo cuida bem dos seus animais. Provérbios doze, dez.",
-  "arca-v6": "Coloquei o meu arco-íris nas nuvens. Gênesis nove, treze."
+  "arca-v1": "Deus olhou tudo o que criou e achou tudo muito bom! Baseado em Gênesis um, trinta e um.",
+  "arca-v2": "Noé obedeceu e fez tudo do jeito que Deus pediu. Baseado em Gênesis seis, vinte e dois.",
+  "arca-v3": "Senhor, quantas coisas lindas tu fizeste! Baseado em Salmo cento e quatro, vinte e quatro.",
+  "arca-v4": "Os bichos chegaram em pares e entraram na arca com Noé. Baseado em Gênesis sete, nove.",
+  "arca-v5": "Quem é bom cuida com carinho dos seus animais. Baseado em Provérbios doze, dez.",
+  "arca-v6": "Deus pôs o arco-íris no céu como sinal da sua promessa. Baseado em Gênesis nove, treze."
  },
  "en": {
   "en-arca-great": "Great job! All the animals are safe!",
@@ -129,11 +129,11 @@
   "en-arca-frase-lion": "It says roar. Who is it?",
   "en-arca-frase-bird": "It can fly. Who is it?",
   "en-arca-frase-elephant": "It is very big. Who is it?",
-  "en-arca-v1": "God saw all that he had made, and it was very good. Genesis one, thirty-one.",
-  "en-arca-v2": "Noah did everything just as God commanded him. Genesis six, twenty-two.",
-  "en-arca-v3": "How many are your works, Lord! Psalm one hundred four, twenty-four.",
-  "en-arca-v4": "Two by two they came to Noah and entered the ark. Genesis seven, nine.",
-  "en-arca-v5": "The righteous care for the needs of their animals. Proverbs twelve, ten.",
-  "en-arca-v6": "I have set my rainbow in the clouds. Genesis nine, thirteen."
+  "en-arca-v1": "God looked at all he made and said: very good! Based on Genesis one, thirty-one.",
+  "en-arca-v2": "Noah obeyed and did everything God asked. Based on Genesis six, twenty-two.",
+  "en-arca-v3": "Lord, you made so many wonderful things! Based on Psalm one hundred four, twenty-four.",
+  "en-arca-v4": "The animals came in pairs and went into the ark with Noah. Based on Genesis seven, nine.",
+  "en-arca-v5": "Good people take good care of their animals. Based on Proverbs twelve, ten.",
+  "en-arca-v6": "God put the rainbow in the sky as a sign of his promise. Based on Genesis nine, thirteen."
  }
 }

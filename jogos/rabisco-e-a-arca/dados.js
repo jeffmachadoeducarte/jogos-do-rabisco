@@ -51,20 +51,19 @@ export const FRASES = {
   elephant: "It is very big.",
 };
 
-// Versículos curtos (fim de cada fase): português (lido pela Francisca) e inglês (lido pela Ana)
+// Versículos do fim de cada fase: paráfrases curtas próprias para crianças (não são citações de tradução),
+// em português (lida pela Francisca) e em inglês (lida pela Ana), com "baseado em ..." / "based on ..."
+const V = (livro, livroEn, cap, pt, en, falaRef, falaRefEn) => ({
+  ref: `baseado em ${livro} ${cap}`, refEn: `based on ${livroEn} ${cap}`, pt, en,
+  falaPt: `${pt} Baseado em ${falaRef}.`, falaEn: `${en} Based on ${falaRefEn}.`,
+});
 export const VERSICULOS = [
-  { ref: "Gênesis 1:31", refEn: "Genesis 1:31", pt: "Deus viu tudo o que havia feito, e era muito bom.", en: "God saw all that he had made, and it was very good.",
-    falaPt: "Deus viu tudo o que havia feito, e era muito bom! Gênesis um, trinta e um.", falaEn: "God saw all that he had made, and it was very good. Genesis one, thirty-one." },
-  { ref: "Gênesis 6:22", refEn: "Genesis 6:22", pt: "Noé fez tudo como Deus tinha mandado.", en: "Noah did everything just as God commanded him.",
-    falaPt: "Noé fez tudo como Deus tinha mandado. Gênesis seis, vinte e dois.", falaEn: "Noah did everything just as God commanded him. Genesis six, twenty-two." },
-  { ref: "Salmo 104:24", refEn: "Psalm 104:24", pt: "Quantas são as tuas obras, Senhor!", en: "How many are your works, Lord!",
-    falaPt: "Quantas são as tuas obras, Senhor! Salmo cento e quatro, vinte e quatro.", falaEn: "How many are your works, Lord! Psalm one hundred four, twenty-four." },
-  { ref: "Gênesis 7:9", refEn: "Genesis 7:9", pt: "Os animais entraram na arca de dois em dois.", en: "Two by two they came to Noah and entered the ark.",
-    falaPt: "Os animais entraram na arca de dois em dois. Gênesis sete, nove.", falaEn: "Two by two they came to Noah and entered the ark. Genesis seven, nine." },
-  { ref: "Provérbios 12:10", refEn: "Proverbs 12:10", pt: "Quem é justo cuida bem dos seus animais.", en: "The righteous care for the needs of their animals.",
-    falaPt: "Quem é justo cuida bem dos seus animais. Provérbios doze, dez.", falaEn: "The righteous care for the needs of their animals. Proverbs twelve, ten." },
-  { ref: "Gênesis 9:13", refEn: "Genesis 9:13", pt: "Coloquei o meu arco-íris nas nuvens.", en: "I have set my rainbow in the clouds.",
-    falaPt: "Coloquei o meu arco-íris nas nuvens. Gênesis nove, treze.", falaEn: "I have set my rainbow in the clouds. Genesis nine, thirteen." },
+  V("Gênesis", "Genesis", "1:31", "Deus olhou tudo o que criou e achou tudo muito bom!", "God looked at all he made and said: very good!", "Gênesis um, trinta e um", "Genesis one, thirty-one"),
+  V("Gênesis", "Genesis", "6:22", "Noé obedeceu e fez tudo do jeito que Deus pediu.", "Noah obeyed and did everything God asked.", "Gênesis seis, vinte e dois", "Genesis six, twenty-two"),
+  V("Salmo", "Psalm", "104:24", "Senhor, quantas coisas lindas tu fizeste!", "Lord, you made so many wonderful things!", "Salmo cento e quatro, vinte e quatro", "Psalm one hundred four, twenty-four"),
+  V("Gênesis", "Genesis", "7:9", "Os bichos chegaram em pares e entraram na arca com Noé.", "The animals came in pairs and went into the ark with Noah.", "Gênesis sete, nove", "Genesis seven, nine"),
+  V("Provérbios", "Proverbs", "12:10", "Quem é bom cuida com carinho dos seus animais.", "Good people take good care of their animals.", "Provérbios doze, dez", "Proverbs twelve, ten"),
+  V("Gênesis", "Genesis", "9:13", "Deus pôs o arco-íris no céu como sinal da sua promessa.", "God put the rainbow in the sky as a sign of his promise.", "Gênesis nove, treze", "Genesis nine, thirteen"),
 ];
 
 // 6 fases: animais → cores → números → frases. andares ≤ 4 para os itens caberem entre as vigas.

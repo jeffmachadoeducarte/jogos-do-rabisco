@@ -22,15 +22,16 @@ const params = new URLSearchParams(location.search);
 const TESTE = params.has("teste");
 
 // ------------------------------------------------------------------ Mundo (unidades lógicas)
-const W = 880, H = 770, CHAO = 740, TOPO = 132;
+// mundo alto (vigas bem espaçadas para o Rabisco grande); a câmera acompanha o Rabisco e mostra parte da torre
+const W = 880, H = 962, CHAO = 932, TOPO = 132;
 const Z = 1.5;                       // o canvas é 1,5x maior que o mundo para ficar nítido
-const ALT_RB = 80;                   // altura do Rabisco
-const GRAV = 1700, V_PULO = 525, VEL = 185, V_SOBE = 115;
+const ALT_RB = 110;                  // altura do Rabisco
+const GRAV = 1700, V_PULO = 572, VEL = 205, V_SOBE = 150;
 const COYOTE = 0.1, BUFFER = 0.14;
-const R = 14;                        // raio dos barris
+const R = 17;                        // raio dos barris
 const X_OVELHA = 552, X_ESCADA_TOPO = 380, X_PORTA = 452;
 const X_MANCHA = 104;
-const ITEM_ALT = 110, ITEM_R = 22;    // o item flutua na altura do pulo: andando por baixo não pega
+const ITEM_ALT = 146, ITEM_R = 24;    // o item flutua na altura do pulo: andando por baixo não pega
 const TINTA = 0x151515, VIGA = 0xe8413c, ESCADA = 0x00b5f0;
 const FONTE_PIXEL = "'Press Start 2P', monospace";
 const FONTE = "'Baloo 2', system-ui, sans-serif";
@@ -214,7 +215,7 @@ function construir(F) {
     const s = segEm(andar, W / 2), acima = andar < n - 1 ? (x) => yEm(segEm(andar + 1, x) || s, x) : () => TOPO;
     const xsEscada = escadas.filter((e) => e.de === andar || e.de === andar - 1).map((e) => e.x);
     const usados = [];
-    for (const id of embaralhar(lista)) {
+    for (const id of lista) { // alvos primeiro (garantidos); os enfeites ocupam o espaço que sobra
       for (const x of embaralhar(Array.from({ length: 50 }, (_, k) => 200 + k * 10))) {
         if (x < 200 || x > 690) continue;
         if (andar === n - 1 && (x < 190 || Math.abs(x - X_ESCADA_TOPO) < 50)) continue; // longe da Manchinha e da escada final
@@ -223,7 +224,7 @@ function construir(F) {
         const piso = yEm(s, x);
         // abaixo da viga de cima (com folga) e acima da cabeça de quem anda
         const y = Math.max(piso - ITEM_ALT, acima(x) + 13 + ITEM_R + 2);
-        if (piso - y < ALT_RB + ITEM_R - 2) continue;
+        if (piso - y < ALT_RB + ITEM_R + 4) continue; // a cabeça de quem anda passa por baixo sem encostar
         usados.push(x);
         itens.push({ id, x, y, andar, pego: false, espera: 0, dica: false });
         break;
@@ -233,7 +234,7 @@ function construir(F) {
 
   const primeira = escadas.find((e) => e.de === 0 && !e.quebrada);
   const inicioX = primeira && primeira.x > W / 2 ? 70 : 810;
-  return { n, vao, segs, topo, segEm, escadas, itens, inicioX, fonte: { x: X_MANCHA + 30, seg: segEm(n - 1, X_MANCHA + 30) } };
+  return { n, vao, segs, topo, segEm, escadas, itens, inicioX, fonte: { x: X_MANCHA + 52, seg: segEm(n - 1, X_MANCHA + 52) } };
 }
 
 // ------------------------------------------------------------------ Estado
@@ -276,7 +277,8 @@ function montar(n) {
 
   // celular deitado: a tela é baixa; mostra só uma parte da torre (câmera acompanha o Rabisco) para tudo ficar maior
   const alt = mundo.getBoundingClientRect().height || innerHeight;
-  VH = Math.round(Math.min(H, Math.max(470, alt / 0.6)));
+  // altura de mundo visível: ~530 no computador/TV (Rabisco grande) e um pouco menos no celular deitado
+  VH = Math.round(Math.max(400, Math.min(530, alt / 0.75)));
   const fontes = Promise.all([document.fonts?.load(`16px ${FONTE_PIXEL}`), document.fonts?.load(`800 16px ${FONTE}`)]).catch(() => {});
   Promise.race([fontes, new Promise((r) => setTimeout(r, 1500))]).then(() => {
     if (minha !== montagem) return;
@@ -401,7 +403,7 @@ class CenaArca extends Phaser.Scene {
   create() {
     cena = this;
     const cam = this.cameras.main.setOrigin(0, 0).setZoom(Z);
-    cam.scrollY = VH < H ? Math.max(0, Math.min(H - VH, p.y - VH * 0.62)) : 0;
+    cam.scrollY = Math.max(0, Math.min(H - VH, p.y - VH * 0.62));
     criarTexturas(this);
     desenharFundo(this);
     desenharArca(this);
@@ -413,7 +415,7 @@ class CenaArca extends Phaser.Scene {
     criarHud(this);
     this.rb = new RabiscoArca(this, p.x, p.y, ALT_RB).setDepth(20);
     this.tontura = [0, 1, 2].map(() => this.add.text(0, 0, "⭐", { fontSize: "14px" }).setOrigin(0.5).setResolution(Z).setDepth(22).setVisible(false));
-    this.arco = this.add.graphics().setDepth(1.45);
+    this.arco = this.add.graphics().setDepth(0.9);
     // "STAGE n" de fliperama
     const banner = this.add.container(W / 2, VH * 0.42, [
       this.add.text(0, -26, `STAGE ${nivelAtual}`, { fontFamily: FONTE_PIXEL, fontSize: "30px", color: "#ffcc1f", stroke: "#151515", strokeThickness: 8 }).setOrigin(0.5).setResolution(Z),
@@ -495,7 +497,7 @@ function desenharArca(s) {
   const g = s.add.graphics().setDepth(1);
   const madeira = 0xc98a4b, escura = 0x8f5a2a, clara = 0xe0a868;
   // casco: borda de cima reta, fundo arredondado
-  const topoCasco = 330, fundo = 700, x0 = 26, x1 = W - 26;
+  const topoCasco = TOPO + 200, fundo = CHAO - 40, x0 = 26, x1 = W - 26;
   const casco = [];
   for (let k = 0; k <= 40; k++) {
     const x = x0 + ((x1 - x0) * k) / 40, u = (x - W / 2) / ((x1 - x0) / 2);
@@ -523,7 +525,7 @@ function desenharArca(s) {
   g.lineStyle(4, TINTA).beginPath().moveTo(cx0 - 26, cTopo + 4).lineTo(W / 2 + 12, cTopo - 34).lineTo(cx1 + 26, cTopo + 4).closePath().strokePath();
   // janelinhas com animais espiando (aparecem quando entram)
   s.janelas = [];
-  for (const [jx, jy] of [[300, 200], [372, 200], [532, 200], [604, 200]]) {
+  for (const [jx, jy] of [[300, TOPO + 70], [372, TOPO + 70], [532, TOPO + 70], [604, TOPO + 70]]) {
     g.fillStyle(0x5a3416).fillRoundedRect(jx - 22, jy - 18, 44, 36, 8).lineStyle(3, TINTA).strokeRoundedRect(jx - 22, jy - 18, 44, 36, 8);
     s.janelas.push({ x: jx, y: jy, ocupada: false });
   }
@@ -601,7 +603,8 @@ function criarManchinha(s) {
   barrilEmPe(52, yb(52)); barrilEmPe(78, yb(78)); barrilEmPe(65, yb(65) - 32);
   // corpo (redesenhado quando muda de humor: "travessa", "joga" e "feliz")
   const g = s.add.graphics();
-  const c = s.add.container(X_MANCHA + 14, base, [g]).setDepth(10);
+  g.setScale(1.35);
+  const c = s.add.container(X_MANCHA + 18, base, [g]).setDepth(10);
   s.mancha = { c, g, humor: "", olhar: 1, base };
   desenharManchinha("travessa");
   s.tweens.add({ targets: c, scaleY: 0.94, scaleX: 1.05, duration: 520, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
@@ -670,7 +673,7 @@ function criarItem(s, it) {
 }
 
 function criarOvelha(s) {
-  s.ovelha = s.add.text(X_OVELHA, TOPO + 3, "🐑", { fontSize: "38px", padding: { x: 4, y: 4 } }).setOrigin(0.5, 1).setResolution(Z * 1.5).setDepth(8);
+  s.ovelha = s.add.text(X_OVELHA, TOPO + 3, "🐑", { fontSize: "52px", padding: { x: 4, y: 4 } }).setOrigin(0.5, 1).setResolution(Z * 1.5).setDepth(8);
   s.balao = s.add.text(X_OVELHA + 28, TOPO - 60, "Baa!", { fontFamily: FONTE, fontSize: "17px", fontStyle: "800", color: "#151515", backgroundColor: "#ffffff", padding: { x: 8, y: 2 } }).setOrigin(0.5).setResolution(Z).setDepth(8);
   s.tweens.add({ targets: s.balao, y: TOPO - 66, duration: 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
 }
@@ -678,13 +681,13 @@ function criarOvelha(s) {
 // placa de madeira com os animais/itens que já entraram na arca
 function criarManifesto(s) {
   const n = F.alvos.length, larg = n * 38 + 16;
-  const x = 16, y = 18;
-  const g = s.add.graphics().setDepth(3);
+  const x = W - 14 - larg, y = 96; // fixa na tela, embaixo da caixa de BONUS (a Manchinha fica à esquerda)
+  const g = s.add.graphics().setDepth(33).setScrollFactor(0);
   g.fillStyle(0x8f5a2a).fillRoundedRect(x, y, larg, 50, 10).lineStyle(4, TINTA).strokeRoundedRect(x, y, larg, 50, 10);
   s.slots = F.alvos.map((id, i) => {
     const sx = x + 27 + i * 38, sy = y + 25;
     g.fillStyle(0x5a3416).fillCircle(sx, sy, 16).lineStyle(2, TINTA).strokeCircle(sx, sy, 16);
-    const t = s.add.text(sx, sy + 1, "?", { fontFamily: FONTE_PIXEL, fontSize: "12px", color: "#e0a868" }).setOrigin(0.5).setResolution(Z).setDepth(3.1);
+    const t = s.add.text(sx, sy + 1, "?", { fontFamily: FONTE_PIXEL, fontSize: "12px", color: "#e0a868" }).setOrigin(0.5).setResolution(Z).setDepth(33.1).setScrollFactor(0);
     return { id, x: sx, y: sy, t, g: null };
   });
   s.atualizarManifesto = () => {
@@ -694,9 +697,9 @@ function criarManifesto(s) {
       sl.feito = true;
       const d = ITENS[sl.id];
       sl.t.setText("");
-      if (d.tipo === "animal") sl.g = s.add.text(sl.x, sl.y + 1, d.emoji, { fontSize: "20px", padding: { x: 3, y: 3 } }).setOrigin(0.5).setResolution(Z * 1.5).setDepth(3.2);
-      else if (d.tipo === "cor") { sl.g = s.add.graphics().setDepth(3.2); sl.g.fillStyle(d.cor).fillCircle(sl.x, sl.y, 11).lineStyle(2, TINTA).strokeCircle(sl.x, sl.y, 11); }
-      else sl.g = s.add.text(sl.x, sl.y + 1, String(d.num), { fontFamily: FONTE, fontSize: "20px", fontStyle: "800", color: "#ffffff" }).setOrigin(0.5).setResolution(Z).setDepth(3.2);
+      if (d.tipo === "animal") sl.g = s.add.text(sl.x, sl.y + 1, d.emoji, { fontSize: "20px", padding: { x: 3, y: 3 } }).setOrigin(0.5).setResolution(Z * 1.5).setDepth(33.2).setScrollFactor(0);
+      else if (d.tipo === "cor") { sl.g = s.add.graphics().setDepth(33.2).setScrollFactor(0); sl.g.fillStyle(d.cor).fillCircle(sl.x, sl.y, 11).lineStyle(2, TINTA).strokeCircle(sl.x, sl.y, 11); }
+      else sl.g = s.add.text(sl.x, sl.y + 1, String(d.num), { fontFamily: FONTE, fontSize: "20px", fontStyle: "800", color: "#ffffff" }).setOrigin(0.5).setResolution(Z).setDepth(33.2).setScrollFactor(0);
       s.tweens.add({ targets: sl.g, scale: { from: 1.8, to: 1 }, duration: 350, ease: "Back.easeOut" });
     });
   };
@@ -813,7 +816,7 @@ function sairEscada(andar) {
 function novoBarril() {
   const gota = Math.random() < (F.pulam || 0);
   const f = M.fonte;
-  const obj = cena.add.image(0, 0, gota ? "arca-gota" : "arca-barril").setDepth(15);
+  const obj = cena.add.image(0, 0, gota ? "arca-gota" : "arca-barril").setDepth(15).setScale(R / 14);
   barris.push({ x: f.x, y: yEm(f.seg, f.x) - R, dir: 1, seg: f.seg, vx: 0, vy: 0, gota, obj, rot: 0, hopT: Math.random(), hop: 0, pontuou: false, escada: null, vistas: new Set() });
   efeitos.arremesso();
 }
@@ -872,11 +875,11 @@ function atualizarBarris(dt) {
 function colidir(b) {
   const cx = b.x, cy = b.y - b.hop;
   if (p.invul <= 0) {
-    const nx = Math.max(p.x - 11, Math.min(p.x + 11, cx)), ny = Math.max(p.y - ALT_RB + 12, Math.min(p.y - 3, cy));
+    const nx = Math.max(p.x - 14, Math.min(p.x + 14, cx)), ny = Math.max(p.y - ALT_RB + 12, Math.min(p.y - 3, cy));
     if ((cx - nx) ** 2 + (cy - ny) ** 2 < (R - 3) ** 2) { atingido(b); return; }
   }
   // pulou por cima: pontos
-  if (!b.pontuou && !p.chao && !p.escada && Math.abs(cx - p.x) < 14 && cy > p.y && cy - p.y < 90) {
+  if (!b.pontuou && !p.chao && !p.escada && Math.abs(cx - p.x) < 18 && cy > p.y && cy - p.y < 120) {
     b.pontuou = true;
     sons.moeda();
     somar(100, p.x, p.y - ALT_RB - 10);
@@ -1013,7 +1016,7 @@ function chegar() {
     }
     // a Manchinha também fica feliz e pede desculpas
     desenharManchinha("feliz");
-    const sorry = s.add.text(s.mancha.c.x + 6, s.mancha.base - 82, "Sorry! 💜", { fontFamily: FONTE, fontSize: "15px", fontStyle: "800", color: "#5b2bb5", backgroundColor: "#ffffff", padding: { x: 6, y: 1 } }).setOrigin(0.5).setResolution(Z).setDepth(26).setAlpha(0);
+    const sorry = s.add.text(s.mancha.c.x + 6, s.mancha.base - 112, "Sorry! 💜", { fontFamily: FONTE, fontSize: "15px", fontStyle: "800", color: "#5b2bb5", backgroundColor: "#ffffff", padding: { x: 6, y: 1 } }).setOrigin(0.5).setResolution(Z).setDepth(26).setAlpha(0);
     s.tweens.add({ targets: sorry, alpha: 1, delay: 900, duration: 300 });
     for (const b of barris) s.tweens.add({ targets: b.obj, alpha: 0, scale: 0.2, duration: 400 });
     // arco-íris e a pombinha com o raminho
@@ -1031,7 +1034,7 @@ function chegar() {
 
 function abrirArcoIris(s) {
   const cores = [0xe8413c, 0xff7a00, 0xffcc1f, 0x3fae4a, 0x1e7bff, 0x5b3fd6, 0x8e6cff];
-  const cx = W / 2, cy = CHAO, r0 = 425; // nasce no chão, por cima da arca e atrás dos andaimes
+  const cx = W / 2, cy = TOPO + 420, r0 = 410; // atrás da arca: aparece dos dois lados da casa, sobre o casco
   const t0 = performance.now();
   const passo = () => {
     if (!s.arco?.active) return;

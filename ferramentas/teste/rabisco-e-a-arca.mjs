@@ -93,7 +93,7 @@ await foto(t, "arco-iris");
 ok(await ate(t, "!document.querySelector('.casca-vitoria')?.classList.contains('escondido')", 15000), "cartão de vitória aparece");
 await espera(1500);
 const vit = await t.ev("document.querySelector('.casca-vitoria').textContent");
-ok(vit.includes("Gênesis 1:31") && vit.includes("God saw all that he had made"), "versículo em português e em inglês no cartão");
+ok(vit.includes("baseado em Gênesis 1:31") && vit.includes("based on Genesis 1:31") && vit.includes("God looked at all he made"), "versículo (paráfrase) em português e em inglês no cartão");
 await foto(t, "versiculo");
 ok(t.erros.length === 0, `fase 1 sem erros ${t.erros.join(" | ")}`);
 await t.fechar();
