@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rádio do Carro</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: system-ui, sans-serif; }
+  body { background: linear-gradient(#9ed8ff 0 45%, #7cc46a 45% 100%); }
+  .estrada { position: fixed; left: 50%; bottom: 0; width: 70vw; height: 55vh; transform: translateX(-50%); background: #555; clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%); }
+  .estrada::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1.4vw; transform: translateX(-50%); background: repeating-linear-gradient(#ffd400 0 30px, transparent 30px 60px); }
+  .falso-mapa { position: fixed; right: 12px; top: 74px; width: 176px; height: 176px; border: 4px solid #1d1d2b; border-radius: 18px; background: #e8f3df; box-sizing: border-box; display: grid; place-items: center; font-weight: 700; color: #667; }
+  .falso-acao { position: fixed; right: 26px; bottom: 30px; padding: 10px 18px; border-radius: 999px; border: 4px solid #1d1d2b; background: #ffcc1f; font-weight: 800; }
+  .falsa-barra { position: fixed; left: 0; right: 0; top: 0; height: 62px; background: rgba(255,255,255,.6); display: flex; align-items: center; padding: 0 16px; font-weight: 800; }
+  .teste { position: fixed; left: 12px; top: 74px; max-width: min(380px, 52vw); background: rgba(255,255,255,.92); border: 3px solid #1d1d2b; border-radius: 14px; padding: 8px; font-size: 13px; }
+  .teste button { margin: 2px; padding: 6px 10px; font-size: 13px; }
+  .teste pre { margin: 6px 0 0; white-space: pre-wrap; font-size: 11px; max-height: 30vh; overflow: auto; }
+  @media (max-height: 500px) {
+    .falso-mapa { top: 60px; width: 112px; height: 112px; border-width: 3px; }
+    .falso-acao { right: 18px; bottom: 116px; }
+    .falsa-barra { height: 50px; }
+    .teste { top: 56px; font-size: 11px; } .teste button { padding: 3px 6px; font-size: 11px; } .teste pre { display: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="estrada"></div>
+  <div class="falsa-barra">Teste do rádio do carro</div>
+  <div class="falso-mapa">minimapa</div>
+  <div class="falso-acao">Sair do carro</div>
+  <div class="teste">
+    <button id="entrar">🚗 Entrar no carro</button><button id="sair">Sair</button>
+    <button id="ant">◀</button><button id="liga">⏻</button><button id="prox">▶</button><br>
+    <label>Volume <input id="vol" type="range" min="0" max="1" step="0.05" value="0.55"></label>
+    <button id="fala">🗣️ Segurar "fala" (ducking)</button>
+    <pre id="estado"></pre>
+  </div>
+<script type="module">
+  import { criarRadio, ESTACOES } from "./radio.js";
+  import { criarRadioUI } from "./radio-ui.js";
+  const radio = criarRadio();
+  const ui = criarRadioUI({ radio });
+  window.__radio = radio; window.__radioUI = ui; window.__ESTACOES = ESTACOES;
+  const $ = (s) => document.querySelector(s);
+  $("#entrar").onclick = () => ui.entrarNoCarro();
+  $("#sair").onclick = () => ui.sairDoCarro();
+  $("#liga").onclick = () => radio.alternar();
+  $("#prox").onclick = () => radio.proxima();
+  $("#ant").onclick = () => radio.anterior();
+  $("#vol").oninput = (e) => radio.volume(e.target.value);
+  let falando = false;
+  $("#fala").onclick = () => { falando = !falando; radio.pausarPorFala(falando); $("#fala").textContent = falando ? "🗣️ Soltar fala" : "🗣️ Segurar \"fala\" (ducking)"; };
+  setInterval(() => { $("#estado").textContent = JSON.stringify(radio.estado(), null, 1); }, 300);
+  if (new URLSearchParams(location.search).has("painel")) ui.mostrar();
+</script>
+</body>
+</html>
