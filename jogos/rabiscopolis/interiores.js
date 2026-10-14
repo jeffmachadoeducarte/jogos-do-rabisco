@@ -119,7 +119,7 @@ export function montarInterior(idPlanta) {
   // divisórias com vãos de porta
   for (const d of P.divisorias) {
     if (d.x != null) parede(fixo, solidosL, "z", d.x, L.z0, L.z1, [d.vao, ...(d.vao2 ? [d.vao2] : [])], P.comodos.find((c) => c.x0 === d.x)?.parede ?? 0xffffff);
-    else parede(fixo, solidosL, "x", d.z, d.x0, d.x1, [d.vao], 0xffffff);
+    else parede(fixo, solidosL, "x", d.z, d.x0, d.x1, [d.vao], 0xffffff, 1.1); // divisória de frente para a câmera: baixinha
   }
   // tapetinho de entrada
   const cap = caixa(1.6, 0.03, 0.9, mat(0xec2e8c), { sombra: false }); cap.position.set(P.porta[0], 0.03, L.z1 - 0.8); fixo.add(cap);

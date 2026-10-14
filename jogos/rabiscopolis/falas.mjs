@@ -15,6 +15,16 @@ export const FALAS_PT = {
   "rp-garagem": "Seu veículo chegou!",
   "rp-noite": "Boa noite! As janelas e os postes acenderam.",
   "rp-dia": "Bom dia, Rabiscolândia!",
+  "rp-casa-entrar": "Que casa gostosa! Chegue perto de um círculo amarelo e aperte a ação para decorar.",
+  "rp-casa-cor": "Casa pintadinha de cor nova!",
+  "rp-casa-movel": "Ficou lindo!",
+  "rp-heli": "Hélices girando! Para sair, pouse no chão.",
+  "rp-heli-pousar": "Primeiro pouse o helicóptero: segure para descer até encostar no chão.",
 };
+// quadros de versículo da casa (paráfrases para crianças, com a referência em que se baseiam)
+import { readFileSync } from "node:fs";
+const fonteMoveis = readFileSync(new URL("./moveis.js", import.meta.url), "utf8");
+const versos = [...fonteMoveis.matchAll(/\{ texto: "([^"]+)", ref: "([^"]+)" \}/g)];
+versos.forEach(([, texto, ref], i) => { FALAS_PT[`rp-versiculo-${i + 1}`] = `${texto} ${ref.replace(/^baseado/, "Baseado")}.`; });
 writeFileSync(new URL("./falas.json", import.meta.url), JSON.stringify({ pt: FALAS_PT }, null, 1) + "\n");
 console.log(`${Object.keys(FALAS_PT).length} falas em português`);

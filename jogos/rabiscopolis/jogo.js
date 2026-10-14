@@ -332,6 +332,7 @@ const plantaDe = (lote) => (lote.numero <= 8 ? "A" : "B");
 function trocarCorCasa(hex) {
   if (salvo.casa == null) return;
   salvo.corCasa = hex; salvar(salvo); aplicarCasa();
+  falar("rp-casa-cor");
   dizer("Rabifone", "Casa pintadinha de cor nova!", 2400);
 }
 function escurecer(cb) { fade.classList.add("ativo"); setTimeout(() => { cb(); setTimeout(() => fade.classList.remove("ativo"), 60); }, 260); }
@@ -355,7 +356,7 @@ function entrarCasa(c, imediato = false) {
     camera.st.yaw = Math.PI;
     minimapa.hidden = true;
     posicionarCamera(1, 0);
-    if (!entrarCasa.falou) { entrarCasa.falou = true; dizer("Minha casa", "Que casa gostosa! Chegue perto de um círculo amarelo e aperte a ação para decorar.", 4200); }
+    if (!entrarCasa.falou) { entrarCasa.falou = true; falar("rp-casa-entrar"); dizer("Minha casa", "Que casa gostosa! Chegue perto de um círculo amarelo e aperte a ação para decorar.", 4200); }
   };
   imediato ? fazer() : escurecer(fazer);
 }
@@ -415,7 +416,7 @@ function confirmarDeco(e) {
   trocarSolidosCasa([...emCasa.int.solidos, ...solidosDosMoveis(emCasa.int)]);
   // se o móvel novo ficou em cima do Rabisco, ele dá um passinho para o lado
   if (fis.bate(j.pos.x, j.pos.z, 0.1)) { const [lx, lz] = fis.livre(j.pos.x, j.pos.z, 0.5); j.pos.x = lx; j.pos.z = lz; }
-  if (e) { sons.moeda?.(); if (e.id === "quadro-versiculo") dizer("Quadro novo", `${VERSICULOS[e.variante ?? 0].texto} (${VERSICULOS[e.variante ?? 0].ref})`, 4800); }
+  if (e) { sons.moeda?.(); falar(e.id === "quadro-versiculo" ? `rp-versiculo-${(e.variante ?? 0) + 1}` : "rp-casa-movel"); if (e.id === "quadro-versiculo") dizer("Quadro novo", `${VERSICULOS[e.variante ?? 0].texto} (${VERSICULOS[e.variante ?? 0].ref})`, 4800); }
 }
 function morarAqui(c) {
   salvo.casa = c.lote.numero; salvo.corCasa = c.lote.hex;
@@ -447,6 +448,7 @@ function entrar(v) {
   toque?.modo(v.tipo === "heli" ? "heli" : "carro");
   if (v.tipo !== "heli") { garantirRadio(); radioUI.entrarNoCarro(); } // dentro do gesto da criança (ação/toque)
   if (v.tipo === "heli") {
+    falar("rp-heli");
     const toqueTela = document.body.classList.contains("touch"), comControle = document.body.classList.contains("com-controle");
     dizer("Rabiscolândia", toqueTela ? "Hélices girando! ▲ sobe, ▼ desce, ➤ voa para a frente. Para sair, pouse no chão." : comControle ? "Hélices girando! A sobe, LB desce, alavanca para a frente voa. Para sair, pouse no chão." : "Hélices girando! Espaço sobe, Shift desce, W voa para a frente. Para sair, pouse no chão.", 4600);
     return;
@@ -456,7 +458,7 @@ function entrar(v) {
 function sair() {
   const v = dentro;
   if (!v || Math.abs(v.vel) > 3) return;
-  if (v.tipo === "heli" && v.alt - fis.chaoHeli(v.pos.x, v.pos.z) > 0.3) { dizer("Rabiscolândia", "Primeiro pouse o helicóptero: segure para descer até encostar no chão.", 2600); return; }
+  if (v.tipo === "heli" && v.alt - fis.chaoHeli(v.pos.x, v.pos.z) > 0.3) { falar("rp-heli-pousar"); dizer("Rabiscolândia", "Primeiro pouse o helicóptero: segure para descer até encostar no chão.", 2600); return; }
   const lx = Math.cos(v.ang), lz = -Math.sin(v.ang), fx = Math.sin(v.ang), fz = Math.cos(v.ang);
   const lado = v.larg + 1.3;
   const op = [[lx * lado, lz * lado], [-lx * lado, -lz * lado], [-fx * (v.comp + 1.4), -fz * (v.comp + 1.4)], [fx * (v.comp + 1.4), fz * (v.comp + 1.4)]];
