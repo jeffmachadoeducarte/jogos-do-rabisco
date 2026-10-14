@@ -7,15 +7,16 @@ import { THREE } from "./base3d.js";
 export function criarCamera(cam, solidos) {
   const alvo = new THREE.Vector3(), posCam = new THREE.Vector3(), tmpA = new THREE.Vector3(), tmpP = new THREE.Vector3();
   const st = { yaw: 0, manual: 0, vista: null };
-  // P = posição do jogador · ref = para onde ele/veículo olha · giro: −1..1 por segundo · arrasto: px
-  function posicionar({ P, ref, dirigindo, andando, giro = 0, arrasto = 0, onibus = false, heli = false }, k, dt) {
+  // P = posição do jogador (com 2 jogadores, o meio dos dois) · ref = para onde ele/veículo olha · giro: −1..1 por segundo
+  // · arrasto: px · afastar: metros a mais de distância para caber os dois na tela
+  function posicionar({ P, ref, dirigindo, andando, giro = 0, arrasto = 0, onibus = false, heli = false, afastar = 0 }, k, dt) {
     if (st.vista) { cam.position.set(...st.vista.pos); cam.lookAt(...st.vista.alvo); return; }
     if (giro || arrasto) { st.yaw -= giro * dt * 2.2 + arrasto * 0.008; st.manual = 2.5; }
     st.manual -= dt;
     if (st.manual <= 0 && (andando || dirigindo)) { let d = ref - st.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); st.yaw += d * Math.min(1, dt * (dirigindo ? 2.5 : 1.2)); }
     const longe = cam.aspect < 1.2 ? 1.25 : 1;
-    let dist = (dirigindo ? (heli ? 11 : onibus ? 7.8 : 8.6) : 6.4) * longe;
-    const alt = dirigindo ? (heli ? 6.2 : onibus ? 4.6 : 3.8) : 3.0;
+    let dist = (dirigindo ? (heli ? 11 : onibus ? 7.8 : 8.6) : 6.4) * longe + afastar;
+    const alt = (dirigindo ? (heli ? 6.2 : onibus ? 4.6 : 3.8) : 3.0) + afastar * 0.45;
     for (let s = 1; s <= 10; s++) {
       const d = (dist * s) / 10;
       const x = P.x - Math.sin(st.yaw) * d, z = P.z - Math.cos(st.yaw) * d;

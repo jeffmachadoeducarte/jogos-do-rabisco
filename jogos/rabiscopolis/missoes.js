@@ -202,9 +202,10 @@ export function criarMissoes(ctx) {
   }
 
   // o que a ação faz agora (só a pé; tem prioridade sobre veículos, lugares e casas)
-  function contexto() {
-    if (veiculoAtual()) return null;
-    const p = pos();
+  // p: de quem é a ação (o Rabisco, ou o jogador 2 a pé: os dois podem fazer missões)
+  function contexto(p = null) {
+    if (!p && veiculoAtual()) return null;
+    p ??= pos();
     if (!ativa) {
       for (const M of MISSOES) {
         const n = npcs.get(`${M.id}:${M.quem}`); if (!n || !n.g.visible) continue;
@@ -281,7 +282,8 @@ export function criarMissoes(ctx) {
     if (E.tipo === "seguir" || E.tipo === "faixa") {
       const quem = E.quem ?? E.com, n = npcDe(ativa, quem);
       const [nx, nz] = npcPos(n);
-      if (!n.seguindo && !veiculoAtual() && Math.hypot(p.x - nx, p.z - nz) < 3.2) {
+      const p2 = ctx.pos2?.();
+      if (!n.seguindo && !veiculoAtual() && (Math.hypot(p.x - nx, p.z - nz) < 3.2 || (p2 && Math.hypot(p2.x - nx, p2.z - nz) < 3.2))) {
         n.seguindo = true; sons.pulo(); n.m?.acenar(2);
         if (n.dados.naArvore) { n.g.position.y = 0.07; n.m.pular(); }
         dizer(nomeDe(quem), E.tipo === "faixa" ? "Vamos juntos! Só atravessamos na faixa, com o bonequinho verde." : n.bicho ? "Ela vem pulando atrás de você!" : "Oba! Vou com você.", 3000);

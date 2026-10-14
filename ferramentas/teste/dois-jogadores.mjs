@@ -206,3 +206,132 @@ if (quer("tv")) {
   ok(!s.erros.length && !(await s.ev("!!document.querySelector('.tv-sugestao')")), "TV: sem as APIs (iPhone) nada quebra e nada é sugerido");
   await s.fechar();
 }
+
+// ------------------------------------------------------------------ Rabiscolândia (Fatia 7): 2 jogadores, carona, missões a 2
+// com 1 jogador só o Rabisco; o jogador 2 escolhe a criança do cadastro ou um amigo do estojo; câmera enquadra os dois
+if (quer("rabiscolandia")) {
+  const URL_RP = `${BASE}/jogos/rabiscopolis/?teste&fixo`;
+  const comecar = async (t) => { await ate(t, "!!window.teste && !!document.querySelector('.casca-abertura .botao')"); await t.ev(`document.querySelector('.casca-abertura .botao.respira, .casca-abertura .casca-nivel').click()`); };
+  const errosRP = (t) => t.erros.filter((e) => !/assets\/voz\/(rp-|nomes\/)/.test(e));
+  const aperta = async (t, p, b) => { await t.ev(`__btn(${p}, ${b}, true)`); await espera(220); await t.ev(`__btn(${p}, ${b}, false)`); await espera(250); };
+  // 1 jogador: só o Rabisco
+  {
+    const t = await abrir2(`${URL_RP}&jogadores=1`, { pads: 1, antes: CADASTRO, largura: 1280, altura: 720 });
+    await comecar(t);
+    await ate(t, "teste.vivo", 40000); await espera(2500);
+    ok(await t.ev("!teste.dois && !teste.j2.escolhendo && !document.querySelector('.escolha-j2-rp')"), "Rabiscolândia: com 1 jogador só o Rabisco (sem jogador 2 nem escolha)");
+    ok(!errosRP(t).length, "Rabiscolândia (1 jogador): sem erros " + errosRP(t).join(" ; "));
+    await t.fechar();
+  }
+  // 2 controles no computador
+  {
+    const t = await abrir2(URL_RP, { pads: 2, antes: CADASTRO, largura: 1280, altura: 720 });
+    await ate(t, "!!window.teste && !!document.querySelector('[data-jogadores]')");
+    await t.ev(`document.querySelector('[data-jogadores="2"]').click()`); await espera(300);
+    await comecar(t);
+    ok(await ate(t, "teste.vivo && teste.j2.escolhendo", 40000), "Rabiscolândia: o jogador 2 entra e escolhe quem quer ser");
+    await espera(1200);
+    const ops = await t.ev("teste.j2.opcoes()");
+    ok(ops[0] === "crianca" && ["lapis", "giz", "borracha", "caderno"].every((x) => ops.includes(x)), `Rabiscolândia: opções = a criança do cadastro + amigos do estojo (${ops.join(", ")})`);
+    await foto(t, "rabiscolandia-escolha-j2.png");
+    await t.ev("__eixo(1, 1, 0)"); await espera(300); await t.ev("__eixo(1, 0, 0)"); await espera(200);
+    await aperta(t, 1, 2);
+    ok(await ate(t, "teste.dois && teste.j2.escolha === 'lapis'", 3000), "Rabiscolândia: ▶ e X do controle 2 escolhem o Lápis Rosa");
+    await espera(1500);
+    const a0 = await t.ev("[teste.j2.pos.x, teste.j2.pos.z, teste.j.pos.x, teste.j.pos.z]");
+    await t.ev("__eixo(1, 0, -1)"); await espera(1500); await t.ev("__eixo(1, 0, 0)");
+    const a1 = await t.ev("[teste.j2.pos.x, teste.j2.pos.z, teste.j.pos.x, teste.j.pos.z]");
+    ok(Math.hypot(a1[0] - a0[0], a1[1] - a0[1]) > 1 && Math.hypot(a1[2] - a0[2], a1[3] - a0[3]) < 0.3, `Rabiscolândia: controle 2 move só o jogador 2 (${Math.hypot(a1[0] - a0[0], a1[1] - a0[1]).toFixed(1)} m)`);
+    await t.ev("__eixo(0, 1, 0)"); await espera(1500); await t.ev("__eixo(0, 0, 0)");
+    const a2 = await t.ev("[teste.j2.pos.x, teste.j2.pos.z, teste.j.pos.x, teste.j.pos.z]");
+    ok(Math.hypot(a2[2] - a1[2], a2[3] - a1[3]) > 1, "Rabiscolândia: controle 1 move o Rabisco");
+    ok(Math.hypot(a2[0] - a2[2], a2[1] - a2[3]) <= 11.3, `Rabiscolândia: o jogador 2 fica a no máximo 11 m (${Math.hypot(a2[0] - a2[2], a2[1] - a2[3]).toFixed(1)} m)`);
+    ok((await t.ev("teste.naTela")).every(Boolean), "Rabiscolândia: a câmera enquadra os dois");
+    await foto(t, "rabiscolandia-2-jogadores.png");
+    await aperta(t, 1, 2);
+    ok(await t.ev("teste.j2.acena > 0"), "Rabiscolândia: ação do jogador 2 longe de missão = acenar");
+    // orçamento com os dois na praça
+    await t.ev("teste.ir(0, 33); teste.olhar(Math.PI); teste.j2.colocarPerto()"); await espera(1500);
+    const m2 = await t.ev("teste.medir().semSombra");
+    ok(m2.calls <= 250 && m2.tris <= 350000, `Rabiscolândia: orçamento TV com 2 jogadores na praça ${m2.calls} chamadas, ${Math.round(m2.tris / 1000)} mil triângulos`);
+    // missão pela ação do jogador 2: o Pastor Lápis pede para ele
+    await t.ev("(() => { const n = teste.missoes.npc('ovelha', 'pastor'); teste.ir(n.x + 6, n.z + 4); })()"); await espera(900);
+    await t.ev("(() => { const n = teste.missoes.npc('ovelha', 'pastor'); teste.j2.st.pos.set(n.x + 1.2, 0.07, n.z + 1); })()"); await espera(700);
+    const rot = await t.ev("document.querySelector('.acao-j2-rp:not([hidden])')?.textContent || ''");
+    await aperta(t, 1, 2);
+    ok(rot.includes("ovelhinha") && await t.ev("teste.missoes.ativa === 'ovelha'"), `Rabiscolândia: o jogador 2 aceita a missão pela ação dele ("${rot.trim()}")`);
+    await foto(t, "rabiscolandia-j2-missao.png");
+    await t.ev("teste.missoes.largar()");
+    // carona no carro: A buzina, X acena
+    await t.ev("teste.ir(4, 33); teste.entrar(0)"); await espera(900);
+    ok(await t.ev("teste.j2.sentado"), "Rabiscolândia: o jogador 2 vai de carona no carro");
+    await aperta(t, 1, 0); const buz = await t.ev("teste.j2.buzina > 0");
+    await aperta(t, 1, 2);
+    ok(buz && await t.ev("teste.j2.acena > 0"), "Rabiscolândia: no carro o jogador 2 buzina (A) e acena (X)");
+    await t.ev("teste.volante(1, 0)"); await espera(1500); await t.ev("teste.volante(0, 0)"); await espera(700);
+    await foto(t, "rabiscolandia-carona.png");
+    await t.ev("teste.volante(null); teste.sair()"); await espera(500);
+    ok(await t.ev("teste.j2.aPe && !teste.j2.sentado"), "Rabiscolândia: desceram os dois");
+    // bicicleta (sem banco de carona): o jogador 2 vem correndo atrás
+    const ib = await t.ev("teste.veiculos.findIndex((v) => v.tipo === 'bici')");
+    await t.ev(`teste.entrar(${ib}); teste.volante(1, 0)`); await espera(2500); await t.ev("teste.volante(null)"); await espera(600);
+    const db = await t.ev(`Math.hypot(teste.j2.pos.x - teste.j.pos.x, teste.j2.pos.z - teste.j.pos.z)`);
+    ok(await t.ev("teste.j2.seguindo") && db < 7, `Rabiscolândia: na bicicleta o jogador 2 vem correndo atrás (${db.toFixed(1)} m)`);
+    await t.ev("teste.sair()"); await espera(400);
+    // por dentro: entra junto na padaria
+    await t.ev("teste.entrarLugar('padaria')"); await espera(1500);
+    const dl = await t.ev("Math.hypot(teste.j2.pos.x - teste.j.pos.x, teste.j2.pos.z - teste.j.pos.z)");
+    ok(dl < 4, `Rabiscolândia: na padaria o jogador 2 entra junto (${dl.toFixed(1)} m do Rabisco)`);
+    await foto(t, "rabiscolandia-2-jogadores-padaria.png");
+    await t.ev("teste.sairLugar()"); await espera(1200);
+    ok(await t.ev("Math.hypot(teste.j2.pos.x - teste.j.pos.x, teste.j2.pos.z - teste.j.pos.z) < 4"), "Rabiscolândia: e sai junto");
+    // controle 2 caiu: aviso amigável; voltou: segue
+    await t.ev("__desconecta(1)"); await espera(900);
+    ok(await t.ev(`!!document.querySelector('.jog-aviso:not([hidden])')?.textContent.includes('desconectou')`), "Rabiscolândia: controle do jogador 2 caiu → aviso amigável");
+    await t.ev("__reconecta(1)"); await espera(900);
+    ok(await t.ev(`!document.querySelector('.jog-aviso:not([hidden])')`), "Rabiscolândia: controle de volta fecha o aviso");
+    ok(!errosRP(t).length, "Rabiscolândia (2 controles): sem erros " + errosRP(t).join(" ; "));
+    await t.fechar();
+  }
+  // teclado dividido no computador: jogador 2 = WASD + F
+  {
+    const k = await abrir2(`${URL_RP}&jogadores=2`, { pads: 0, antes: CADASTRO, largura: 1280, altura: 720 });
+    await ate(k, "!!window.teste && !!document.querySelector('[data-jogadores]')");
+    ok(await k.ev(`document.querySelector('.jog-quem [data-jogador="2"]')?.dataset.entrada`) === "teclado", "Rabiscolândia: sem controle → jogador 2 no teclado (WASD)");
+    await comecar(k);
+    await ate(k, "teste.vivo && teste.j2.escolhendo", 40000); await espera(1200);
+    await tecla(k, "KeyD", "keyDown"); await espera(200); await tecla(k, "KeyD", "keyUp"); await espera(150);
+    await tecla(k, "KeyD", "keyDown"); await espera(200); await tecla(k, "KeyD", "keyUp"); await espera(150);
+    await tecla(k, "KeyF", "keyDown"); await espera(200); await tecla(k, "KeyF", "keyUp");
+    ok(await ate(k, "teste.dois && teste.j2.escolha === 'giz'", 3000), `Rabiscolândia: D D F escolhe o Giz Azul (${await k.ev("teste.j2.escolha")})`);
+    await espera(1500);
+    const b0 = await k.ev("[teste.j2.pos.x, teste.j2.pos.z, teste.j.pos.x, teste.j.pos.z]");
+    await tecla(k, "KeyW", "keyDown"); await espera(1500); await tecla(k, "KeyW", "keyUp");
+    const b1 = await k.ev("[teste.j2.pos.x, teste.j2.pos.z, teste.j.pos.x, teste.j.pos.z]");
+    ok(Math.hypot(b1[0] - b0[0], b1[1] - b0[1]) > 1 && Math.hypot(b1[2] - b0[2], b1[3] - b0[3]) < 0.3, "Rabiscolândia: W move só o jogador 2");
+    await tecla(k, "ArrowUp", "keyDown"); await espera(1500); await tecla(k, "ArrowUp", "keyUp");
+    const b2 = await k.ev("[teste.j.pos.x, teste.j.pos.z]");
+    ok(Math.hypot(b2[0] - b1[2], b2[1] - b1[3]) > 1, "Rabiscolândia: seta ↑ move o Rabisco");
+    await foto(k, "rabiscolandia-teclado-dividido.png");
+    ok(!errosRP(k).length, "Rabiscolândia (teclado dividido): sem erros " + errosRP(k).join(" ; "));
+    await k.fechar();
+  }
+  // tablet com 1 controle: o controle é do jogador 2 (Alice, a criança do cadastro) e o Rabisco é do toque
+  {
+    const c = await abrir2(URL_RP, { pads: 1, antes: CADASTRO, mobile: true, largura: 1180, altura: 820 });
+    await ate(c, "!!window.teste && !!document.querySelector('[data-jogadores]')");
+    await c.ev(`document.querySelector('[data-jogadores="2"]').click()`); await espera(300);
+    await c.ev(`document.querySelector('.casca-abertura .botao.respira, .casca-abertura .casca-nivel').click()`);
+    ok(await ate(c, "teste.vivo && teste.j2.escolhendo", 40000), "Rabiscolândia (tablet + 1 controle): o controle é do jogador 2 e ele escolhe");
+    await espera(1000);
+    await c.ev("__btn(0, 0, true)"); await espera(220); await c.ev("__btn(0, 0, false)");
+    ok(await ate(c, "teste.dois && teste.j2.escolha === 'crianca'", 4000), "Rabiscolândia: A escolhe a Alice (criança do cadastro, com crachá)");
+    await c.ev("teste.ir(0, 33); teste.olhar(Math.PI); teste.j2.colocarPerto()"); await espera(2500);
+    const mc = await c.ev("teste.medir().semSombra");
+    ok(mc.calls <= 180 && mc.tris <= 350000, `Rabiscolândia: orçamento celular com 2 jogadores na praça ${mc.calls} chamadas (≤ 180), ${Math.round(mc.tris / 1000)} mil triângulos`);
+    await foto(c, "rabiscolandia-tablet-alice.png");
+    ok(!errosRP(c).length, "Rabiscolândia (tablet): sem erros " + errosRP(c).join(" ; "));
+    await c.fechar();
+  }
+}
+console.log(falhas ? `\n${falhas} falha(s)` : "\ntudo certo");
