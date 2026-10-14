@@ -504,7 +504,7 @@ function trocarConta(p) {
     m.material.map = MODO.placa(p.conta.lista[k]);
     m.material.needsUpdate = true;
   });
-  p.perguntado = false;
+  p.perguntado = false; p.perguntou = {};
 }
 
 // ------------------------------------------------------------------ Karts
@@ -731,6 +731,7 @@ function reiniciarCorrida() {
   $("resultado").classList.add("escondido");
   $("hud").classList.add("escondido");
   $("pergunta").classList.remove("ativa");
+  $("pergunta-j2")?.classList.remove("ativa");
   $("contagem").textContent = "";
 }
 $("de-novo").addEventListener("click", () => { reiniciarCorrida(); comecar(); });
@@ -897,7 +898,7 @@ function responder(p, lat, k = jogador) {
     if (c.quase) falar(c.quase);
     mensagem(`${quem}Quase! ${c.resposta}`, "quase", 2200);
   }
-  $("pergunta").classList.remove("ativa");
+  balaoDe(k).classList.remove("ativa");
   setTimeout(() => trocarConta(p), 400);
 }
 
@@ -905,14 +906,21 @@ function perguntar(dt) {
   for (const h of [jogador, kartJ2?.humano ? kartJ2 : null]) if (h) perguntarPara(h);
   void dt;
 }
+// balão do pedido: um por jogador (o do jogador 2 fica na metade dele, dentro do #hud-j2)
+const balaoDe = (k) => (k === kartJ2 && kartJ2?.humano ? $("pergunta-j2") : null) || $("pergunta");
+// 🔊 no balão: repete a palavra em inglês
+$("hud").addEventListener("click", (e) => { const b = e.target.closest?.(".ouvir"); if (b?.dataset.fala) falar(b.dataset.fala); });
 function perguntarPara(jogador) {
   const prox = porticos[jogador.proximoPortico];
   if (!prox || jogador.terminou) return;
   const faltam = idx(prox.i - jogador.amostra) * PASSO;
-  if (!prox.perguntado && faltam < Math.max(140, jogador.vel * 6.5)) {
+  const quem = jogador.humano || 1; // cada jogador é perguntado uma vez em cada pórtico
+  if (!prox.perguntou?.[quem] && faltam < Math.max(140, jogador.vel * 6.5)) {
+    (prox.perguntou ??= {})[quem] = true;
     prox.perguntado = true;
-    $("pergunta").innerHTML = prox.conta.hud;
-    $("pergunta").classList.add("ativa");
+    const balao = balaoDe(jogador);
+    balao.innerHTML = prox.conta.hud;
+    balao.classList.add("ativa");
     if (prox.conta.fala) falar(prox.conta.fala);
   }
 }
@@ -1079,7 +1087,7 @@ function atualizarCamera(dt, t) {
     }
   } else {
     desejoPos = k.pos.clone().addScaledVector(frente, -7).setY(3.3);
-    desejoAlvo = k.pos.clone().addScaledVector(frente, 6).setY(1.9);
+    desejoAlvo = k.pos.clone().addScaledVector(frente, 6).setY(2.5); // olha um pouco mais alto: pista e pórticos descem na tela, longe do balão do pedido
   }
   const s = anguloTeste != null ? 30 : estado === "contagem" ? 2.2 : estado === "corrida" ? 12 : 4;
   camPos.lerp(desejoPos, 1 - Math.exp(-dt * s));
@@ -1139,7 +1147,7 @@ function ajustarTelaDividida() {
   if (dividida && !hudJ2) {
     hudJ2 = document.createElement("div");
     hudJ2.id = "hud-j2";
-    hudJ2.innerHTML = `<div class="divisoria"></div><div class="tag tag-j1"></div><div class="tag tag-j2"></div><div class="placar-j2"><div class="pos"></div><div class="volta"></div></div>`;
+    hudJ2.innerHTML = `<div class="divisoria"></div><div id="pergunta-j2" class="pergunta"></div><div class="tag tag-j1"></div><div class="tag tag-j2"></div><div class="placar-j2"><div class="pos"></div><div class="volta"></div></div>`;
     $("hud").append(hudJ2);
   }
   if (hudJ2) {
@@ -1155,7 +1163,7 @@ function atualizarCamera2(dt) {
   const k = kartJ2;
   const frente = new THREE.Vector3(Math.sin(k.ang), 0, Math.cos(k.ang));
   camPos2.lerp(k.pos.clone().addScaledVector(frente, -7).setY(3.3), 1 - Math.exp(-dt * (estado === "contagem" ? 2.2 : 12)));
-  camAlvo2.lerp(k.pos.clone().addScaledVector(frente, 6).setY(1.9), 1 - Math.exp(-dt * (estado === "contagem" ? 3 : 16)));
+  camAlvo2.lerp(k.pos.clone().addScaledVector(frente, 6).setY(2.5), 1 - Math.exp(-dt * (estado === "contagem" ? 3 : 16)));
   camera2.position.copy(camPos2);
   camera2.lookAt(camAlvo2);
   const fov = (ladoALado() ? 62 : 48) + (k.turbo > 0 ? 12 : 0) + Math.min(1, k.vel / VMAX) * 4;

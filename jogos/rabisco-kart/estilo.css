@@ -44,21 +44,31 @@ html, body {
 #posicao { font-size: clamp(56px, 10vw, 110px); color: var(--amarelo); }
 #volta { font-size: clamp(22px, 3.4vw, 36px); margin-top: 6px; }
 
+/* balão do pedido: compacto, no alto à esquerda (ao lado do placar), para nunca tapar o pórtico e as placas no meio da pista */
 .pergunta {
-  position: absolute; top: 18px; left: 50%;
-  transform: translateX(-50%) scale(0);
+  position: absolute; top: 14px; left: clamp(150px, 13vw, 250px);
+  transform: scale(0); transform-origin: left top;
+  max-width: min(34vw, 460px);
   background: #fff;
-  border: 6px solid var(--tinta);
-  box-shadow: 0 8px 0 var(--tinta);
-  border-radius: 999px;
-  padding: 2px 34px 6px;
-  font-size: clamp(40px, 7vw, 76px);
+  border: 4px solid var(--tinta);
+  box-shadow: 0 5px 0 var(--tinta);
+  border-radius: 28px;
+  padding: 0 18px 3px;
+  font-size: clamp(24px, 2.6vw, 40px);
+  line-height: 1.15;
   font-weight: 800;
   color: var(--rosa);
-  white-space: nowrap;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.pergunta.ativa { transform: translateX(-50%) scale(1); }
+.pergunta.ativa { transform: scale(1); }
+.pergunta .ouvir {
+  pointer-events: auto; cursor: pointer; flex: none;
+  width: 46px; height: 46px; min-width: 44px; min-height: 44px; margin: 2px 0 0 -10px; padding: 0;
+  border-radius: 50%; border: 3px solid var(--tinta); background: var(--amarelo);
+  font-size: 24px; line-height: 1; display: grid; place-items: center;
+}
+.pergunta .ouvir:active { transform: scale(0.92); }
 .pergunta .q { color: var(--ciano); }
 
 #mapa {
@@ -265,7 +275,7 @@ body:has(.tela:not(.escondido)) #som { top: calc(env(safe-area-inset-top, 0px) +
   #abertura .dica { margin-top: 10px; font-size: 14px; }
   .toque button { width: 96px; height: 96px; font-size: 42px; }
   #posicao { font-size: clamp(44px, 14vh, 80px); }
-  .pergunta { font-size: clamp(30px, 11vh, 56px); padding: 0 24px 4px; border-width: 5px; }
+  .pergunta { font-size: clamp(20px, 7.5vh, 30px); padding: 0 14px 2px; border-width: 3px; border-radius: 22px; left: clamp(120px, 15vw, 170px); top: 10px; max-width: 42vw; }
   #mapa { width: clamp(90px, 22vh, 140px); }
   #res-trofeu { font-size: clamp(44px, 14vh, 80px); }
   #res-lugar { font-size: clamp(38px, 13vh, 70px); }
@@ -274,7 +284,7 @@ body:has(.tela:not(.escondido)) #som { top: calc(env(safe-area-inset-top, 0px) +
 @media (max-width: 760px) and (orientation: portrait) {
   #abertura { justify-content: center; }
   #abertura h1 { font-size: clamp(54px, 16vw, 90px); }
-  .pergunta { font-size: clamp(30px, 9vw, 52px); top: 120px; }
+  .pergunta { font-size: clamp(22px, 6vw, 34px); top: 120px; left: 12px; max-width: 70vw; }
   .placar { top: 10px; }
 }
 
@@ -285,9 +295,9 @@ body:has(.tela:not(.escondido)) #som { top: calc(env(safe-area-inset-top, 0px) +
   -webkit-text-stroke: 3px var(--tinta); paint-order: stroke fill; text-shadow: 0 5px 0 var(--tinta);
 }
 #amigos[hidden] { display: none; }
-.pergunta .bolinha { display: inline-block; width: 0.8em; height: 0.8em; border-radius: 50%; border: 5px solid var(--tinta); vertical-align: -0.05em; }
+.pergunta .bolinha { display: inline-block; width: 0.8em; height: 0.8em; border-radius: 50%; border: 3px solid var(--tinta); vertical-align: -0.05em; }
 .pergunta .amigos { letter-spacing: -0.1em; font-size: 0.8em; }
-.pergunta .frase { color: var(--tinta); font-size: 0.62em; }
+.pergunta .frase { color: var(--tinta); font-size: 0.85em; }
 @media (max-height: 520px) { #amigos { font-size: clamp(24px, 9vh, 40px); top: calc(clamp(90px, 22vh, 140px) + 26px); } }
 
 /* ---------- Pistas (pistas.js) ---------- */
@@ -339,7 +349,11 @@ body.kart-lado #hud-j2 .placar-j2 { left: calc(50% + 16px); top: 14px; }
 body.kart-dividido #posicao { font-size: clamp(44px, 7vw, 80px); }
 body.kart-dividido #volta { font-size: clamp(18px, 2.6vw, 28px); }
 body.kart-dividido #mapa { width: clamp(90px, 11vw, 150px); }
-body.kart-dividido .pergunta { font-size: clamp(28px, 4.5vw, 52px); }
+body.kart-dividido .pergunta { font-size: clamp(20px, 2.2vw, 30px); top: 10px; left: clamp(110px, 12vw, 190px); max-width: 38vw; }
+/* tela dividida: o balão de cada jogador fica no canto da metade dele, ao lado do placar */
+#hud-j2 .pergunta { top: calc(50% + 10px); left: clamp(110px, 12vw, 190px); }
+body.kart-lado .pergunta { max-width: calc(50vw - clamp(110px, 12vw, 190px) - 12px); font-size: clamp(18px, 2.4vw, 28px); }
+body.kart-lado #hud-j2 .pergunta { top: 10px; left: calc(50% + clamp(110px, 12vw, 190px)); }
 body.kart-dividido .toque button { opacity: 0.6; }
 /* no toque os botões ◀ ▶ ficam nos cantos de baixo: as etiquetas vão para o meio de cada metade */
 body.touch #hud-j2 .tag { right: auto; left: 50%; transform: translateX(-50%); }

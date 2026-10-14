@@ -109,7 +109,7 @@ export const MODOS = {
     pergunta() {
       const [palavra, e] = this.palavras[sorteio(this.palavras.length)];
       const t = tres(e, this.palavras.map((p) => p[1]));
-      return { ...t, hud: `🔊 <span class="q">${palavra.toUpperCase()}</span>`, fala: `en-${palavra}`, resposta: `${palavra.toUpperCase()}!`, quase: `en-${palavra}` };
+      return { ...t, hud: `<button type="button" class="ouvir" data-fala="en-${palavra}" aria-label="Ouvir de novo">🔊</button> <span class="q">${palavra.toUpperCase()}</span>`, fala: `en-${palavra}`, resposta: `${palavra.toUpperCase()}!`, quase: `en-${palavra}` };
     },
     placa: (e) => placaEmoji(e),
   },
