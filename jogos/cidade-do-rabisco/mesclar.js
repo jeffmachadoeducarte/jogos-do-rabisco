@@ -7,6 +7,22 @@ export function chaveMaterial(m) {
   return [m.type, c(m.color), m.map?.uuid ?? "", c(m.emissive), m.emissiveIntensity ?? "", m.emissiveMap?.uuid ?? "", m.roughness ?? "", m.metalness ?? "",
     m.transparent, m.opacity, m.side, m.flatShading, m.vertexColors, m.alphaTest, m.depthWrite, m.gradientMap?.uuid ?? ""].join("|");
 }
+// material de cor lisa (sem textura, opaco): peças assim, de cores diferentes mas com o mesmo "acabamento", viram
+// uma malha só com a cor de cada peça gravada nos vértices (o desenho fica igual: a cor do vértice multiplica o
+// branco do material)
+export function corLisa(m) {
+  return (m.isMeshStandardMaterial || m.isMeshToonMaterial) && !m.map && !m.emissiveMap && !m.vertexColors && !m.transparent && !m.alphaTest && m.opacity === 1;
+}
+export function chaveVC(m) {
+  const c = (v) => (v?.isColor ? v.getHexString() : "");
+  return ["VC", m.type, c(m.emissive), m.emissiveIntensity ?? "", m.roughness ?? "", m.metalness ?? "", m.side, m.flatShading, m.depthWrite, m.gradientMap?.uuid ?? ""].join("|");
+}
+const matsVC = new Map();
+export function materialVC(m) {
+  const k = chaveVC(m);
+  if (!matsVC.has(k)) { const n = m.clone(); n.color = new THREE.Color(0xffffff); n.vertexColors = true; n.needsUpdate = true; matsVC.set(k, n); }
+  return matsVC.get(k);
+}
 // junta, dentro de um grupo que se move inteiro (carro, helicóptero), as peças de material igual (ex.: as 4 rodas do
 // carro da rua viram 1 malha), com a posição relativa ao grupo; "manter" (e o que estiver dentro deles, ou marcado
 // userData.dinamico) fica separado: rodas que giram, volante, seta, rotor
@@ -20,15 +36,16 @@ export function mesclarLocal(g, manter = []) {
     for (let p = o; p && p !== g; p = p.parent) if (fora.has(p) || p.userData.dinamico) return;
     const m = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
     if (m.determinant() <= 0) return;
-    const k = `${chaveMaterial(o.material)}#${o.castShadow}${o.receiveShadow}#${Object.keys(o.geometry.attributes).sort().join(",")}#${o.renderOrder}`;
+    const vc = corLisa(o.material);
+    const k = `${vc ? chaveVC(o.material) : chaveMaterial(o.material)}#${o.castShadow}${o.receiveShadow}#${Object.keys(o.geometry.attributes).sort().join(",")}#${o.renderOrder}`;
     if (!grupos.has(k)) grupos.set(k, []);
-    grupos.get(k).push({ o, m });
+    grupos.get(k).push({ o, m, cor: vc ? o.material.color : null });
   });
   const tirar = [];
   for (const lista of grupos.values()) {
     if (lista.length < 2) continue;
-    const geo = juntarGeometrias(lista.map(({ o, m }) => ({ o, ini: 0, n: o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count, m })));
-    const o0 = lista[0].o, nova = new THREE.Mesh(geo, o0.material);
+    const geo = juntarGeometrias(lista.map(({ o, m, cor }) => ({ o, ini: 0, n: o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count, m, cor })));
+    const o0 = lista[0].o, nova = new THREE.Mesh(geo, lista[0].cor ? materialVC(o0.material) : o0.material);
     nova.castShadow = o0.castShadow; nova.receiveShadow = o0.receiveShadow; nova.renderOrder = o0.renderOrder;
     for (const { o } of lista) tirar.push(o);
     g.add(nova);
@@ -61,6 +78,11 @@ export function juntarGeometrias(malhas) {
   }
   const geo = new THREE.BufferGeometry();
   for (const nome of nomes) geo.setAttribute(nome, new THREE.BufferAttribute(saida[nome], malhas[0].o.geometry.attributes[nome].itemSize));
+  if (malhas[0].cor) { // cor de cada peça gravada nos vértices (materialVC)
+    const cores = new Float32Array(nv * 3); let k = 0;
+    for (const { o, cor } of malhas) for (let i = 0; i < o.geometry.attributes.position.count; i++) { cores[k++] = cor.r; cores[k++] = cor.g; cores[k++] = cor.b; }
+    geo.setAttribute("color", new THREE.BufferAttribute(cores, 3));
+  }
   geo.setIndex(new THREE.BufferAttribute(indice, 1));
   geo.computeBoundingSphere(); geo.computeBoundingBox();
   return geo;

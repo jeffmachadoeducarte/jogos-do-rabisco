@@ -696,11 +696,11 @@ function luzDe(s, eixo, t) {
 }
 function atualizarSemaforos(t) {
   for (const s of mundo.semaforos) {
-    for (const p of s.postes) {
-      const luz = luzDe(s, p.userData.eixo, t);
-      for (const [nome, m] of Object.entries(p.userData.luzes)) m.material.emissiveIntensity = nome === luz ? 2.2 : 0;
-      // bonequinho: verde quando os carros que este poste controla estão parados
-      p.userData.ped.material.emissive.setHex(luz === "vermelho" ? 0x30ff60 : 0xff3030);
+    for (const eixo of ["x", "z"]) { // as luzes de cada sentido são uma malha por cor (cidade.js)
+      const luz = luzDe(s, eixo, t);
+      for (const [nome, m] of Object.entries(s.luzes[eixo])) m.material.emissiveIntensity = nome === luz ? 2.2 : 0;
+      // bonequinho: verde quando os carros que este sentido controla estão parados
+      s.peds[eixo].material.emissive.setHex(luz === "vermelho" ? 0x30ff60 : 0xff3030);
     }
   }
 }
@@ -1205,6 +1205,10 @@ function escolherCarro(CN, c, t) {
   if (CN.fase !== "escolher") return;
   CN.escolhido = c; CN.fase = "chave";
   c.placa.removeFromParent();
+  // o carro que vai sair andando: um igual, com rodas que giram e volante solto
+  const novo = carroFofo(c.vg.hex); enfeitarCarro(novo, c.vg.modelo); mesclarLocal(novo, [...novo.userData.rodas, novo.userData.volante, novo.userData.seta]);
+  novo.userData.seta.visible = false; novo.position.copy(c.g.position); novo.rotation.y = c.ang;
+  c.g.removeFromParent(); c.g = novo; cena.add(novo);
   mundo.solidos.splice(mundo.solidos.indexOf(c.solido), 1);
   veiculos.push(c);
   CN.laco = laco(); CN.laco.position.y = -0.25; c.g.add(CN.laco);
@@ -1719,7 +1723,7 @@ function criarMissoes() {
       const g = carroFofo(vg.hex);
       enfeitarCarro(g, vg.modelo);
       g.userData.seta.visible = false;
-      mesclarLocal(g, [...g.userData.rodas, g.userData.volante, g.userData.seta]); // enfeites junto com o carro
+      mesclarLocal(g, [g.userData.seta]); // parado no pátio: o carro inteiro (rodas e enfeites) vira poucas malhas; ao ser escolhido, ganha um igual com rodas que giram
       const placa = plaquinhaPreco(vg); g.add(placa);
       g.position.set(vg.x, 0.03, vg.z); g.rotation.y = vg.ang;
       cena.add(g);
@@ -1728,7 +1732,7 @@ function criarMissoes() {
       const hx = (sa * 2.3 + ca * 1.15) * 0.9, hz = (ca * 2.3 + sa * 1.15) * 0.9;
       const solido = { x0: vg.x - hx, x1: vg.x + hx, z0: vg.z - hz, z1: vg.z + hz, y1: 1.0 };
       mundo.solidos.push(solido);
-      return { g, pos: new THREE.Vector3(vg.x, 0.03, vg.z), ang: vg.ang, vel: 0, virar: 0, giro: 0, batida: 0, buzina: 0, caixa: null, cor: vg.cor, placa, solido };
+      return { g, vg, pos: new THREE.Vector3(vg.x, 0.03, vg.z), ang: vg.ang, vel: 0, virar: 0, giro: 0, batida: 0, buzina: 0, caixa: null, cor: vg.cor, placa, solido };
     });
     const vendedor = npc("Seu Lápis Cinza, da J.E Multimarcas", 0x6b6b6b, PATIO_JE.x0 - 1.9, PATIO_JE.portao[0] - 1.6, "cid-je", ["gravata"]);
     vendedor.casa = [vendedor.x, vendedor.z];
@@ -2452,6 +2456,8 @@ function mostrarSoPerto() {
   for (const r of receptores) r.p.visible = perto(r.p, 80);
   for (const a of missoes.igreja?.amigos ?? []) if (!a.convidado) a.p.visible = perto(a.p, 80);
   for (const c of carros) c.g.visible = perto(c.g, 150);
+  // carros parados do pátio da J.E: de longe (mais de 110 m, já na neblina) não são desenhados
+  for (const c of missoes.carroNovo?.patio ?? []) if (c !== missoes.carroNovo.escolhido) c.g.visible = perto(c.g, 110);
 }
 function quadro() {
   if (!vivo) return;

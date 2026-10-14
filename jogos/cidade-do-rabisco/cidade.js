@@ -9,7 +9,7 @@ import { THREE, texturaCanvas, aleatorio, carregarTextura } from "../../src/moto
 import { escolaEducarte3D, pilotoLapis } from "../../src/motor3d/objetos.js";
 import { RUAS, CALCADA, distRua, LUGARES, CASAS, SEMAFOROS, PARQUE, LAGO, PLAYGROUND, PRACA, VAGAS, LARGADA, PATIO_JE, HELIPONTO } from "./mapa.js";
 import { ESTILO_PARCEIRO, IGREJA } from "./parceiros.js";
-import { chaveMaterial, juntarGeometrias, mesclarLocal } from "./mesclar.js";
+import { chaveMaterial, chaveVC, corLisa, materialVC, juntarGeometrias, mesclarLocal } from "./mesclar.js";
 
 export { BORDA } from "./mapa.js";
 const r = aleatorio(2026);
@@ -607,9 +607,10 @@ function mesclarEstaticos(cena, objetos) {
       const pedacos = Array.isArray(o.material) ? g.groups.map((q) => ({ mat: o.material[q.materialIndex], ini: q.start, n: Math.min(q.count, total - q.start) })) : [{ mat: o.material, ini: 0, n: total }];
       if (!pedacos.length || pedacos.some((q) => !q.mat)) return;
       for (const q of pedacos) {
-        const k = `${cel}#${chaveMaterial(q.mat)}#${o.castShadow}${o.receiveShadow}#${attrs}#${o.renderOrder}`;
-        if (!grupos.has(k)) grupos.set(k, { mat: q.mat, sombra: o.castShadow, recebe: o.receiveShadow, ordem: o.renderOrder, malhas: [] });
-        grupos.get(k).malhas.push({ o, ini: q.ini, n: q.n });
+        const vc = corLisa(q.mat);
+        const k = `${cel}#${vc ? chaveVC(q.mat) : chaveMaterial(q.mat)}#${o.castShadow}${o.receiveShadow}#${attrs}#${o.renderOrder}`;
+        if (!grupos.has(k)) grupos.set(k, { mat: vc ? materialVC(q.mat) : q.mat, sombra: o.castShadow, recebe: o.receiveShadow, ordem: o.renderOrder, malhas: [] });
+        grupos.get(k).malhas.push({ o, ini: q.ini, n: q.n, cor: vc ? q.mat.color : null });
       }
       tirar.push(o);
     });
@@ -886,8 +887,24 @@ export function montarCidade(cena) {
     m.scale.y = 0.45;
     cena.add(m);
   }
+  // semáforos: as luzes de mesma cor dos postes que controlam o mesmo sentido acendem juntas, então viram uma malha
+  // só por cruzamento, sentido e cor (o jogo troca o brilho em s.luzes[eixo][cor] e o bonequinho em s.peds[eixo])
+  for (const s of semaforos) {
+    s.postes[0].parent.updateMatrixWorld(true);
+    s.luzes = { x: {}, z: {} }; s.peds = {};
+    for (const eixo of ["x", "z"]) {
+      const meus = s.postes.filter((p) => p.userData.eixo === eixo);
+      const juntar = (malhas) => {
+        const m = new THREE.Mesh(juntarGeometrias(malhas.map((o) => ({ o, ini: 0, n: o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count, m: o.matrixWorld }))), malhas[0].material.clone());
+        m.userData.dinamico = true; m.matrixAutoUpdate = false; cena.add(m);
+        for (const o of malhas) o.removeFromParent();
+        return m;
+      };
+      for (const cor of ["vermelho", "amarelo", "verde"]) s.luzes[eixo][cor] = juntar(meus.map((p) => p.userData.luzes[cor]));
+      s.peds[eixo] = juntar(meus.map((p) => p.userData.ped));
+    }
+  }
   // peças que mudam no jogo ficam de fora da junção
-  for (const s of semaforos) for (const p of s.postes) { for (const l of Object.values(p.userData.luzes)) l.userData.dinamico = true; p.userData.ped.userData.dinamico = true; }
   roda.userData.dinamico = true;
   for (const c of casas) c.correio.userData.dinamico = true;
   mesclarEstaticos(cena, cena.children.filter((o) => !antes.has(o)));
