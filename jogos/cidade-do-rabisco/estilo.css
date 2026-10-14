@@ -57,6 +57,11 @@ body:not(.touch) .acao-cidade { bottom: 30px; }
 /* fade curtinho ao entrar e sair das lojas */
 .fade-cidade { position: absolute; inset: 0; z-index: 7; background: #fff8ee; opacity: 0; pointer-events: none; transition: opacity 0.28s ease; }
 .fade-cidade.ativo { opacity: 1; }
+/* helicóptero no celular: ▲ subir, ⏩ frente, ▼ descer (à direita, acima do botão de ação) */
+.heli-cidade { position: absolute; z-index: 8; right: 30px; bottom: 236px; display: flex; flex-direction: column; gap: 10px; }
+.heli-cidade[hidden], body:not(.touch) .heli-cidade { display: none; }
+.heli-cidade button { width: 64px; height: 64px; border-radius: 50%; border: 5px solid var(--tinta); box-shadow: 0 4px 0 var(--tinta); background: #7fd6ff; font: 900 26px var(--texto); color: var(--tinta); touch-action: none; }
+.heli-cidade .heli-frente { background: #ffcc1f; }
 /* barrinha da esteira (Rise Up) */
 .barra-cidade { position: absolute; z-index: 6; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 140px); transform: translateX(-50%); width: min(420px, 60vw); height: 30px;
   background: #fff; border: 5px solid var(--tinta); border-radius: 999px; box-shadow: 0 4px 0 var(--tinta); overflow: hidden; pointer-events: none; }
@@ -67,9 +72,12 @@ body:not(.touch) .acao-cidade { bottom: 30px; }
   .mapa-cidade { width: 112px; height: 112px; top: 60px; border-width: 3px; }
   .hud-cidade li.nova { display: none; }
   .bussola-cidade { top: 62px; font-size: 14px; } .bussola-cidade .seta { width: 30px; height: 30px; font-size: 18px; }
-  .acao-cidade { right: 18px; bottom: 116px; font-size: 16px; min-width: 96px; border-width: 4px; }
+  .acao-cidade { right: 18px; bottom: 108px; font-size: 16px; min-width: 96px; border-width: 4px; }
+  /* rádio do carro (src/radio) logo abaixo do minimapa, sem encostar no botão de ação */
+  :root { --radio-topo: calc(env(safe-area-inset-top, 0px) + 174px); }
   .balao-cidade { font-size: 14px; bottom: 10px; padding: 6px 12px 8px; max-width: 56vw; }
   .selos-cidade { font-size: 14px; }
+  .heli-cidade { right: 20px; bottom: 170px; gap: 6px; } .heli-cidade button { width: 48px; height: 48px; font-size: 20px; border-width: 3px; }
   .barra-cidade { top: 104px; height: 22px; border-width: 3px; }
   .oracao-cidade { top: 8px; padding: 8px 14px 6px; border-width: 3px; width: min(640px, 64vw); }
 }

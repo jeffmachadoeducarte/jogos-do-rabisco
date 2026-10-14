@@ -381,7 +381,7 @@ falas.update({
     "cid-faixa-ok": "Muito bem! Atravessou certinho!", "cid-espere": "Espere o bonequinho verde para atravessar!",
     "cid-missao-ok": "Missão cumprida!", "cid-final": "Você ajudou todo mundo! Você é um amigo da cidade!",
 })
-for k, nome in {"escola": "Escola Educarte", "igreja": "Igreja Reviver", "praca": "Praça", "parque": "Parque", "biblioteca": "Biblioteca", "padaria": "Padaria",
+for k, nome in {"escola": "Educarte Kids Dois", "kids1": "Educarte Kids Um", "heliponto": "Heliponto", "igreja": "Igreja Reviver", "praca": "Praça", "parque": "Parque", "biblioteca": "Biblioteca", "padaria": "Padaria",
                 "hospital": "Hospital", "bombeiros": "Bombeiros", "correio": "Correio", "mercado": "Mercado", "casas": "Rua das Casas Coloridas", "casas2": "Vila"}.items():
     falas[f"cid-lugar-{k}"] = f"{nome}!"
 
@@ -424,9 +424,13 @@ falas.update({
     "cid-rise-corre": "Isso! Continue correndo!",
     "cid-rise-peso": "Que corrida! Agora vamos levantar o halter. Vá até o colchonete laranja e aperte o botão cinco vezes!",
     "cid-rise-ok": "Parabéns, Rabisco! Você foi forte e corajoso! Corpo saudável, coração alegre!",
+    # helicóptero (heliponto do hospital) e a missão do remédio da Vovó
+    "cid-heli": "Helicóptero ligado! Para subir, aperte o botão de pular. Para descer, o botão de descer. Para a frente, vá para a frente!",
+    "cid-remedio": "Oi, Rabisco! A Vovó Lápis precisa do remédio dela! Leve de helicóptero: suba no helicóptero aqui do heliponto e pouse pertinho da casa laranja.",
+    "cid-remedio-ok": "Meu remédio! Obrigada, Rabisco! Que voo lindo! Deus cuida de nós com tanto carinho.",
     # Hora da Aula (Escola Educarte)
     "cid-professora": "Oi, Rabisco! O sino da aula já vai tocar e o Lápis Azulzinho esqueceu a mochila em casa! Busque a mochila azul na casa azul, a de número dois, e traga para ele aqui na porta da escola!",
-    "cid-mochila": "A mochila azul! Obrigada, Rabisco! Agora corra para a Escola Educarte!",
+    "cid-mochila": "A mochila azul! Obrigada, Rabisco! Agora corra para a escola!",
     "cid-sino": "Plim, plom! O sino tocou! Mas a professora espera você. Corra, Rabisco!",
     "cid-escola-ok": "Minha mochila! Obrigado, Rabisco! Hoje a aula é das letras: A, B, C!",
     # Convite para o culto infantil (Igreja Reviver)

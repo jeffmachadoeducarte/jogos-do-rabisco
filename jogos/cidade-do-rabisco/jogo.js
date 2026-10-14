@@ -29,8 +29,12 @@ import { criarCompanheiro3D } from "../../src/motor3d/companheiro3d.js";
 import { criarJoystick } from "../../src/motor/joystick.js";
 import { CODIGOS_J2, TECLAS_J1_EXTRA } from "../../src/motor/jogadores.js";
 import { montarCidade, carro, carroAberto, BORDA } from "./cidade.js";
-import { RUAS, segmentos, ROTAS, CASAS, LAGO, PARQUE, PRACA, VAGAS, LARGADA, PATIO_JE, lugar as lugarDoMapa } from "./mapa.js";
+import { RUAS, segmentos, ROTAS, CASAS, LAGO, PARQUE, PRACA, VAGAS, LARGADA, PATIO_JE, HELIPONTO, lugar as lugarDoMapa } from "./mapa.js";
 import { montarAcademia, montarBellaCat, halter } from "./interiores.js";
+import { carroFofo, helicoptero } from "./veiculos3d.js";
+import { mesclarLocal } from "./mesclar.js";
+import { criarRadio } from "../../src/radio/radio.js";
+import { criarRadioUI } from "../../src/radio/radio-ui.js";
 
 const ORACAO = [ // Pai Nosso (Mateus 6:9-13, texto tradicional): uma frase por vez, cada uma com a sua voz (cid-pai-1..11)
   "Pai nosso, que estás no céu,", "santificado seja o teu nome.", "Venha o teu reino,", "seja feita a tua vontade,", "assim na terra como no céu.",
@@ -52,6 +56,7 @@ const CONTROLES = [
   { id: "acao", nome: "Entrar no carro · água", teclas: ["KeyF", "Enter"], botoes: [2, 3], controle: "acao" },
   { id: "girarE", nome: "Girar a câmera ⟲", teclas: ["KeyQ"] },
   { id: "girarD", nome: "Girar a câmera ⟳", teclas: ["KeyE"] },
+  { id: "descer", nome: "Helicóptero: descer", teclas: ["KeyC", "ShiftLeft"] },
   { id: "mapa", nome: "Mapa grande", teclas: ["KeyM"], botoes: [8], controle: "select" },
 ];
 
@@ -65,7 +70,7 @@ const jogo = criarCasca({
   menuNoJogo: false,
   teclado: false,
   dica: {
-    teclado: "WASD ou setas andam · F entra no carro · M abre o mapa · Q/E giram a câmera · Espaço pula · P pausa",
+    teclado: "WASD ou setas andam · F entra no carro · M abre o mapa · Q/E giram a câmera · Espaço pula · helicóptero: Espaço sobe, C desce · P pausa",
     toque: "Arraste à esquerda para andar · à direita para olhar · botão amarelo entra no carro",
     controle: "Alavanca esquerda anda · X entra no carro · Select abre o mapa · A pula · Start pausa",
   },
@@ -75,10 +80,14 @@ const jogo = criarCasca({
   jogadores: "simultaneo",
   aoComecar: iniciar,
   aoSair: parar,
-  aoPausar: () => { teclas.clear(); toque?.zerar(); },
-  aoContinuar: () => {},
+  aoPausar: () => { teclas.clear(); toque?.zerar(); radioUI?.sairDoCarro(); },
+  aoContinuar: () => { if (dentro && !dentro.heli) radioUI?.entrarNoCarro(); },
   aoControle: lerControle,
 });
+
+// rádio gospel do carro (src/radio): o painel aparece abaixo do minimapa só enquanto o Rabisco dirige um carro
+// (no helicóptero, a pé, nas lojas e no Pai Nosso fica desligado); as falas em MP3 abaixam o rádio sozinhas
+let radio = null, radioUI = null;
 
 // ------------------------------------------------------------------ Entrada
 const teclas = new Set();
@@ -139,6 +148,7 @@ let quemRecebe = { cartas: {} }; // receptores das entregas: cartas[cor], vovo, 
 
 function iniciar() {
   parar();
+  if (!radioUI) { radio = criarRadio(); radioUI = criarRadioUI({ radio }); }
   const caixa = el("div", { class: "cena-cidade" });
   jogo.palco.append(caixa);
   r3 = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -204,6 +214,7 @@ function iniciar() {
   barraEl = el("div", { class: "barra-cidade", hidden: "" }, [el("i")]);
   caixa.append(hud, mapa, bussola, balao, btnAcao, mapaGrande, painelOracao, barraEl, fadeEl);
   toque = criarJoystick(caixa);
+  botoesHeli();
   atualizarHud();
 
   const ajustar = () => { const w = caixa.clientWidth || innerWidth, h = caixa.clientHeight || innerHeight; ajustarPixels(w, h); r3.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); };
@@ -217,6 +228,7 @@ function iniciar() {
 }
 function parar() {
   vivo = false;
+  radioUI?.sairDoCarro();
   if (r3) { r3.dispose(); r3 = null; }
   carros.length = moradores.length = selos.length = npcs.length = veiculos.length = receptores.length = convidados.length = 0;
   oracao = null; quemRecebe = { cartas: {} }; salas = {}; sala = null; transicao = false; bloqueioPorta = null; trava = null;
@@ -387,6 +399,7 @@ function criarVeiculos() {
     cena.add(g);
     veiculos.push({ g, pos: new THREE.Vector3(v.x, 0.03, v.z), ang: v.ang, vel: 0, virar: 0, giro: 0, batida: 0, buzina: 0, caixa: null });
   }
+  criarHelicoptero(); // por último: os testes contam com os carros nos primeiros lugares
 }
 const lateralDe = (ang) => [Math.cos(ang), -Math.sin(ang)]; // esquerda do carro (lado do motorista) no mundo
 function pertoDeCarro() {
@@ -426,19 +439,23 @@ function entrarNoCarro(v) {
   v.g.userData.seta.visible = false;
   sons.pisao();
   camManual = 0;
+  if (!v.heli) radioUI?.entrarNoCarro(); // dentro do gesto (Ação), por causa do autoplay
+  if (v.heli) { if (!entrarNoCarro.falouHeli) { entrarNoCarro.falouHeli = true; setTimeout(() => falar("cid-heli"), 250); dizer("Helicóptero", "Helicóptero ligado! Para subir, aperte pular (▲). Para descer, C (▼). Para a frente, vá para a frente!", 5200); } return; }
   if (!entrarNoCarro.falou) { entrarNoCarro.falou = true; setTimeout(() => falar("cid-carro"), 250); dizer("Cidade do Rabisco", "Cinto de segurança afivelado! Para a frente acelera, para trás freia. Aperte de novo para sair.", 4200); }
 }
 function sairDoCarro() {
   const v = dentro;
-  if (!v || Math.abs(v.vel) > 3) return;
+  if (!v || Math.abs(v.vel) > 3 || (v.heli && !heliPousado(v))) return;
   const [lx, lz] = lateralDe(v.ang);
-  const fx = Math.sin(v.ang), fz = Math.cos(v.ang);
-  const opcoes = [[lx * 2.3, lz * 2.3], [-lx * 2.3, -lz * 2.3], [-fx * 3.6, -fz * 3.6], [fx * 3.6, fz * 3.6]];
+  const fx = Math.sin(v.ang), fz = Math.cos(v.ang), k = v.heli ? 1.35 : 1;
+  const opcoes = [[lx * 2.3 * k, lz * 2.3 * k], [-lx * 2.3 * k, -lz * 2.3 * k], [-fx * 3.6, -fz * 3.6], [fx * 3.6 * k, fz * 3.6 * k]];
   const [ox, oz] = opcoes.find(([ox, oz]) => !bate(v.pos.x + ox, v.pos.z + oz, 0.1)) ?? opcoes[0];
   dentro = null;
   v.vel = 0;
+  radioUI?.sairDoCarro();
   cena.add(rabisco.grupo);
   j.pos.set(v.pos.x + ox, 0.03, v.pos.z + oz); j.vel.set(0, 0, 0); j.dir = v.ang;
+  if (v.heli) { v.vel = v.vy = 0; v.virar = 0; }
   rabisco.grupo.position.copy(j.pos);
   if (companheiro) {
     cena.add(companheiro.grupo);
@@ -522,7 +539,88 @@ function animarCarro(v, dt) {
   v.g.rotation.y = v.ang;
   v.giro += (v.vel * dt) / 0.44;
   for (const r of v.g.userData.rodas) r.rotation.x = v.giro;
-  if (v.g.userData.seta.visible) v.g.userData.seta.position.y = 3.2 + Math.sin(relogio.elapsedTime * 4) * 0.2;
+  if (v.g.userData.seta.visible) v.g.userData.seta.position.y = (v.setaY ?? 3.2) + Math.sin(relogio.elapsedTime * 4) * 0.2;
+}
+
+// ------------------------------------------------------------------ Helicóptero (heliponto do hospital)
+// Entra com Ação (como o carro). Subir: pular (Espaço / A / ▲); descer: C ou Shift / LB / ▼; frente e trás com a
+// alavanca (ou ⏩ no celular); esquerda e direita viram. Seguro e sem queda: nunca atravessa prédios (se tiver algo
+// mais alto na frente, para e sobe sozinho), não desce em cima de nada (só para no ar) e pousa suave no chão plano.
+const HELI = { vmax: 13, sobe: 5, desce: 4, giro: 1.7, teto: 48 };
+const heliBtn = { subir: false, descer: false, frente: false };
+let heliBotoes = null;
+function criarHelicoptero() {
+  const g = helicoptero();
+  g.rotation.order = "YXZ";
+  const pos = new THREE.Vector3(HELIPONTO.x, 0.17, HELIPONTO.z);
+  g.position.copy(pos); g.rotation.y = Math.PI;
+  cena.add(g);
+  const v = { g, pos, ang: Math.PI, vel: 0, virar: 0, giro: 0, batida: 0, buzina: 0, caixa: null, heli: true, vy: 0, chao: 0.17, rotor: 0, setaY: 5.4 };
+  veiculos.push(v);
+  return v;
+}
+// altura do que está embaixo do helicóptero (prédios, árvores, cercas...); lago e chafariz contam como "não pousa"
+function alturaEm(x, z, r = 2.4) {
+  let h = 0.03;
+  for (const s of mundo.solidos) if (x > s.x0 - r && x < s.x1 + r && z > s.z0 - r && z < s.z1 + r && s.y1 > h) h = s.y1;
+  for (const c of mundo.circulos) if (Math.hypot(x - c.x, z - c.z) < c.r + r) h = Math.max(h, 1.2);
+  if (Math.hypot(x - HELIPONTO.x, z - HELIPONTO.z) < HELIPONTO.r) h = Math.max(h, 0.17); // o piso do heliponto
+  return h;
+}
+const plano = (h) => h < 0.6; // dá para pousar (chão, calçada, rua, heliponto)
+function botaoGamepad(i) { for (const p of navigator.getGamepads?.() ?? []) if (p && p.index !== J.padJ2 && p.buttons[i]?.pressed) return true; return false; }
+function pilotarHeli(dt) {
+  const v = dentro;
+  const { ix, iy } = entradaAndar();
+  const sobe = tem("pular") || pad.pulo || toque?.pulo || heliBtn.subir || botaoGamepad(5) || botaoGamepad(7) || (entradaTeste?.sobe ?? false);
+  const desce = tem("descer") || heliBtn.descer || botaoGamepad(4) || botaoGamepad(6) || (entradaTeste?.desce ?? false);
+  pad.puloNovo = false; if (toque) toque.puloNovo = false;
+  const frente = Math.max(iy, heliBtn.frente ? 1 : 0);
+  const noAr = v.pos.y > v.chao + 0.25;
+  // vertical: sobe e desce suave
+  v.vy += ((sobe ? HELI.sobe : desce ? -HELI.desce : 0) - v.vy) * Math.min(1, dt * 3);
+  // horizontal: só no ar (no chão o helicóptero só gira)
+  const alvoV = noAr ? (frente > 0.1 ? frente * HELI.vmax : iy < -0.1 ? iy * 5 : 0) : 0;
+  v.vel += (alvoV - v.vel) * Math.min(1, dt * 1.6);
+  v.virar += (ix - v.virar) * Math.min(1, dt * 5);
+  v.ang -= v.virar * HELI.giro * dt * (noAr ? 1 : 0.5);
+  const nx = v.pos.x + Math.sin(v.ang) * v.vel * dt, nz = v.pos.z + Math.cos(v.ang) * v.vel * dt;
+  const frenteAlto = alturaEm(nx + Math.sin(v.ang) * 2, nz + Math.cos(v.ang) * 2);
+  if (Math.abs(v.vel) > 0.05 && frenteAlto > v.pos.y - 0.4) { // algo mais alto na frente: para e sobe sozinho
+    v.vel *= 0.5; v.vy = Math.max(v.vy, 3.5);
+    if (relogio.elapsedTime - (v.avisou || -9) > 6) { v.avisou = relogio.elapsedTime; dizer("Helicóptero", "Opa, tem um prédio na frente! Subindo para passar por cima.", 2600); }
+  } else if (Math.abs(nx) < BORDA + 40 && Math.abs(nz) < BORDA + 40) { v.pos.x = nx; v.pos.z = nz; }
+  // chão: pousa suave no plano; em cima de algo (prédio, árvore, lago) só para no ar
+  v.chao = alturaEm(v.pos.x, v.pos.z);
+  let ny = Math.min(HELI.teto, v.pos.y + v.vy * dt);
+  if (!plano(v.chao) && ny < v.chao + 1.2) { ny = Math.max(ny, v.chao + 1.2); v.vy = Math.max(0, v.vy); }
+  if (ny <= v.chao) { ny = v.chao; v.vy = Math.max(0, v.vy); }
+  v.pos.y = ny;
+  animarHeli(v, dt, true);
+  j.pos.copy(v.pos); j.dir = v.ang;
+  rabisco.atualizar(dt, { modo: fim ? "comemorarSentado" : "dirigir", virar: v.virar });
+  if (companheiro) { companheiro.atualizar(dt, { modo: fim ? "comemorarSentado" : "dirigir", virar: v.virar }); companheiro.bracos(-0.35, 0.55, -1.25); if (dois) jogador2NoCarro(dt, v); }
+  return { andando: Math.abs(v.vel) > 1 };
+}
+function animarHeli(v, dt, ligado) {
+  v.rotor += ((ligado ? 1 : 0) - v.rotor) * Math.min(1, dt * (ligado ? 1.5 : 0.4));
+  const u = v.g.userData;
+  u.rotor.rotation.y += dt * 22 * v.rotor; u.rotorCauda.rotation.x += dt * 30 * v.rotor;
+  v.g.position.copy(v.pos);
+  v.g.rotation.set(Math.max(-0.12, Math.min(0.18, v.vel / HELI.vmax * 0.16)), v.ang, -v.virar * 0.14 * Math.min(1, Math.abs(v.vel) / 4));
+  if (u.seta.visible) u.seta.position.y = v.setaY + Math.sin(relogio.elapsedTime * 4) * 0.2;
+}
+const heliPousado = (v) => v.pos.y <= v.chao + 0.08 && plano(v.chao);
+function botoesHeli() {
+  const caixa = jogo.palco.querySelector(".cena-cidade");
+  heliBotoes = el("div", { class: "heli-cidade", hidden: "" });
+  for (const [k, txt, rot] of [["subir", "▲", "Subir"], ["frente", "⏩", "Frente"], ["descer", "▼", "Descer"]]) {
+    const b = el("button", { class: `heli-${k}`, "aria-label": rot, texto: txt });
+    const on = (e) => { e.preventDefault(); e.stopPropagation(); heliBtn[k] = true; }, off = () => { heliBtn[k] = false; };
+    b.addEventListener("pointerdown", on); for (const ev of ["pointerup", "pointercancel", "pointerleave"]) b.addEventListener(ev, off);
+    heliBotoes.append(b);
+  }
+  caixa.append(heliBotoes);
 }
 
 // ------------------------------------------------------------------ Câmera (acompanha e gira)
@@ -550,7 +648,7 @@ function posicionarCamera(k, dt, andando = false) {
   const ref = dentro ? dentro.ang : j.dir;
   if (camManual <= 0 && (andando || dentro)) { let d = ref - camYaw; d = Math.atan2(Math.sin(d), Math.cos(d)); camYaw += d * Math.min(1, dt * (dentro ? 2.5 : 1.2)); }
   const longe = cam.aspect < 1.2 ? 1.25 : 1;
-  let dist = (dentro ? 8.6 : 6.3) * longe;
+  let dist = (dentro?.heli ? 11.5 : dentro ? 8.6 : 6.3) * longe;
   // 2 jogadores a pé: a câmera mira o meio dos dois e se afasta conforme eles se separam
   const P = dois && !dentro && companheiro ? new THREE.Vector3((j.pos.x + amigo.pos.x) / 2, (j.pos.y + amigo.pos.y) / 2, (j.pos.z + amigo.pos.z) / 2) : j.pos;
   if (P !== j.pos) dist += Math.hypot(j.pos.x - amigo.pos.x, j.pos.z - amigo.pos.z) * 0.75;
@@ -560,8 +658,9 @@ function posicionarCamera(k, dt, andando = false) {
     const x = P.x - Math.sin(camYaw) * d, z = P.z - Math.cos(camYaw) * d;
     if (mundo.solidos.some((o) => o.y1 > 3 && x > o.x0 - 0.3 && x < o.x1 + 0.3 && z > o.z0 - 0.3 && z < o.z1 + 0.3)) { dist = Math.max(sala ? 1.2 : 2.5, d - 0.6); break; }
   }
-  const alt = dentro ? 3.8 : 3.0;
-  alvo.lerp(new THREE.Vector3(P.x + Math.sin(camYaw) * (dentro ? 4 : 2), P.y + (dentro ? 1.4 : 1.3), P.z + Math.cos(camYaw) * (dentro ? 4 : 2)), k);
+  const alt = dentro?.heli ? 6.2 : dentro ? 3.8 : 3.0;
+  const adiante = dentro?.heli ? 8 : dentro ? 4 : 2, sobe = dentro?.heli ? 1.0 : dentro ? 1.4 : 1.3;
+  alvo.lerp(new THREE.Vector3(P.x + Math.sin(camYaw) * adiante, P.y + sobe, P.z + Math.cos(camYaw) * adiante), k);
   posCam.lerp(new THREE.Vector3(P.x - Math.sin(camYaw) * dist, P.y + alt * longe, P.z - Math.cos(camYaw) * dist), k);
   cam.position.copy(posCam);
   cam.lookAt(alvo);
@@ -641,7 +740,8 @@ function atualizarCarros(dt, t) {
       if (lado < 8 && ahead > parada - 1.5 && ahead < parada + 14 && luzDe(s, eixo, t) !== "verde") alvoVel = Math.min(alvoVel, Math.max(0, (ahead - parada) * 1.6));
     }
     // o Rabisco (a pé ou de carro) ou outro carro na frente: para
-    const aheadJ = (j.pos.x - px) * dx + (j.pos.z - pz) * dz, ladoJ = Math.abs((j.pos.x - px) * dz - (j.pos.z - pz) * dx);
+    const voando = j.pos.y > 3; // o helicóptero lá em cima não atrapalha o trânsito
+    const aheadJ = voando ? -99 : (j.pos.x - px) * dx + (j.pos.z - pz) * dz, ladoJ = Math.abs((j.pos.x - px) * dz - (j.pos.z - pz) * dx);
     if (k.fantasma && (Math.hypot(j.pos.x - px, j.pos.z - pz) > 7 || aheadJ < -1)) { k.fantasma = false; k.espera = 0; }
     let esperando = false;
     if (!k.fantasma && aheadJ > 0 && aheadJ < 9 && ladoJ < (dentro ? 3 : 2.4)) {
@@ -965,6 +1065,15 @@ function presente(cor = 0xec8cb8) {
   for (const s of [-1, 1]) { const a = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.04, 6, 12), fitaMat); a.position.set(s * 0.12, 0.33, 0); a.rotation.z = s * 0.6; g.add(a); }
   return g;
 }
+// maleta de remédio (missão do helicóptero): branca com a cruz vermelha
+function maleta() {
+  const g = new THREE.Group();
+  const caixa = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.5, 0.35), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 }));
+  const verm = new THREE.MeshStandardMaterial({ color: 0xe63946, roughness: 0.5 });
+  for (const [w, h] of [[0.36, 0.11], [0.11, 0.36]]) { const c = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.02), verm); c.position.z = 0.18; g.add(c); const c2 = c.clone(); c2.position.z = -0.18; g.add(c2); }
+  const alca = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 6, 14, Math.PI), verm); alca.position.y = 0.25; g.add(caixa, alca);
+  return g;
+}
 function mochila() {
   const g = new THREE.Group();
   const azul = new THREE.MeshStandardMaterial({ color: 0x1d6fe0, roughness: 0.6 });
@@ -997,6 +1106,10 @@ function levar(obj) {
 }
 function atualizarLevando(t) {
   if (!levando) return;
+  if (dentro?.heli) { // no helicóptero, o pacote vai no banco do lado
+    const p = dentro.g.localToWorld(dentro.g.userData.carona.clone().add(new THREE.Vector3(companheiro ? 0 : 0, 0.55, companheiro ? -1.0 : 0)));
+    levando.position.copy(p); levando.rotation.y = dentro.ang; return;
+  }
   levando.position.set(j.pos.x, j.pos.y + (dentro ? 3.1 : 2.45) + Math.sin(t * 4) * 0.08, j.pos.z);
   levando.rotation.y = t * 1.5;
 }
@@ -1015,29 +1128,29 @@ function atualizarGotas(dt) {
 }
 
 // ------------------------------------------------------------------ J.E Multimarcas: carros do pátio
-// cada carro exposto ganha um jeitinho próprio (mesmo carro aberto da cidade): esportivo, jipe, fofinho, praia e luxo
+// cada carro exposto (o carro fofinho da Rabiscolândia, veiculos3d.js) ganha um jeitinho próprio: esportivo com
+// aerofólio, jipe com santantônio e estepe, florzinha no capô, carro de praia com prancha e luxo com frisos cromados
 function enfeitarCarro(g, modelo) {
-  const branco = matLapis(0xffffff, { roughness: 0.4 }), preto = matLapis(0x1d1d1d, { roughness: 0.6 }), cromo = matLapis(0xdddddd, { metalness: 0.7, roughness: 0.25 });
-  const caixa = (w, h, d, m, x, y, z) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); g.add(b); return b; };
-  if (modelo === 0) { // esportivo: duas faixas brancas e aerofólio
-    for (const x of [-0.3, 0.3]) { caixa(0.22, 0.02, 1.52, branco, x, 1.39, 1.45); caixa(0.22, 0.02, 0.92, branco, x, 1.43, -1.75); }
-    caixa(2.2, 0.08, 0.45, preto, 0, 1.8, -2.1); for (const x of [-0.8, 0.8]) caixa(0.08, 0.38, 0.12, preto, x, 1.6, -2.05);
+  const branco = matLapis(0xffffff, { roughness: 0.4 }), preto = matLapis(0x262626, { roughness: 0.6 }), cromo = matLapis(0xdfe6ee, { metalness: 0.7, roughness: 0.25 });
+  const peca = (geo, m, x, y, z) => { const b = new THREE.Mesh(geo, m); b.position.set(x, y, z); b.castShadow = true; g.add(b); return b; };
+  const caixa = (w, h, d, m, x, y, z) => peca(new THREE.BoxGeometry(w, h, d), m, x, y, z);
+  if (modelo === 0) { // esportivo: aerofólio
+    caixa(2.1, 0.08, 0.45, preto, 0, 1.62, -2.15); for (const x of [-0.75, 0.75]) caixa(0.08, 0.36, 0.12, preto, x, 1.42, -2.1);
   } else if (modelo === 1) { // jipe: santantônio e estepe atrás
-    const arco = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.07, 8, 20, Math.PI), preto); arco.position.set(0, 1.2, -1.15); g.add(arco);
-    const estepe = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.28, 16), preto); estepe.rotation.x = Math.PI / 2; estepe.position.set(0, 1.15, -2.45); g.add(estepe);
-    const cal = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.3, 12), cromo); cal.rotation.x = Math.PI / 2; cal.position.set(0, 1.15, -2.47); g.add(cal);
-  } else if (modelo === 2) { // fofinho: faróis redondos grandes e para-lamas arredondados
-    for (const x of [-0.75, 0.75]) { const f = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 10), matLapis(0xfff6d0, { emissive: 0xfff2c0, emissiveIntensity: 0.5 })); f.position.set(x, 1.1, 2.25); g.add(f); }
-    const lata = g.children[0].material;
-    for (const [x, z] of [[-1.1, 1.45], [1.1, 1.45], [-1.1, -1.45], [1.1, -1.45]]) { const p = new THREE.Mesh(new THREE.SphereGeometry(0.56, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), lata); p.scale.set(0.5, 0.8, 1); p.position.set(x, 0.85, z); g.add(p); }
+    const arco = peca(new THREE.TorusGeometry(0.95, 0.07, 8, 20, Math.PI), preto, 0, 1.15, -1.25);
+    const estepe = peca(new THREE.TorusGeometry(0.28, 0.13, 6, 16), preto, 0, 1.0, -2.6); void arco; void estepe;
+    peca(new THREE.CylinderGeometry(0.17, 0.17, 0.2, 12), branco, 0, 1.0, -2.6).rotation.x = Math.PI / 2;
+  } else if (modelo === 2) { // florzinha no capô
+    for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; peca(new THREE.SphereGeometry(0.13, 10, 8), branco, Math.cos(a) * 0.17, 1.2, 1.55 + Math.sin(a) * 0.17).scale.y = 0.4; }
+    peca(new THREE.SphereGeometry(0.11, 10, 8), matLapis(0xec2e8c), 0, 1.23, 1.55).scale.y = 0.5;
   } else if (modelo === 3) { // praia: bagageiro com prancha de surfe
-    for (const z of [-1.2, -2.2]) caixa(2.1, 0.06, 0.1, preto, 0, 1.55, z);
-    const prancha = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), matLapis(0xffcc1f, { roughness: 0.4 })); prancha.scale.set(0.35, 0.06, 1.5); prancha.position.set(0, 1.65, -1.6); g.add(prancha);
-    const faixa = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 2.6), matLapis(0xec2e8c)); faixa.position.set(0, 1.71, -1.6); g.add(faixa);
+    for (const z of [-1.3, -2.1]) caixa(2.0, 0.06, 0.1, preto, 0, 1.45, z);
+    const prancha = peca(new THREE.SphereGeometry(1, 16, 8), matLapis(0xffcc1f, { roughness: 0.4 }), 0, 1.55, -1.7); prancha.scale.set(0.35, 0.06, 1.5);
+    caixa(0.08, 0.02, 2.6, matLapis(0xec2e8c), 0, 1.61, -1.7);
   } else { // luxo: frisos cromados, pneus faixa branca e estrelinha no capô
-    for (const s of [-1, 1]) caixa(0.04, 0.08, 4.2, cromo, s * 1.17, 0.95, 0);
-    for (const r of g.userData.rodas) { const anel = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.06, 6, 20), branco); anel.rotation.y = Math.PI / 2; anel.position.copy(r.position); anel.position.x *= 1.15; g.add(anel); }
-    const estrela = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), matLapis(0xffd84a, { metalness: 0.6, roughness: 0.25 })); estrela.position.set(0, 1.55, 2.0); g.add(estrela);
+    for (const s of [-1, 1]) caixa(0.04, 0.08, 3.8, cromo, s * 1.17, 0.78, 0);
+    for (const r of g.userData.rodas) { const anel = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.05, 6, 20), branco); anel.rotation.y = Math.PI / 2; anel.position.x = Math.sign(r.position.x) * 0.17; r.add(anel); }
+    peca(new THREE.OctahedronGeometry(0.16), matLapis(0xffd84a, { metalness: 0.6, roughness: 0.25 }), 0, 1.3, 2.05);
   }
 }
 // plaquinha de preço espetada no carro: o nome da cor e um "preço" de brincadeira (contar de 1 a 5)
@@ -1077,7 +1190,7 @@ function escolherCarro(CN, c, t) {
   c.placa.removeFromParent();
   mundo.solidos.splice(mundo.solidos.indexOf(c.solido), 1);
   veiculos.push(c);
-  CN.laco = laco(); c.g.add(CN.laco);
+  CN.laco = laco(); CN.laco.position.y = -0.25; c.g.add(CN.laco);
   // o vendedor vem até a frente do carro (do lado do corredor) entregar a chave
   const fx = Math.sin(c.ang), fz = Math.cos(c.ang), lx = Math.cos(c.ang), lz = -Math.sin(c.ang);
   CN.ponto = livre(c.pos.x + fx * 3.3 + lx * 1.3, c.pos.z + fz * 3.3 + lz * 1.3, 0.4);
@@ -1366,10 +1479,11 @@ function criarMissoes() {
     placas: opcoes.map((n, i) => { const [x, z] = livre(donaPatos.x - 3 + i * 3, donaPatos.z - 4, 1.1); const g = placaNumero(n); g.position.set(x, 0.03, z); g.visible = false; cena.add(g); return { n, x, z, g, dentro: false }; }),
     alvo() { return { x: LAGO.x, z: LAGO.z, emoji: "🦆" }; } };
   // 10. Hora da Aula: a mochila azul ficou na casa azul (nº 2); levar ao Lápis Azulzinho na porta da escola antes do sino
-  const escola = L("escola"), casaAzul = CASAS.find((c) => c.cor === "azul");
+  // a escola da criança: Educarte Kids I (até 4 anos) ou Kids II (5 a 12, e quando a idade não é conhecida)
+  const escola = idadeCrianca() != null && idadeCrianca() <= 4 && L("kids1") ? L("kids1") : L("escola"), casaAzul = CASAS.find((c) => c.cor === "azul");
   const [mx, mz] = livre(casaAzul.x + 0.6, casaAzul.z + 1.4, 0.5);
   const objMochila = mochila(); objMochila.position.set(mx, 0.35, mz); objMochila.visible = false; cena.add(objMochila);
-  missoes.escola = { id: "escola", nome: "Hora da Aula", icone: "🎒", estado: "nova", fase: "buscar", sino: 90, tocou: false, mochila: { x: mx, z: mz, g: objMochila },
+  missoes.escola = { id: "escola", nome: "Hora da Aula", icone: "🎒", estado: "nova", fase: "buscar", escolaNome: escola.nome, sino: 90, tocou: false, mochila: { x: mx, z: mz, g: objMochila },
     npc: npc("Professora Lápis Turquesa", 0x2ec4b6, ...naPorta(escola, 6.5), "cid-professora", ["laco", "oculos"]),
     texto: "Oi, Rabisco! O sino da aula já vai tocar e o Lápis Azulzinho esqueceu a mochila em casa! Busque a mochila azul na casa azul, a de número 2, e traga para ele aqui na porta da escola!",
     aoAceitar() { this.sino = 90; objMochila.visible = true; },
@@ -1410,9 +1524,10 @@ function criarMissoes() {
   if (je) {
     const verde = CASAS.find((c) => c.cor === "verde");
     const patio = PATIO_JE.vagas.map((vg) => {
-      const g = carroAberto(vg.hex);
+      const g = carroFofo(vg.hex);
       enfeitarCarro(g, vg.modelo);
       g.userData.seta.visible = false;
+      mesclarLocal(g, [...g.userData.rodas, g.userData.volante, g.userData.seta]); // enfeites junto com o carro
       const placa = plaquinhaPreco(vg); g.add(placa);
       g.position.set(vg.x, 0.03, vg.z); g.rotation.y = vg.ang;
       cena.add(g);
@@ -1466,6 +1581,13 @@ function criarMissoes() {
         return { x: ox + S.obj.esteira.x, z: oz + S.obj.esteira.z + 1.9, emoji: "🏃" };
       } };
   }
+  // remédio de helicóptero: a Doutora Lápis Branca, no heliponto do hospital, pede para levar o remédio da Vovó
+  const heli = veiculos.find((v) => v.heli);
+  missoes.remedio = { id: "remedio", nome: "Remédio", icone: "🚁", estado: "nova",
+    npc: npc("Doutora Lápis Branca, do hospital", 0xf4f4f4, HELIPONTO.x - HELIPONTO.r - 2.2, HELIPONTO.z + 2, "cid-remedio", ["oculos"]),
+    texto: "Oi, Rabisco! A Vovó Lápis precisa do remédio dela! Leve de helicóptero: suba no helicóptero aqui do heliponto e pouse pertinho da casa laranja, perto da Rua Leste.",
+    aoAceitar() { levar(maleta()); },
+    alvo() { const v = quemRecebe.vovo; return dentro === heli || this.voou ? { x: v.x, z: v.z, emoji: "👵" } : { x: heli.pos.x, z: heli.pos.z, emoji: "🚁" }; } };
   criarSalas();
   // 16. passaporte: visitar todos os lugares
   missoes.passaporte = { id: "passaporte", nome: "Passeio", icone: "🗺️", estado: "ativa",
@@ -1479,12 +1601,19 @@ function criarMissoes() {
       () => (ativa("cartas") && !missoes.cartas.entregues.includes(cor)) || (cor === "azul" && ativa("escola") && missoes.escola.fase === "buscar"), { acessorios: aces });
   }
   const cv = CASAS.find((q) => q.vovo);
-  quemRecebe.vovo = receptor("Vovó Lápis", 0xf4a3c4, ...portaCasa(cv, 1.8), cv.dir, () => ativa("encomenda") && Boolean(missoes.encomenda.noCarro), { acessorios: ["vovo"] });
+  quemRecebe.vovo = receptor("Vovó Lápis", 0xf4a3c4, ...portaCasa(cv, 1.8), cv.dir, () => (ativa("encomenda") && Boolean(missoes.encomenda.noCarro)) || ativa("remedio"), { acessorios: ["vovo"] });
   if (missoes.carroNovo) { const c = CASAS.find((q) => q.cor === "verde"); quemRecebe.verde = receptor("Seu Lápis Verde, da casa verde", 0x4cae5a, ...portaCasa(c, 1.8), c.dir, () => ativa("carroNovo"), { acessorios: ["chapeu"] }); }
-  quemRecebe.merendeira = receptor("Tia Lápis Amarela, a merendeira", 0xffcc1f, ...naPorta(escola, -2.5), escola.dir, () => ativa("pao"), { acessorios: ["chef"] });
+  const kids2 = L("escola");
+  quemRecebe.merendeira = receptor("Tia Lápis Amarela, a merendeira", 0xffcc1f, ...naPorta(kids2, -2.5), kids2.dir, () => ativa("pao"), { acessorios: ["chef"] });
   // a professora espera o presente da Bella Cat na porta da escola (acena e não puxa conversa até receber)
   if (missoes.presente) missoes.escola.npc.espera = missoes.escola.npc.calado = () => ativa("presente") && missoes.presente.fase === "levar";
   preCarregarFalas(["cid-intro", "cid-carteiro", "cid-gatos", "cid-padeiro", "cid-guarda", "cid-carta-ok", "cid-gato-ok", "cid-pao-ok", "cid-faixa-ok", "cid-espere", "cid-missao-ok", "cid-final"]); // as falas das missões novas (cid-carro, cid-corrida...) tocam sob demanda
+}
+// idade da criança do cadastro (src/motor/familia.js: nascimento → idade); ?idade=N na URL vale para testar
+function idadeCrianca() {
+  if (params.has("idade")) return Number(params.get("idade"));
+  const i = window.Familia?.crianca?.()?.idade;
+  return Number.isFinite(i) ? i : null;
 }
 const dist2 = (p) => (p.x - j.pos.x) ** 2 + (p.z - j.pos.z) ** 2;
 const centroFaixa = (f) => ({ x: (f.x0 + f.x1) / 2, z: (f.z0 + f.z1) / 2 });
@@ -1605,7 +1734,7 @@ function regras(dt, t) {
     n.p.rotation.y = Math.atan2(j.pos.x - n.x, j.pos.z - n.z);
     n.marca.position.y = 3.6 + Math.sin(t * 3) * 0.15;
     if (n.calado?.()) { n.ultima = t; continue; } // ocupado na missão (vendedor entregando a chave, professora esperando o presente)
-    if (perto(n.x, n.z, dentro ? 5 : 3) && t - n.ultima > 8) { n.ultima = t; conversar(n); }
+    if (j.pos.y < 4 && perto(n.x, n.z, dentro ? 5 : 3) && t - n.ultima > 8) { n.ultima = t; conversar(n); }
   }
   // cartas: caixa de correio da cor certa (a pé)
   const C = missoes.cartas;
@@ -1833,7 +1962,7 @@ function regras(dt, t) {
       mo.g.rotation.y = t * 1.5; mo.g.position.y = 0.35 + Math.abs(Math.sin(t * 3)) * 0.15;
       if (quem.some(([p]) => Math.hypot(p.pos.x - mo.x, p.pos.z - mo.z) < (dentro ? 4.5 : 2.2))) {
         ES.fase = "levar"; mo.g.visible = false; levar(mochila()); receber(quemRecebe.cartas.azul);
-        sons.moeda(); falar("cid-mochila"); dizer("Mamãe Lápis Azul", "A mochila azul! Obrigada, Rabisco! Agora corra para a Escola Educarte!", 3600);
+        sons.moeda(); falar("cid-mochila"); dizer("Mamãe Lápis Azul", `A mochila azul! Obrigada, Rabisco! Agora corra para a ${ES.escolaNome}!`, 3600);
         atualizarHud();
       }
     } else if (perto(ES.aluno.x, ES.aluno.z, dentro ? 7 : 3.4)) {
@@ -1882,6 +2011,16 @@ function regras(dt, t) {
     }
     if (oracao) seguirOracao(PN, t, dt);
   }
+  // remédio (helicóptero): pousar perto da casa laranja e entregar à Vovó (ou chegar a pé com a maleta)
+  const RM = missoes.remedio;
+  if (RM?.estado === "ativa") {
+    if (dentro?.heli && j.pos.y > 3 && !RM.voou) { RM.voou = true; atualizarHud(); }
+    const vv = quemRecebe.vovo, pousado = dentro?.heli ? heliPousado(dentro) : true;
+    if (pousado && perto(vv.x, vv.z, dentro?.heli ? 16 : 3.5) && (RM.voou || !dentro)) {
+      levar(null); receber(vv); vv.ultimaFesta = t;
+      concluir(RM); falar("cid-remedio-ok"); dizer("Vovó Lápis", "Meu remédio! Obrigada, Rabisco! Que voo lindo! Deus cuida de nós com tanto carinho.", 5600);
+    }
+  }
   atualizarAmigos(t, dt);
   atualizarAjudantes(t, dt);
   atualizarLevando(t);
@@ -1912,13 +2051,14 @@ function regras(dt, t) {
   }
   // carros: a pé perto de um carro, o botão entra; dirigindo, o botão sai (parado)
   if (!contexto) {
-    if (aPe) { const v = pertoDeCarro(); if (v) contexto = { tipo: "entrar", rotulo: "🚗 Entrar", fazer: () => entrarNoCarro(v) }; }
+    if (aPe) { const v = pertoDeCarro(); if (v) contexto = { tipo: "entrar", rotulo: v.heli ? "🚁 Entrar" : "🚗 Entrar", fazer: () => entrarNoCarro(v) }; }
+    else if (dentro.heli) contexto = { tipo: "sair", rotulo: heliPousado(dentro) ? "🚪 Sair" : "🚁 Pouse para sair", fazer: () => sairDoCarro() };
     else contexto = { tipo: "sair", rotulo: Math.abs(dentro.vel) > 3 ? "🛑 Pare para sair" : "🚪 Sair", fazer: () => sairDoCarro() };
   }
   if (pad.acaoNova) { pad.acaoNova = false; contexto?.fazer(); }
-  for (const v of veiculos) if (v !== dentro) animarCarro(v, dt);
+  for (const v of veiculos) if (v !== dentro) (v.heli ? animarHeli(v, dt, false) : animarCarro(v, dt));
 }
-const NOMES_MISSAO = { cartas: "cartas", gatos: "gatos", pao: "pao", faixa: "faixa", corrida: "corrida", encomenda: "encomenda", fogo: "fogo", tesouro: "tesouro", patos: "patos", carroNovo: "je", presente: "bella", exercicio: "rise", escola: "professora", igreja: "igreja", painosso: "painosso" };
+const NOMES_MISSAO = { remedio: "remedio", cartas: "cartas", gatos: "gatos", pao: "pao", faixa: "faixa", corrida: "corrida", encomenda: "encomenda", fogo: "fogo", tesouro: "tesouro", patos: "patos", carroNovo: "je", presente: "bella", exercicio: "rise", escola: "professora", igreja: "igreja", painosso: "painosso" };
 function conversar(n) {
   const M = Object.values(missoes).find((m) => m.npc === n);
   if (!M) return;
@@ -1960,7 +2100,7 @@ function concluir(M) {
   if (M.estado === "feita") return;
   M.estado = "feita";
   if (foco === M.id) foco = Object.values(missoes).find((m) => m.estado === "ativa" && m.id !== "passaporte")?.id ?? null;
-  if (companheiro) setTimeout(() => parabenizar({ gravada: false }), 900);
+  if (companheiro) setTimeout(async () => { radio?.pausarPorFala(true); try { await parabenizar({ gravada: false }); } finally { radio?.pausarPorFala(false); } }, 900);
   if (M.npc) M.npc.marca.visible = false;
   sons.porta();
   // o letreiro é imediato; a voz "Missão cumprida" espera a fala em andamento acabar (ou é omitida se faltar mais de 6 s: versículo, Amém)
@@ -1994,6 +2134,7 @@ function atualizarHud() {
     if (m.id === "fogo") return ` <small>${"💧".repeat(m.apagados)}${"🔥".repeat(4 - m.apagados)}</small>`;
     if (m.id === "tesouro") return ` <small>pista ${Math.min(4, m.pista + 1)}/4</small>`;
     if (m.id === "carroNovo") return ` <small>${{ escolher: "⭐→🚗", chave: "🔑", entrar: "🔑→🚗", sair: "🚗→🚧" }[m.fase] ?? "🚗→🏠"}</small>`;
+    if (m.id === "remedio") return ` <small>${m.voou ? "🚁→👵" : "🩺→🚁"}</small>`;
     if (m.id === "presente") return ` <small>${{ entrar: "🚪→💝", escolher: "💝?", embrulhar: "🎁…" }[m.fase] ?? "🎁→🏫"}</small>`;
     if (m.id === "exercicio") return ` <small>${m.fase === "entrar" ? "🚪→🏋️" : m.fase === "peso" ? `🏋️ ${m.levantou}/5` : `🏃 ${Math.round(m.corrida * 100)}%`}</small>`;
     if (m.id === "escola") return ` <small>${m.fase === "buscar" ? "🏠→🎒" : "🎒→🏫"}${m.sino > 0 ? ` ⏰${Math.ceil(m.sino)}` : " 🔔"}</small>`;
@@ -2042,7 +2183,7 @@ function desenharCidade(c, S, { nomes = false } = {}) {
   for (const v of veiculos) {
     const [x, y] = P(v.pos.x, v.pos.z);
     c.save(); c.translate(x, y); c.rotate(Math.PI - v.ang);
-    c.fillStyle = `#${new THREE.Color(v.g.children[0].material.color).getHexString()}`; c.strokeStyle = "#151515"; c.lineWidth = 1.5;
+    c.fillStyle = `#${new THREE.Color(v.g.userData.cor ?? v.g.children[0].material.color).getHexString()}`; c.strokeStyle = "#151515"; c.lineWidth = 1.5;
     c.fillRect(-S / 90, -S / 55, S / 45, S / 27.5); c.strokeRect(-S / 90, -S / 55, S / 45, S / 27.5);
     c.restore();
   }
@@ -2098,7 +2239,19 @@ function atualizarBotaoAcao() {
 }
 
 // ------------------------------------------------------------------ Laço
-let tMapa = 0, tHud = 0;
+let tMapa = 0, tHud = 0, tPerto = 0;
+// desempenho: selos e moradores longe da câmera não são desenhados (ficam pequenos e no meio da neblina)
+function mostrarSoPerto() {
+  const x = cam.position.x, z = cam.position.z;
+  for (const s of selos) s.m.visible = s.vivo && (s.m.position.x - x) ** 2 + (s.m.position.z - z) ** 2 < 75 * 75;
+  const perto = (p, r) => (p.position.x - x) ** 2 + (p.position.z - z) ** 2 < r * r;
+  for (const m of moradores) m.p.visible = perto(m.p, 75);
+  // amigos lápis parados (missões, quem recebe, convidados): o "!" do minimapa usa a marca, não o lápis
+  for (const n of npcs) n.p.visible = perto(n.p, 80);
+  for (const r of receptores) r.p.visible = perto(r.p, 80);
+  for (const a of missoes.igreja?.amigos ?? []) if (!a.convidado) a.p.visible = perto(a.p, 80);
+  for (const c of carros) c.g.visible = perto(c.g, 150);
+}
 function quadro() {
   if (!vivo) return;
   const dt = Math.min(relogio.getDelta(), 1 / 30);
@@ -2107,7 +2260,8 @@ function quadro() {
   else if (dois && !J.ativo) { dois = false; removerCompanheira(); }
   if (!jogo.pausado) {
     const t = relogio.elapsedTime;
-    const { andando } = dentro ? dirigirCarro(dt) : moverJogador(dt);
+    const { andando } = dentro ? (dentro.heli ? pilotarHeli(dt) : dirigirCarro(dt)) : moverJogador(dt);
+    if (heliBotoes) heliBotoes.hidden = !dentro?.heli;
     atualizarSemaforos(t);
     atualizarCarros(dt, t);
     atualizarMoradores(dt, t);
@@ -2118,6 +2272,8 @@ function quadro() {
     posicionarCamera(Math.min(1, dt * 6), dt, andando);
     tMapa -= dt;
     if (tMapa <= 0) { tMapa = 0.12; desenharMapa(); atualizarBussola(); atualizarBotaoAcao(); if (!mapaGrande.hidden) desenharCidade(mapaGrande.querySelector("canvas").getContext("2d"), 640, { nomes: true }); }
+    tPerto -= dt;
+    if (tPerto <= 0) { tPerto = 0.3; mostrarSoPerto(); }
     tHud -= dt;
     if (tHud <= 0 && ((missoes.corrida?.estado === "ativa" && missoes.corrida.proxima > 0) || (missoes.escola?.estado === "ativa" && missoes.escola.sino > 0) || missoes.exercicio?.fase === "correndo")) { tHud = 0.5; atualizarHud(); }
   }
@@ -2132,10 +2288,10 @@ if (params.has("teste")) window.teste = {
   ir(x, z, y = 0.03) { j.pos.set(x, y, z); j.vel.set(0, 0, 0); posicionarCamera(1, 0); }, olhar(yaw) { camYaw = yaw; camManual = 5; posicionarCamera(1, 0); },
   vista(pos, alvo) { vistaTeste = pos ? { pos, alvo } : null; cena.fog.far = pos ? 2000 : 300; cena.fog.near = pos ? 1500 : 80; posicionarCamera(1, 0); },
   acao() { pad.acaoNova = true; }, entrar(i = 0) { const v = veiculos[i]; j.pos.set(v.pos.x + 2, 0.03, v.pos.z); entrarNoCarro(v); }, sair() { if (dentro) dentro.vel = 0; sairDoCarro(); },
-  volante(acel, virar) { entradaTeste = acel == null ? null : { acel, virar }; },
+  volante(acel, virar, extra = {}) { entradaTeste = acel == null ? null : { acel, virar, ...extra }; }, get heli() { return veiculos.find((v) => v.heli); },
   aceitar(id) { const M = missoes[id]; if (M.estado === "nova") { M.npc.ultima = -99; conversar(M.npc); } return M.estado; },
   mapaGrande: () => alternarMapaGrande(), bate: (x, z) => bate(x, z, 0.1),
-  get sala() { return sala?.id ?? null; }, get salas() { return salas; }, get transicao() { return transicao; }, get trava() { return trava; },
+  get cena() { return cena; }, get radio() { return radio; }, get sala() { return sala?.id ?? null; }, get salas() { return salas; }, get transicao() { return transicao; }, get trava() { return trava; },
   entrarSala(id) { const S = salas[id]; j.pos.set(S.porta.x, 0.03, S.porta.z); }, cam: () => cam, info: () => r3.info.render,
   acaoJ2() { amigo.acaoNova = true; },
   levarCarro(i, x, z, ang) { const v = veiculos[i]; v.pos.set(x, 0.03, z); v.ang = ang; v.vel = 0; animarCarro(v, 0); if (dentro === v) j.pos.set(x, 0.03, z); },

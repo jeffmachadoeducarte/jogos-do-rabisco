@@ -7,8 +7,9 @@
 
 import { THREE, texturaCanvas, aleatorio, carregarTextura } from "../../src/motor3d/toon.js";
 import { escolaEducarte3D, pilotoLapis } from "../../src/motor3d/objetos.js";
-import { RUAS, CALCADA, distRua, LUGARES, CASAS, SEMAFOROS, PARQUE, LAGO, PLAYGROUND, PRACA, VAGAS, LARGADA, PATIO_JE } from "./mapa.js";
+import { RUAS, CALCADA, distRua, LUGARES, CASAS, SEMAFOROS, PARQUE, LAGO, PLAYGROUND, PRACA, VAGAS, LARGADA, PATIO_JE, HELIPONTO } from "./mapa.js";
 import { ESTILO_PARCEIRO, IGREJA } from "./parceiros.js";
+import { chaveMaterial, juntarGeometrias, mesclarLocal } from "./mesclar.js";
 
 export { BORDA } from "./mapa.js";
 const r = aleatorio(2026);
@@ -282,7 +283,7 @@ export function carro(cor) {
     const lanterna = new THREE.Mesh(new THREE.CircleGeometry(0.15, 12), new THREE.MeshStandardMaterial({ color: 0xaa0000, emissive: 0xff2020, emissiveIntensity: 0.4 }));
     lanterna.position.set(x, 0.95, -2.21); lanterna.rotation.y = Math.PI; g.add(lanterna);
   }
-  return g;
+  return mesclarLocal(g);
 }
 
 // Carro aberto (conversível) que o Rabisco dirige: motorista à esquerda, carona à direita (mão brasileira).
@@ -331,8 +332,8 @@ export function carroAberto(cor) {
   const seta = new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.9, 4), new THREE.MeshBasicMaterial({ color: 0xffcc1f }));
   seta.rotation.x = Math.PI; seta.position.y = 3.2;
   g.add(seta);
-  Object.assign(g.userData, { motorista: assentos[0], carona: assentos[1], volante, seta });
-  return g;
+  Object.assign(g.userData, { motorista: assentos[0], carona: assentos[1], volante, seta, cor });
+  return mesclarLocal(g, [corpo, ...g.userData.rodas, volante, seta]); // o corpo fica separado: o minimapa e o pátio usam a cor dele
 }
 
 // Pátio de carros da J.E Multimarcas (PATIO_JE, mapa.js): piso de bloquinhos, cerca baixa com o portão aberto
@@ -402,6 +403,91 @@ function patioJE(cena, solido) {
   g.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.7 })));
   const lg = new THREE.BufferGeometry(); lg.setAttribute("position", new THREE.Float32BufferAttribute(linha, 3));
   g.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x333333 })));
+  return g;
+}
+
+// Heliponto (HELIPONTO, mapa.js): piso redondo com o "H", anel amarelo, luzinhas e a biruta laranja
+function heliponto(cena) {
+  const g = new THREE.Group(); g.position.set(HELIPONTO.x, 0, HELIPONTO.z); cena.add(g);
+  const tex = texturaCanvas(512, 512, (c, w, h) => {
+    c.fillStyle = "#5c6470"; c.beginPath(); c.arc(w / 2, h / 2, w / 2, 0, 7); c.fill();
+    c.lineWidth = 34; c.strokeStyle = "#ffcc1f"; c.beginPath(); c.arc(w / 2, h / 2, w / 2 - 40, 0, 7); c.stroke();
+    c.fillStyle = "#ffffff"; c.font = "900 300px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("H", w / 2, h / 2 + 20);
+  });
+  const piso = new THREE.Mesh(new THREE.CylinderGeometry(HELIPONTO.r, HELIPONTO.r + 0.2, 0.14, 40), [std(0x5c6470), std(0xffffff, { map: tex, roughness: 0.8 }), std(0x5c6470)]);
+  piso.position.y = 0.07; piso.receiveShadow = true; g.add(piso);
+  for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; const l = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), new THREE.MeshBasicMaterial({ color: i % 2 ? 0x7fd6ff : 0x2bff7a })); l.position.set(Math.cos(a) * (HELIPONTO.r + 0.35), 0.2, Math.sin(a) * (HELIPONTO.r + 0.35)); g.add(l); }
+  const mastro = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 4, 8), std(0xffffff)); mastro.position.set(HELIPONTO.r + 2, 2, -HELIPONTO.r + 1); g.add(mastro);
+  const biruta = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.6, 12, 1, true), std(0xff7a00, { side: THREE.DoubleSide })); biruta.rotation.z = Math.PI / 2 - 0.15; biruta.position.set(HELIPONTO.r + 2.8, 3.8, -HELIPONTO.r + 1); g.add(biruta);
+  return g;
+}
+// Placa de pé na frente das escolas: nome e idade (Kids I bem colorida e fofinha, Kids II no azul da Educarte)
+function totemEscola(texto, idade, cores) {
+  const g = new THREE.Group();
+  const tex = texturaCanvas(512, 256, (c, w, h) => {
+    c.fillStyle = cores.borda; c.beginPath(); c.roundRect(0, 0, w, h, 48); c.fill();
+    c.fillStyle = cores.fundo; c.beginPath(); c.roundRect(14, 14, w - 28, h - 28, 38); c.fill();
+    let tam = 92; c.font = `900 ${tam}px 'Baloo 2', sans-serif`;
+    while (c.measureText(texto).width > w - 60) { tam -= 4; c.font = `900 ${tam}px 'Baloo 2', sans-serif`; }
+    c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = cores.texto; c.fillText(texto, w / 2, 100);
+    c.font = "800 44px 'Baloo 2', sans-serif"; c.fillStyle = cores.idade; c.fillText(idade, w / 2, 190);
+  });
+  const placaM = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.8), std(0xffffff, { map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.25, side: THREE.DoubleSide }));
+  placaM.position.y = 2.5; g.add(placaM);
+  for (const x of [-1.5, 1.5]) { const p = caixa(0.16, 1.7, 0.16, std(0xffffff)); p.position.set(x, 0.85, -0.02); g.add(p); }
+  return g;
+}
+// Educarte Kids I (berçário até 4 anos): prédio térreo creme com três telhados em tons suaves (rosa, menta e azul
+// bebê), janelas redondas, porta amarela em arco com o letreiro, e ao lado o parquinho de bebê cercado: piso de
+// EVA colorido, escorregador baixinho, piscina de bolinhas, patinho de balanço e caixa de areia.
+function escolaKids1() {
+  const g = new THREE.Group();
+  const creme = std(0xfff3e0), W = 16, D = 9, H = 4.2;
+  const corpo = caixa(W, H, D, creme); corpo.position.set(0, H / 2, 3.08 - D / 2); g.add(corpo);
+  [[-5.4, 0xf7b5cf], [0, 0xa8e6cf], [5.4, 0xa9d6f5]].forEach(([x, cor]) => { const t = telhado(5.2, D, 2.4, cor); t.position.set(x, H, 3.08 - D / 2); g.add(t); });
+  // janelas redondas com moldura colorida
+  [[-5.6, 0xf7b5cf], [-3.2, 0xffe08a], [3.2, 0xa8e6cf], [5.6, 0xa9d6f5]].forEach(([x, cor]) => {
+    const aro = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.14, 8, 24), std(cor, { roughness: 0.5 })); aro.position.set(x, 2.3, 3.12); g.add(aro);
+    const vidro = new THREE.Mesh(new THREE.CircleGeometry(0.78, 24), std(0x9fd6ff, { roughness: 0.2, emissive: 0x9fd6ff, emissiveIntensity: 0.2 })); vidro.position.set(x, 2.3, 3.1); g.add(vidro);
+  });
+  // porta amarela em arco
+  const porta = caixa(1.8, 2.0, 0.2, std(0xffd36b, { roughness: 0.5 })); porta.position.set(0, 1.0, 3.12); g.add(porta);
+  const arco = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.2, 20, 1, false, 0, Math.PI), std(0xffd36b, { roughness: 0.5 })); arco.rotation.set(Math.PI / 2, Math.PI / 2, 0); arco.position.set(0, 2.0, 3.12); g.add(arco);
+  // letreiro com a logo
+  const texL = texturaCanvas(768, 192, (c, w, h) => {
+    c.fillStyle = "#ffffff"; c.beginPath(); c.roundRect(0, 0, w, h, 60); c.fill();
+    c.lineWidth = 10; c.strokeStyle = "#f7b5cf"; c.beginPath(); c.roundRect(5, 5, w - 10, h - 10, 56); c.stroke();
+    c.font = "900 88px 'Baloo 2', sans-serif"; c.textAlign = "left"; c.textBaseline = "middle";
+    const partes = [["E", "#ec2e8c"], ["d", "#ff9f43"], ["u", "#ffcc1f"], ["c", "#58c43a"], ["a", "#00b5f0"], ["r", "#8e6cff"], ["t", "#ec2e8c"], ["e", "#ff9f43"]];
+    let x = 60; for (const [l, cor] of partes) { c.fillStyle = cor; c.fillText(l, x, 82); x += c.measureText(l).width + 2; }
+    c.fillStyle = "#3d7ad9"; c.font = "900 80px 'Baloo 2', sans-serif"; c.textAlign = "right"; c.fillText("Kids I", w - 50, 84); c.textAlign = "center";
+    c.fillStyle = "#9a7ab8"; c.font = "700 32px 'Baloo 2', sans-serif"; c.fillText("berçário · 4 meses a 4 anos", w / 2, 160);
+  });
+  const let1 = new THREE.Mesh(new THREE.PlaneGeometry(4.8, 1.2), std(0xffffff, { map: texL, emissive: 0xffffff, emissiveMap: texL, emissiveIntensity: 0.25 })); let1.position.set(0, 3.6, 3.2); g.add(let1);
+  // parquinho de bebê ao lado (lado +x local)
+  const pq = new THREE.Group(); pq.position.set(W / 2 + 4.6, 0, 0); g.add(pq);
+  const texEva = texturaCanvas(256, 256, (c) => { const cs = ["#f7b5cf", "#a8e6cf", "#a9d6f5", "#ffe08a"]; for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { c.fillStyle = cs[(x + y) % 4]; c.fillRect(x * 64, y * 64, 64, 64); } }, { repetir: true });
+  texEva.repeat.set(2, 3);
+  const eva = new THREE.Mesh(new THREE.PlaneGeometry(8, 12), std(0xffffff, { map: texEva, roughness: 0.95 })); eva.rotation.x = -Math.PI / 2; eva.position.set(0, 0.05, -1.6); eva.receiveShadow = true; pq.add(eva);
+  // cerquinha baixa
+  const cerca = std(0xffffff, { roughness: 0.5 });
+  for (const [x, z, w2, d2] of [[0, -7.6, 8, 0.1], [4, -1.6, 0.1, 12], [-4, -1.6, 0.1, 12]]) { const c = caixa(w2, 0.7, d2, cerca); c.position.set(x, 0.35, z); pq.add(c); }
+  // escorregador baixinho
+  const esc = caixa(1.0, 0.1, 2.6, std(0xf7b5cf, { roughness: 0.3 })); esc.position.set(-2, 0.65, -4.6); esc.rotation.x = 0.42; pq.add(esc);
+  const tor = caixa(1.2, 1.1, 1.2, std(0xa9d6f5)); tor.position.set(-2, 0.55, -6.3); pq.add(tor);
+  // piscina de bolinhas (uma malha instanciada)
+  const borda = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.6, 24, 1, true), std(0xa8e6cf, { side: THREE.DoubleSide })); borda.position.set(1.6, 0.3, -4.2); pq.add(borda);
+  const bolas = new THREE.InstancedMesh(new THREE.SphereGeometry(0.16, 8, 6), std(0xffffff, { roughness: 0.4 }), 60);
+  const m4 = new THREE.Matrix4(), cor = new THREE.Color(), cs = [0xf7b5cf, 0xa8e6cf, 0xa9d6f5, 0xffe08a, 0xffffff];
+  for (let i = 0; i < 60; i++) { const a = r() * 6.28, rr = Math.sqrt(r()) * 1.4; m4.makeTranslation(1.6 + Math.cos(a) * rr, 0.35 + r() * 0.15, -4.2 + Math.sin(a) * rr); bolas.setMatrixAt(i, m4); bolas.setColorAt(i, cor.setHex(cs[i % 5])); }
+  pq.add(bolas);
+  // patinho de balanço (mola) e caixa de areia
+  const mola = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.5, 8), std(0x999999, { metalness: 0.5 })); mola.position.set(-2, 0.25, 0.6); pq.add(mola);
+  const pato = new THREE.Mesh(new THREE.SphereGeometry(0.5, 14, 10), std(0xffd84a, { roughness: 0.5 })); pato.scale.set(0.8, 0.7, 1.2); pato.position.set(-2, 0.75, 0.6); pq.add(pato);
+  const cab = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), std(0xffd84a)); cab.position.set(-2, 1.2, 1.0); pq.add(cab);
+  const bico = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.25, 8), std(0xff8a1f)); bico.rotation.x = Math.PI / 2; bico.position.set(-2, 1.18, 1.35); pq.add(bico);
+  const areia = caixa(2.6, 0.25, 2.6, std(0xf2dca0, { roughness: 1 })); areia.position.set(1.6, 0.13, 0.6); pq.add(areia);
+  for (const [x, z, c] of [[1.2, 0.3, 0xec2e8c], [2.0, 0.9, 0x00b5f0]]) { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.12, 0.25, 10), std(c)); b.position.set(x, 0.38, z); pq.add(b); }
   return g;
 }
 
@@ -487,7 +573,52 @@ function rodaGigante() {
   return g;
 }
 
+// ---------- desempenho: junta as peças paradas da cidade (prédios, casas, árvores, ruas, calçadas, cercas...) em
+// poucas malhas, por quadrado de CELULA metros e por "material igual" (mesma cor, textura, brilho...). O visual não
+// muda (cada peça vira triângulos com a posição de mundo já aplicada) e o número de desenhos por quadro cai muito.
+// Cada quadrado continua sendo cortado pela câmera (o que está fora da tela não é desenhado). Ficam de fora as peças
+// que mudam durante o jogo (userData.dinamico: semáforos, roda-gigante, caixas de correio, lojas com foto).
+const CELULA = 60;
+function mesclarEstaticos(cena, objetos) {
+  const grupos = new Map();
+  const tirar = [];
+  for (const raiz of objetos) {
+    raiz.updateMatrixWorld(true);
+    raiz.traverse((o) => {
+      if (o.userData.dinamico) return;
+      if (!o.isMesh || o.isInstancedMesh || !o.visible || o.matrixWorld.determinant() <= 0) return;
+      for (let p = o.parent; p; p = p.parent) if (p.userData.dinamico) return;
+      const g = o.geometry;
+      if (!g.attributes.position || g.morphAttributes?.position) return;
+      if (!g.boundingBox) g.computeBoundingBox();
+      const centro = g.boundingBox.getCenter(new THREE.Vector3()).applyMatrix4(o.matrixWorld);
+      const cel = `${Math.floor(centro.x / CELULA)},${Math.floor(centro.z / CELULA)}`;
+      const attrs = Object.keys(g.attributes).sort().join(",");
+      // malha com vários materiais (ex.: prédio com fachada nos lados e cinza em cima): cada pedaço vai para o seu grupo
+      const total = g.index ? g.index.count : g.attributes.position.count;
+      const pedacos = Array.isArray(o.material) ? g.groups.map((q) => ({ mat: o.material[q.materialIndex], ini: q.start, n: Math.min(q.count, total - q.start) })) : [{ mat: o.material, ini: 0, n: total }];
+      if (!pedacos.length || pedacos.some((q) => !q.mat)) return;
+      for (const q of pedacos) {
+        const k = `${cel}#${chaveMaterial(q.mat)}#${o.castShadow}${o.receiveShadow}#${attrs}#${o.renderOrder}`;
+        if (!grupos.has(k)) grupos.set(k, { mat: q.mat, sombra: o.castShadow, recebe: o.receiveShadow, ordem: o.renderOrder, malhas: [] });
+        grupos.get(k).malhas.push({ o, ini: q.ini, n: q.n });
+      }
+      tirar.push(o);
+    });
+  }
+  for (const gr of grupos.values()) {
+    const geo = juntarGeometrias(gr.malhas.map((q) => ({ ...q, m: q.o.matrixWorld })));
+    const m = new THREE.Mesh(geo, gr.mat);
+    m.castShadow = gr.sombra; m.receiveShadow = gr.recebe; m.renderOrder = gr.ordem; m.matrixAutoUpdate = false;
+    cena.add(m);
+  }
+  for (const o of tirar) o.removeFromParent();
+  // grupos que ficaram vazios saem da cena (menos coisa para percorrer a cada quadro)
+  for (const raiz of objetos) { let vazio = true; raiz.traverse((o) => { if (o.isMesh || o.isLine || o.isSprite || o.isLight) vazio = false; }); if (vazio) raiz.removeFromParent(); }
+}
+
 export function montarCidade(cena) {
+  const antes = new Set(cena.children);
   const solidos = [];     // { x0, x1, z0, z1, y1 } — prédios, muros e coisas grandes
   const circulos = [];    // { x, z, r } — lago e chafariz (não dá para entrar)
   const lugares = [];     // { id, nome, x, z, raio, dir } — para o passaporte e o mapa
@@ -596,11 +727,11 @@ export function montarCidade(cena) {
         const deitado = Math.abs(Math.sin(l.rot)) > 0.5, sx = (deitado ? M.d : w) / 2 + 0.2, sz = (deitado ? w : M.d) / 2 + 0.2;
         Object.assign(s, { x0: cx - sx, x1: cx + sx, z0: cz - sz, z1: cz + sz });
       });
-      loja.position.set(ox, 0.03, oz); loja.rotation.y = l.rot;
+      loja.position.set(ox, 0.03, oz); loja.rotation.y = l.rot; loja.userData.dinamico = true; // a foto chega depois e muda o tamanho
       cena.add(loja);
       continue;
     }
-    if (!["escola", ...Object.keys(info)].includes(l.id)) continue;
+    if (!["escola", "kids1", ...Object.keys(info)].includes(l.id)) continue;
     const ox = l.x - l.dir[0] * l.recuo, oz = l.z - l.dir[1] * l.recuo;
     const grupo = new THREE.Group();
     grupo.position.set(ox, 0.03, oz);
@@ -610,6 +741,12 @@ export function montarCidade(cena) {
       const e = escolaEducarte3D(tex.logo, tex.icone);
       e.scale.setScalar(0.42); e.position.z = -2; grupo.add(e);
       solidoGirado(ox, oz, l.rot, 0, -2, 24, 12);
+      const t = totemEscola("Educarte Kids II", "5 a 12 anos", { borda: "#1d6fe0", fundo: "#ffffff", texto: "#1d6fe0", idade: "#ec2e8c" }); t.position.set(-9, 0, 5.4); grupo.add(t);
+    } else if (l.id === "kids1") {
+      grupo.add(escolaKids1());
+      solidoGirado(ox, oz, l.rot, 0, 3.08 - 4.5, 16.4, 9.4, 8);
+      for (const [x, z, w, d] of [[12.6, -7.6, 8, 0.4], [16.6, -1.6, 0.4, 12], [8.6, -1.6, 0.4, 12]]) solidoGirado(ox, oz, l.rot, x, z, w, d, 1.2);
+      const t = totemEscola("Educarte Kids I", "4 meses a 4 anos", { borda: "#f7b5cf", fundo: "#fffaf2", texto: "#ec2e8c", idade: "#3d9a7a" }); t.position.set(-7, 0, 5.4); grupo.add(t);
     } else {
       const [nome, cor, andares, corPlaca] = info[l.id];
       const { g: pr, h } = predio(20, 14, andares, cor, 0.1);
@@ -661,6 +798,8 @@ export function montarCidade(cena) {
     solido(x, z, 0.8, 0.8, 6);
   }
   for (const [x, z, rot] of [[LAGO.x - 13, LAGO.z, Math.PI / 2], [LAGO.x, LAGO.z - 13, 0]]) { const b = banco(); b.position.set(x, 0.03, z); b.rotation.y = rot; cena.add(b); }
+
+  heliponto(cena);
 
   // ---------- pátio de carros da J.E (antes dos prédios de enchimento, que desviam da cerca)
   if (LUGARES.some((l) => l.parceiro?.id === "je-multimarcas")) patioJE(cena, solido);
@@ -726,6 +865,11 @@ export function montarCidade(cena) {
     m.scale.y = 0.45;
     cena.add(m);
   }
+  // peças que mudam no jogo ficam de fora da junção
+  for (const s of semaforos) for (const p of s.postes) { for (const l of Object.values(p.userData.luzes)) l.userData.dinamico = true; p.userData.ped.userData.dinamico = true; }
+  roda.userData.dinamico = true;
+  for (const c of casas) c.correio.userData.dinamico = true;
+  mesclarEstaticos(cena, cena.children.filter((o) => !antes.has(o)));
   return { solidos, circulos, lugares, casas, semaforos, faixas, arvores, roda };
 }
 

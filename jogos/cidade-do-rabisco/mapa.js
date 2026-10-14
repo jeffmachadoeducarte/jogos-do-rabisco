@@ -76,7 +76,12 @@ export const naRua = (x, z) => distRua(x, z).d < 0;
 // ---------- lugares (porta na calçada, virada para a rua; dir = para onde a fachada olha)
 const L = (id, nome, x, z, dx, dz, extra = {}) => ({ id, nome, x, z, dir: [dx, dz], rot: Math.atan2(dx, dz), raio: 12, recuo: 7, ...extra });
 export const LUGARES = [
-  L("escola", "Escola Educarte", -36, -78.5, 0, 1),
+  // duas escolas Educarte, uma em cada lado da cidade: a Kids II (5 a 12 anos) no noroeste, onde sempre foi a
+  // escola, e a Kids I (berçário até 4 anos) no sudeste, na Rua Leste depois da Rua das Curvas
+  L("escola", "Educarte Kids II", -36, -78.5, 0, 1),
+  L("kids1", "Educarte Kids I", 80.5, 92, -1, 0),
+  // heliponto ao lado do hospital (o helicóptero azul e rosa fica nele)
+  L("heliponto", "Heliponto", 55, -92, 0, 1, { raio: 9, recuo: 0 }),
   L("hospital", "Hospital", 36, -78.5, 0, 1),
   L("bombeiros", "Bombeiros", 100, -78.5, 0, 1),
   L("biblioteca", "Biblioteca", -80.5, -35, 1, 0),
@@ -108,6 +113,7 @@ export const PATIO_JE = {
   vagas: [[-55.5, "vermelho", 0xe53935], [-50, "azul", 0x1e6fe0], [-45, "amarelo", 0xffc928], [-40, "verde", 0x2bb24c], [-34.5, "roxo", 0x8e5bd8]]
     .map(([z, cor, hex], i) => ({ x: 90.4, z, cor, hex, modelo: i, ang: Math.atan2(PORTAO_JE[0] - 90.4, PORTAO_JE[1] - z) })),
 };
+export const HELIPONTO = { x: 55, z: -92, r: 5 };
 export const lugar = (id) => LUGARES.find((l) => l.id === id);
 
 // casas coloridas: quatro do lado norte da Rua das Casas (porta para a rua); duas na Vila; a casa da Vovó

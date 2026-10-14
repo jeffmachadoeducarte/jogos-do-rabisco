@@ -335,3 +335,168 @@ export function montarBellaCat() {
   S.solidos.push({ x0: -2.8, x1: -1.8, z0: D / 2 - 1.4, z1: D / 2, y1: 2 });
   return { ...S, pedestais, balcao, vendedora: { x: 5.8, z: 1.7 }, embrulho: { x: balcao.x, y: 1.4, z: balcao.z + 0.75 } };
 }
+
+// ------------------------------------------------------------------ Salas de aula da Educarte (aulas.js)
+// Kids II (5 a 12 anos): piso de madeira, lousa verde (o jogo escreve nela a tarefa da vez), alfabeto em cima da
+// lousa, números de 1 a 10 e "Jesus te ama" na parede, carteiras em duas fileiras, mesa da professora (com a cesta
+// onde as maçãs são entregues), bandeja de maçãs, estante de livros e o tapete de atividades com os lugares (vagas)
+// onde aparecem os objetos de cada aula. Kids I (berçário até 4 anos): tons suaves, piso de EVA, quadro branco
+// colorido, arco-íris na parede, berço, ursinho, blocos macios, mesinhas baixas e o mesmo tapete de atividades.
+const COR_LETRA = ["#ec2e8c", "#ff9f43", "#ffcc1f", "#58c43a", "#00b5f0", "#8e6cff"];
+export function montarSalaAula({ kids1 = false } = {}) {
+  const W = 16, D = 14, H = 4.6;
+  const texPiso = kids1
+    ? texturaCanvas(256, 256, (c) => { const cs = ["#f7c6d9", "#c4ecd9", "#c6e2f7", "#fff0b3"]; for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { c.fillStyle = cs[(x + y * 2) % 4]; c.fillRect(x * 64, y * 64, 64, 64); c.strokeStyle = "rgba(255,255,255,0.7)"; c.lineWidth = 3; c.strokeRect(x * 64, y * 64, 64, 64); } }, { repetir: true })
+    : texturaCanvas(256, 256, (c, w, h) => { for (let y = 0; y < 8; y++) { const v = 176 + ((y * 37) % 30); c.fillStyle = `rgb(${v},${Math.round(v * 0.72)},${Math.round(v * 0.45)})`; c.fillRect(0, y * 32, w, 31); c.fillStyle = "rgba(0,0,0,0.25)"; c.fillRect(((y * 97) % 200) + 20, y * 32, 3, 31); } void h; }, { repetir: true });
+  texPiso.repeat.set(W / 4, D / 4);
+  const S = casca({ w: W, d: D, h: H, piso: std(0xffffff, { map: texPiso, roughness: kids1 ? 0.95 : 0.7 }), parede: kids1 ? 0xfde4ee : 0xfdf3dc, fundo: kids1 ? 0xdff5ea : 0xdcefe0, teto: 0xfffdf7 });
+  const g = S.g;
+  // lousa (Kids II: verde de giz) ou quadro branco (Kids I); o jogo redesenha com escrever(texto, sub)
+  const canvas = document.createElement("canvas"); canvas.width = 1024; canvas.height = 384;
+  const texLousa = new THREE.CanvasTexture(canvas); texLousa.colorSpace = THREE.SRGBColorSpace;
+  const escrever = (texto = "", sub = "") => {
+    const c = canvas.getContext("2d"), w = canvas.width, h = canvas.height;
+    if (kids1) { c.fillStyle = "#ffffff"; c.fillRect(0, 0, w, h); for (let i = 0; i < 6; i++) { c.fillStyle = COR_LETRA[i]; c.beginPath(); c.arc(40 + i * 188, h - 18, 10, 0, 7); c.fill(); } }
+    else { c.fillStyle = "#2f5d46"; c.fillRect(0, 0, w, h); c.fillStyle = "rgba(255,255,255,0.05)"; for (let i = 0; i < 40; i++) c.fillRect(Math.random() * w, Math.random() * h, 60, 3); }
+    let tam = 150; c.font = `900 ${tam}px 'Baloo 2', sans-serif`;
+    while (c.measureText(texto).width > w - 80 && tam > 40) { tam -= 6; c.font = `900 ${tam}px 'Baloo 2', sans-serif`; }
+    c.textAlign = "center"; c.textBaseline = "middle";
+    if (kids1) { // letras coloridas, uma de cada cor
+      let x = (w - c.measureText(texto).width) / 2; c.textAlign = "left";
+      [...texto].forEach((l, i) => { c.fillStyle = COR_LETRA[i % COR_LETRA.length]; c.fillText(l, x, sub ? 150 : 192); x += c.measureText(l).width; });
+      c.textAlign = "center";
+    } else { c.fillStyle = "#f8f6ec"; c.fillText(texto, w / 2, sub ? 150 : 192); }
+    if (sub) { c.font = "700 64px 'Baloo 2', sans-serif"; c.fillStyle = kids1 ? "#8e6cff" : "#ffe9a8"; c.fillText(sub, w / 2, 300); }
+    texLousa.needsUpdate = true;
+  };
+  escrever(kids1 ? "Educarte Kids I" : "Educarte Kids II", kids1 ? "Bem-vindo, Rabisco!" : "Bem-vindo à sala de aula!");
+  const moldura = std(kids1 ? 0xf7b5cf : 0x9a6232, { roughness: 0.6 });
+  bloco(g, 6.9, 2.75, 0.14, moldura, 0, 2.35, -D / 2 + 0.08, false);
+  const lousa = quadro(g, texLousa, 6.6, 2.475, 0, 2.35, -D / 2 + 0.16, 0, { roughness: kids1 ? 0.3 : 0.9, emissive: 0xffffff, emissiveMap: texLousa, emissiveIntensity: kids1 ? 0.3 : 0.15 });
+  bloco(g, 6.9, 0.1, 0.3, moldura, 0, 1.06, -D / 2 + 0.2, false); // aparador do giz
+  // alfabeto (Kids II) ou arco-íris (Kids I) em cima
+  if (kids1) {
+    const arco = texturaCanvas(512, 160, (c, w, h) => { c.clearRect(0, 0, w, h); ["#ff6b6b", "#ff9f43", "#ffd84a", "#58c43a", "#4aa3df", "#8e6cff"].forEach((cor, i) => { c.strokeStyle = cor; c.lineWidth = 16; c.beginPath(); c.arc(w / 2, h + 40, 220 - i * 16, Math.PI, 0); c.stroke(); }); c.fillStyle = "#fff"; for (const x of [70, 442]) { c.beginPath(); c.arc(x, 140, 30, 0, 7); c.arc(x + 30, 130, 26, 0, 7); c.arc(x - 28, 132, 24, 0, 7); c.fill(); } });
+    quadro(g, arco, 5.5, 1.7, 0, 4.1, -D / 2 + 0.05, 0, { transparent: true, emissive: 0xffffff, emissiveMap: arco, emissiveIntensity: 0.3 });
+  } else {
+    const abc = texturaCanvas(2048, 128, (c, w, h) => { c.fillStyle = "#ffffff"; c.fillRect(0, 0, w, h); const L = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; c.font = "900 92px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; [...L].forEach((l, i) => { c.fillStyle = COR_LETRA[i % 6]; c.fillText(l, 40 + i * 76.5, h / 2 + 6); }); });
+    quadro(g, abc, 13, 0.82, 0, 4.05, -D / 2 + 0.05, 0, { emissive: 0xffffff, emissiveMap: abc, emissiveIntensity: 0.3 });
+  }
+  // parede da direita: números 1 a 10 (com bolinhas) e "Jesus te ama"; esquerda: janelas
+  const nums = texturaCanvas(1024, 256, (c, w, h) => {
+    c.fillStyle = "#ffffff"; c.fillRect(0, 0, w, h);
+    for (let n = 1; n <= 10; n++) { const x = 52 + (n - 1) * 102; c.fillStyle = COR_LETRA[n % 6]; c.font = "900 96px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.fillText(String(n), x, 110); for (let k = 0; k < n; k++) { c.beginPath(); c.arc(x - 30 + (k % 5) * 15, 170 + Math.floor(k / 5) * 30, 6, 0, 7); c.fill(); } }
+  });
+  quadro(g, nums, kids1 ? 4.2 : 6.4, kids1 ? 1.05 : 1.6, W / 2 - 0.04, 3.4, -2.2, -Math.PI / 2, { emissive: 0xffffff, emissiveMap: nums, emissiveIntensity: 0.25 });
+  const jesus = texturaCanvas(512, 256, (c, w, h) => { c.fillStyle = "#fff6fa"; c.fillRect(0, 0, w, h); c.lineWidth = 12; c.strokeStyle = "#ec2e8c"; c.strokeRect(6, 6, w - 12, h - 12); c.font = "900 78px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = "#1d6fe0"; c.fillText("Jesus te ama", w / 2, 100); c.fillStyle = "#ec2e8c"; c.font = "900 90px 'Baloo 2', sans-serif"; c.fillText("♥", w / 2, 190); });
+  quadro(g, jesus, 2.4, 1.2, W / 2 - 0.04, 2.0, 3.3, -Math.PI / 2, { emissive: 0xffffff, emissiveMap: jesus, emissiveIntensity: 0.25 });
+  for (const z of [-3.5, 2.5]) janela(g, 2.8, 1.9, -W / 2 + 0.03, 2.5, z, Math.PI / 2);
+  // mesa da professora (com a cesta das maçãs) e a bandeja de maçãs
+  const madeira = std(kids1 ? 0xffe0b8 : 0xb07a4a, { roughness: 0.6 });
+  const mesa = { x: -5.0, z: -4.3 }, bandeja = { x: 5.2, z: -4.3 };
+  bloco(g, 2.4, 0.12, 1.1, madeira, mesa.x, 0.92, mesa.z); for (const [dx, dz] of [[-1.05, -0.45], [1.05, -0.45], [-1.05, 0.45], [1.05, 0.45]]) bloco(g, 0.1, 0.9, 0.1, madeira, mesa.x + dx, 0.45, mesa.z + dz);
+  const cesta = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.32, 0.36, 16, 1, true), std(0xc98a3c, { side: THREE.DoubleSide, roughness: 0.9 })); cesta.position.set(mesa.x + 0.4, 1.16, mesa.z); g.add(cesta);
+  const globo = bola(g, 0.26, std(0x4aa3df, { roughness: 0.5 }), mesa.x - 0.7, 1.26, mesa.z - 0.1); void globo;
+  S.solidos.push({ x0: mesa.x - 1.25, x1: mesa.x + 1.25, z0: mesa.z - 0.6, z1: mesa.z + 0.6, y1: 1.2 });
+  bloco(g, 1.5, 0.1, 0.9, madeira, bandeja.x, 0.8, bandeja.z); for (const [dx, dz] of [[-0.6, -0.35], [0.6, -0.35], [-0.6, 0.35], [0.6, 0.35]]) bloco(g, 0.08, 0.8, 0.08, madeira, bandeja.x + dx, 0.4, bandeja.z + dz);
+  const macasBandeja = [];
+  for (let i = 0; i < 10; i++) { const m = maca(); m.position.set(bandeja.x - 0.55 + (i % 5) * 0.27, 0.98, bandeja.z - 0.15 + Math.floor(i / 5) * 0.3); g.add(m); macasBandeja.push(m); }
+  S.solidos.push({ x0: bandeja.x - 0.8, x1: bandeja.x + 0.8, z0: bandeja.z - 0.5, z1: bandeja.z + 0.5, y1: 1 });
+  // carteiras (Kids II) ou mesinhas baixas com cadeirinhas (Kids I), longe do tapete
+  const tampo = std(kids1 ? 0xffffff : 0xd9b98c, { roughness: 0.6 }), ferro = std(kids1 ? 0xa9d6f5 : 0x3d7ad9, { roughness: 0.5 });
+  const cadeiraCor = [0xec2e8c, 0xffcc1f, 0x58c43a, 0x00b5f0, 0x8e6cff, 0xff9f43];
+  let k = 0;
+  for (const z of [2.4, 4.6]) for (const x of [-4.6, 0, 4.6]) {
+    if (z === 4.6 && x === 0) continue; // corredor da porta
+    const alt = kids1 ? 0.5 : 0.75;
+    bloco(g, 1.4, 0.08, 0.8, tampo, x, alt, z); for (const s of [-1, 1]) bloco(g, 0.08, alt, 0.7, ferro, x + s * 0.6, alt / 2, z);
+    const cad = std(cadeiraCor[k++ % 6], { roughness: 0.5 });
+    bloco(g, 0.6, 0.08, 0.55, cad, x, alt * 0.6, z + 0.75); bloco(g, 0.6, 0.55, 0.08, cad, x, alt * 0.6 + 0.3, z + 1.02);
+    S.solidos.push({ x0: x - 0.75, x1: x + 0.75, z0: z - 0.45, z1: z + 1.1, y1: 1.1 });
+  }
+  // tapete de atividades (redondo, colorido)
+  const texTap = texturaCanvas(256, 256, (c, w, h) => { const cs = kids1 ? ["#f7b5cf", "#a8e6cf", "#a9d6f5", "#ffe08a"] : ["#ec2e8c", "#ffcc1f", "#58c43a", "#00b5f0"]; for (let i = 0; i < 8; i++) { c.fillStyle = cs[i % 4]; c.beginPath(); c.moveTo(w / 2, h / 2); c.arc(w / 2, h / 2, w / 2, (i / 8) * 6.283, ((i + 1) / 8) * 6.283); c.fill(); } c.fillStyle = "#ffffff"; c.beginPath(); c.arc(w / 2, h / 2, 40, 0, 7); c.fill(); });
+  const tap = new THREE.Mesh(new THREE.CircleGeometry(4.6, 40), std(0xffffff, { map: texTap, roughness: 0.95 })); tap.rotation.x = -Math.PI / 2; tap.scale.y = 0.55; tap.position.set(0, 0.045, -1.4); tap.receiveShadow = true; g.add(tap);
+  // decoração: estante de livros (Kids II) / berço, ursinho e blocos macios (Kids I); plantinha e relógio
+  if (kids1) {
+    const berco = new THREE.Group(); berco.position.set(-W / 2 + 1.4, 0, D / 2 - 2.6); g.add(berco);
+    const bc = std(0xffffff, { roughness: 0.5 });
+    bloco(berco, 1.4, 0.1, 2.0, bc, 0, 0.5, 0); for (const [x, z] of [[-0.65, -0.95], [0.65, -0.95], [-0.65, 0.95], [0.65, 0.95]]) bloco(berco, 0.08, 1.0, 0.08, bc, x, 0.5, z);
+    for (const x of [-0.65, 0.65]) for (let i = 0; i < 7; i++) bloco(berco, 0.04, 0.45, 0.04, bc, x, 0.78, -0.8 + i * 0.27);
+    bloco(berco, 1.2, 0.12, 1.8, std(0xa9d6f5), 0, 0.6, 0);
+    S.solidos.push({ x0: -W / 2 + 0.6, x1: -W / 2 + 2.2, z0: D / 2 - 3.7, z1: D / 2 - 1.5, y1: 1.2 });
+    const urso = new THREE.Group(); urso.position.set(W / 2 - 1.3, 0, D / 2 - 2.0); g.add(urso);
+    const mar = std(0xc98a5a, { roughness: 0.9 });
+    bola(urso, 0.45, mar, 0, 0.45, 0); bola(urso, 0.32, mar, 0, 1.05, 0); for (const s of [-1, 1]) { bola(urso, 0.12, mar, s * 0.24, 1.3, 0); bola(urso, 0.14, mar, s * 0.42, 0.55, 0.15); bola(urso, 0.05, std(0x151515), s * 0.1, 1.1, 0.28); }
+    bola(urso, 0.1, std(0xffd0b0), 0, 0.98, 0.29);
+    S.solidos.push({ x0: W / 2 - 1.9, x1: W / 2 - 0.6, z0: D / 2 - 2.6, z1: D / 2 - 1.4, y1: 1.5 });
+    [[-6.6, -5.6, 0xf7b5cf], [-6.0, -5.9, 0xa8e6cf], [-6.3, -5.5, 0xffe08a]].forEach(([x, z, c], i) => bloco(g, 0.5, 0.5, 0.5, std(c, { roughness: 0.9 }), x, 0.25 + (i === 2 ? 0.5 : 0), z));
+    // móbile de estrelinhas
+    for (let i = 0; i < 5; i++) { const a = (i / 5) * 6.28; bloco(g, 0.02, 0.6, 0.02, std(0xdddddd), -W / 2 + 1.4 + Math.cos(a) * 0.5, H - 0.3, D / 2 - 2.6 + Math.sin(a) * 0.5, false); const e = new THREE.Mesh(new THREE.OctahedronGeometry(0.14), std(COR_LETRA[i].replace ? 0xffd84a : 0xffd84a, { emissive: 0xffd84a, emissiveIntensity: 0.3 })); e.position.set(-W / 2 + 1.4 + Math.cos(a) * 0.5, H - 0.7, D / 2 - 2.6 + Math.sin(a) * 0.5); g.add(e); }
+  } else {
+    const est = new THREE.Group(); est.position.set(-W / 2 + 0.5, 0, -D / 2 + 2.2); est.rotation.y = Math.PI / 2; g.add(est);
+    bloco(est, 2.6, 2.2, 0.5, std(0xb07a4a), 0, 1.1, 0);
+    const lom = new THREE.InstancedMesh(GEO.caixa, std(0xffffff, { roughness: 0.6 }), 36), m4 = new THREE.Matrix4(), cor = new THREE.Color();
+    for (let i = 0; i < 36; i++) { const fila = Math.floor(i / 12), col = i % 12; m4.compose(new THREE.Vector3(-1.1 + col * 0.2, 0.55 + fila * 0.65, 0.2), new THREE.Quaternion(), new THREE.Vector3(0.16, 0.42 + (i % 3) * 0.06, 0.3)); lom.setMatrixAt(i, m4); lom.setColorAt(i, cor.setHex(cadeiraCor[(i * 7) % 6])); }
+    est.add(lom);
+    S.solidos.push({ x0: -W / 2, x1: -W / 2 + 1.0, z0: -D / 2 + 0.8, z1: -D / 2 + 3.6, y1: 2.4 });
+  }
+  planta(g, W / 2 - 0.8, D / 2 - 0.8, 0.9); S.solidos.push({ x0: W / 2 - 1.4, x1: W / 2, z0: D / 2 - 1.4, z1: D / 2, y1: 2 });
+  const relogio = texturaCanvas(128, 128, (c) => { c.fillStyle = "#fff"; c.beginPath(); c.arc(64, 64, 60, 0, 7); c.fill(); c.lineWidth = 8; c.strokeStyle = "#ec2e8c"; c.stroke(); c.lineWidth = 6; c.strokeStyle = "#151515"; c.beginPath(); c.moveTo(64, 64); c.lineTo(64, 24); c.moveTo(64, 64); c.lineTo(92, 74); c.stroke(); });
+  const rel = new THREE.Mesh(new THREE.CircleGeometry(0.45, 24), new THREE.MeshBasicMaterial({ map: relogio })); rel.position.set(3.0, 3.9, D / 2 - 0.02); rel.rotation.y = Math.PI; g.add(rel);
+  // vagas dos objetos da aula: duas fileiras no tapete (6 na da frente da lousa e 5 atrás)
+  const vagas = [...[-5, -3, -1, 1, 3, 5].map((x) => ({ x, z: -2.6 })), ...[-4, -2, 0, 2, 4].map((x) => ({ x, z: -0.4 }))];
+  return { ...S, escrever, lousa, mesa: { x: mesa.x + 0.4, z: mesa.z + 0.9, cesta }, bandeja: { x: bandeja.x, z: bandeja.z + 0.9 }, macasBandeja, vagas, professora: { x: -2.8, z: -4.6 }, kids1 };
+}
+export function maca() {
+  const g = new THREE.Group();
+  bola(g, 0.14, std(0xe53935, { roughness: 0.4 }), 0, 0, 0);
+  const cab = new THREE.Mesh(GEO.cil, std(0x6b4a2f)); cab.scale.set(0.015, 0.08, 0.015); cab.position.y = 0.15; g.add(cab);
+  const folha = bola(g, 1, std(0x58c43a), 0.05, 0.16, 0); folha.scale.set(0.06, 0.02, 0.035);
+  return g;
+}
+// objetos das aulas (aulas.js): livro colorido, bichinho de pelúcia, bola, forma, bloco de letra
+const COR_OBJ = { vermelho: 0xe53935, azul: 0x1e6fe0, amarelo: 0xffc928, verde: 0x2bb24c };
+export function objetoAula({ tipo, valor }) {
+  const g = new THREE.Group();
+  if (tipo === "livro") {
+    const capa = std(COR_OBJ[valor], { roughness: 0.6 });
+    const l = new THREE.Group(); l.position.y = 0.5; l.rotation.y = 0.35; g.add(l);
+    bloco(l, 0.62, 0.84, 0.08, capa, 0, 0, -0.07); bloco(l, 0.62, 0.84, 0.08, capa, 0, 0, 0.07);
+    bloco(l, 0.58, 0.8, 0.12, std(0xfffbee), 0.02, 0, 0); bloco(l, 0.06, 0.84, 0.22, capa, -0.31, 0, 0);
+    const est = new THREE.Mesh(GEO.plano, std(0xffffff, { roughness: 0.6 })); est.scale.set(0.3, 0.3, 1); est.position.set(0, 0.12, 0.112); l.add(est);
+  } else if (tipo === "bicho") {
+    const cor = { gato: 0xff9f43, cachorro: 0x9a6232, pato: 0xffd84a }[valor];
+    const m = std(cor, { roughness: 0.9 }), preto = std(0x151515);
+    if (valor === "pato") {
+      const c = bola(g, 0.36, m, 0, 0.34, 0); c.scale.set(1, 0.8, 1.25); bola(g, 0.24, m, 0, 0.78, 0.18);
+      const bico = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.22, 8), std(0xff8a1f)); bico.rotation.x = Math.PI / 2; bico.position.set(0, 0.76, 0.46); g.add(bico);
+      for (const s of [-1, 1]) bola(g, 0.035, preto, s * 0.1, 0.85, 0.38);
+    } else {
+      const c = bola(g, 0.34, m, 0, 0.36, 0); c.scale.set(1, 0.9, 1.1); bola(g, 0.27, m, 0, 0.82, 0.12);
+      for (const s of [-1, 1]) {
+        if (valor === "gato") { const o = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.2, 4), m); o.position.set(s * 0.14, 1.07, 0.1); g.add(o); }
+        else { const o = bola(g, 1, std(0x6b4224), s * 0.26, 0.8, 0.08); o.scale.set(0.07, 0.17, 0.11); }
+        bola(g, 0.04, preto, s * 0.1, 0.88, 0.36);
+      }
+      bola(g, 0.05, valor === "gato" ? std(0xec2e8c) : preto, 0, 0.8, 0.39);
+      const rabo = new THREE.Mesh(GEO.cil, m); rabo.scale.set(0.04, 0.4, 0.04); rabo.position.set(0, 0.5, -0.38); rabo.rotation.x = -0.7; g.add(rabo);
+    }
+  } else if (tipo === "bola") {
+    bola(g, 0.38, std(COR_OBJ[valor], { roughness: 0.35 }), 0, 0.4, 0);
+    const f = new THREE.Mesh(new THREE.TorusGeometry(0.385, 0.03, 6, 24), std(0xffffff)); f.position.y = 0.4; g.add(f);
+  } else if (tipo === "forma") {
+    const cor = { circulo: 0xe53935, quadrado: 0x1e6fe0, triangulo: 0xffc928 }[valor];
+    const m = std(cor, { roughness: 0.5 });
+    const geo = valor === "circulo" ? new THREE.CylinderGeometry(0.42, 0.42, 0.14, 28) : valor === "triangulo" ? new THREE.CylinderGeometry(0.52, 0.52, 0.14, 3) : new THREE.BoxGeometry(0.72, 0.14, 0.72);
+    const f = new THREE.Mesh(geo, m); f.rotation.x = Math.PI / 2; if (valor === "triangulo") f.rotation.y = Math.PI / 2; f.position.y = 0.62; f.castShadow = true; g.add(f);
+    if (valor === "triangulo") { f.rotation.set(Math.PI / 2, 0, Math.PI / 2); }
+    bloco(g, 0.5, 0.1, 0.3, std(0xffffff), 0, 0.05, 0); bloco(g, 0.06, 0.2, 0.06, std(0xffffff), 0, 0.18, 0);
+  } else if (tipo === "letra") {
+    const tex = texturaCanvas(128, 128, (c, w, h) => { c.fillStyle = "#fffaf0"; c.fillRect(0, 0, w, h); c.lineWidth = 10; c.strokeStyle = COR_LETRA[valor.charCodeAt(0) % 6]; c.strokeRect(5, 5, w - 10, h - 10); c.font = "900 96px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = COR_LETRA[valor.charCodeAt(0) % 6]; c.fillText(valor, w / 2, h / 2 + 6); });
+    const cubo = bloco(g, 0.7, 0.7, 0.7, std(0xffffff, { map: tex, roughness: 0.7 }), 0, 0.36, 0); cubo.rotation.y = 0.2;
+  }
+  const anel = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.05, 6, 28), new THREE.MeshBasicMaterial({ color: 0xffcc1f })); anel.rotation.x = Math.PI / 2; anel.position.y = 0.06; anel.visible = false; g.add(anel);
+  g.userData.anel = anel;
+  return g;
+}
