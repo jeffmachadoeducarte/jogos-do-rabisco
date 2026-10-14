@@ -41,6 +41,19 @@ body:not(.touch) .acao-cidade { bottom: 30px; }
 }
 .balao-cidade b { display: block; color: var(--rosa); font-size: 15px; }
 .balao-cidade.ativo { transform: translate(-50%, 0); }
+/* oração do Pai Nosso: frase grande no alto, palavra por palavra (karaokê) */
+.oracao-cidade {
+  position: absolute; z-index: 6; left: 50%; top: 14%; transform: translateX(-50%); width: min(860px, 86vw); text-align: center;
+  background: rgba(255, 252, 244, 0.93); border: 5px solid #1f3a8a; border-radius: 28px; box-shadow: 0 6px 0 #1f3a8a; padding: 18px 24px 14px;
+  pointer-events: none; animation: oracao-entra 0.8s ease-out;
+}
+.oracao-cidade[hidden] { display: none; }
+.oracao-cidade .frase { margin: 0; font: 800 clamp(26px, 4.4vw, 48px) var(--texto); line-height: 1.25; color: #151515; }
+.oracao-cidade .frase span { color: #9aa3b8; transition: color 0.35s ease; }
+.oracao-cidade .frase span.dita { color: #1f3a8a; }
+.oracao-cidade .dica { margin: 8px 0 0; min-height: 1.3em; font: 700 clamp(15px, 2vw, 20px) var(--texto); color: #8e6cff; }
+.oracao-cidade .conta { margin: 4px 0 0; font: 700 13px var(--texto); color: #8a8a8a; }
+@keyframes oracao-entra { from { opacity: 0; transform: translate(-50%, -12px); } to { opacity: 1; transform: translateX(-50%); } }
 @media (max-height: 520px) and (orientation: landscape) {
   .hud-cidade { top: 60px; } .hud-cidade ul { padding: 2px 8px; border-width: 3px; } .hud-cidade li { font-size: 12px; line-height: 1.35; }
   .mapa-cidade { width: 112px; height: 112px; top: 60px; border-width: 3px; }
@@ -49,4 +62,5 @@ body:not(.touch) .acao-cidade { bottom: 30px; }
   .acao-cidade { right: 18px; bottom: 116px; font-size: 16px; min-width: 96px; border-width: 4px; }
   .balao-cidade { font-size: 14px; bottom: 10px; padding: 6px 12px 8px; max-width: 56vw; }
   .selos-cidade { font-size: 14px; }
+  .oracao-cidade { top: 8px; padding: 8px 14px 6px; border-width: 3px; width: min(640px, 64vw); }
 }

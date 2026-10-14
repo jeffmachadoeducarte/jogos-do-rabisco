@@ -374,14 +374,14 @@ falas.update({
     "cid-titulo": "Cidade do Rabisco!",
     "cid-intro": "Que cidade bonita! Vamos passear? Converse com quem tem um ponto de exclamação em cima.",
     "cid-carteiro": "Oi, Rabisco! Leve estas cartas: a vermelha, a azul e a amarela. Cada uma vai na caixa de correio da casa da mesma cor!",
-    "cid-gatos": "Meus três gatinhos fugiram! Um foi para trás da igreja, outro para o parque e outro para perto do hospital.",
+    "cid-gatos": "Meus três gatinhos fugiram! Um foi para trás da Igreja Reviver, outro para o parque e outro para perto do hospital.",
     "cid-padeiro": "Pão quentinho! Você leva para a escola? As crianças vão adorar o lanche!",
     "cid-guarda": "Olá! Atravesse a rua na faixa de pedestre, mas só quando o bonequinho do semáforo ficar verde. Três vezes!",
     "cid-carta-ok": "Carta entregue!", "cid-gato-ok": "Achei um gatinho! Miau!", "cid-pao-ok": "Que cheirinho bom! Obrigado pelo pão, Rabisco!",
     "cid-faixa-ok": "Muito bem! Atravessou certinho!", "cid-espere": "Espere o bonequinho verde para atravessar!",
     "cid-missao-ok": "Missão cumprida!", "cid-final": "Você ajudou todo mundo! Você é um amigo da cidade!",
 })
-for k, nome in {"escola": "Escola Educarte", "igreja": "Igreja", "praca": "Praça", "parque": "Parque", "biblioteca": "Biblioteca", "padaria": "Padaria",
+for k, nome in {"escola": "Escola Educarte", "igreja": "Igreja Reviver", "praca": "Praça", "parque": "Parque", "biblioteca": "Biblioteca", "padaria": "Padaria",
                 "hospital": "Hospital", "bombeiros": "Bombeiros", "correio": "Correio", "mercado": "Mercado", "casas": "Rua das Casas Coloridas", "casas2": "Vila"}.items():
     falas[f"cid-lugar-{k}"] = f"{nome}!"
 
@@ -406,7 +406,38 @@ falas.update({
     "cid-patos": "Quantos patinhos estão nadando no lago? Conte bem e pise no número certo!",
     "cid-patos-erro": "Hmm, conte de novo, devagarinho.",
     "cid-patos-ok": "Isso mesmo! Em inglês, pato é duck! Quack, quack!",
+    "cid-je": "Olá, Rabisco! A J.E Multimarcas é uma loja de carros! Este carro verde com laço é da família da casa verde. Você leva para eles?",
+    "cid-je-chave": "A chave é sua! Agora leve o carro novo até a casa verde, na Rua das Casas Coloridas. Siga a seta!",
+    "cid-je-ok": "Uau, nosso carro novo! Obrigado, Rabisco! Vamos passear juntos!",
+    "cid-bella": "Oi, Rabisco! Hoje é aniversário da Vovó Lápis! Escolhi um laço lindo aqui na Bella Cat. Leve o presente até a casa laranja dela, perto da Rua Leste!",
+    "cid-bella-ok": "Um laço lindo! Que presente mais bonito! Obrigada, Rabisco, você é um amor!",
+    "cid-rise": "Oi, Rabisco! Aqui na Academia Rise Up a gente cuida da saúde! Vamos aquecer? Pule cinco vezes aqui pertinho de mim!",
+    "cid-rise-pe": "Exercício é a pé! Saia do carro e venha pular.",
+    "cid-rise-cones": "Aquecimento pronto! Agora corra pelos cones laranja em volta da academia: um, dois, três e quatro!",
+    "cid-rise-agua": "Que corrida! Depois do exercício, água! Leve esta garrafinha para a Lápis Rosa, lá na praça.",
+    "cid-rise-ok": "Água fresquinha! Obrigada, Rabisco! Exercício e água: que dupla saudável!",
+    # Hora da Aula (Escola Educarte)
+    "cid-professora": "Oi, Rabisco! O sino da aula já vai tocar e o Lápis Azulzinho esqueceu a mochila em casa! Busque a mochila azul na casa azul, a de número dois, e traga para ele aqui na porta da escola!",
+    "cid-mochila": "A mochila azul! Obrigada, Rabisco! Agora corra para a Escola Educarte!",
+    "cid-sino": "Plim, plom! O sino tocou! Mas a professora espera você. Corra, Rabisco!",
+    "cid-escola-ok": "Minha mochila! Obrigado, Rabisco! Hoje a aula é das letras: A, B, C!",
+    # Convite para o culto infantil (Igreja Reviver)
+    "cid-igreja": "Oi, Rabisco! Hoje tem culto infantil na Igreja Reviver! Convide três amigos lápis pela cidade e traga todos aqui. Siga os coraçõezinhos!",
+    "cid-convite": "Oba! Eu vou ao culto infantil!",
+    "cid-convite-todos": "Eu também vou! Três amigos! Agora vamos todos para a Igreja Reviver!",
+    "cid-igreja-ok": "Que alegria! Alegrei-me quando me disseram: vamos à casa do Senhor! Baseado no Salmo cento e vinte e dois, versículo um.",
+    # Pai Nosso (Igreja Reviver)
+    "cid-painosso": "Oi, Rabisco! Vamos orar juntos o Pai Nosso? Venha para o tapete azul na porta da igreja. Eu falo uma frase e você repete comigo, bem devagarinho.",
+    "cid-pai-intro": "Vamos orar juntos. Fique quietinho e repita comigo.",
 })
+# Pai Nosso (Mateus 6:9-13, texto tradicional): uma fala por frase, mais devagar (RITMO_FALA)
+PAI_NOSSO = ["Pai nosso, que estás no céu,", "santificado seja o teu nome.", "Venha o teu reino,", "seja feita a tua vontade,", "assim na terra como no céu.",
+             "O pão nosso de cada dia nos dá hoje.", "Perdoa as nossas ofensas,", "assim como nós perdoamos a quem nos tem ofendido.",
+             "E não nos deixes cair em tentação,", "mas livra-nos do mal.", "Amém."]
+RITMO_FALA = {"cid-pai-intro": "-15%"}  # ritmo próprio de algumas falas (o resto usa RITMO)
+for i, frase in enumerate(PAI_NOSSO, 1):
+    falas[f"cid-pai-{i}"] = frase
+    RITMO_FALA[f"cid-pai-{i}"] = "-15%"
 for n in range(1, 11):
     falas[f"cid-num-{n}"] = f"{NUMEROS[n].capitalize()}!"
 
@@ -430,11 +461,21 @@ for w in ["apple", "dog", "cat", "ball", "car", "sun", "fish", "book", "star", "
     falas_en[f"en-{w}"] = f"{w.capitalize()}!"
 
 
+# >>> BLOCO Rabisco e a Arca (jogos/rabisco-e-a-arca) — mantido por quem cuida desse jogo >>>
+# As falas ficam em jogos/rabisco-e-a-arca/falas.json (gerado por falas.mjs a partir de dados.js):
+# "pt" vai para a Francisca e "en" para a voz em inglês (VOZ_EN).
+with open(os.path.join(os.path.dirname(__file__), "..", "jogos", "rabisco-e-a-arca", "falas.json"), encoding="utf-8") as _f:
+    _arca = json.load(_f)
+falas.update(_arca["pt"])
+falas_en.update(_arca["en"])
+# <<< FIM DO BLOCO Rabisco e a Arca <<<
+
+
 async def gerar(chave, texto, marcas=None, voz=None):
     caminho = os.path.join(SAIDA, f"{chave}.mp3")
     if os.path.exists(caminho) and not REFAZER and marcas is None:
         return
-    com = edge_tts.Communicate(texto, voz or VOZ, rate=RITMO, boundary="WordBoundary")
+    com = edge_tts.Communicate(texto, voz or VOZ, rate=RITMO_FALA.get(chave, RITMO), boundary="WordBoundary")
     with open(caminho, "wb") as f:
         async for parte in com.stream():
             if parte["type"] == "audio":

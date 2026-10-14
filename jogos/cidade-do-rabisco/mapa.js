@@ -80,7 +80,7 @@ export const LUGARES = [
   L("hospital", "Hospital", 36, -78.5, 0, 1),
   L("bombeiros", "Bombeiros", 100, -78.5, 0, 1),
   L("biblioteca", "Biblioteca", -80.5, -35, 1, 0),
-  L("igreja", "Igreja", -40, -61.5, 0, -1, { recuo: 12 }),
+  L("igreja", "Igreja Reviver", -40, -61.5, 0, -1),
   L("correio", "Correio", -50, -11.5, 0, 1),
   L("padaria", "Padaria", 40, -11.5, 0, 1),
   L("mercado", "Mercado", 40, -61.5, 0, -1),

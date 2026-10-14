@@ -10,7 +10,11 @@
 //  - Patinhos do lago: contar os patos e pisar no número certo (e aprender "duck");
 //  - Lojas parceiras (parceiros.js): Carro novo (J.E Multimarcas → casa verde, dirigindo o carro do laço),
 //    Presente da Vovó (laço da Bella Cat → Vovó) e Exercício (Rise Up: 5 pulos, 4 cones e água para a Lápis Rosa);
+//  - Hora da Aula: buscar a mochila azul na casa azul (nº 2) e levar ao aluno na porta da Escola Educarte antes do sino;
+//  - Convite: convidar 3 amigos lápis para o culto infantil e levá-los à Igreja Reviver (Salmo 122:1);
+//  - Pai Nosso: orar junto, frase por frase, no tapete da porta da Igreja Reviver (Mateus 6:9-13);
 //  - Passeio: visitar todos os lugares (passaporte). Selos espalhados para colecionar.
+// Em toda entrega tem alguém esperando na frente do destino (receptor): acena enquanto espera e recebe/comemora.
 // O alvo da missão em foco pisca no minimapa e uma seta (bússola) no alto da tela aponta o caminho.
 
 import { THREE, texturaCanvas } from "../../src/motor3d/toon.js";
@@ -25,6 +29,12 @@ import { criarJoystick } from "../../src/motor/joystick.js";
 import { CODIGOS_J2, TECLAS_J1_EXTRA } from "../../src/motor/jogadores.js";
 import { montarCidade, carro, carroAberto, BORDA } from "./cidade.js";
 import { RUAS, segmentos, ROTAS, CASAS, LAGO, PARQUE, PRACA, VAGAS, LARGADA, lugar as lugarDoMapa } from "./mapa.js";
+
+const ORACAO = [ // Pai Nosso (Mateus 6:9-13, texto tradicional): uma frase por vez, cada uma com a sua voz (cid-pai-1..11)
+  "Pai nosso, que estás no céu,", "santificado seja o teu nome.", "Venha o teu reino,", "seja feita a tua vontade,", "assim na terra como no céu.",
+  "O pão nosso de cada dia nos dá hoje.", "Perdoa as nossas ofensas,", "assim como nós perdoamos a quem nos tem ofendido.",
+  "E não nos deixes cair em tentação,", "mas livra-nos do mal.", "Amém.",
+];
 
 const VEL = 6.5, PULO = 9.6, GRAV = 25, LARG = 0.35;
 const CARRO_VMAX = 15, CARRO_RE = -5;
@@ -115,11 +125,15 @@ let dois = false; // 2 jogadores: a criança é do jogador 2 (src/motor/jogadore
 const RAIO_J2 = 11; // o jogador 2 fica a no máximo 11 m do Rabisco (a câmera enquadra os dois)
 const j = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), noChao: true, coyote: 0, buffer: 0, dir: 0, pulos: 0 };
 let camYaw = 0, camManual = 0, vistaTeste = null;
-const carros = [], moradores = [], selos = [], npcs = [], veiculos = [];
+const carros = [], moradores = [], selos = [], npcs = [], veiculos = [], receptores = [], convidados = [];
 let dentro = null;     // carro em que o Rabisco está dirigindo (ou null: a pé)
+let paradoDesde = null, ultimaFalaLugar = -99, falouLugar = new Set();
 let missoes = {}, visitados = new Set(), selosPegos = 0, fim = false, foco = null;
 let levando = null;     // presente ou garrafinha sobre a cabeça do Rabisco (missões das lojas parceiras)
 let entradaTeste = null; // ?teste: { acel, virar } força o volante (fotos e testes)
+let oracao = null;       // missão Pai Nosso em andamento: { i, t, dur, ... } (o Rabisco fica parado, reverente)
+let painelOracao = null;
+let quemRecebe = { cartas: {} }; // receptores das entregas: cartas[cor], vovo, verde, merendeira
 
 function iniciar() {
   parar();
@@ -189,7 +203,8 @@ function iniciar() {
   btnAcao.addEventListener("click", (e) => e.preventDefault());
   mapaGrande = el("div", { class: "mapa-grande-cidade", hidden: "" }, [el("div", { class: "cartao" }, [el("h2", { texto: "🗺️ Mapa da Cidade" }), el("canvas", { width: "640", height: "640" }), el("p", { class: "legenda" })])]);
   mapaGrande.addEventListener("click", () => alternarMapaGrande());
-  caixa.append(hud, mapa, bussola, balao, btnAcao, mapaGrande);
+  painelOracao = el("div", { class: "oracao-cidade", hidden: "", "aria-live": "polite" });
+  caixa.append(hud, mapa, bussola, balao, btnAcao, mapaGrande, painelOracao);
   toque = criarJoystick(caixa);
   atualizarHud();
 
@@ -205,8 +220,9 @@ function iniciar() {
 function parar() {
   vivo = false;
   if (r3) { r3.dispose(); r3 = null; }
-  carros.length = moradores.length = selos.length = npcs.length = veiculos.length = 0;
-  missoes = {}; visitados = new Set(); selosPegos = 0; fim = false; foco = null; dentro = null; levando = null;
+  carros.length = moradores.length = selos.length = npcs.length = veiculos.length = receptores.length = convidados.length = 0;
+  oracao = null; quemRecebe = { cartas: {} };
+  paradoDesde = null; ultimaFalaLugar = -99; falouLugar = new Set(); missoes = {}; visitados = new Set(); selosPegos = 0; fim = false; foco = null; dentro = null; levando = null;
   teclas.clear();
 }
 
@@ -233,7 +249,7 @@ function entradaAndar() {
   if (entradaTeste) { ix = entradaTeste.virar; iy = entradaTeste.acel; }
   const m = Math.hypot(ix, iy);
   if (m > 1) { ix /= m; iy /= m; }
-  if (fim) ix = iy = 0;
+  if (fim || oracao) ix = iy = 0;
   return { ix, iy, m };
 }
 function moverJogador(dt) {
@@ -243,7 +259,7 @@ function moverJogador(dt) {
   const k = Math.min(1, dt * (j.noChao ? 12 : 5));
   j.vel.x += (wx * VEL - j.vel.x) * k;
   j.vel.z += (wz * VEL - j.vel.z) * k;
-  const quer = pad.puloNovo || toque?.puloNovo;
+  const quer = (pad.puloNovo || toque?.puloNovo) && !oracao;
   pad.puloNovo = false; if (toque) toque.puloNovo = false;
   j.coyote = j.noChao ? 0.1 : j.coyote - dt;
   j.buffer = quer ? 0.14 : j.buffer - dt;
@@ -295,7 +311,7 @@ function moverCompanheiro(dt, velRabisco) {
   amigo.dir += d * Math.min(1, dt * (andando ? 10 : 4));
   companheiro.grupo.position.copy(amigo.pos);
   companheiro.grupo.rotation.y = amigo.dir;
-  companheiro.atualizar(dt, { modo: fim ? "comemorar" : andando ? "andar" : velRabisco > 0.6 ? "parado" : "acenar", vel: amigo.vel, vmax: VEL });
+  companheiro.atualizar(dt, { modo: fim ? "comemorar" : andando ? "andar" : velRabisco > 0.6 || oracao ? "parado" : "acenar", vel: amigo.vel, vmax: VEL });
 }
 
 // Jogador 2: a criança anda sozinha (relativo à câmera, como o Rabisco), pula e acena (ação). Fica a no máximo
@@ -304,7 +320,7 @@ let avisouRaio = false;
 function moverJogador2(dt) {
   const e = J.ler2();
   let ix = e.x, iy = e.y;
-  if (fim) ix = iy = 0;
+  if (fim || oracao) { ix = iy = 0; e.puloNovo = false; }
   const m = Math.hypot(ix, iy);
   if (m > 1) { ix /= m; iy /= m; }
   const fx = Math.sin(camYaw), fz = Math.cos(camYaw);
@@ -417,8 +433,8 @@ function carroBate(x, z, ang, eu) {
     if (mundo.solidos.some((s) => s.y1 > 0.6 && px > s.x0 - 1.1 && px < s.x1 + 1.1 && pz > s.z0 - 1.1 && pz < s.z1 + 1.1)) return true;
     if (mundo.circulos.some((c) => Math.hypot(px - c.x, pz - c.z) < c.r + 1.1)) return true;
   }
-  for (const c of carros) if (Math.hypot(c.g.position.x - x, c.g.position.z - z) < 3.5) return true;
-  for (const v of veiculos) if (v !== eu && Math.hypot(v.pos.x - x, v.pos.z - z) < 3.6) return true;
+  // carros da IA: não bloqueiam (separação suave em dirigirCarro); outros carros parados só bloqueiam se o movimento aproxima
+  for (const v of veiculos) if (v !== eu) { const d = Math.hypot(v.pos.x - x, v.pos.z - z); if (d < 3.6 && d < Math.hypot(v.pos.x - eu.pos.x, v.pos.z - eu.pos.z) - 0.001) return true; }
   return Math.abs(x) > BORDA + 12 || Math.abs(z) > BORDA + 12;
 }
 function dirigirCarro(dt) {
@@ -437,6 +453,16 @@ function dirigirCarro(dt) {
     if (Math.abs(v.vel) > 4 && v.batida <= 0) { sons.batida(); v.batida = 0.8; navigator.vibrate?.(30); }
     v.vel *= -0.25;
   } else { v.pos.x = nx; v.pos.z = nz; }
+  // encostou num carro do trânsito: os dois se afastam devagar (sem dano), o jogador nunca fica preso
+  for (const c of carros) {
+    if (c.fantasma) continue;
+    const ex = v.pos.x - c.g.position.x, ez = v.pos.z - c.g.position.z, d = Math.hypot(ex, ez);
+    if (d >= 3.6) continue;
+    const f = Math.min(1, dt * 6) * (3.6 - d), ux = d > 0.01 ? ex / d : Math.sin(v.ang + Math.PI), uz = d > 0.01 ? ez / d : Math.cos(v.ang + Math.PI);
+    const px = v.pos.x + ux * f, pz = v.pos.z + uz * f;
+    if (!carroBate(px, pz, v.ang, v)) { v.pos.x = px; v.pos.z = pz; }
+    if (d < 2.2 && c.espera > 0.6) c.fantasma = true; // preso de verdade: o da IA passa "fantasma"
+  }
   // buzina no botão de pular
   v.buzina -= dt;
   if ((pad.puloNovo || toque?.puloNovo) && v.buzina <= 0) { sons.buzina(); v.buzina = 0.8; }
@@ -477,6 +503,14 @@ function posicionarCamera(k, dt, andando = false) {
   if (vistaTeste) { // ?teste: vista de cima / ângulo fixo para as fotos
     cam.position.set(...vistaTeste.pos); cam.lookAt(...vistaTeste.alvo);
     sol.position.set(vistaTeste.alvo[0] + 40, 60, vistaTeste.alvo[2] + 30); sol.target.position.set(vistaTeste.alvo[0], 0, vistaTeste.alvo[2]);
+    return;
+  }
+  if (oracao) { // oração: câmera parada atrás do Rabisco, olhando a fachada da igreja
+    const tp = missoes.painosso.tapete;
+    alvo.lerp(new THREE.Vector3(tp.x - tp.dir[0] * 2, 2.6, tp.z - tp.dir[1] * 2), k);
+    posCam.lerp(new THREE.Vector3(tp.x + tp.dir[0] * 7.5, 4.4, tp.z + tp.dir[1] * 7.5), k);
+    cam.position.copy(posCam); cam.lookAt(alvo);
+    sol.position.set(tp.x + 40, 60, tp.z + 30); sol.target.position.set(tp.x, 0, tp.z);
     return;
   }
   // girar: Q/E, alavanca direita ou arrastar à direita da tela
@@ -580,7 +614,14 @@ function atualizarCarros(dt, t) {
     }
     // o Rabisco (a pé ou de carro) ou outro carro na frente: para
     const aheadJ = (j.pos.x - px) * dx + (j.pos.z - pz) * dz, ladoJ = Math.abs((j.pos.x - px) * dz - (j.pos.z - pz) * dx);
-    if (aheadJ > 0 && aheadJ < 9 && ladoJ < (dentro ? 3 : 2.4)) alvoVel = Math.min(alvoVel, Math.max(0, (aheadJ - (dentro ? 5 : 3)) * 2));
+    if (k.fantasma && (Math.hypot(j.pos.x - px, j.pos.z - pz) > 7 || aheadJ < -1)) { k.fantasma = false; k.espera = 0; }
+    let esperando = false;
+    if (!k.fantasma && aheadJ > 0 && aheadJ < 9 && ladoJ < (dentro ? 3 : 2.4)) {
+      const lim = Math.max(0, (aheadJ - (dentro ? 5 : 3)) * 2);
+      alvoVel = Math.min(alvoVel, lim); esperando = lim < 1 && Boolean(dentro);
+    }
+    // esperou o jogador (de carro) mais de 1,5 s: segue a rota "fantasma" até se afastar
+    if (esperando) { k.espera = (k.espera || 0) + dt; if (k.espera > 1.5) { k.fantasma = true; alvoVel = k.vel; } } else if (!k.fantasma) k.espera = 0;
     for (const v of veiculos) if (v !== dentro) {
       const a = (v.pos.x - px) * dx + (v.pos.z - pz) * dz, l = Math.abs((v.pos.x - px) * dz - (v.pos.z - pz) * dx);
       if (a > 0 && a < 9 && l < 2.6) alvoVel = Math.min(alvoVel, Math.max(0, (a - 5) * 2));
@@ -663,10 +704,87 @@ const texNumero = (n, cor = "#ec2e8c") => texturaCanvas(128, 128, (c) => {
   c.font = "900 84px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = cor; c.fillText(String(n), 64, 72);
 });
 const lugar = (id) => mundo.lugares.find((l) => l.id === id);
-function npc(nome, cor, x, z, fala) {
-  [x, z] = livre(x, z, 0.8);
+// amigos lápis da cidade (pilotoLapis) com bracinhos para acenar e receber, e acessórios que dizem quem é quem
+const matLapis = (cor, extra = {}) => new THREE.MeshStandardMaterial({ color: cor, roughness: 0.7, ...extra });
+const ACESSORIOS = {
+  // Vovó Lápis: cabelo grisalho em coque, óculos redondos, xale e bengala
+  vovo(p) {
+    const cinza = matLapis(0xd9d9d9, { roughness: 0.9 });
+    const cabelo = new THREE.Mesh(new THREE.ConeGeometry(0.46, 0.62, 12), cinza); cabelo.position.y = 1.86;
+    const coque = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), cinza); coque.position.set(0, 1.95, -0.33);
+    const xale = new THREE.Mesh(new THREE.CylinderGeometry(0.47, 0.56, 0.36, 12), matLapis(0xc97fb0)); xale.position.y = 1.32;
+    const no = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), matLapis(0xa8558f)); no.position.set(0, 1.22, 0.53);
+    const madeira = matLapis(0x7a4a2a);
+    const bengala = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.05, 8), madeira); bengala.position.set(0.7, 0.52, 0.2);
+    const cabo = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.035, 6, 12, Math.PI), madeira); cabo.position.set(0.6, 1.05, 0.2);
+    p.add(cabelo, coque, xale, no, bengala, cabo);
+    ACESSORIOS.oculos(p);
+  },
+  oculos(p) {
+    const aro = matLapis(0x5a3a20, { roughness: 0.4 });
+    for (const x of [-0.17, 0.17]) { const o = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.025, 6, 16), aro); o.position.set(x, 1.05, 0.48); p.add(o); }
+    const ponte = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.025, 0.025), aro); ponte.position.set(0, 1.08, 0.5); p.add(ponte);
+  },
+  laco(p, cor = 0xec2e8c) {
+    const m = matLapis(cor);
+    for (const s of [-1, 1]) { const a = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.24, 8), m); a.rotation.z = s * Math.PI / 2; a.position.set(0.2 + s * 0.12, 1.72, 0.28); p.add(a); }
+    const n = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), m); n.position.set(0.2, 1.72, 0.3); p.add(n);
+  },
+  chef(p) {
+    const branco = matLapis(0xffffff);
+    const aba = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.3, 14), branco); aba.position.y = 2.15;
+    const fofo = new THREE.Mesh(new THREE.SphereGeometry(0.36, 14, 10), branco); fofo.scale.y = 0.7; fofo.position.y = 2.38;
+    const avental = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.72, 0.05), branco); avental.position.set(0, 0.42, 0.42);
+    p.add(aba, fofo, avental);
+  },
+  bone(p, cor = 0x1d6fe0) {
+    const m = matLapis(cor);
+    const copa = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), m); copa.position.y = 1.95;
+    const aba = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.04, 0.32), m); aba.position.set(0, 1.97, 0.36);
+    p.add(copa, aba);
+  },
+  chapeu(p) {
+    const m = matLapis(0x7a5230);
+    const aba = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.58, 0.05, 16), m); aba.position.y = 1.8;
+    const copa = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.34, 16), m); copa.position.y = 1.98;
+    p.add(aba, copa);
+  },
+  gravata(p) {
+    const g = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.42, 4), matLapis(0xe63946)); g.rotation.x = Math.PI; g.position.set(0, 1.25, 0.43); p.add(g);
+  },
+};
+function lapis(cor, { escala = 0.8, acessorios = [] } = {}) {
   const p = pilotoLapis(cor);
-  p.scale.setScalar(0.8);
+  p.scale.setScalar(escala);
+  // bracinhos: [0] do lado -x e [1] do lado +x (o que acena)
+  p.userData.bracos = [-1, 1].map((s) => {
+    const ombro = new THREE.Group(); ombro.position.set(s * 0.43, 1.0, 0); ombro.rotation.z = s * 0.25;
+    const braco = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.065, 0.6, 8), matLapis(cor)); braco.position.y = -0.3;
+    const mao = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), matLapis(0xffffff)); mao.position.y = -0.62;
+    braco.castShadow = true;
+    ombro.add(braco, mao); p.add(ombro);
+    return ombro;
+  });
+  for (const a of acessorios) ACESSORIOS[a]?.(p);
+  return p;
+}
+// anima um amigo lápis (npc, quem recebe, convidado): acena enquanto espera, recebe com as mãos para a frente
+// e depois comemora pulando (a.festa > 0: segundos de festa, ver receber)
+function animarLapis(a, t, dt, acenando) {
+  const [b0, b1] = a.p.userData.bracos;
+  a.festa = Math.max(0, (a.festa || 0) - dt);
+  let y = 0, x0 = 0, x1 = 0, z0 = -0.25, z1 = 0.25;
+  if (a.festa > 1.7) { x0 = x1 = -1.35; z0 = -0.15; z1 = 0.15; } // recebendo: mãos para a frente
+  else if (a.festa > 0) { const k = Math.abs(Math.sin(t * 7)); y = k * 0.35; z0 = -2.5 - k * 0.2; z1 = 2.5 + k * 0.2; } // comemorando
+  else if (acenando) { z1 = 2.6 + Math.sin(t * 7) * 0.35; x1 = -0.2; y = Math.abs(Math.sin(t * 3.5)) * 0.05; }
+  else { const r = Math.sin(t * 2 + (a.x || 0)); x0 = r * 0.06; x1 = -r * 0.06; }
+  b0.rotation.set(x0, 0, z0); b1.rotation.set(x1, 0, z1);
+  a.p.position.y = (a.y0 ?? 0.03) + y;
+}
+function receber(a) { if (a) a.festa = 2.8; }
+function npc(nome, cor, x, z, fala, acessorios = []) {
+  [x, z] = livre(x, z, 0.8);
+  const p = lapis(cor, { acessorios });
   p.position.set(x, 0.03, z);
   cena.add(p);
   const marca = new THREE.Sprite(new THREE.SpriteMaterial({ map: MARCA, depthTest: false }));
@@ -676,6 +794,33 @@ function npc(nome, cor, x, z, fala) {
   const n = { nome, p, marca, x, z, fala, ultima: -99 };
   npcs.push(n);
   return n;
+}
+// quem espera uma entrega na frente do destino (Vovó, famílias das casas, merendeira, aluno...): fica parado,
+// olhando para a rua; vira para o Rabisco quando ele chega perto e acena enquanto espera() for verdade
+function receptor(nome, cor, x, z, dir, espera, { acessorios = [], escala = 0.8 } = {}) {
+  [x, z] = livre(x, z, 0.8);
+  const p = lapis(cor, { acessorios, escala });
+  p.position.set(x, 0.03, z);
+  p.rotation.y = Math.atan2(dir[0], dir[1]);
+  cena.add(p);
+  mundo.solidos.push({ x0: x - 0.4, x1: x + 0.4, z0: z - 0.4, z1: z + 0.4, y1: 2 });
+  const r = { nome, p, x, z, rot: p.rotation.y, espera };
+  receptores.push(r);
+  return r;
+}
+function atualizarAmigos(t, dt) {
+  for (const n of npcs) {
+    const M = Object.values(missoes).find((m) => m.npc === n);
+    const perto = Math.hypot(j.pos.x - n.x, j.pos.z - n.z) < 16;
+    animarLapis(n, t, dt, perto && (M?.estado === "nova" || Boolean(n.espera?.())));
+  }
+  for (const r of receptores) {
+    const d = Math.hypot(j.pos.x - r.x, j.pos.z - r.z);
+    const alvoRot = d < 20 ? Math.atan2(j.pos.x - r.x, j.pos.z - r.z) : r.rot;
+    let a = alvoRot - r.p.rotation.y; a = Math.atan2(Math.sin(a), Math.cos(a));
+    r.p.rotation.y += a * Math.min(1, dt * 5);
+    animarLapis(r, t, dt, d < 18 && Boolean(r.espera?.()));
+  }
 }
 function gatinho(x, z) {
   const g = new THREE.Group();
@@ -785,6 +930,30 @@ function garrafa() {
   g.add(corpo, tampa, rotulo);
   return g;
 }
+function mochila() {
+  const g = new THREE.Group();
+  const azul = new THREE.MeshStandardMaterial({ color: 0x1d6fe0, roughness: 0.6 });
+  const corpo = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.62, 0.3), azul); corpo.castShadow = true;
+  const bolso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.26, 0.08), new THREE.MeshStandardMaterial({ color: 0xffcc1f, roughness: 0.6 })); bolso.position.set(0, -0.12, 0.18);
+  const tampa = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.56, 12, 1, false, 0, Math.PI), azul); tampa.rotation.z = Math.PI / 2; tampa.position.y = 0.31;
+  g.add(corpo, bolso, tampa);
+  return g;
+}
+// coraçãozinho do convite (missão da Igreja Reviver) sobre os amigos ainda não convidados
+const CORACAO = texturaCanvas(128, 128, (c) => {
+  c.beginPath(); c.moveTo(64, 112); c.bezierCurveTo(-6, 64, 20, 6, 64, 38); c.bezierCurveTo(108, 6, 134, 64, 64, 112);
+  c.lineWidth = 10; c.strokeStyle = "#151515"; c.stroke(); c.fillStyle = "#ff4f8b"; c.fill();
+});
+// tapete da oração (missão Pai Nosso), no pátio da Igreja Reviver
+function tapete() {
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 0.06, 32), new THREE.MeshStandardMaterial({ color: 0x1f3a8a, roughness: 0.8 }));
+  const borda = new THREE.Mesh(new THREE.TorusGeometry(1.22, 0.06, 8, 40), new THREE.MeshStandardMaterial({ color: 0xffd36b, emissive: 0x664400, roughness: 0.4 }));
+  borda.rotation.x = Math.PI / 2; borda.position.y = 0.05;
+  base.position.y = 0.03; g.add(base, borda);
+  g.userData.borda = borda;
+  return g;
+}
 // o que o Rabisco leva nas mãos (presente, garrafinha): flutua sobre a cabeça, a pé ou de carro
 function levar(obj) {
   if (levando) levando.removeFromParent();
@@ -821,10 +990,10 @@ function criarMissoes() {
   missoes.cartas = { id: "cartas", nome: "Cartas", icone: "✉️", estado: "nova", entregues: [], npc: npc("Lápis Azul, o carteiro", 0x1d6fe0, ...naPorta(L("correio")), "cid-carteiro"),
     texto: "Oi, Rabisco! Leve estas cartas: a vermelha, a azul e a amarela. Cada uma vai na caixa de correio da casa da mesma cor! As casas ficam na Rua das Casas Coloridas.",
     alvo() { const c = mundo.casas.filter((q) => ["vermelha", "azul", "amarela"].includes(q.cor) && !this.entregues.includes(q.cor)).sort((a, b) => dist2(a) - dist2(b))[0]; return c && { x: c.x, z: c.z, emoji: "✉️" }; } };
-  // 2. gatinhos escondidos pela cidade (atrás da igreja, no parque e atrás do hospital)
+  // 2. gatinhos escondidos pela cidade (atrás da Igreja Reviver, no parque e atrás do hospital)
   const lugaresGatos = [atras(L("igreja"), 30), [60, 88], atras(L("hospital"), 24)].map(([x, z]) => livre(x, z, 0.6));
   missoes.gatos = { id: "gatos", nome: "Gatinhos", icone: "🐱", estado: "nova", achados: 0, npc: npc("Lápis Rosa", 0xec2e8c, PRACA.x + 7.5, PRACA.z + 3, "cid-gatos"),
-    texto: "Meus três gatinhos fugiram! Um foi para trás da igreja, outro para o parque e outro para trás do hospital.",
+    texto: "Meus três gatinhos fugiram! Um foi para trás da Igreja Reviver, outro para o parque e outro para trás do hospital.",
     lugares: lugaresGatos.map(([x, z]) => ({ x, z, achado: false, g: gatinho(x, z) })),
     alvo() { const l = this.lugares.filter((q) => !q.achado).sort((a, b) => dist2(a) - dist2(b))[0]; return l && { x: l.x, z: l.z, emoji: "🐱" }; } };
   // 3. pão quentinho da padaria para a escola
@@ -873,7 +1042,45 @@ function criarMissoes() {
     patos: Array.from({ length: nPatos }, (_, i) => { const g = patinho(); cena.add(g); return { g, a: (i / nPatos) * Math.PI * 2, r: 3 + (i % 3) * 2.2, v: 0.25 + Math.random() * 0.2 }; }),
     placas: opcoes.map((n, i) => { const [x, z] = livre(donaPatos.x - 3 + i * 3, donaPatos.z - 4, 1.1); const g = placaNumero(n); g.position.set(x, 0.03, z); g.visible = false; cena.add(g); return { n, x, z, g, dentro: false }; }),
     alvo() { return { x: LAGO.x, z: LAGO.z, emoji: "🦆" }; } };
-  // 10–12. lojas parceiras (parceiros.js e mapa.js): cada missão só existe se a loja estiver na cidade
+  // 10. Hora da Aula: a mochila azul ficou na casa azul (nº 2); levar ao Lápis Azulzinho na porta da escola antes do sino
+  const escola = L("escola"), casaAzul = CASAS.find((c) => c.cor === "azul");
+  const [mx, mz] = livre(casaAzul.x + 0.6, casaAzul.z + 1.4, 0.5);
+  const objMochila = mochila(); objMochila.position.set(mx, 0.35, mz); objMochila.visible = false; cena.add(objMochila);
+  missoes.escola = { id: "escola", nome: "Hora da Aula", icone: "🎒", estado: "nova", fase: "buscar", sino: 90, tocou: false, mochila: { x: mx, z: mz, g: objMochila },
+    npc: npc("Professora Lápis Turquesa", 0x2ec4b6, ...naPorta(escola, 6.5), "cid-professora", ["laco", "oculos"]),
+    texto: "Oi, Rabisco! O sino da aula já vai tocar e o Lápis Azulzinho esqueceu a mochila em casa! Busque a mochila azul na casa azul, a de número 2, e traga para ele aqui na porta da escola!",
+    aoAceitar() { this.sino = 90; objMochila.visible = true; },
+    alvo() { return this.fase === "buscar" ? { x: this.mochila.x, z: this.mochila.z, emoji: "🎒" } : { x: this.aluno.x, z: this.aluno.z, emoji: "🏫" }; } };
+  missoes.escola.aluno = receptor("Lápis Azulzinho", 0x3d7ad9, ...naPorta(escola, 2.5), escola.dir, () => missoes.escola.estado === "ativa", { acessorios: ["bone"], escala: 0.6 });
+  // 11. convite para o culto infantil: três amigos lápis espalhados pela cidade seguem o Rabisco até a Igreja Reviver
+  const igreja = L("igreja"), latIg = [-igreja.dir[1], igreja.dir[0]];
+  const patio = (lado, prof = 2) => [igreja.x - igreja.dir[0] * prof + latIg[0] * lado, igreja.z - igreja.dir[1] * prof + latIg[1] * lado];
+  const pontosConvite = [[naPorta(L("padaria"), 9), 0xe8413c, "Lápis Vermelhinho"], [[L("parque").x - 8, L("parque").z], 0xffcc1f, "Lápis Amarelinho"], [[-79.5, 27], 0x58c43a, "Lápis Verdinho"]];
+  missoes.igreja = { id: "igreja", nome: "Convite", icone: "💌", estado: "nova", convidados: 0,
+    npc: npc("Tia Lápis Lilás, da Igreja Reviver", 0xa98ce0, ...patio(-4), "cid-igreja", ["laco"]),
+    texto: "Oi, Rabisco! Hoje tem culto infantil na Igreja Reviver! Convide três amigos lápis pela cidade e traga todos aqui. Siga os coraçõezinhos!",
+    amigos: pontosConvite.map(([[x0, z0], cor, nome]) => {
+      const [x, z] = livre(x0, z0, 0.8);
+      const p = lapis(cor, { escala: 0.6, acessorios: cor === 0xffcc1f ? ["laco"] : ["bone"] });
+      const marca = new THREE.Sprite(new THREE.SpriteMaterial({ map: CORACAO, depthTest: false })); marca.scale.setScalar(1.1); marca.position.y = 3.7; marca.renderOrder = 5; marca.visible = false; p.add(marca);
+      p.position.set(x, 0.03, z); cena.add(p);
+      return { nome, p, x, z, marca, convidado: false };
+    }),
+    alvo() {
+      if (this.convidados < 3) { const a = this.amigos.filter((q) => !q.convidado).sort((a, b) => dist2(a) - dist2(b))[0]; return { x: a.x, z: a.z, emoji: "💌" }; }
+      return { x: this.npc.x, z: this.npc.z, emoji: "⛪" };
+    } };
+  missoes.igreja.npc.lado = igreja.dir; // os convidados ficam do lado de fora da Tia (longe do tapete da oração)
+  missoes.igreja.npc.espera = () => missoes.igreja.estado === "ativa" && missoes.igreja.convidados === 3;
+  // 12. Pai Nosso: orar juntos, frase por frase, no tapete da porta da Igreja Reviver
+  const [tx, tz] = patio(0, 2.2);
+  const objTapete = tapete(); objTapete.position.set(tx, 0, tz); objTapete.visible = false; cena.add(objTapete);
+  missoes.painosso = { id: "painosso", nome: "Pai Nosso", icone: "🙏", estado: "nova", frase: 0, tapete: { x: tx, z: tz, g: objTapete, olhar: Math.atan2(-igreja.dir[0], -igreja.dir[1]), dir: igreja.dir },
+    npc: npc("Tio Lápis Azul, da Igreja Reviver", 0x1f3a8a, ...patio(4), "cid-painosso", ["gravata"]),
+    texto: "Oi, Rabisco! Vamos orar juntos o Pai Nosso? Venha para o tapete azul na porta da igreja. Eu falo uma frase e você repete comigo, bem devagarinho.",
+    aoAceitar() { objTapete.visible = true; },
+    alvo() { return { x: this.tapete.x, z: this.tapete.z, emoji: "🙏" }; } };
+  // 13–15. lojas parceiras (parceiros.js e mapa.js): cada missão só existe se a loja estiver na cidade
   const je = L("parceiro-je-multimarcas"), bella = L("parceiro-bella-cat"), rise = L("parceiro-rise-up");
   // carro novo: o carro verde com laço está na frente da J.E; dirigir até a casa verde (Rua das Casas Coloridas)
   if (je) {
@@ -887,7 +1094,7 @@ function criarMissoes() {
     cena.add(g); veiculos.push(v);
     missoes.carroNovo = { id: "carroNovo", nome: "Carro novo", icone: "🔑", estado: "nova", carro: v, laco: fita, dirigindo: false,
       npc: npc("Seu Lápis Cinza, da J.E Multimarcas", 0x6b6b6b, ...naPorta(je), "cid-je"),
-      texto: "Olá, Rabisco! Na J.E Multimarcas tem carro e até jet ski! Este carro verde com laço é da família da casa verde. Você leva para eles?",
+      texto: "Olá, Rabisco! A J.E Multimarcas é uma loja de carros! Este carro verde com laço é da família da casa verde. Você leva para eles?",
       destino: { x: verde.x + verde.dir[0] * 7.5, z: verde.z + verde.dir[1] * 7.5 },
       alvo() { return dentro === this.carro ? { ...this.destino, emoji: "🏠" } : { x: this.carro.pos.x, z: this.carro.pos.z, emoji: "🔑" }; } };
   }
@@ -918,13 +1125,115 @@ function criarMissoes() {
         return { x: this.amiga.x, z: this.amiga.z, emoji: "💧" };
       } };
   }
-  // 13. passaporte: visitar todos os lugares
+  // 16. passaporte: visitar todos os lugares
   missoes.passaporte = { id: "passaporte", nome: "Passeio", icone: "🗺️", estado: "ativa",
     alvo() { const l = mundo.lugares.filter((q) => !visitados.has(q.id)).sort((a, b) => dist2(a) - dist2(b))[0]; return l && { x: l.x, z: l.z, emoji: "📍" }; } };
+  // quem recebe as entregas, esperando na frente de cada destino
+  const ativa = (id) => missoes[id]?.estado === "ativa";
+  const portaCasa = (c, lado) => { const lat = [-c.dir[1], c.dir[0]]; return [c.x + c.dir[0] * 0.7 + lat[0] * lado, c.z + c.dir[1] * 0.7 + lat[1] * lado]; };
+  for (const [cor, hex, nome, aces] of [["vermelha", 0xd94a3d, "Seu Lápis Vermelho", ["chapeu"]], ["azul", 0x3d7ad9, "Mamãe Lápis Azul", ["laco"]], ["amarela", 0xf2c94c, "Dona Lápis Amarela", ["laco", "oculos"]]]) {
+    const c = CASAS.find((q) => q.cor === cor);
+    quemRecebe.cartas[cor] = receptor(nome, hex, ...portaCasa(c, 1.8), c.dir,
+      () => (ativa("cartas") && !missoes.cartas.entregues.includes(cor)) || (cor === "azul" && ativa("escola") && missoes.escola.fase === "buscar"), { acessorios: aces });
+  }
+  const cv = CASAS.find((q) => q.vovo);
+  quemRecebe.vovo = receptor("Vovó Lápis", 0xf4a3c4, ...portaCasa(cv, 1.8), cv.dir, () => ativa("presente") || (ativa("encomenda") && Boolean(missoes.encomenda.noCarro)), { acessorios: ["vovo"] });
+  if (missoes.carroNovo) { const c = CASAS.find((q) => q.cor === "verde"); quemRecebe.verde = receptor("Seu Lápis Verde, da casa verde", 0x4cae5a, ...portaCasa(c, 1.8), c.dir, () => ativa("carroNovo"), { acessorios: ["chapeu"] }); }
+  quemRecebe.merendeira = receptor("Tia Lápis Amarela, a merendeira", 0xffcc1f, ...naPorta(escola, -2.5), escola.dir, () => ativa("pao"), { acessorios: ["chef"] });
+  if (missoes.exercicio) missoes.exercicio.amiga.espera = () => ativa("exercicio") && missoes.exercicio.fase === "agua";
   preCarregarFalas(["cid-intro", "cid-carteiro", "cid-gatos", "cid-padeiro", "cid-guarda", "cid-carta-ok", "cid-gato-ok", "cid-pao-ok", "cid-faixa-ok", "cid-espere", "cid-missao-ok", "cid-final"]); // as falas das missões novas (cid-carro, cid-corrida...) tocam sob demanda
 }
 const dist2 = (p) => (p.x - j.pos.x) ** 2 + (p.z - j.pos.z) ** 2;
 const centroFaixa = (f) => ({ x: (f.x0 + f.x1) / 2, z: (f.z0 + f.z1) / 2 });
+// convidados da Igreja Reviver: seguem o Rabisco em fila (de carro, vão de carona e somem até ele descer)
+function seguirRabisco(dt, t) {
+  let ant = { x: j.pos.x, z: j.pos.z };
+  for (const a of convidados) {
+    a.p.visible = !dentro;
+    if (dentro) { a.x = j.pos.x; a.z = j.pos.z; ant = a; continue; }
+    const dx = ant.x - a.x, dz = ant.z - a.z, d = Math.hypot(dx, dz);
+    if (d > 16) [a.x, a.z] = livre(ant.x - Math.sin(j.dir) * 1.6, ant.z - Math.cos(j.dir) * 1.6, 0.4);
+    else if (d > 1.6) {
+      const v = Math.min(VEL * 1.05, (d - 1.6) * 3) * dt, nx = a.x + (dx / d) * v, nz = a.z + (dz / d) * v;
+      if (!bate(nx, a.z, 0.1, 0.25)) a.x = nx;
+      if (!bate(a.x, nz, 0.1, 0.25)) a.z = nz;
+    }
+    a.p.position.x = a.x; a.p.position.z = a.z;
+    if (d > 0.05) a.p.rotation.y = Math.atan2(dx, dz);
+    animarLapis(a, t, dt, false);
+    if (d > 1.7 && !a.festa) a.p.position.y = 0.03 + Math.abs(Math.sin(t * 9 + a.x)) * 0.12; // passinhos
+    ant = a;
+  }
+}
+
+// ------------------------------------------------------------------ Oração do Pai Nosso
+// O Rabisco fica parado no tapete, olhando para a igreja, de mãos juntas; a câmera para atrás dele, a luz fica
+// mais suave e cada frase aparece grande, acendendo palavra por palavra enquanto a voz fala (karaokê). Depois da
+// voz, a criança "repete junto" e aperta Ação (ou espera) para a próxima. Sem pressa e sem errar.
+const ESPERA_REPETIR = 4.5; // segundos depois da voz até seguir sozinho
+function duracaoFrase(PN, i) {
+  const a = PN.audios?.[i], d = a?.duration;
+  return Number.isFinite(d) && d > 0 ? d : 0.8 + ORACAO[i].length * 0.075;
+}
+function comecarOracao(PN, t) {
+  const tp = PN.tapete;
+  j.pos.set(tp.x, 0.03, tp.z); j.vel.set(0, 0, 0); j.dir = tp.olhar;
+  PN.audios ??= ORACAO.map((_, i) => { const a = new Audio(`../../assets/voz/cid-pai-${i + 1}.mp3`); a.preload = "metadata"; return a; });
+  if (companheiro) { // a criança ora do lado do Rabisco
+    const lat = [-tp.dir[1], tp.dir[0]];
+    const [cx, cz] = livre(tp.x + lat[0] * 1.3, tp.z + lat[1] * 1.3, 0.4);
+    amigo.pos.set(cx, 0.03, cz); amigo.vel = 0; amigo.vx = amigo.vz = 0; amigo.dir = tp.olhar;
+  }
+  oracao = { i: -1, inicio: t, dur: 2.8, luz: sol.intensity, exp: r3.toneMappingExposure };
+  painelOracao.hidden = false;
+  painelOracao.innerHTML = `<p class="frase">🙏 Vamos orar juntos.</p><p class="dica">Fique quietinho e repita comigo.</p>`;
+  falar("cid-pai-intro");
+}
+function proximaFrase(PN, t) {
+  oracao.i++;
+  if (oracao.i >= ORACAO.length) return terminarOracao(PN);
+  oracao.inicio = t; oracao.dur = duracaoFrase(PN, oracao.i);
+  const palavras = ORACAO[oracao.i].split(" ");
+  painelOracao.innerHTML = `<p class="frase">${palavras.map((w) => `<span>${w}</span>`).join(" ")}</p><p class="dica"></p><p class="conta">${oracao.i + 1} / ${ORACAO.length}</p>`;
+  falar(`cid-pai-${oracao.i + 1}`);
+  PN.frase = oracao.i + 1;
+  atualizarHud();
+}
+function terminarOracao(PN) {
+  sol.intensity = oracao.luz; r3.toneMappingExposure = oracao.exp;
+  oracao = null;
+  painelOracao.hidden = true;
+  receber(PN.npc);
+  concluir(PN, { voz: false });
+  jogo.confete();
+  dizer(PN.npc.nome, "Amém! Deus ouve a nossa oração. (Pai Nosso: Mateus 6:9-13)", 5200);
+}
+function seguirOracao(PN, t, dt) {
+  const k = Math.min(1, dt * 1.5); // luz mais suave
+  sol.intensity += (oracao.luz * 0.6 - sol.intensity) * k;
+  r3.toneMappingExposure += (oracao.exp * 0.92 - r3.toneMappingExposure) * k;
+  j.dir = PN.tapete.olhar; rabisco.grupo.rotation.y = j.dir;
+  // mãos juntas na frente do peito e cabeça um pouco baixa (o Rabisco e a criança)
+  for (const rb of [rabisco, companheiro?.rabisco]) {
+    if (!rb) continue;
+    rb.bracoE.ombro.rotation.set(-0.85, 0, -0.62); rb.bracoD.ombro.rotation.set(-0.85, 0, 0.62);
+    rb.bracoE.cotovelo.rotation.x = -1.05; rb.bracoD.cotovelo.rotation.x = -1.05;
+    rb.tronco.rotation.x = 0.1;
+  }
+  if (companheiro) { amigo.dir = PN.tapete.olhar; companheiro.grupo.rotation.y = amigo.dir; }
+  const passou = t - oracao.inicio;
+  if (oracao.i >= 0) {
+    const spans = painelOracao.querySelectorAll(".frase span");
+    const acesas = Math.ceil(spans.length * Math.min(1, passou / (oracao.dur * 0.92)));
+    spans.forEach((sp, n) => sp.classList.toggle("dita", n < acesas));
+    const dica = painelOracao.querySelector(".dica");
+    const txt = passou > oracao.dur ? (oracao.i === ORACAO.length - 1 ? "Amém! 🙏" : "Agora você! Repita e aperte 🙏 para seguir.") : "";
+    if (dica.textContent !== txt) dica.textContent = txt;
+  }
+  const pode = passou > Math.min(oracao.dur * 0.6, oracao.dur - 0.3);
+  contexto = pode ? { tipo: "orar", rotulo: "🙏 Amém, próxima", fazer: () => proximaFrase(PN, t) } : { tipo: "orar-espera", rotulo: "🙏 Orando…", fazer: () => {} };
+  if (passou > oracao.dur + (oracao.i < 0 ? 0.6 : ESPERA_REPETIR)) proximaFrase(PN, t);
+}
 function carroMaisPerto() {
   const v = [...veiculos].sort((a, b) => dist2(a.pos) - dist2(b.pos))[0];
   return v && { x: v.pos.x, z: v.pos.z, emoji: "🚗" };
@@ -961,7 +1270,7 @@ function regras(dt, t) {
     if (perto(casa.x, casa.z, 2.6)) {
       C.entregues.push(casa.cor);
       casa.correio.scale.setScalar(1.3); setTimeout(() => casa.correio.scale.setScalar(1), 400);
-      sons.moeda(); falar("cid-carta-ok");
+      sons.moeda(); falar("cid-carta-ok"); receber(quemRecebe.cartas[casa.cor]);
       dizer("Lápis Azul, o carteiro", `Carta entregue na casa ${casa.cor}!`, 2600);
       if (C.entregues.length === 3) concluir(C);
       atualizarHud();
@@ -976,7 +1285,7 @@ function regras(dt, t) {
   }
   // pão para a escola
   const P = missoes.pao;
-  if (P.estado === "ativa" && perto(P.destino.x, P.destino.z, 6)) { concluir(P); falar("cid-pao-ok"); dizer("Escola", "Que cheirinho bom! Obrigado pelo pão, Rabisco!", 3600); carregando = null; }
+  if (P.estado === "ativa" && perto(P.destino.x, P.destino.z, 6)) { receber(quemRecebe.merendeira); concluir(P); falar("cid-pao-ok"); dizer("Escola", "Que cheirinho bom! Obrigado pelo pão, Rabisco!", 3600); carregando = null; }
   // faixa de pedestre: atravessar a pé com o bonequinho verde
   const F = missoes.faixa;
   if (F.estado === "ativa" && aPe) {
@@ -1024,7 +1333,7 @@ function regras(dt, t) {
       } else if (t - (E.avisou || -9) > 7) { E.avisou = t; falar("cid-caixa-pe"); dizer("Seu Lápis Marrom, o feirante", "A caixa é pesada! Volte aqui de carro.", 3000); }
     }
     if (E.noCarro && dentro === E.noCarro && perto(E.destino.x, E.destino.z, 8)) {
-      dentro.caixa?.removeFromParent(); dentro.caixa = null;
+      dentro.caixa?.removeFromParent(); dentro.caixa = null; receber(quemRecebe.vovo);
       concluir(E); falar("cid-encomenda-ok"); dizer("Vovó Lápis", "Obrigada, Rabisco! Vamos contar: cinco laranjas e três bananas! Deus abençoe você!", 4800);
     }
   }
@@ -1088,14 +1397,14 @@ function regras(dt, t) {
       atualizarHud();
     }
     if (dentro === CN.carro && perto(CN.destino.x, CN.destino.z, 8)) {
-      CN.laco.removeFromParent();
+      CN.laco.removeFromParent(); receber(quemRecebe.verde);
       concluir(CN); falar("cid-je-ok"); dizer("Família da casa verde", "Uau, nosso carro novo! Obrigado, Rabisco! Vamos passear juntos!", 4600);
     }
   }
   // presente da Vovó (Bella Cat): chegar na porta da casa laranja com o presente
   const PV = missoes.presente;
   if (PV?.estado === "ativa" && perto(PV.destino.x, PV.destino.z, dentro ? 8 : 4)) {
-    levar(null);
+    levar(null); receber(quemRecebe.vovo);
     concluir(PV); falar("cid-bella-ok"); dizer("Vovó Lápis", "Um laço lindo! Que presente mais bonito! Obrigada, Rabisco, você é um amor!", 4800);
   }
   // exercício (Rise Up): pulos perto da treinadora, cones em ordem (a pé) e a garrafinha para a Lápis Rosa
@@ -1132,25 +1441,92 @@ function regras(dt, t) {
       }
     } else if (perto(EX.amiga.x, EX.amiga.z, dentro ? 6 : 3.5)) {
       EX.amiga.ultima = t; // ela agradece primeiro; a conversa dela vem depois
-      levar(null);
+      levar(null); receber(EX.amiga);
       concluir(EX); falar("cid-rise-ok"); dizer("Lápis Rosa", "Água fresquinha! Obrigada, Rabisco! Exercício e água: que dupla saudável!", 4600);
     }
   }
+  // Hora da Aula: pegar a mochila azul na casa azul e levar ao Lápis Azulzinho antes do sino
+  const ES = missoes.escola;
+  if (ES.estado === "ativa") {
+    const quem = [[j, true]];
+    if (dois && companheiro && aPe) quem.push([amigo, true]);
+    if (ES.sino > 0) {
+      ES.sino -= dt;
+      if (ES.sino <= 0) { sons.volta(); falar("cid-sino"); dizer("Professora Lápis Turquesa", "Plim, plom! O sino tocou! Mas a professora espera você. Corra, Rabisco!", 3600); atualizarHud(); }
+    }
+    const mo = ES.mochila;
+    if (ES.fase === "buscar") {
+      mo.g.rotation.y = t * 1.5; mo.g.position.y = 0.35 + Math.abs(Math.sin(t * 3)) * 0.15;
+      if (quem.some(([p]) => Math.hypot(p.pos.x - mo.x, p.pos.z - mo.z) < (dentro ? 4.5 : 2.2))) {
+        ES.fase = "levar"; mo.g.visible = false; levar(mochila()); receber(quemRecebe.cartas.azul);
+        sons.moeda(); falar("cid-mochila"); dizer("Mamãe Lápis Azul", "A mochila azul! Obrigada, Rabisco! Agora corra para a Escola Educarte!", 3600);
+        atualizarHud();
+      }
+    } else if (perto(ES.aluno.x, ES.aluno.z, dentro ? 7 : 3.4)) {
+      levar(null);
+      const m = mochila(); m.position.set(0, 0.85, -0.5); ES.aluno.p.add(m);
+      receber(ES.aluno); receber(ES.npc);
+      concluir(ES); falar("cid-escola-ok");
+      dizer("Lápis Azulzinho", ES.sino > 0 ? "Minha mochila! Obrigado, Rabisco! Chegou antes do sino. Hoje a aula é das letras: A, B, C!" : "Minha mochila! Obrigado, Rabisco! Hoje a aula é das letras: A, B, C!", 4800);
+    }
+  }
+  // Convite: os amigos lápis com coração viram convidados e seguem o Rabisco até a Igreja Reviver
+  const CV = missoes.igreja;
+  if (CV.estado === "ativa") {
+    for (const a of CV.amigos) {
+      if (a.convidado) continue;
+      a.marca.visible = true; a.marca.position.y = 3.7 + Math.sin(t * 3) * 0.15;
+      a.p.rotation.y = Math.atan2(j.pos.x - a.x, j.pos.z - a.z);
+      animarLapis(a, t, dt, Math.hypot(j.pos.x - a.x, j.pos.z - a.z) < 14);
+      const pertoDele = perto(a.x, a.z, dentro ? 5 : 2.4) || (dois && companheiro && aPe && Math.hypot(amigo.pos.x - a.x, amigo.pos.z - a.z) < 2.4);
+      if (pertoDele) {
+        a.convidado = true; a.marca.visible = false; CV.convidados++; convidados.push(a); receber(a);
+        sons.moeda(); falar(CV.convidados < 3 ? "cid-convite" : "cid-convite-todos");
+        dizer(a.nome, CV.convidados < 3 ? `Oba! Eu vou ao culto infantil! (${CV.convidados} de 3)` : "Eu também vou! Três amigos! Agora vamos todos para a Igreja Reviver!", 3400);
+        atualizarHud();
+      }
+    }
+    seguirRabisco(dt, t);
+    if (CV.convidados === 3 && perto(CV.npc.x, CV.npc.z, dentro ? 8 : 4)) {
+      CV.npc.ultima = t;
+      // os convidados entram no pátio, lado a lado, e todo mundo comemora
+      const lat = [-CV.npc.lado[1], CV.npc.lado[0]];
+      convidados.forEach((a, i) => { [a.x, a.z] = livre(CV.npc.x - lat[0] * (1.6 + i * 1.3), CV.npc.z - lat[1] * (1.6 + i * 1.3), 0.5); a.p.visible = true; a.p.position.set(a.x, 0.03, a.z); a.p.rotation.y = Math.atan2(j.pos.x - a.x, j.pos.z - a.z); receber(a); });
+      receber(CV.npc);
+      concluir(CV, { voz: false }); falar("cid-igreja-ok");
+      dizer(CV.npc.nome, "Que alegria! “Alegrei-me quando me disseram: vamos à casa do Senhor!” (baseado no Salmo 122:1)", 7600);
+    }
+  }
+  for (const a of CV.amigos) if (a.convidado && CV.estado === "feita") animarLapis(a, t, dt, false);
+  // Pai Nosso: no tapete da porta da Igreja Reviver, orar frase por frase
+  const PN = missoes.painosso;
+  if (PN.estado === "ativa") {
+    PN.tapete.g.userData.borda.material.emissiveIntensity = 1 + Math.sin(t * 2.5) * 0.6;
+    if (!oracao && perto(PN.tapete.x, PN.tapete.z, dentro ? 6 : 1.5)) {
+      if (dentro) { if (t - (PN.avisou || -9) > 7) { PN.avisou = t; dizer(PN.npc.nome, "Para orar, saia do carro e venha para o tapete.", 3000); } }
+      else comecarOracao(PN, t);
+    }
+    if (oracao) seguirOracao(PN, t, dt);
+  }
+  atualizarAmigos(t, dt);
   atualizarLevando(t);
-  // passaporte: chegar perto de cada lugar
+  // passaporte: marca o lugar ao chegar perto (de carro, em silêncio: só um selo discreto)
   for (const l of mundo.lugares) {
     if (visitados.has(l.id) || !perto(l.x, l.z, l.raio)) continue;
     visitados.add(l.id);
     sons.volta();
-    jogo.aviso(`📍 ${l.nome}`, "bom", 1800);
-    falar(`cid-lugar-${l.id}`);
-    // a criança comenta pelo nome (balão + fala gravada com o nome, depois da fala do lugar)
-    if (companheiro) {
-      const texto = FRASES_LUGAR[Math.floor(Math.random() * FRASES_LUGAR.length)].replaceAll("{lugar}", l.nome);
-      setTimeout(() => { dizer(companheiro.crianca.nome, texto.replaceAll("{nome}", companheiro.crianca.nome), 3200); falarNome("lug-pre", "lug-pos"); }, 2200);
-    }
+    jogo.aviso(`📍 ${l.nome}`, "bom", 2000);
     if (visitados.size === mundo.lugares.length) concluir(missoes.passaporte);
     atualizarHud();
+  }
+  // a pé: só comenta o lugar quando a criança PARA perto dele (uma vez por lugar, nunca por cima de outra fala)
+  {
+    const parada = Math.hypot(j.vel.x, j.vel.z) < 0.3;
+    if (!aPe || !parada || oracao) paradoDesde = null; else if (paradoDesde == null) paradoDesde = t;
+    if (paradoDesde != null && t - paradoDesde >= 1 && t - ultimaFalaLugar >= 8 && !balao.classList.contains("ativo")) {
+      const l = mundo.lugares.find((q) => !falouLugar.has(q.id) && perto(q.x, q.z, q.raio));
+      if (l) { falouLugar.add(l.id); ultimaFalaLugar = t; falar(`cid-lugar-${l.id}`); }
+    }
   }
   // selos
   for (const s of selos) {
@@ -1167,7 +1543,7 @@ function regras(dt, t) {
   if (pad.acaoNova) { pad.acaoNova = false; contexto?.fazer(); }
   for (const v of veiculos) if (v !== dentro) animarCarro(v, dt);
 }
-const NOMES_MISSAO = { cartas: "cartas", gatos: "gatos", pao: "pao", faixa: "faixa", corrida: "corrida", encomenda: "encomenda", fogo: "fogo", tesouro: "tesouro", patos: "patos", carroNovo: "je", presente: "bella", exercicio: "rise" };
+const NOMES_MISSAO = { cartas: "cartas", gatos: "gatos", pao: "pao", faixa: "faixa", corrida: "corrida", encomenda: "encomenda", fogo: "fogo", tesouro: "tesouro", patos: "patos", carroNovo: "je", presente: "bella", exercicio: "rise", escola: "professora", igreja: "igreja", painosso: "painosso" };
 function conversar(n) {
   const EX = missoes.exercicio;
   if (EX?.estado === "ativa" && EX.fase === "agua" && n === EX.amiga) return; // primeiro ele recebe a água (regras)
@@ -1180,25 +1556,26 @@ function conversar(n) {
     dizer(n.nome, M.texto, 7600);
     if (M === missoes.pao) carregando = "pao";
     M.aoAceitar?.();
-    setTimeout(() => jogo.aviso(`${M.icone} Siga a seta ➤`, "bom", 2200), 7800);
+    setTimeout(() => { if (!oracao) jogo.aviso(`${M.icone} Siga a seta ➤`, "bom", 2200); }, 7800);
     atualizarHud();
   } else if (M.estado === "ativa") {
     foco = M.id;
     if (M === missoes.patos) dizer(n.nome, "Conte os patinhos do lago e pise no número certo aqui do meu lado!", 3000);
+    else if (M === missoes.painosso) { if (!oracao) dizer(n.nome, "Venha para o tapete azul aqui na porta. Vamos orar juntos!", 2800); }
+    else if (M === missoes.igreja && M.convidados < 3) dizer(n.nome, `Convide os amigos com coração! Já são ${M.convidados} de 3.`, 2800);
     else dizer(n.nome, "Você consegue, Rabisco! Estou esperando aqui.", 2600);
   } else {
     dizer(n.nome, "Obrigado pela ajuda, Rabisco!", 2400);
   }
 }
-const FRASES_LUGAR = ["Olha, {nome}! Chegamos: {lugar}!", "{nome}, que legal! Esse lugar é {lugar}!", "Uau, {nome}! Vamos conhecer: {lugar}!"];
-function concluir(M) {
+function concluir(M, { voz = true } = {}) {
   if (M.estado === "feita") return;
   M.estado = "feita";
   if (foco === M.id) foco = Object.values(missoes).find((m) => m.estado === "ativa" && m.id !== "passaporte")?.id ?? null;
   if (companheiro) setTimeout(() => parabenizar({ gravada: false }), 900);
   if (M.npc) M.npc.marca.visible = false;
   sons.porta();
-  setTimeout(() => { jogo.aviso(`${M.icone} Missão cumprida!`, "bom", 2200); falar("cid-missao-ok"); }, 600);
+  setTimeout(() => { jogo.aviso(`${M.icone} Missão cumprida!`, "bom", 2200); if (voz) falar("cid-missao-ok"); }, 600); // voz: false deixa terminar uma fala importante (versículo)
   atualizarHud();
   if (Object.values(missoes).every((m) => m.estado === "feita")) {
     fim = true;
@@ -1225,6 +1602,9 @@ function atualizarHud() {
     if (m.id === "carroNovo") return m.dirigindo ? " <small>🚗→🏠</small>" : " <small>🔑→🚗</small>";
     if (m.id === "presente") return " <small>🎁→👵</small>";
     if (m.id === "exercicio") return m.fase === "pulos" ? ` <small>pulos ${m.pulos}/5</small>` : m.fase === "cones" ? ` <small>cones ${m.cone}/4</small>` : " <small>💧→🎀</small>";
+    if (m.id === "escola") return ` <small>${m.fase === "buscar" ? "🏠→🎒" : "🎒→🏫"}${m.sino > 0 ? ` ⏰${Math.ceil(m.sino)}` : " 🔔"}</small>`;
+    if (m.id === "igreja") return ` <small>${"💌".repeat(m.convidados)}${"·".repeat(3 - m.convidados)}</small>`;
+    if (m.id === "painosso") return m.frase ? ` <small>${m.frase}/${ORACAO.length}</small>` : "";
     if (m.id === "passaporte") return ` <small>${visitados.size}/${mundo.lugares.length}</small>`;
     return "";
   };
@@ -1305,7 +1685,7 @@ function alternarMapaGrande() {
 const _v = new THREE.Vector3();
 function atualizarBussola() {
   const a = alvoAtual();
-  if (!a || fim) { bussola.hidden = true; return; }
+  if (!a || fim || oracao) { bussola.hidden = true; return; }
   bussola.hidden = false;
   const ang = Math.atan2(a.x - j.pos.x, a.z - j.pos.z);
   const rel = Math.atan2(Math.sin(ang - camYaw), Math.cos(ang - camYaw));
@@ -1343,7 +1723,7 @@ function quadro() {
     tMapa -= dt;
     if (tMapa <= 0) { tMapa = 0.12; desenharMapa(); atualizarBussola(); atualizarBotaoAcao(); if (!mapaGrande.hidden) desenharCidade(mapaGrande.querySelector("canvas").getContext("2d"), 640, { nomes: true }); }
     tHud -= dt;
-    if (tHud <= 0 && missoes.corrida?.estado === "ativa" && missoes.corrida.proxima > 0) { tHud = 0.5; atualizarHud(); }
+    if (tHud <= 0 && ((missoes.corrida?.estado === "ativa" && missoes.corrida.proxima > 0) || (missoes.escola?.estado === "ativa" && missoes.escola.sino > 0))) { tHud = 0.5; atualizarHud(); }
   }
   r3.render(cena, cam);
   requestAnimationFrame(quadro);
@@ -1351,8 +1731,8 @@ function quadro() {
 
 if (params.has("teste")) window.teste = {
   jogo, j, carros, veiculos, lugarDoMapa, amigo, get dois() { return dois; },
-  get companheiro() { return companheiro; }, get missoes() { return missoes; }, get mundo() { return mundo; }, get selos() { return selosPegos; }, get visitados() { return visitados.size; },
-  get dentro() { return dentro; }, get foco() { return foco; }, alvo: () => alvoAtual(), get contexto() { return contexto?.tipo ?? null; },
+  get companheiro() { return companheiro; }, get missoes() { return missoes; }, get mundo() { return mundo; }, get selos() { return selosPegos; }, carroBate, get falouLugar() { return falouLugar.size; }, get visitados() { return visitados.size; },
+  get dentro() { return dentro; }, get foco() { return foco; }, get oracao() { return oracao; }, get quemRecebe() { return quemRecebe; }, receptores, alvo: () => alvoAtual(), get contexto() { return contexto?.tipo ?? null; },
   ir(x, z, y = 0.03) { j.pos.set(x, y, z); j.vel.set(0, 0, 0); posicionarCamera(1, 0); }, olhar(yaw) { camYaw = yaw; camManual = 5; posicionarCamera(1, 0); },
   vista(pos, alvo) { vistaTeste = pos ? { pos, alvo } : null; cena.fog.far = pos ? 2000 : 300; cena.fog.near = pos ? 1500 : 80; posicionarCamera(1, 0); },
   acao() { pad.acaoNova = true; }, entrar(i = 0) { const v = veiculos[i]; j.pos.set(v.pos.x + 2, 0.03, v.pos.z); entrarNoCarro(v); }, sair() { if (dentro) dentro.vel = 0; sairDoCarro(); },

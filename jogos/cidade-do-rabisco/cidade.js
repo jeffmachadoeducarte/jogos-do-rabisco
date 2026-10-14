@@ -1,6 +1,6 @@
 // A Cidade do Rabisco em 3D, montada a partir do traçado de mapa.js: avenida com canteiro e rotatória
 // (praça com chafariz no meio), ruas retas e uma rua de curvas, semáforos com faixa de pedestre, os lugares
-// da cidade (escola, igreja, biblioteca, padaria, hospital, bombeiros, correio, mercado, parque com lago e
+// da cidade (escola, Igreja Reviver, biblioteca, padaria, hospital, bombeiros, correio, mercado, parque com lago e
 // roda-gigante), casas coloridas e prédios de morar preenchendo o resto. Materiais com luz física (PBR) e
 // texturas desenhadas na hora; o Rabisco continua no traço de desenho animado, como um brinquedo na cidade.
 // Unidade: o Rabisco tem 1,8 de altura.
@@ -8,7 +8,7 @@
 import { THREE, texturaCanvas, aleatorio, carregarTextura } from "../../src/motor3d/toon.js";
 import { escolaEducarte3D, pilotoLapis } from "../../src/motor3d/objetos.js";
 import { RUAS, CALCADA, distRua, LUGARES, CASAS, SEMAFOROS, PARQUE, LAGO, PLAYGROUND, PRACA, VAGAS, LARGADA } from "./mapa.js";
-import { ESTILO_PARCEIRO } from "./parceiros.js";
+import { ESTILO_PARCEIRO, IGREJA } from "./parceiros.js";
 
 export { BORDA } from "./mapa.js";
 const r = aleatorio(2026);
@@ -103,26 +103,34 @@ function predio(w, d, andares, cor, luzes) {
   g.add(corpo, beiral);
   return { g, h };
 }
-// loja de empresa parceira: a frente inteira do prédio (de canto a canto, do chão ao topo) é a foto real
-// da fachada; o prédio se adapta à proporção da foto (altura fixa, largura = altura × proporção, sem esticar).
-// Laterais, fundo e telhado em cor sólida que combina com a foto. A foto carrega sem travar o jogo: até lá
-// (ou se ela falhar) fica um prédio liso do mesmo tipo. aoMudar(largura) avisa a nova largura (colisão).
+// loja de empresa parceira (e a Igreja Reviver): a frente inteira do prédio (de canto a canto, do chão ao topo)
+// é a foto real da fachada; o prédio se adapta à proporção da foto (altura fixa, largura = altura × proporção,
+// sem esticar). Laterais, fundo e telhado em cor sólida que combina com a foto. A foto carrega sem travar o jogo:
+// até lá (ou se ela falhar) fica um prédio liso do mesmo tipo, ou o desenho provisório da fachada (p.provisoria).
+// p.altura / p.d / p.larguraMax / p.proporcao trocam as medidas padrão (LOJA). aoMudar(largura) avisa a nova
+// largura (colisão).
 const LOJA = { altura: 9, d: 7, frente: 3.08, larguraMax: 24 };
+const medidas = (p) => ({ ...LOJA, ...Object.fromEntries(["altura", "d", "larguraMax"].filter((k) => p[k]).map((k) => [k, p[k]])) });
 function lojaParceira(p, aoMudar) {
+  const M = medidas(p);
   const g = new THREE.Group();
   const estilo = ESTILO_PARCEIRO[p.tipo] ?? ESTILO_PARCEIRO.carros;
   const parede = std(estilo.parede, { roughness: 0.8 });
   const matFrente = std(estilo.parede, { roughness: 0.75 });
-  const corpo = caixa(1, 1, LOJA.d, [parede, parede, parede, parede, matFrente, parede]); // 4 = face +z (rua)
-  const beiral = caixa(1, 0.35, LOJA.d + 0.4, std(estilo.beiral, { roughness: 0.7 }));
+  if (p.provisoria) {
+    const t = p.provisoria(); t.colorSpace = THREE.SRGBColorSpace;
+    Object.assign(matFrente, { map: t, emissiveMap: t, emissiveIntensity: 0.35 }); matFrente.color.set(0xffffff); matFrente.emissive.set(0xffffff);
+  }
+  const corpo = caixa(1, 1, M.d, [parede, parede, parede, parede, matFrente, parede]); // 4 = face +z (rua)
+  const beiral = caixa(1, 0.35, M.d + 0.4, std(estilo.beiral, { roughness: 0.7 }));
   g.add(corpo, beiral);
   const montar = (prop) => {
-    const w = Math.min(LOJA.larguraMax, LOJA.altura * prop), h = w / prop;
-    corpo.scale.set(w, h, 1); corpo.position.set(0, h / 2, LOJA.frente - LOJA.d / 2);
-    beiral.scale.set(w + 0.4, 1, 1); beiral.position.set(0, h + 0.17, LOJA.frente - LOJA.d / 2 - 0.2);
+    const w = Math.min(M.larguraMax, M.altura * prop), h = w / prop;
+    corpo.scale.set(w, h, 1); corpo.position.set(0, h / 2, M.frente - M.d / 2);
+    beiral.scale.set(w + 0.4, 1, 1); beiral.position.set(0, h + 0.17, M.frente - M.d / 2 - 0.2);
     aoMudar?.(w);
   };
-  montar(LOJA.larguraMax / LOJA.altura); // começa na largura máxima (reserva o terreno) e encolhe quando a foto chega
+  montar(p.proporcao ?? M.larguraMax / M.altura); // começa na proporção prevista (ou na largura máxima) e se ajusta quando a foto chega
   new THREE.TextureLoader().load(`../../${p.foto}`, (t) => {
     t.colorSpace = THREE.SRGBColorSpace;
     t.anisotropy = 8;
@@ -130,8 +138,39 @@ function lojaParceira(p, aoMudar) {
     Object.assign(matFrente, { map: t, emissiveMap: t, emissiveIntensity: 0.35 });
     matFrente.color.set(0xffffff); matFrente.emissive.set(0xffffff); matFrente.needsUpdate = true;
     montar(t.image.width / t.image.height);
-  }, undefined, () => console.warn(`foto da parceira ${p.nome} não carregou`));
+  }, undefined, () => console.warn(`foto de ${p.nome} não carregou`));
   return g;
+}
+// frente provisória da Igreja Reviver (enquanto a foto não chega): concreto, moldura branca, letreiro,
+// vidro espelhado com o arco azul-marinho e a marquise, na proporção prevista da foto
+function fachadaIgreja() {
+  const W = 1024, H = Math.round(W / IGREJA.proporcao);
+  return texturaCanvas(W, H, (c) => {
+    c.fillStyle = "#f4f4f1"; c.fillRect(0, 0, W, H); // moldura branca
+    c.fillStyle = "#a9a8a3"; c.fillRect(W * 0.06, H * 0.07, W * 0.88, H * 0.66); // concreto
+    ruido(c, W, H * 0.7, 5000, ["rgba(0,0,0,0.05)", "rgba(255,255,255,0.07)"]);
+    // vidro espelhado (céu refletido) com arco azul-marinho no canto de cima
+    const x0 = W * 0.4, x1 = W * 0.91, y0 = H * 0.17, y1 = H * 0.73, r = H * 0.14;
+    const vidro = c.createLinearGradient(0, y0, 0, y1);
+    vidro.addColorStop(0, "#5f8fc9"); vidro.addColorStop(0.55, "#a8c6e4"); vidro.addColorStop(1, "#4d6f57");
+    c.beginPath(); c.moveTo(x0, y1); c.lineTo(x0, y0 + r); c.quadraticCurveTo(x0, y0, x0 + r, y0); c.lineTo(x1, y0); c.lineTo(x1, y1); c.closePath();
+    c.fillStyle = vidro; c.fill();
+    c.strokeStyle = "rgba(20,30,50,0.55)"; c.lineWidth = 2;
+    for (let x = x0 + 40; x < x1; x += 46) { c.beginPath(); c.moveTo(x, y0); c.lineTo(x, y1); c.stroke(); }
+    for (let y = y0 + 40; y < y1; y += 44) { c.beginPath(); c.moveTo(x0, y); c.lineTo(x1, y); c.stroke(); }
+    c.lineWidth = 16; c.strokeStyle = "#1f3a8a";
+    c.beginPath(); c.moveTo(x0, y1); c.lineTo(x0, y0 + r); c.quadraticCurveTo(x0, y0, x0 + r, y0); c.lineTo(W * 0.965, y0); c.stroke();
+    // marquise branca e letreiro
+    c.fillStyle = "#f4f4f1"; c.fillRect(W * 0.04, H * 0.47, W * 0.72, H * 0.04);
+    c.fillStyle = "#ffffff"; c.textBaseline = "alphabetic"; c.textAlign = "left";
+    c.font = `600 ${Math.round(H * 0.06)}px 'Baloo 2', sans-serif`; c.fillText("igreja", W * 0.19, H * 0.31);
+    c.font = `800 ${Math.round(H * 0.12)}px 'Baloo 2', sans-serif`; c.fillText("reviver", W * 0.19, H * 0.42);
+    // porta de vidro escura, canteiro e pátio
+    c.fillStyle = "#1c2230"; c.fillRect(W * 0.36, H * 0.55, W * 0.04, H * 0.18);
+    c.fillStyle = "#3f7a3a"; c.fillRect(W * 0.06, H * 0.62, W * 0.29, H * 0.11);
+    c.fillStyle = "#bdb8ae"; c.fillRect(0, H * 0.75, W, H * 0.25);
+    ruido(c, W, H, 3000, ["rgba(0,0,0,0.06)"]);
+  });
 }
 function casa(cor, telhadoCor, numero) {
   const g = new THREE.Group();
@@ -164,26 +203,6 @@ function arvoreReal(escala = 1) {
     g.add(b);
   }
   g.scale.setScalar(escala);
-  return g;
-}
-function igreja() {
-  const g = new THREE.Group();
-  const nave = caixa(10, 6, 16, std(0xf4efe4));
-  nave.position.y = 3;
-  const t = telhado(10, 16, 4, 0x8b3a2a);
-  t.rotation.y = Math.PI / 2;
-  t.position.y = 6;
-  t.rotation.y = 0;
-  const torre = caixa(4, 12, 4, std(0xf4efe4));
-  torre.position.set(0, 6, 9);
-  const topo = new THREE.Mesh(new THREE.ConeGeometry(3, 4, 4), std(0x8b3a2a));
-  topo.rotation.y = Math.PI / 4; topo.position.set(0, 14, 9); topo.castShadow = true;
-  const cruzV = caixa(0.3, 2, 0.3, std(0xffd36b, { metalness: 0.4, roughness: 0.4 })); cruzV.position.set(0, 17, 9);
-  const cruzH = caixa(1.2, 0.3, 0.3, std(0xffd36b, { metalness: 0.4, roughness: 0.4 })); cruzH.position.set(0, 17.4, 9);
-  const vitral = new THREE.Mesh(new THREE.CircleGeometry(1.2, 24), std(0x7fb8ff, { emissive: 0x223355, roughness: 0.3 }));
-  vitral.position.set(0, 9, 11.05);
-  g.add(nave, t, torre, topo, cruzV, cruzH, vitral);
-  porta(g, { z: 11.1, cor: 0x6b3a1a, w: 2.4, h: 3.6 });
   return g;
 }
 function chafariz() {
@@ -494,21 +513,24 @@ export function montarCidade(cena) {
   };
   for (const l of LUGARES) {
     lugares.push({ ...l });
-    if (l.parceiro) {
+    // lojas parceiras e a Igreja Reviver: frente com a foto real da fachada
+    const fotoReal = l.parceiro ?? (l.id === "igreja" ? { ...IGREJA, provisoria: fachadaIgreja } : null);
+    if (fotoReal) {
+      const M = medidas(fotoReal);
       const ox = l.x - l.dir[0] * l.recuo, oz = l.z - l.dir[1] * l.recuo;
       // colisão: o mesmo retângulo é ajustado quando a foto chega e o prédio muda de largura
       const s = { x0: 0, x1: 0, z0: 0, z1: 0, y1: 20 };
       solidos.push(s);
-      const loja = lojaParceira(l.parceiro, (w) => {
-        const [cx, cz] = mundoDe(ox, oz, l.rot, 0, LOJA.frente - LOJA.d / 2);
-        const deitado = Math.abs(Math.sin(l.rot)) > 0.5, sx = (deitado ? LOJA.d : w) / 2 + 0.2, sz = (deitado ? w : LOJA.d) / 2 + 0.2;
+      const loja = lojaParceira(fotoReal, (w) => {
+        const [cx, cz] = mundoDe(ox, oz, l.rot, 0, M.frente - M.d / 2);
+        const deitado = Math.abs(Math.sin(l.rot)) > 0.5, sx = (deitado ? M.d : w) / 2 + 0.2, sz = (deitado ? w : M.d) / 2 + 0.2;
         Object.assign(s, { x0: cx - sx, x1: cx + sx, z0: cz - sz, z1: cz + sz });
       });
       loja.position.set(ox, 0.03, oz); loja.rotation.y = l.rot;
       cena.add(loja);
       continue;
     }
-    if (!["escola", "igreja", ...Object.keys(info)].includes(l.id)) continue;
+    if (!["escola", ...Object.keys(info)].includes(l.id)) continue;
     const ox = l.x - l.dir[0] * l.recuo, oz = l.z - l.dir[1] * l.recuo;
     const grupo = new THREE.Group();
     grupo.position.set(ox, 0.03, oz);
@@ -518,9 +540,6 @@ export function montarCidade(cena) {
       const e = escolaEducarte3D(tex.logo, tex.icone);
       e.scale.setScalar(0.42); e.position.z = -2; grupo.add(e);
       solidoGirado(ox, oz, l.rot, 0, -2, 24, 12);
-    } else if (l.id === "igreja") {
-      const ig = igreja(); ig.position.z = -6; grupo.add(ig);
-      solidoGirado(ox, oz, l.rot, 0, -6, 10.5, 16.5); solidoGirado(ox, oz, l.rot, 0, 3, 4.5, 4.5);
     } else {
       const [nome, cor, andares, corPlaca] = info[l.id];
       const { g: pr, h } = predio(20, 14, andares, cor, 0.1);
