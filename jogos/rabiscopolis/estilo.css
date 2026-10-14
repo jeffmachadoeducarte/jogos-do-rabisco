@@ -92,3 +92,29 @@ body.touch .rp-toque { display: block; }
   .rp-pedais .rp-sair { right: 112px; bottom: 26px; width: 84px; height: 56px; font-size: 18px; }
   .rp-pedais .rp-fone { right: 112px; bottom: 100px; width: 56px; height: 56px; font-size: 24px; }
 }
+
+/* casa por dentro: escurecer ao passar pela porta e o carrossel de decoração */
+.fade-rp { position: absolute; inset: 0; z-index: 11; background: #1d1d2b; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+.fade-rp.ativo { opacity: 1; }
+.deco-rp { position: absolute; z-index: 10; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(560px, 92vw); }
+.deco-rp[hidden] { display: none; }
+.deco-cartao { background: #fff; border: 5px solid var(--tinta); border-radius: 26px; box-shadow: 0 6px 0 var(--tinta); padding: 8px 14px 10px; font-family: var(--texto); text-align: center; }
+.deco-titulo { font: 800 18px var(--texto); color: var(--rosa); }
+.deco-linha { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
+.deco-nome { flex: 1; font: 800 20px var(--texto); line-height: 1.2; min-height: 2.4em; display: grid; place-items: center; }
+.deco-bt { width: 58px; height: 58px; border-radius: 50%; border: 4px solid var(--tinta); background: #ffcc1f; font: 800 26px var(--texto); cursor: pointer; touch-action: manipulation; }
+.deco-cores { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 6px; }
+.deco-cores[hidden] { display: none; }
+.deco-cor { width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--tinta); cursor: pointer; }
+.deco-cor.ativa { outline: 5px solid #ffcc1f; outline-offset: 2px; transform: scale(1.1); }
+.deco-acoes { display: flex; justify-content: center; gap: 12px; }
+.deco-ok, .deco-voltar { min-width: 130px; height: 48px; border-radius: 999px; border: 4px solid var(--tinta); font: 800 19px var(--texto); cursor: pointer; }
+.deco-ok { background: #58c43a; color: #fff; } .deco-voltar { background: #fff; }
+.deco-dica { display: block; margin-top: 4px; color: #666; font: 700 13px var(--texto); }
+.rf-cores .rf-icone { width: 54px; height: 54px; }
+@media (max-height: 520px) and (orientation: landscape) {
+  .deco-rp { bottom: 6px; width: min(520px, 62vw); }
+  .deco-cartao { padding: 4px 10px 6px; border-width: 4px; }
+  .deco-nome { font-size: 15px; min-height: 2.2em; } .deco-bt { width: 46px; height: 46px; font-size: 20px; }
+  .deco-cor { width: 30px; height: 30px; } .deco-ok, .deco-voltar { height: 40px; min-width: 104px; font-size: 16px; } .deco-dica { display: none; }
+}

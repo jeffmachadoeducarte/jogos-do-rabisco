@@ -93,17 +93,19 @@ export function casa(lote) {
   }
   // casa
   const CW = 9, CH = 4.3, CD = 8, Z0 = -4.2; // frente da casa em z = Z0
+  // paredes num grupo à parte (mesclado sozinho): dá para trocar a cor da casa por fora sem remontar o bairro
+  const paredes = new THREE.Group(); paredes.userData = { dinamico: true, cor: lote.hex }; g.add(paredes);
   const parede = caixaRedonda(CW, CH, CD, mat(lote.hex), { raio: 0.35, contorno: 0.1 });
-  parede.position.set(0, CH / 2 + 0.05, Z0 - CD / 2); g.add(parede);
+  parede.position.set(0, CH / 2 + 0.05, Z0 - CD / 2); paredes.add(parede);
   // rodapé mais escuro
   const rodape = caixaRedonda(CW + 0.12, 0.5, CD + 0.12, mat(new THREE.Color(lote.hex).multiplyScalar(0.75).getHex()), { raio: 0.2 });
-  rodape.position.set(0, 0.3, Z0 - CD / 2); g.add(rodape);
+  rodape.position.set(0, 0.3, Z0 - CD / 2); paredes.add(rodape);
   sol(-CW / 2, CW / 2, Z0 - CD, Z0, 9);
   const t = telhado(CW, CD, 3.1, lote.telhado); t.position.set(0, CH, Z0 - CD / 2); g.add(t);
   // frontão (triângulo da parede) com janelinha redonda
   const frontao = new THREE.Shape([new THREE.Vector2(-CW / 2 + 0.1, 0), new THREE.Vector2(CW / 2 - 0.1, 0), new THREE.Vector2(0, 2.9)]);
   const geoFr = new THREE.ExtrudeGeometry(frontao, { depth: 0.2, bevelEnabled: false });
-  const fr = malha(geoFr, mat(lote.hex)); fr.position.set(0, CH, Z0 - 0.05); g.add(fr);
+  const fr = malha(geoFr, mat(lote.hex)); fr.position.set(0, CH, Z0 - 0.05); paredes.add(fr);
   const olho = malha(new THREE.CylinderGeometry(0.55, 0.55, 0.14, 24), mat(BRANCO), { contorno: 0.04 }); olho.rotation.x = Math.PI / 2; olho.position.set(0, CH + 1.1, Z0 + 0.22); g.add(olho);
   const olhoV = malha(new THREE.CylinderGeometry(0.4, 0.4, 0.1, 24), MAT.janela); olhoV.rotation.x = Math.PI / 2; olhoV.position.set(0, CH + 1.1, Z0 + 0.27); g.add(olhoV);
   // chaminé
@@ -136,7 +138,23 @@ export function casa(lote) {
   sol(arv.position.x - 0.4, arv.position.x + 0.4, -D + 2.6, -D + 3.4, 6);
   for (const s of [-1, 1]) { const m = malha(new THREE.IcosahedronGeometry(0.7, 1), mat(0x5cc443), { contorno: 0.06, sombra: false }); m.userData.detalhe = true; m.scale.set(1.2, 0.8, 0.9); m.position.set(s * 4.9, 0.5, Z0 + 0.8); g.add(m); }
   g.userData.placa = pl;
+  g.userData.paredes = paredes;
   g.userData.porta = [0, Z0 + 1.2]; // onde o Rabisco fica para "Morar aqui?"
   return { grupo: g, solidos };
+}
+// troca a cor das paredes já mescladas (cor por vértice): parede e frontão na cor nova, rodapé um tom abaixo
+export function recolorirParedes(paredes, novaHex) {
+  const de = new THREE.Color(paredes.userData.cor), deR = new THREE.Color(new THREE.Color(paredes.userData.cor).multiplyScalar(0.75).getHex());
+  const para = new THREE.Color(novaHex), paraR = new THREE.Color(new THREE.Color(novaHex).multiplyScalar(0.75).getHex());
+  const perto = (a, r, g, b) => Math.abs(a.r - r) + Math.abs(a.g - g) + Math.abs(a.b - b) < 0.03;
+  paredes.traverse((m) => {
+    const c = m.isMesh && m.geometry.attributes.color; if (!c) return;
+    for (let i = 0; i < c.count; i++) {
+      const r = c.getX(i), g2 = c.getY(i), b = c.getZ(i);
+      if (perto(de, r, g2, b)) c.setXYZ(i, para.r, para.g, para.b); else if (perto(deR, r, g2, b)) c.setXYZ(i, paraR.r, paraR.g, paraR.b);
+    }
+    c.needsUpdate = true;
+  });
+  paredes.userData.cor = novaHex;
 }
 void TEX;

@@ -193,6 +193,7 @@ export function montarMundo(cena) {
   // ---------- mescla cada bloco (o que é fixo vira poucas malhas)
   let malhas = 0;
   for (const b of blocos) malhas += mesclar(b);
+  for (const c of casas) mesclar(c.grupo.userData.paredes); // cada casa com as paredes à parte (cor trocável)
 
   // retângulo de cada bloco (para a distância até o jogador)
   for (const g of blocos) { const [i, j] = g.userData.bloco; g.userData.ret = { x0: -BORDA + i * BLOCO, x1: -BORDA + (i + 1) * BLOCO, z0: -BORDA + j * BLOCO, z1: -BORDA + (j + 1) * BLOCO }; }

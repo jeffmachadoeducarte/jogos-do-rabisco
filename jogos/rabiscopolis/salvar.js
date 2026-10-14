@@ -1,8 +1,8 @@
 // Rabiscolândia: o que a criança guarda neste aparelho (localStorage "rabisco.rabiscopolis.v1"). Nada vai para a rede.
-//   { casa: número do lote ou null, corCasa, moveis: [], roupas: [], pet: null, selos: [], missoesFeitas: [] }
+//   { casa: número do lote ou null, corCasa (cor das paredes, 0xRRGGBB), moveis: { [casa]: { [ponto]: { id, cor, variante } } }, roupas: [], pet: null, selos: [], missoesFeitas: [] }
 
 const CHAVE = "rabisco.rabiscopolis.v1";
-const VAZIO = () => ({ casa: null, corCasa: null, moveis: [], roupas: [], pet: null, selos: [], missoesFeitas: [] });
+const VAZIO = () => ({ casa: null, corCasa: null, moveis: {}, roupas: [], pet: null, selos: [], missoesFeitas: [] });
 
 export function carregar() {
   try { return { ...VAZIO(), ...(JSON.parse(localStorage.getItem(CHAVE)) || {}) }; } catch { return VAZIO(); }

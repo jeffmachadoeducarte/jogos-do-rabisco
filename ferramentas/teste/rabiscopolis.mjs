@@ -177,6 +177,98 @@ const fps = (t) => t.ev(`new Promise((r) => { let n = 0; const t0 = performance.
     const m = await t.ev("teste.medir().total");
     ok(m.calls <= 250 && m.tris <= 350000, `orçamento TV/computador em ${nome}: ${m.calls} chamadas, ${Math.round(m.tris / 1000)} mil triângulos`);
   }
+  // ---------- C: casa por dentro e decoração
+  const prob = await t.ev("[...teste.verificar('A'), ...teste.verificar('B')]");
+  ok(!prob.length, `plantas A e B: todo ponto cabe no cômodo, sem atravessar parede nem tapar porta ${prob.join("; ")}`);
+  // entra pela porta da casa 3 (escolhida no item b)
+  await t.ev("(() => { const l = teste.LOTES[2]; teste.ir(l.x, l.z + l.dir[1] * 0.5); })()");
+  await espera(500);
+  const ctxCasa = await t.ev("teste.contexto");
+  await t.ev("teste.acao()");
+  const entrou = await ate(t, "teste.emCasa?.numero === 3 && teste.emCasa.planta === 'A'", 8000);
+  ok(entrou, `entrou em casa pela porta ("${ctxCasa}", casa ${await t.ev("JSON.stringify(teste.emCasa && [teste.emCasa.numero, teste.emCasa.planta])")}) e a planta é a A`);
+  // aquecimento: a primeira volta desenha a cidade e a casa pela primeira vez (sobe tudo para a placa de vídeo)
+  for (let i = 0; i < 2; i++) { await t.ev("teste.sairCasa()"); await espera(500); await t.ev("teste.entrarCasa()"); await espera(500); }
+  // memória: (1) trocar o móvel 10× dentro de casa não deixa geometria sobrando; (2) entrar e sair 10× também não
+  // aquecimento: sofá e poltrona já desenhados uma vez (as peças arredondadas ficam num cache compartilhado de propósito)
+  for (const m of ["poltrona", "sofa"]) { await t.ev(`teste.decorar('sala-sofa', { id: '${m}', cor: 0x00b5f0 })`); await espera(300); }
+  const memA = await t.ev("teste.memoria()");
+  for (let i = 0; i < 10; i++) { await t.ev(`teste.decorar('sala-sofa', ${i % 2 ? "{ id: 'sofa', cor: 0x00b5f0 }" : "{ id: 'poltrona', cor: 0xec2e8c }"})`); await espera(200); }
+  const memB = await t.ev("teste.memoria()");
+  ok(memB.geometries <= memA.geometries + 1 && memB.textures === memA.textures, `trocar o móvel 10× não vaza memória (geometrias ${memA.geometries} → ${memB.geometries})`);
+  for (let i = 0; i < 10; i++) { await t.ev("teste.sairCasa()"); await espera(250); await t.ev("teste.entrarCasa()"); await espera(250); }
+  await t.ev("teste.decorar('sala-sofa', null)");
+  await espera(600);
+  const mem1 = await t.ev("teste.memoria()"), naCena = await t.ev("teste.geometriasNaCena()");
+  ok(mem1.geometries <= naCena && mem1.textures <= memB.textures + 2, `entrar e sair 10× sem vazar memória (na placa de vídeo ${mem1.geometries} ≤ ligadas à cena ${naCena}; texturas ${memB.textures} → ${mem1.textures})`);
+  // decorar pelo carrossel de verdade: chega no ponto do sofá, aperta a ação, passa móveis e cores e confirma
+  await t.ev("teste.irAoPonto('sala-sofa')");
+  await espera(400);
+  const ctxDeco = await t.ev("teste.contexto");
+  await t.ev("teste.acao()");
+  await espera(500);
+  ok(await t.ev("teste.deco.aberto"), `no ponto, a ação abre o carrossel ("${ctxDeco}")`);
+  await t.ev("teste.deco.navegar(1, 0); teste.deco.navegar(0, 1); teste.deco.navegar(0, 1)");
+  await espera(400);
+  await t.foto(`${FOTOS}casa-carrossel.png`);
+  const escolhaUI = await t.ev("teste.deco.escolha");
+  await t.ev("teste.deco.confirmar()");
+  await espera(300);
+  ok(escolhaUI && await t.ev(`teste.emCasa.pontos.find((p) => p.id === 'sala-sofa').escolha?.id === ${JSON.stringify(escolhaUI.id)}`), `carrossel: escolheu "${escolhaUI?.id}" e ficou no lugar`);
+  // decora o resto (cama no quarto, cantinho de oração, quadro de versículo...) e confere que cada móvel cabe no ponto
+  const decorados = await t.ev(`(() => {
+    const quero = { "qto-cama": "cama", "sala-meio": "oracao", "sala-quadro": "quadro-versiculo", "coz-meio": "mesa-jantar", "coz-fundo": "geladeira", "coz-fundo2": "fogao", "coz-parede": "armario", "qto-lado": "guarda-roupa", "qto-canto": "criado", "qto-frente": "bau", "qto-quadro": "quadro-versiculo", "sala-lado": "estante", "sala-canto": "planta" };
+    const cores = [0xec2e8c, 0x00b5f0, 0xffcc1f, 0x58c43a, 0x8e6cff, 0xff7a00]; let n = 0, ruins = 0;
+    for (const p of teste.emCasa.pontos) {
+      const L = teste.lista(p.id); if (!L.length || p.id === "sala-sofa") continue;
+      const it = L.find((x) => x.id === quero[p.id]) ?? L[0];
+      teste.decorar(p.id, { id: it.id, variante: p.id === "qto-quadro" ? 1 : (it.variante ?? 0), cor: cores[n++ % 6] });
+    }
+    return { n, ruins };
+  })()`);
+  ok(decorados.n >= 12, `${decorados.n + 1} pontos decorados na planta A`);
+  await t.ev("teste.irAoPonto('coz-meio')");
+  await espera(800);
+  await t.foto(`${FOTOS}casa-planta-A-decorada.png`);
+  const salvos = await t.ev("JSON.stringify(teste.salvo.moveis[3])");
+  // muda a cor da casa por fora (Rabifone) e recarrega: móveis e cor continuam
+  await t.ev("teste.sairCasa(); teste.corCasa(0x8fe3cf)");
+  await espera(300);
+  await t.cmd("Page.reload");
+  ok(await ate(t, "!!window.teste?.vivo && !!teste.mundo"), "recarregou com a casa decorada");
+  ok(await t.ev("teste.corParedes === 0x8fe3cf && teste.salvo.corCasa === 0x8fe3cf"), "a cor nova da casa continua depois de recarregar");
+  await t.ev("(() => { const l = teste.LOTES[2]; teste.ir(l.x + 7, l.z + l.dir[1] * 6); teste.olhar(Math.atan2(-l.dir[0], -l.dir[1]) - 0.6); })()");
+  await espera(1200);
+  await t.foto(`${FOTOS}casa-cor-nova.png`);
+  await t.ev("teste.entrarCasa()");
+  await espera(400);
+  const depois = await t.ev("JSON.stringify(Object.fromEntries(teste.emCasa.pontos.filter((p) => p.escolha).map((p) => [p.id, p.escolha])))");
+  const ordenar = (j) => JSON.stringify(Object.fromEntries(Object.entries(JSON.parse(j)).sort(([a], [b]) => a.localeCompare(b))));
+  ok(ordenar(depois) === ordenar(salvos), `os móveis continuam no lugar depois de recarregar (${Object.keys(JSON.parse(depois)).length} móveis)`);
+  // nada atravessa parede nem o Rabisco atravessa móvel: anda contra a parede do fundo e contra a cama
+  await t.ev("teste.irAoPonto('qto-cama'); teste.volante(1, 0)");
+  await espera(1200);
+  await t.ev("teste.volante(null)");
+  ok(await t.ev("!teste.dentroDeSolido(teste.j.pos.x, teste.j.pos.z)"), "o Rabisco não entra na cama nem na parede");
+  await t.ev("teste.sairCasa()");
+  // planta B: muda para uma casa da Vila das Flores e decora
+  await t.ev("(() => { const l = teste.LOTES[8]; teste.ir(l.x, l.z + l.dir[1] * 0.5); })()");
+  await espera(400);
+  await t.ev("teste.acao()");
+  await espera(800);
+  await t.ev("teste.entrarCasa()");
+  await espera(400);
+  const nB = await t.ev(`(() => {
+    const quero = { "qto-cama": "cama", "bebe-berco": "berco", "bebe-meio": "tapete", "bebe-canto": "bau", "sala-meio": "oracao", "sala-sofa": "sofa", "coz-meio": "mesa-jantar", "coz-fundo": "geladeira", "sala-quadro": "quadro-versiculo", "qto-quadro": "quadro-versiculo", "qto-lado": "guarda-roupa", "sala-lado": "piano" };
+    const cores = [0x8e6cff, 0xffcc1f, 0x00b5f0, 0xec2e8c, 0x58c43a, 0xff7a00]; let n = 0;
+    for (const p of teste.emCasa.pontos) { const L = teste.lista(p.id); if (!L.length) continue; const it = L.find((x) => x.id === quero[p.id]) ?? L[0]; teste.decorar(p.id, { id: it.id, variante: p.id === "qto-quadro" ? 2 : 0, cor: cores[n++ % 6] }); }
+    return teste.emCasa.planta === "B" ? n : -1;
+  })()`);
+  ok(nB >= 10, `planta B (Vila das Flores): ${nB} pontos decorados`);
+  await t.ev("teste.irAoPonto('sala-meio')");
+  await espera(800);
+  await t.foto(`${FOTOS}casa-planta-B-decorada.png`);
+  await t.ev("teste.sairCasa()");
   // praça de dia e de noite
   await t.ev("teste.hora(13); teste.ir(0, 36); teste.olhar(Math.PI)");
   await espera(1500);
@@ -258,6 +350,19 @@ const fps = (t) => t.ev(`new Promise((r) => { let n = 0; const t0 = performance.
   ok(await t.ev("teste.dentro === null"), "(g) depois de pousar, Sair tira o Rabisco do helicóptero");
   o = await olhar();
   ok(!PEDIDO.test(o.txt), "(h) depois de dirigir, nenhum pedido de controle/QR");
+  // decorar pelo toque: mora na casa 1, entra, abre o carrossel e toca ▶ e ✓
+  await t.ev("(() => { const l = teste.LOTES[0]; teste.ir(l.x, l.z + l.dir[1] * 0.5); teste.acao(); })()");
+  await espera(800);
+  await t.ev("teste.entrarCasa(); teste.irAoPonto('sala-sofa'); teste.acao()");
+  await espera(600);
+  const nome0 = await t.ev("document.querySelector('.deco-nome').textContent");
+  await t.toque('.deco-bt[data-d="dir"]');
+  const nome1 = await t.ev("document.querySelector('.deco-nome').textContent");
+  await t.foto(`${FOTOS}casa-carrossel-celular.png`);
+  await t.toque(".deco-ok");
+  await espera(300);
+  ok(nome0 !== nome1 && await t.ev("!teste.deco.aberto && !!teste.emCasa.pontos.find((p) => p.id === 'sala-sofa').escolha"), `toque: ▶ troca o móvel ("${nome0}" → "${nome1}") e ✓ guarda`);
+  await t.ev("teste.sairCasa()");
   ok(!errosDeVerdade(t).length, `(a) celular sem erro de console ${errosDeVerdade(t).slice(0, 4).join(" ; ")}`);
   } finally { await t.fechar(); }
 }

@@ -47,6 +47,7 @@ export function geoCaixaRedonda(w, h, d, raio = 0.2, seg = 2) {
   f.quadraticCurveTo(-ww, hh, -ww, hh - c); f.lineTo(-ww, -hh + c); f.quadraticCurveTo(-ww, -hh, -ww + c, -hh);
   const geo = new THREE.ExtrudeGeometry(f, { depth: Math.max(0.01, d - 2 * rr), bevelEnabled: true, bevelThickness: rr, bevelSize: rr, bevelSegments: seg, curveSegments: 3 });
   geo.center();
+  geo.userData.compartilhada = true;
   geoRedondas.set(k, geo);
   return geo;
 }

@@ -59,9 +59,19 @@ export function criarRabifone(onde, cb) {
         p.textContent = info.tem ? `Sua casa é a ${info.nome}. Que lar bonito!` : "Você ainda não tem casa. Vá ao Bairro das Casas e aperte “Morar aqui?” na frente da que você gostar!";
         tela.insertBefore(p, lista);
         if (info.tem) lista.append(botao(`<span class="rf-emoji">🏃</span>Ir para casa`, () => { cb.aoCasa?.("ir"); api.fechar(); }));
+        if (info.tem) lista.append(botao(`<span class="rf-emoji">🎨</span>Cor da casa`, () => mostrarCores()));
         lista.append(botao(`<span class="rf-emoji">🧭</span>${info.tem ? "Mostrar o caminho" : "Ir ao Bairro das Casas"}`, () => { cb.aoCasa?.(info.tem ? "caminho" : "bairro"); api.fechar(); }));
       }
     }
+    focar(tela.querySelector("[data-foco]"));
+  }
+  // paleta de cores da casa por fora
+  function mostrarCores() {
+    app = "cores";
+    tela.replaceChildren();
+    const h = document.createElement("h3"); h.textContent = "🎨 Cor da casa"; tela.append(h);
+    const grade = document.createElement("div"); grade.className = "rf-grade rf-cores"; tela.append(grade);
+    for (const cor of cb.coresCasa?.() ?? []) grade.append(botao(`<span class="rf-icone" style="background:#${cor.toString(16).padStart(6, "0")}"></span>`, () => { cb.aoCasa?.("cor", cor); api.fechar(); }, "rf-app"));
     focar(tela.querySelector("[data-foco]"));
   }
   function focar(el) {

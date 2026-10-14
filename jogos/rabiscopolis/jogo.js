@@ -23,6 +23,10 @@ import { criarRabifone } from "./rabifone.js";
 import { criarToque } from "./toque.js";
 import { carregar, salvar } from "./salvar.js";
 import { criarQualidade } from "./qualidade.js";
+import { montarInterior, colocar, solidosDosMoveis, cabe, pegadaDoMovel, PLANTAS, verificar } from "./interiores.js";
+import { MOVEIS, CORES_MOVEL, VERSICULOS } from "./moveis.js";
+import { criarDecorar } from "./decorar.js";
+import { recolorirParedes } from "./casas.js";
 import { criarRadio } from "../../src/radio/radio.js";
 import { criarRadioUI } from "../../src/radio/radio-ui.js";
 import { RUAS, segmentos, LOTES, VAGAS, LARGADA, LUGARES, LAGO, PARQUE, PRACA, FAZENDA, BORDA, MORADORES, distRua, PRAIA, LAGO2, HELIPONTO } from "./mapa.js";
@@ -80,6 +84,13 @@ const pad = { x: 0, y: 0, gx: 0, pulo: false, puloNovo: false, acaoNova: false }
 let toque = null, fone = null;
 addEventListener("keydown", (e) => {
   if (jogo.estado !== "jogando" || jogo.pausado) return;
+  if (deco?.aberto) {
+    const mapa = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], KeyA: [-1, 0], KeyD: [1, 0], KeyW: [0, -1], KeyS: [0, 1] };
+    if (mapa[e.code]) { deco.navegar(...mapa[e.code]); e.preventDefault(); return; }
+    if (e.code === "Enter" || e.code === "Space" || e.code === "KeyF") { deco.confirmar(); e.preventDefault(); return; }
+    if (e.code === "Escape" || e.code === "Backspace") { deco.cancelar(); e.preventDefault(); }
+    return;
+  }
   if (fone?.aberto) {
     const mapa = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], KeyA: [-1, 0], KeyD: [1, 0], KeyW: [0, -1], KeyS: [0, 1] };
     if (mapa[e.code]) { fone.navegar(...mapa[e.code]); e.preventDefault(); return; }
@@ -97,6 +108,12 @@ addEventListener("keydown", (e) => {
 });
 addEventListener("keyup", (e) => teclas.delete(e.code));
 function lerControle({ segura, apertou, eixoX, eixoY }) {
+  if (deco?.aberto) {
+    if (apertou.esq) deco.navegar(-1, 0); if (apertou.dir) deco.navegar(1, 0);
+    if (apertou.cima) deco.navegar(0, -1); if (apertou.baixo) deco.navegar(0, 1);
+    if (apertou.confirma) deco.confirmar(); else if (apertou.voltar) deco.cancelar();
+    return;
+  }
   if (fone?.aberto) {
     if (apertou.esq) fone.navegar(-1, 0); if (apertou.dir) fone.navegar(1, 0);
     if (apertou.cima) fone.navegar(0, -1); if (apertou.baixo) fone.navegar(0, 1);
@@ -132,6 +149,7 @@ const j = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), noChao: true, co
 const veiculos = []; let garagem = null; // veículo chamado pelo Rabifone (só um por vez)
 let transito = [], moradores = [], vovo = null;
 let dentro = null, contexto = null, salvo = carregar(), alvoMapa = null;
+let emCasa = null, deco = null, fade = null; const interiores = {}; // casa por dentro (montada uma vez por planta)
 let entradaTeste = null;
 const nomeCrianca = () => { try { return window.Familia?.crianca?.()?.nome || null; } catch { return null; } };
 
@@ -182,6 +200,12 @@ function iniciar() {
   caixa.append(hud, minimapa, bussola, balao, btnFone, btnAcao, mapaGrande);
   hud.btnAcao = btnAcao;
   toque = criarToque(caixa);
+  fade = el("div", { class: "fade-rp" }); caixa.append(fade);
+  deco = criarDecorar(caixa, {
+    aoTrocar: (e) => { if (emCasa && pontoDeco) colocar(emCasa.int, pontoDeco, e); },
+    aoConfirmar: (e) => confirmarDeco(e),
+    aoCancelar: (orig) => { if (emCasa && pontoDeco) colocar(emCasa.int, pontoDeco, orig); pontoDeco = null; },
+  });
   fone = criarRabifone(caixa, {
     hora: () => ceu.horaAtual,
     aoAbrir: () => { teclas.clear(); toque.zerar(); },
@@ -189,7 +213,10 @@ function iniciar() {
     aoHora: (h) => mudarHora(h),
     aoMapa: () => alternarMapa(true),
     infoCasa: () => ({ tem: salvo.casa != null, nome: salvo.casa != null ? `Casa ${salvo.casa}` : "" }),
-    aoCasa: (acao) => {
+    coresCasa: () => CORES_PAREDE,
+    aoCasa: (acao, extra) => {
+      if (acao === "cor") { trocarCorCasa(extra); return; }
+      if (emCasa && acao === "ir") return;
       const c = mundo.casas.find((k) => k.lote.numero === salvo.casa) ?? mundo.casas[0];
       if (acao === "ir" && !dentro) { const [x, z] = c.frente; irPara(x, z + (c.lote.dir[1] > 0 ? 2.5 : -2.5)); }
       else alvoMapa = { x: c.frente[0], z: c.frente[1], emoji: "🏠" };
@@ -207,6 +234,7 @@ function iniciar() {
 }
 function parar() {
   vivo = false;
+  emCasa = null; for (const k of Object.keys(interiores)) delete interiores[k];
   radioUI?.sairDoCarro();
   if (r3) { r3.dispose(); r3 = null; }
   veiculos.length = 0; transito = []; moradores = []; vovo = null; garagem = null;
@@ -287,10 +315,110 @@ function atualizarMoradores(dt) {
 // ------------------------------------------------------------------ Casa
 function textoPlaca() { const n = nomeCrianca(); return n ? `Casa de ${n}` : "Minha Casa"; }
 function aplicarCasa() {
-  for (const c of mundo.casas) c.placa.userData.definir(c.lote.numero === salvo.casa ? textoPlaca() : `Casa ${c.lote.numero}`, c.lote.numero === salvo.casa ? "#ffcc1f" : "#ec2e8c");
+  for (const c of mundo.casas) {
+    const minha = c.lote.numero === salvo.casa;
+    c.placa.userData.definir(minha ? textoPlaca() : `Casa ${c.lote.numero}`, minha ? "#ffcc1f" : "#ec2e8c");
+    // cor das paredes: a escolhida no Rabifone (só a casa da criança); as outras ficam com a cor do lote
+    const cor = minha && typeof salvo.corCasa === "number" ? salvo.corCasa : c.lote.hex;
+    if (c.grupo.userData.paredes.userData.cor !== cor) recolorirParedes(c.grupo.userData.paredes, cor);
+  }
+}
+// ------------------------------------------------------------------ Casa por dentro (Fatia 2)
+// Planta A no Bairro das Casas, planta B na Vila das Flores. A casa é vista em corte (sem teto, frente baixinha);
+// a decoração é por pontos fixos com o carrossel (decorar.js) e fica guardada no aparelho (salvar.js: moveis).
+const CORES_PAREDE = [0xf59ac0, 0x8cc8f5, 0xffd86b, 0x9ee08a, 0xc8b0f5, 0xffb27a, 0x8fe3cf, 0xfff0c9, 0xffffff, 0xff8a8a];
+let pontoDeco = null;
+const plantaDe = (lote) => (lote.numero <= 8 ? "A" : "B");
+function trocarCorCasa(hex) {
+  if (salvo.casa == null) return;
+  salvo.corCasa = hex; salvar(salvo); aplicarCasa();
+  dizer("Rabifone", "Casa pintadinha de cor nova!", 2400);
+}
+function escurecer(cb) { fade.classList.add("ativo"); setTimeout(() => { cb(); setTimeout(() => fade.classList.remove("ativo"), 60); }, 260); }
+function trocarSolidosCasa(novos) {
+  for (const s of emCasa.solidos) { const i = mundo.solidos.indexOf(s); if (i >= 0) mundo.solidos.splice(i, 1); }
+  emCasa.solidos = novos;
+  mundo.solidos.push(...novos);
+}
+function entrarCasa(c, imediato = false) {
+  if (emCasa || dentro) return;
+  const id = plantaDe(c.lote);
+  const fazer = () => {
+    if (!interiores[id]) { interiores[id] = montarInterior(id); cena.add(interiores[id].grupo); }
+    const int = interiores[id];
+    int.grupo.visible = true;
+    const salvos = salvo.moveis?.[c.lote.numero] ?? {};
+    for (const p of int.pontos) { const e = salvos[p.id] ?? null; if (JSON.stringify(e) !== JSON.stringify(p.escolha)) colocar(int, p, e); }
+    emCasa = { c, int, solidos: [] };
+    trocarSolidosCasa([...int.solidos, ...solidosDosMoveis(int)]);
+    j.pos.set(int.entrada[0], 0.07, int.entrada[1]); j.vel.set(0, 0, 0); j.dir = Math.PI;
+    camera.st.yaw = Math.PI;
+    minimapa.hidden = true;
+    posicionarCamera(1, 0);
+    if (!entrarCasa.falou) { entrarCasa.falou = true; dizer("Minha casa", "Que casa gostosa! Chegue perto de um círculo amarelo e aperte a ação para decorar.", 4200); }
+  };
+  imediato ? fazer() : escurecer(fazer);
+}
+function sairCasa(imediato = false) {
+  if (!emCasa) return;
+  const fazer = () => {
+    const { c, int } = emCasa;
+    deco.cancelar();
+    trocarSolidosCasa([]);
+    int.grupo.visible = false;
+    emCasa = null;
+    const [fx, fz] = c.frente, s = c.lote.dir;
+    irPara(fx + s[0] * 2.5, fz + s[1] * 2.5);
+    j.dir = Math.atan2(s[0], s[1]);
+    camera.st.vista = null; camera.st.yaw = j.dir;
+    minimapa.hidden = false;
+  };
+  imediato ? fazer() : escurecer(fazer);
+}
+// móveis que cabem no ponto (os quadros de versículo viram um item por versículo)
+function listaDoPonto(p) {
+  const out = [];
+  for (const m of MOVEIS) {
+    if (m.comodo !== p.comodo) continue;
+    const [w, d] = pegadaDoMovel(m.id);
+    if (!cabe({ pegada: [w, d] }, p)) continue;
+    if (m.variantes) for (let v = 0; v < m.variantes; v++) out.push({ id: m.id, variante: v, nome: `${m.nome}: “${VERSICULOS[v].texto}”` });
+    else out.push({ id: m.id, nome: m.nome });
+  }
+  return out;
+}
+function pontoPerto() {
+  if (!emCasa) return null;
+  let melhor = null, dm = 1.7;
+  for (const p of emCasa.int.pontos) {
+    const [x, z] = p.pe, d = Math.hypot(x - j.pos.x, z - j.pos.z);
+    if (d < dm) { dm = d; melhor = p; }
+  }
+  return melhor;
+}
+function abrirDeco(p) {
+  pontoDeco = p;
+  const nomes = { sala: "Sala", cozinha: "Cozinha", quarto: "Quarto", parede: "Parede" };
+  deco.abrir({ titulo: `${nomes[p.comodo] ?? "Cômodo"} · escolha o móvel`, lista: listaDoPonto(p), escolha: p.escolha, paleta: CORES_MOVEL,
+    dica: document.body.classList.contains("touch") ? "◀ ▶ móvel · bolinhas = cor" : "◀ ▶ móvel · ▲ ▼ cor · Enter = pronto · Esc = voltar" });
+  teclas.clear(); toque?.zerar();
+}
+function confirmarDeco(e) {
+  const p = pontoDeco; pontoDeco = null;
+  if (!emCasa || !p) return;
+  colocar(emCasa.int, p, e);
+  const n = emCasa.c.lote.numero;
+  salvo.moveis = typeof salvo.moveis === "object" && !Array.isArray(salvo.moveis) ? salvo.moveis : {};
+  salvo.moveis[n] = { ...(salvo.moveis[n] ?? {}) };
+  if (e) salvo.moveis[n][p.id] = e; else delete salvo.moveis[n][p.id];
+  salvar(salvo);
+  trocarSolidosCasa([...emCasa.int.solidos, ...solidosDosMoveis(emCasa.int)]);
+  // se o móvel novo ficou em cima do Rabisco, ele dá um passinho para o lado
+  if (fis.bate(j.pos.x, j.pos.z, 0.1)) { const [lx, lz] = fis.livre(j.pos.x, j.pos.z, 0.5); j.pos.x = lx; j.pos.z = lz; }
+  if (e) { sons.moeda?.(); if (e.id === "quadro-versiculo") dizer("Quadro novo", `${VERSICULOS[e.variante ?? 0].texto} (${VERSICULOS[e.variante ?? 0].ref})`, 4800); }
 }
 function morarAqui(c) {
-  salvo.casa = c.lote.numero; salvo.corCasa = c.lote.cor;
+  salvo.casa = c.lote.numero; salvo.corCasa = c.lote.hex;
   salvar(salvo);
   aplicarCasa();
   sons.vitoria?.();
@@ -346,6 +474,7 @@ function sair() {
 // Garagem do Rabifone: o veículo aparece do lado do Rabisco (num lugar livre a menos de 6 m)
 function chamarVeiculo(tipo, cor) {
   if (dentro) { dizer("Rabifone", "Saia do veículo para chamar outro."); return null; }
+  if (emCasa) { dizer("Rabifone", "Saia de casa para chamar um veículo: ele estaciona na rua."); return null; }
   if (garagem) { cena.remove(garagem.g); veiculos.splice(veiculos.indexOf(garagem), 1); garagem = null; }
   const v = criarVeiculo(tipo, cor);
   const R = tipo === "onibus" ? 4.6 : tipo === "heli" ? 5 : 3.4, RMAX = tipo === "heli" ? 9.5 : 5.9;
@@ -386,26 +515,31 @@ function entrada() {
   if (entradaTeste) { ix = entradaTeste.virar; iy = entradaTeste.acel; }
   const m = Math.hypot(ix, iy);
   if (m > 1) { ix /= m; iy /= m; }
-  if (fone?.aberto) ix = iy = 0;
+  if (fone?.aberto || deco?.aberto) ix = iy = 0;
   return { ix, iy, m };
 }
 function regras() {
   // o que a ação faz agora
   contexto = null;
-  if (dentro) contexto = { rotulo: "🚪 Sair", fazer: sair };
+  if (emCasa) {
+    const p = pontoPerto();
+    if (Math.hypot(emCasa.int.porta[0] - j.pos.x, emCasa.int.porta[1] - j.pos.z) < 1.6) contexto = { rotulo: "🚪 Sair de casa", fazer: () => sairCasa() };
+    else if (p) contexto = { rotulo: p.escolha ? "🛋️ Trocar" : "🛋️ Decorar", fazer: () => abrirDeco(p) };
+  } else if (dentro) contexto = { rotulo: "🚪 Sair", fazer: sair };
   else {
     const v = pertoDeVeiculo();
     if (v) contexto = { rotulo: v.tipo === "onibus" ? "🚌 Dirigir" : "🚗 Entrar", fazer: () => entrar(v) };
     else {
       const c = mundo.casas.find((k) => Math.hypot(k.frente[0] - j.pos.x, k.frente[1] - j.pos.z) < 4.5 || Math.hypot(k.porta[0] - j.pos.x, k.porta[1] - j.pos.z) < 3);
       if (c && c.lote.numero !== salvo.casa) contexto = { rotulo: "🏠 Morar aqui?", fazer: () => morarAqui(c) };
-      else if (c) contexto = { rotulo: "🏠 Minha casa!", fazer: () => dizer("Rabiscolândia", "Lar, doce lar! Logo dá para decorar por dentro.") };
+      else if (c) contexto = { rotulo: "🚪 Entrar em casa", fazer: () => entrarCasa(c) };
     }
   }
   const quer = pad.acaoNova || toque?.acaoNova || (dentro && toque?.sairNovo);
   pad.acaoNova = false; if (toque) { toque.acaoNova = false; toque.sairNovo = false; }
   if (quer && contexto) contexto.fazer();
-  if (toque?.foneNovo) { toque.foneNovo = false; fone.abrir(); }
+  if (toque?.foneNovo) { toque.foneNovo = false; if (!deco.aberto) fone.abrir(); }
+  if (emCasa) return; // dentro de casa não tem aviso de lugar da cidade
   // chegou num lugar novo: aviso com o nome
   for (const l of mundo.lugares) {
     const d = Math.hypot(l.x - j.pos.x, l.z - j.pos.z);
@@ -418,6 +552,13 @@ const _pOnibus = new THREE.Vector3();
 function posicionarCamera(k, dt, andando = false) {
   const giro = (tem("girarD") ? 1 : 0) - (tem("girarE") ? 1 : 0) + pad.gx * 1.2;
   const arrasto = toque && !dentro ? toque.girar() : 0;
+  if (emCasa) { // casa de bonecas: de cima e da frente, sem teto
+    camera.st.vista = { pos: [j.pos.x, 10.5, j.pos.z + 9.2], alvo: [j.pos.x, 0.6, j.pos.z - 0.6] };
+    camera.posicionar({ P: j.pos }, k, dt);
+    ceu.seguir(j.pos.x, j.pos.z);
+    mundo.visibilidade(j.pos.x, j.pos.z);
+    return;
+  }
   const P = dentro?.tipo === "onibus" ? _pOnibus.set(dentro.pos.x + Math.sin(dentro.ang) * 2.6, dentro.pos.y, dentro.pos.z + Math.cos(dentro.ang) * 2.6) : dentro ? dentro.pos : j.pos;
   camera.posicionar({ P, ref: dentro ? dentro.ang : j.dir, dirigindo: Boolean(dentro), andando, giro, arrasto, onibus: dentro?.tipo === "onibus", heli: dentro?.tipo === "heli" }, k, dt);
   ceu.seguir(P.x, P.z);
@@ -571,6 +712,19 @@ if (params.has("teste")) window.teste = {
   get salvo() { return carregar(); }, get fone() { return fone; }, get transito() { return transito; }, get moradores() { return moradores; },
   get ceu() { return ceu; }, get estat() { return { ...estat, fps: qualidade?.fps ?? 0, blocos: mundo.blocosVisiveis(), malhas: mundo.malhas }; },
   get vivo() { return vivo; },
+  get emCasa() { return emCasa ? { numero: emCasa.c.lote.numero, planta: emCasa.int.id, pontos: emCasa.int.pontos.map((p) => ({ id: p.id, comodo: p.comodo, escolha: p.escolha, mundo: p.mundo, parede: Boolean(p.parede) })) } : null; },
+  get deco() { return deco; },
+  entrarCasa(n = salvo.casa) { const c = mundo.casas.find((k) => k.lote.numero === n); if (dentro) sair(); entrarCasa(c, true); },
+  sairCasa() { sairCasa(true); },
+  irAoPonto(id) { const p = emCasa.int.pontos.find((q) => q.id === id); j.pos.set(p.pe[0], 0.07, p.pe[1]); j.vel.set(0, 0, 0); },
+  decorar(id, escolha) { pontoDeco = emCasa.int.pontos.find((q) => q.id === id); confirmarDeco(escolha); },
+  lista(id) { return listaDoPonto(emCasa.int.pontos.find((q) => q.id === id)); },
+  verificar: (id) => verificar(id), plantas: () => Object.keys(PLANTAS),
+  memoria() { return { ...r3.info.memory }; },
+  // geometrias ainda ligadas à cena (as que saíram da cena precisam ter sido liberadas: senão é vazamento)
+  geometriasNaCena() { const g = new Set(); cena.traverse((o) => { if (o.geometry) g.add(o.geometry); }); return g.size; },
+  corCasa(hex) { trocarCorCasa(hex); },
+  get corParedes() { const c = mundo.casas.find((k) => k.lote.numero === salvo.casa); return c?.grupo.userData.paredes.userData.cor; },
   get radio() { return radio; }, get radioUI() { return radioUI; }, falar: (k) => falar(k),
   get r3() { return r3; }, get cena() { return cena; }, get cam() { return cam; }, get rabisco() { return rabisco; }, get vovo() { return vovo; },
   // desenha um quadro agora e devolve o custo (com e sem o passe de sombra)
