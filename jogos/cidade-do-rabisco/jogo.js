@@ -176,15 +176,9 @@ function iniciar() {
   cena.add(rabisco.grupo);
   j.pos.set(LARGADA.x, 0.03, LARGADA.z); j.vel.set(0, 0, 0); j.dir = LARGADA.dir; camYaw = LARGADA.dir;
   dois = J.ativo && J.j2Pronto;
-  // sem cadastro, no modo 2 jogadores, vem a criança genérica (lápis verde) com o nome "Jogador 2"
-  const semCadastro = !window.Familia?.crianca?.();
-  companheiro = criarCompanheiro3D({ raiz: "../..", altura: 1.55, cracha: true, ...(dois && semCadastro ? { crianca: { nome: J.j2.nome } } : {}) });
   Object.assign(amigo, { vy: 0, noChao: true, acena: 0, buzina: 0 });
-  if (companheiro) {
-    amigo.pos.set(LARGADA.x + 1.4, 0.03, LARGADA.z + 1.4); amigo.dir = LARGADA.dir; amigo.vel = 0;
-    companheiro.grupo.position.copy(amigo.pos);
-    cena.add(companheiro.grupo);
-  }
+  companheiro = null; dentro = null;
+  if (dois) criarCompanheira(); // com 1 jogador só o Rabisco passeia; a criança só existe com o jogador 2
   dentro = null;
   criarVeiculos();
   criarCarros();
@@ -392,6 +386,24 @@ function sentar(personagem, assento, escala) {
   personagem.grupo.position.set(assento.x, assento.y - 2.0 * escala, assento.z);
   personagem.grupo.rotation.set(0, 0, 0);
 }
+// a criança companheira só existe com 2 jogadores: entra quando o jogador 2 conecta e some quando sai
+function criarCompanheira() {
+  if (companheiro) return;
+  const semCadastro = !window.Familia?.crianca?.();
+  companheiro = criarCompanheiro3D({ raiz: "../..", altura: 1.55, cracha: true, ...(semCadastro ? { crianca: { nome: J.j2.nome } } : {}) });
+  if (!companheiro) return;
+  amigo.vy = 0; amigo.noChao = true; amigo.acena = 0; amigo.vel = 0; amigo.dir = j.dir;
+  if (dentro) { dentro.g.add(companheiro.grupo); sentar(companheiro, dentro.g.userData.carona, companheiro.escala); return; }
+  const [cx, cz] = livre(j.pos.x + 1.4, j.pos.z + 1.4, 0.5);
+  amigo.pos.set(cx, 0.03, cz);
+  companheiro.grupo.position.copy(amigo.pos);
+  cena.add(companheiro.grupo);
+}
+function removerCompanheira() {
+  if (!companheiro) return;
+  companheiro.grupo.removeFromParent();
+  companheiro = null;
+}
 function entrarNoCarro(v) {
   if (dentro || fim) return;
   dentro = v;
@@ -458,9 +470,13 @@ function dirigirCarro(dt) {
     if (c.fantasma) continue;
     const ex = v.pos.x - c.g.position.x, ez = v.pos.z - c.g.position.z, d = Math.hypot(ex, ez);
     if (d >= 3.6) continue;
-    const f = Math.min(1, dt * 6) * (3.6 - d), ux = d > 0.01 ? ex / d : Math.sin(v.ang + Math.PI), uz = d > 0.01 ? ez / d : Math.cos(v.ang + Math.PI);
-    const px = v.pos.x + ux * f, pz = v.pos.z + uz * f;
-    if (!carroBate(px, pz, v.ang, v)) { v.pos.x = px; v.pos.z = pz; }
+    // empurrão só no eixo do próprio carro (nunca de lado: lateral jogava o carro contra postes da calçada)
+    const hx = Math.sin(v.ang), hz = Math.cos(v.ang), dot = (ex * hx + ez * hz) / (d || 1);
+    if (Math.abs(dot) > 0.25) {
+      const f = Math.min(1, dt * 6) * (3.6 - d) * Math.sign(dot);
+      const px = v.pos.x + hx * f, pz = v.pos.z + hz * f;
+      if (!carroBate(px, pz, v.ang, v)) { v.pos.x = px; v.pos.z = pz; }
+    }
     if (d < 2.2 && c.espera > 0.6) c.fantasma = true; // preso de verdade: o da IA passa "fantasma"
   }
   // buzina no botão de pular
@@ -1708,7 +1724,9 @@ let tMapa = 0, tHud = 0;
 function quadro() {
   if (!vivo) return;
   const dt = Math.min(relogio.getDelta(), 1 / 30);
-  if (dois && !J.ativo) dois = false; // o controle do jogador 2 caiu e escolheram seguir só com o Rabisco: a criança volta a seguir
+  // jogador 2 entrou no meio do jogo: a criança aparece; saiu (controle caiu e seguem só com o Rabisco): ela some
+  if (!dois && J.ativo && J.j2Pronto) { dois = true; criarCompanheira(); }
+  else if (dois && !J.ativo) { dois = false; removerCompanheira(); }
   if (!jogo.pausado) {
     const t = relogio.elapsedTime;
     const { andando } = dentro ? dirigirCarro(dt) : moverJogador(dt);
