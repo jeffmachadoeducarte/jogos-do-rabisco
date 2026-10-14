@@ -14,6 +14,7 @@ import { criarMorador } from "./personagens.js";
 import { movel } from "./moveis.js";
 import { PROFISSOES } from "./roupas-rp.js";
 import { HINOS } from "../../src/radio/hinos.js";
+import { montarAulas } from "./aulas-sala.js";
 
 const W = 14, D = 9, ALT = 3;
 export const SALAS = {
@@ -74,8 +75,11 @@ const mesa = (w, d, cor, h = 0.85) => { const g = new THREE.Group(); const t = c
 const texLousa = (linhas) => texturaCanvas(512, 256, (c, w, h) => {
   c.fillStyle = "#2e5a3f"; c.fillRect(0, 0, w, h);
   c.strokeStyle = "#c98a4b"; c.lineWidth = 16; c.strokeRect(0, 0, w, h);
-  c.fillStyle = "#ffffff"; c.textAlign = "center"; c.textBaseline = "middle"; c.font = "800 70px 'Baloo 2', sans-serif";
-  linhas.forEach((l, i) => c.fillText(l, w / 2, h / 2 + (i - (linhas.length - 1) / 2) * 80));
+  c.fillStyle = "#ffffff"; c.textAlign = "center"; c.textBaseline = "middle";
+  // a letra diminui para caber (as frases das aulas são mais compridas)
+  let tam = 70; const cabe = () => { c.font = `800 ${tam}px 'Baloo 2', sans-serif`; return linhas.every((l) => c.measureText(l).width < w - 40); };
+  while (!cabe() && tam > 26) tam -= 4;
+  linhas.forEach((l, i) => c.fillText(l, w / 2, h / 2 + (i - (linhas.length - 1) / 2) * tam * 1.15));
 });
 function npc(tipo, cor, semente, escala = 0.78) { const m = criarMorador(tipo, { cor, semente, escala }); return m; }
 
@@ -104,7 +108,7 @@ export function tocarNotas(notas, bpm = 100, { onda = "triangle", vol = 0.12, at
 export const MUSIQUINHA = [0, 1, 60, 1, 1, 64, 2, 1, 67, 3, 1, 64, 4, 2, 65, 6, 2, 62, 8, 1, 64, 9, 1, 67, 10, 1, 72, 11, 1, 67, 12, 4, 69, 16, 1, 67, 17, 1, 65, 18, 1, 64, 19, 1, 62, 20, 4, 60];
 
 // ---------- montagem
-export function montarSala(id) {
+export function montarSala(id, { idade = null } = {}) {
   const def = SALAS[id], [ox, , oz] = origemSala(id);
   const g = new THREE.Group(); g.position.set(ox, 0, oz);
   const fixo = new THREE.Group(); g.add(fixo);
@@ -119,8 +123,8 @@ export function montarSala(id) {
   parede(fixo, solidosL, "x", D / 2, -W / 2, W / 2, [[-1.2, 1.2]], 0xffffff, 0.7);
   const faixa = caixa(W, 0.3, 0.05, mat(def.acento), { sombra: false }); faixa.position.set(0, 2.6, -D / 2 + 0.16); fixo.add(faixa);
   const placa = letreiro(def.nome, 5, { cor: `#${new THREE.Color(def.acento).getHexString()}` }); placa.position.set(0, 2.1, -D / 2 + 0.14); fixo.add(placa);
-  // na igreja o lado direito do fundo é do letreiro (a cruz fica no meio): janela só à esquerda
-  for (const x of id === "igreja" ? [-4.5] : [-4.5, 4.5]) { const j = caixaRedonda(1.6, 1.1, 0.12, MAT.janela, { raio: 0.06, contorno: 0.03 }); j.position.set(x, 1.9, -D / 2 + 0.15); fixo.add(j); }
+  // na igreja o lado direito do fundo é do letreiro (a cruz fica no meio) e nas escolas é da lousa: janela só à esquerda
+  for (const x of ["igreja", "kids1", "kids2"].includes(id) ? [-4.5] : [-4.5, 4.5]) { const j = caixaRedonda(1.6, 1.1, 0.12, MAT.janela, { raio: 0.06, contorno: 0.03 }); j.position.set(x, 1.9, -D / 2 + 0.15); fixo.add(j); }
   const tap = caixa(1.8, 0.03, 0.9, mat(def.acento), { sombra: false }); tap.position.set(0, 0.03, D / 2 - 0.8); fixo.add(tap);
   const solido = (x, z, w, d, h = 1.2) => solidosL.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, y1: h });
   const add = (o, x, z, rot = 0, dinamico = false) => { o.position.set(x, 0, z); o.rotation.y = rot; if (dinamico) o.userData.dinamico = true; g.add(o); return o; };
@@ -196,9 +200,12 @@ export function montarSala(id) {
     est.alunos = npcs.length;
     let li = 0;
     I("sino", bebes ? "🔔 Hora da roda" : "🔔 Sino do recreio", -2.5, -2.6, (api) => { est.sino = (est.sino ?? 0) + 1; for (const a of npcs) { a.pular?.(); a.acenar?.(2); } [0, 0.25, 0.5].forEach((d) => setTimeout(() => api.sons.nota(5), d * 1000)); sino.rotation.z = 0.5; setTimeout(() => (sino.rotation.z = 0), 400); api.falar(bebes ? "rp-escola-roda" : "rp-escola-recreio"); api.dizer(def.nome, bebes ? "Hora da roda! Todos juntinhos." : "Recreio! Todo mundo brincando junto."); });
-    I("lousa", "✏️ Escrever na lousa", 4.4, -3.0, (api) => { li = (li + 1) % lousaTex.length; lousaMat.map.dispose(); lousaMat.map = texLousa(lousaTex[li]); lousaMat.needsUpdate = true; est.lousa = li; api.sons.letra?.(); api.falar("rp-escola-lousa"); api.dizer(def.nome, "Muito bem, turma! Vamos ler juntos."); });
+    I("lousa", "✏️ Escrever na lousa", 4.4, -3.0, (api) => { if (est.aulas?.aula) return; li = (li + 1) % lousaTex.length; lousaMat.map.dispose(); lousaMat.map = texLousa(lousaTex[li]); lousaMat.needsUpdate = true; est.lousa = li; api.sons.letra?.(); api.falar("rp-escola-lousa"); api.dizer(def.nome, "Muito bem, turma! Vamos ler juntos."); });
     if (bebes) I("musiquinha", "🎵 Cantar a musiquinha", -0.2, -0.6, (api) => { est.musica = true; const dur = tocarNotas(MUSIQUINHA, 110, { onda: "sine", vol: 0.14 }); est.dancando = dur; api.dizer(def.nome, "La, la, la! Os bebês dançam junto. 🎶"); });
     est.lousaMat = lousaMat;
+    // aulas por idade com a Professora Lápis Turquesa (aulas-sala.js); a lousa mostra a rodada
+    const escrever = (linhas) => { lousaMat.map.dispose(); lousaMat.map = texLousa(linhas); lousaMat.needsUpdate = true; };
+    montarAulas({ id, g, ox, oz, inter, npcs, est, solido, escrever, idade });
   }
   if (id === "igreja") {
     // púlpito, cruz e o coral (três amigos de beca) no fundo; banquinhos do culto infantil na frente

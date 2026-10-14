@@ -31,7 +31,7 @@ import { CODIGOS_J2, TECLAS_J1_EXTRA } from "../../src/motor/jogadores.js";
 import { montarCidade, carro, carroAberto, BORDA } from "./cidade.js";
 import { RUAS, segmentos, ROTAS, CASAS, LAGO, PARQUE, PRACA, VAGAS, LARGADA, PATIO_JE, HELIPONTO, lugar as lugarDoMapa } from "./mapa.js";
 import { montarAcademia, montarBellaCat, halter, montarSalaAula, objetoAula, maca, PROFESSORA_AULA } from "./interiores.js";
-import { MATERIAS, nivelDaIdade } from "./aulas.js";
+import { MATERIAS, nivelDaIdade } from "../rabiscopolis/aulas.js";
 import { carroFofo, helicoptero } from "./veiculos3d.js";
 import { mesclarLocal } from "./mesclar.js";
 import { criarRadio } from "../../src/radio/radio.js";

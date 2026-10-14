@@ -30,6 +30,45 @@ async function orcamento(t, maxCalls, rotulo) {
 }
 const fps = (t) => t.ev(`new Promise((r) => { let n = 0; const t0 = performance.now(); const f = () => { n++; if (performance.now() - t0 < 3000) requestAnimationFrame(f); else r(Math.round((n / 3) * 10) / 10); }; requestAnimationFrame(f); })`);
 
+// aulas na Educarte (aulas-sala.js): as três matérias de ponta a ponta, com um erro de propósito (só dica)
+async function testarAulas(t, { ok, espera, FOTOS }) {
+  const ev = (s) => t.ev(s);
+  const acao = async (id, ms = 350) => { await ev(`teste.irAoInterativo(${JSON.stringify(id)})`); await espera(150); await ev("teste.acao()"); await espera(ms); };
+  const aula = () => ev("teste.emLugar.est.aulas.aula");
+  const inter = () => ev("teste.emLugar.interativos.map((i) => i.id)");
+  // na escola que não é a da idade, a professora avisa onde é a turma
+  await ev("teste.entrarLugar('kids1')"); await espera(800);
+  const rot1 = await ev("teste.emLugar.interativos.find((i) => i.id === 'aula')?.rotulo");
+  await acao("aula", 600);
+  ok(rot1?.includes("Falar") && /Kids II/.test(await ev("document.querySelector('.balao-rp').textContent")), `aulas: na Kids I (turma de 7 anos) a professora diz que a turma é na Kids II ("${rot1}")`);
+  await ev("teste.sairLugar()"); await espera(400);
+  await ev("teste.entrarLugar('kids2')"); await espera(800);
+  let errou = false;
+  for (let m = 0; m < 3; m++) {
+    const rot = await ev("teste.emLugar.interativos.find((i) => i.id === 'aula')?.rotulo");
+    await acao("aula", 3000);
+    for (let r = 0; r < 8; r++) {
+      const a = await aula(); if (!a) break;
+      const ids = await inter();
+      if (a.tipo === "achar") {
+        if (!errou) { const outro = ids.find((i) => i.startsWith("obj-") && !i.startsWith(`obj-${a.certo}-`)); const d0 = (await ev("teste.emLugar.est.aulas.dicas")) ?? 0; await acao(outro, 500); errou = true; ok((await ev("teste.emLugar.est.aulas.dicas")) === d0 + 1 && (await aula())?.i === a.i, `aulas: errar (${outro}) só dá dica e repete a rodada`); }
+        if (m === 0 && r === 0) await t.foto(`${FOTOS}f3-aula-ingles.png`);
+        await acao(ids.find((i) => i.startsWith(`obj-${a.certo}-`)), 2700);
+      } else if (a.tipo === "letras") {
+        for (const L of a.palavra) await acao((await inter()).find((i) => i.startsWith(`obj-${L}-`)), 300);
+        await t.foto(`${FOTOS}f3-aula-portugues.png`);
+        await espera(3700);
+      } else {
+        for (let k = 0; k < a.n; k++) await acao("macas", 250);
+        if (r === 0) await t.foto(`${FOTOS}f3-aula-matematica.png`);
+        await acao("mesa", 2900);
+      }
+    }
+    const f = await ev("teste.emLugar.est.aulas.feitas");
+    ok(f.length === m + 1, `aulas: "${rot}" terminou (${f.join(", ")})`);
+  }
+  await ev("teste.sairLugar()"); await espera(400);
+}
 // Fatia 5: joga as 12 missões de ponta a ponta (quem pede, itens, quem segue, carona, faixa, quem espera reage)
 async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   const ev = (s) => t.ev(s);
@@ -252,6 +291,7 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   await t.cmd("Page.navigate", { url: `${URL_JOGO}?teste&jogar&fixo` });
   ok(await ate(t, "!!window.teste?.vivo && !!teste.mundo"), "carregou e começou (1280 × 720)");
   await espera(3000);
+  if (process.env.SO_AULAS) { await testarAulas(t, { ok, espera, FOTOS }); ok(!errosDeVerdade(t).length, `sem erro de console ${errosDeVerdade(t).slice(0, 4).join(" ; ")}`); await t.fechar(); console.log(falhas ? `\n${falhas} falha(s)` : "\ntudo certo"); process.exit(falhas ? 1 : 0); }
   if (process.env.SO_MISSOES) { await testarMissoes(t, { ok, espera, FOTOS }); ok(!errosDeVerdade(t).length, `sem erro de console ${errosDeVerdade(t).slice(0, 4).join(" ; ")}`); await t.fechar(); console.log(falhas ? `\n${falhas} falha(s)` : "\ntudo certo"); process.exit(falhas ? 1 : 0); }
   const est = await t.ev("teste.estat");
   const q = await fps(t);
@@ -609,6 +649,8 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   for (let k = 0; k < 14 && (await t.ev("teste.oracao !== null")); k++) { await t.ev("teste.proximaFrase()"); await espera(200); }
   ok(await t.ev("teste.oracao === null"), "igreja por dentro: a oração termina no Amém");
   await t.ev("teste.sairLugar()"); await espera(400);
+  // Fatia 3 da migração: aulas por idade com a Professora Lápis Turquesa (sem idade no cadastro = turma de 7–8 anos, Kids II)
+  await testarAulas(t, { ok, espera, FOTOS });
   // praça de dia e de noite
   await t.ev("teste.hora(13); teste.ir(0, 36); teste.olhar(Math.PI)");
   await espera(1500);

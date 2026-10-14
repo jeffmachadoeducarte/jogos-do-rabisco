@@ -474,12 +474,13 @@ const apiLugar = () => ({
   orar: () => comecarOracao({ x: j.pos.x, z: j.pos.z, olhar: Math.PI }, () => dizer("Igreja Reviver", "Amém! Deus ouve a nossa oração. 🙏", 4200)),
   profissao: () => rabisco.profissao ?? null,
   vestir, tirar: tirarUniforme,
+  confete: () => jogo.confete?.(),
   abrirSorvete: (sabores, cb) => { teclas.clear(); toque?.zerar(); sorveteUI.abrir(sabores, cb); },
 });
 function entrarLugar(id, imediato = false) {
   if (emCasa || emLugar || dentro || !SALAS[id]) return;
   const fazer = () => {
-    if (!salas[id]) { salas[id] = montarSala(id); cena.add(salas[id].grupo); }
+    if (!salas[id]) { salas[id] = montarSala(id, { idade: idadeCrianca() }); cena.add(salas[id].grupo); }
     const s = salas[id];
     s.grupo.visible = true;
     emLugar = s;

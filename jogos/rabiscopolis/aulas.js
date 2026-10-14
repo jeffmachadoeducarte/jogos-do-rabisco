@@ -1,4 +1,5 @@
 // Aulas na sala da Educarte (dados puros, sem three.js): as três matérias por nível de idade.
+// (Veio da Rabiscópolis; a Rabiscolândia usa em aulas-sala.js, nas salas da Educarte Kids I e Kids II.)
 // Níveis: "bebe" (Kids I, até 4 anos: cores, sons dos bichos, formas, contar até 3), e na Kids II "k5" (5–6 anos),
 // "k7" (7–8 anos, o do meio, usado também quando a idade é desconhecida) e "k9" (9–12 anos).
 // Cada aula tem rodadas; cada rodada é de um tipo:
