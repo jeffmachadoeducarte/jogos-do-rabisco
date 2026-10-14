@@ -145,3 +145,31 @@ export function caixaCorreio(cor) {
   mesclar(g);
   return g;
 }
+
+// alvará de funcionamento (missão Alvará da Escola): folha creme com "ALVARÁ", linhas de texto e o selo dourado com
+// fitinha vermelha. Fica no balcão da Crescente Contabilidade e depois na mão do Rabisco. 0,42 × 0,56 m, de pé (plano xy,
+// frente em +z, desenho dos dois lados). Sem mesclar: vai preso na mão (userData.dinamico).
+let texAlvara = null;
+const texturaAlvara = () => (texAlvara ??= texturaCanvas(192, 256, (c, w, h) => {
+  c.fillStyle = "#fff8e6"; c.fillRect(0, 0, w, h);
+  c.strokeStyle = "#b8862a"; c.lineWidth = 8; c.strokeRect(8, 8, w - 16, h - 16);
+  c.fillStyle = "#813d18"; c.font = "900 34px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("ALVARÁ", w / 2, 44);
+  c.font = "700 15px 'Baloo 2', sans-serif"; c.fillText("FUNCIONAMENTO", w / 2, 72);
+  c.fillStyle = "#9a8a70"; for (let i = 0; i < 6; i++) c.fillRect(28, 96 + i * 16, i === 5 ? 80 : w - 56, 5);
+  c.fillStyle = "#2bb24c"; c.font = "900 18px 'Baloo 2', sans-serif"; c.fillText("✔ EM DIA", 70, 214);
+}));
+export function alvara() {
+  const g = new THREE.Group(); g.userData.dinamico = true;
+  // a folha tem o desenho dos dois lados (na mão ela aparece de qualquer ângulo) e contorno preto fininho
+  const frente = new THREE.MeshToonMaterial({ map: texturaAlvara(), emissive: 0xffffff, emissiveMap: texturaAlvara(), emissiveIntensity: 0.25 });
+  const folha = malha(new THREE.BoxGeometry(0.36, 0.48, 0.012), [mat(0xfff8e6), mat(0xfff8e6), mat(0xfff8e6), mat(0xfff8e6), frente, frente], { contorno: 0.008, sombra: false });
+  g.add(folha);
+  // selo dourado com as duas fitinhas vermelhas (dos dois lados)
+  for (const lado of [1, -1]) {
+    const z = lado * 0.012;
+    for (const s of [-1, 1]) { const f = malha(new THREE.BoxGeometry(0.04, 0.11, 0.006), mat(0xd6402f), { sombra: false }); f.position.set(0.1 + s * 0.025, -0.2, z); f.rotation.z = s * 0.35; g.add(f); }
+    const selo = malha(new THREE.CylinderGeometry(0.06, 0.06, 0.012, 18), mat(0xf2c34e), { contorno: 0.01, sombra: false }); selo.rotation.x = Math.PI / 2; selo.position.set(0.1, -0.145, z * 1.3); g.add(selo);
+    const miolo = malha(new THREE.CylinderGeometry(0.034, 0.034, 0.014, 14), mat(0xd4a937), { sombra: false }); miolo.rotation.x = Math.PI / 2; miolo.position.set(0.1, -0.145, z * 1.6); g.add(miolo);
+  }
+  return g;
+}

@@ -72,65 +72,7 @@ if (quer("kart")) {
   await t.fechar();
 }
 
-// ------------------------------------------------------------------ Cidade
 const tecla = async (t, code, tipo) => t.cmd("Input.dispatchKeyEvent", { type: tipo, code, key: code === "Space" ? " " : code.replace(/^Key/, "").toLowerCase(), windowsVirtualKeyCode: { KeyW: 87, KeyA: 65, KeyS: 83, KeyD: 68, Space: 32, KeyF: 70, ArrowUp: 38 }[code] });
-if (quer("cidade")) {
-  const t = await abrir2(`${BASE}/jogos/cidade-do-rabisco/?teste`, { pads: 2, antes: CADASTRO, largura: 1280, altura: 720 });
-  await ate(t, "!!window.teste && !!document.querySelector('[data-jogadores]')");
-  await t.ev(`document.querySelector('[data-jogadores="2"]').click()`);
-  await espera(300);
-  await foto(t, "escolha-2-jogadores-cidade.png");
-  await t.ev(`document.querySelector('.casca-abertura .botao.respira, .casca-abertura .casca-nivel').click()`);
-  ok(await ate(t, "teste.dois && !!teste.companheiro && !!document.querySelector('.jog-banner.ativo')", 40000), "Cidade: modo 2 jogadores com a criança e o quem-é-quem");
-  await foto(t, "quem-e-quem-cidade.png");
-  await espera(3000);
-  const a0 = await t.ev("[teste.amigo.pos.x, teste.amigo.pos.z, teste.j.pos.x, teste.j.pos.z]");
-  await t.ev("__eixo(1, 0, -1)"); // jogador 2 anda para a frente
-  await espera(2500);
-  await t.ev("__eixo(1, 0, 0)");
-  const a1 = await t.ev("[teste.amigo.pos.x, teste.amigo.pos.z, teste.j.pos.x, teste.j.pos.z]");
-  const andouJ2 = Math.hypot(a1[0] - a0[0], a1[1] - a0[1]), andouJ1 = Math.hypot(a1[2] - a0[2], a1[3] - a0[3]);
-  ok(andouJ2 > 1 && andouJ1 < 0.3, `Cidade: controle 2 move só a criança (criança ${andouJ2.toFixed(1)} m, Rabisco ${andouJ1.toFixed(1)} m)`);
-  await t.ev("__eixo(0, 1, 0)"); // jogador 1 anda para o lado
-  await espera(1500);
-  await t.ev("__eixo(0, 0, 0)");
-  const a2 = await t.ev("[teste.amigo.pos.x, teste.amigo.pos.z, teste.j.pos.x, teste.j.pos.z]");
-  ok(Math.hypot(a2[2] - a1[2], a2[3] - a1[3]) > 1, "Cidade: controle 1 move o Rabisco");
-  ok(Math.hypot(a2[0] - a2[2], a2[1] - a2[3]) <= 11.2, "Cidade: a criança fica a no máximo 11 m do Rabisco");
-  await t.ev("__btn(1, 2, true)"); await espera(250); await t.ev("__btn(1, 2, false)");
-  await espera(300);
-  ok(await t.ev("teste.amigo.acena > 0"), "Cidade: ação do jogador 2 a pé = acenar");
-  await foto(t, "cidade-2-jogadores-a-pe.png");
-  await t.ev("teste.entrar(0)");
-  await espera(1200);
-  await t.ev("__btn(1, 0, true)"); await espera(200); await t.ev("__btn(1, 0, false)");
-  await t.ev("__btn(1, 2, true)"); await espera(200); await t.ev("__btn(1, 2, false)");
-  await espera(400);
-  ok(await t.ev("!!teste.dentro && teste.amigo.buzina > 0 && teste.amigo.acena > 0"), "Cidade: no carro, jogador 2 buzina (A) e acena (X)");
-  await t.ev("teste.volante(1, 0)"); await espera(1500); await t.ev("teste.volante(0, 0)");
-  await foto(t, "cidade-2-jogadores-carro.png");
-  await t.ev("teste.volante(null)");
-  ok(!errosDe(t).length, "Cidade (2 controles): sem erros " + errosDe(t).join(" ; "));
-  await t.fechar();
-
-  // computador sem controle: teclado dividido (jogador 1 = setas, jogador 2 = WASD)
-  const k = await abrir2(`${BASE}/jogos/cidade-do-rabisco/?teste&jogadores=2`, { pads: 0, antes: CADASTRO, largura: 1280, altura: 720 });
-  await ate(k, "!!window.teste && !!document.querySelector('[data-jogadores]')");
-  ok(await k.ev(`document.querySelector('.jog-quem [data-jogador="2"]')?.dataset.entrada`) === "teclado", "Cidade: sem controle no computador → jogador 2 no teclado (WASD)");
-  await k.ev(`document.querySelector('.casca-abertura .botao.respira, .casca-abertura .casca-nivel').click()`);
-  await ate(k, "teste.dois && !!teste.companheiro", 40000);
-  await espera(4000);
-  const b0 = await k.ev("[teste.amigo.pos.x, teste.amigo.pos.z, teste.j.pos.x, teste.j.pos.z]");
-  await tecla(k, "KeyW", "keyDown"); await espera(2000); await tecla(k, "KeyW", "keyUp");
-  const b1 = await k.ev("[teste.amigo.pos.x, teste.amigo.pos.z, teste.j.pos.x, teste.j.pos.z]");
-  ok(Math.hypot(b1[0] - b0[0], b1[1] - b0[1]) > 1 && Math.hypot(b1[2] - b0[2], b1[3] - b0[3]) < 0.3, "Cidade: W move só a criança");
-  await tecla(k, "ArrowUp", "keyDown"); await espera(1500); await tecla(k, "ArrowUp", "keyUp");
-  const b2 = await k.ev("[teste.j.pos.x, teste.j.pos.z]");
-  ok(Math.hypot(b2[0] - b1[2], b2[1] - b1[3]) > 1, "Cidade: seta ↑ move o Rabisco");
-  await foto(k, "cidade-teclado-dividido.png");
-  ok(!k.erros.length, "Cidade (teclado dividido): sem erros " + k.erros.join(" ; "));
-  await k.fechar();
-}
 
 // ------------------------------------------------------------------ Revezamento (jogo 2D da casca, sem editar o jogo)
 if (quer("revezamento")) {

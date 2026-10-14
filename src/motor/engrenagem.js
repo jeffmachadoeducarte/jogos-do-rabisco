@@ -1,4 +1,4 @@
-// ⚙️ Configurações: um ponto só, reaproveitado pelo portal, pela casca (todos os jogos dela, inclusive Rabiscópolis e
+// ⚙️ Configurações: um ponto só, reaproveitado pelo portal, pela casca (todos os jogos dela, inclusive
 // Rabiscolândia), pela pausa e pelo Kart. Dentro, botões grandes e linguagem de pai/criança:
 //   🔊 Som: ligado / desligado (lembrado no aparelho, localStorage "rabisco.som"; atalho M no teclado onde o jogo não usa o M)
 //   📺 Jogar na TV, pensando no aparelho espelhado (AirPlay/Chromecast) ou no cabo HDMI, com 3 jeitos:
@@ -191,7 +191,7 @@ function desenhar() {
     const J = jogadores();
     const desenharQr = () => {
       const s = J?.sala, conectado = J?.celular?.conectado || J?.j2?.entrada === "controle";
-      if (!J) { caixa.replaceChildren(h("p", { texto: "Pronto! Escolha um jogo de 2 jogadores (🏁 Rabisco Kart, Rabiscópolis ou Rabiscolândia): o QR para o celular aparece na abertura do jogo." })); return; }
+      if (!J) { caixa.replaceChildren(h("p", { texto: "Pronto! Escolha um jogo de 2 jogadores (🏁 Rabisco Kart ou Rabiscolândia): o QR para o celular aparece na abertura do jogo." })); return; }
       if (J.tipo !== "simultaneo") { caixa.replaceChildren(h("p", { texto: "Neste jogo vocês jogam um de cada vez, neste mesmo aparelho. Vale para os dois!" })); return; }
       if (conectado) { caixa.replaceChildren(h("span", { class: "ok", texto: `${J.j2.entrada === "controle" ? "🎮 Controle" : "📱 Celular"} do jogador 2 conectado ✓` })); return; }
       if (!SALA_JOGOS) { caixa.replaceChildren(h("p", { texto: "O celular de controle ainda não está disponível. Ligue um controle 🎮 para o jogador 2." })); return; }

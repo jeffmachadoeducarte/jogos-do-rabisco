@@ -15,7 +15,7 @@ import { movel } from "./moveis.js";
 import { PROFISSOES } from "./roupas-rp.js";
 import { HINOS } from "../../src/radio/hinos.js";
 import { montarAulas } from "./aulas-sala.js";
-import { montarBella, montarRise } from "./parceiras-dentro.js";
+import { montarBella, montarRise, montarCrescente } from "./parceiras-dentro.js";
 
 const W = 14, D = 9, ALT = 3;
 export const SALAS = {
@@ -32,6 +32,8 @@ export const SALAS = {
   // lojas parceiras por dentro (parceiras-dentro.js): sem armário de uniforme
   "parceiro-bella-cat": { nome: "Bella Cat Make Biju", piso: 0xfbeef5, parede: 0xf9dbe9, acento: 0xec2e8c, profissao: null, fala: "rp-bella-entrar", boasVindas: "Bem-vindo à Bella Cat! Chegue pertinho dos pedestais para ver os laços, colares e tiaras.",
     dica: { missao: "presente", fala: "cid-bella-escolha", texto: "Que bom que você veio! Escolha um presente: chegue pertinho de um pedestal e aperte o botão!" } },
+  "parceiro-crescente-contabilidade": { nome: "Crescente Contabilidade", piso: 0xf3e6cf, parede: 0xf7eedc, acento: 0x813d18, profissao: null, fala: "cid-crescente-entrar", boasVindas: "Bem-vindo à Crescente Contabilidade! Fale com a contadora no balcão.",
+    dica: { missao: "alvara", fala: "cid-crescente-dica", texto: "Olá! Você veio buscar o alvará da escola? Venha aqui no balcão!" } },
   "parceiro-rise-up": { nome: "Academia Rise Up", piso: 0x4a4e55, parede: 0xf1ebe0, acento: 0xff7a00, profissao: null, fala: "rp-rise-entrar", boasVindas: "Bem-vindo à Academia Rise Up! Aqui a gente cuida do corpo que Deus nos deu. Corra na esteira e levante o halter!" },
 };
 export const IDS_SALAS = Object.keys(SALAS);
@@ -343,9 +345,9 @@ export function montarSala(id, { idade = null } = {}) {
     I("carimbo", "🔖 Carimbar o livro", 5.6, -2.9, (api) => { est.carimbos = (est.carimbos ?? 0) + 1; cb.position.y = 0.85; setTimeout(() => (cb.position.y = 0.95), 200); api.sons.bloco?.(); api.dizer("Biblioteca", "Tchac! Livro emprestado. Devolva daqui a uma semana!"); });
   }
 
-  if (id === "parceiro-bella-cat" || id === "parceiro-rise-up") {
-    const npcA = (tp, cor, semente, escala, acessorio) => criarMorador(tp, { cor, semente, escala, acessorio });
-    (id === "parceiro-bella-cat" ? montarBella : montarRise)({ g, ox, oz, inter, npcs, est, solido, I, npc: npcA });
+  if (id === "parceiro-bella-cat" || id === "parceiro-rise-up" || id === "parceiro-crescente-contabilidade") {
+    const npcA = (tp, cor, semente, escala, acessorio, extra = {}) => criarMorador(tp, { cor, semente, escala, acessorio, ...extra });
+    ({ "parceiro-bella-cat": montarBella, "parceiro-rise-up": montarRise, "parceiro-crescente-contabilidade": montarCrescente })[id]({ g, ox, oz, inter, npcs, est, solido, I, npc: npcA });
   }
 
   mesclar(fixo);

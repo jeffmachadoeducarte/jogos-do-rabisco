@@ -119,7 +119,8 @@ const CORPOS = {
 };
 
 // ---------- montagem do morador
-export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome = "", semente = 0, vovo = false, escala = 0.78, acessorio = null } = {}) {
+// corAcessorio: cor do laço (padrão rosa) · tenis: cor do tênis (padrão: pela semente)
+export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome = "", semente = 0, vovo = false, escala = 0.78, acessorio = null, corAcessorio = null, tenis = null } = {}) {
   const grupo = new THREE.Group();
   grupo.scale.setScalar(escala); // um pouco menores que o Rabisco (ele é o herói)
   const raiz = new THREE.Group(); // pulinho, estica e achata
@@ -165,7 +166,7 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
   }
 
   // acessórios (vieram da Rabiscópolis): laço, óculos, gravata, chapéu de palha, boné, capacete de bombeiro, touca de chef
-  if (acessorio) enfeitarMorador(raiz, acessorio, info, PERNA);
+  if (acessorio) enfeitarMorador(raiz, acessorio, info, PERNA, corAcessorio);
 
   // bracinhos (pivô no ombro) e perninhas com tênis (pivô no quadril)
   const braco = (s) => {
@@ -176,7 +177,7 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
     raiz.add(p);
     return p;
   };
-  const corTenis = [0x00b5f0, 0xec2e8c, 0xff7a00, 0x58c43a, 0x8e6cff][semente % 5];
+  const corTenis = tenis ?? [0x00b5f0, 0xec2e8c, 0xff7a00, 0x58c43a, 0x8e6cff][semente % 5];
   const perna = (s) => {
     const p = new THREE.Group(); p.position.set(s * 0.15, PERNA, 0);
     const l = malha(new THREE.CapsuleGeometry(0.07, 0.18, 4, 10), mat(PELE), { contorno: 0, sombra: false }); l.position.y = -0.15; p.add(l);
@@ -241,11 +242,11 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
 }
 
 // ---------- acessórios dos moradores das missões (no traço da cidade, com contorno)
-function enfeitarMorador(raiz, qual, info, PERNA) {
+function enfeitarMorador(raiz, qual, info, PERNA, corA = null) {
   const r = info.r ?? info.larg, topo = PERNA + info.rostoY + 0.36, frente = info.plano ?? r;
   const g = new THREE.Group(); raiz.add(g);
   if (qual === "laco") {
-    const fita = mat(0xff4f9a);
+    const fita = mat(corA ?? 0xff4f9a);
     for (const s of [-1, 1]) { const a = malha(new THREE.SphereGeometry(0.11, 10, 8), fita, { contorno: 0.02 }); a.scale.set(1.3, 0.8, 0.5); a.position.set(r * 0.55 + s * 0.12, topo + 0.06, 0.1); a.rotation.z = s * 0.4; g.add(a); }
     const no = malha(new THREE.SphereGeometry(0.06, 8, 6), fita, { contorno: 0.02 }); no.position.set(r * 0.55, topo + 0.06, 0.12); g.add(no);
   } else if (qual === "oculos") {

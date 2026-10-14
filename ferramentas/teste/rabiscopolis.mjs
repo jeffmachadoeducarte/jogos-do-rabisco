@@ -20,7 +20,7 @@ const errosDeVerdade = (t) => t.erros.filter((e) => !/assets\/voz\/(rp-|nomes\/)
 const PEDIDO = /conecte um controle|ligue (o|um) controle|leia o qr|aperte um bot[aã]o|em breve: o jogador 2|jogador 2 \(|desconectou|conectou numa tv/i;
 const FAMILIA = `localStorage.setItem("rabisco.familia", JSON.stringify({ responsavel: { nome: "Teste", email: "t@t" }, crianca: { nome: "Alice", genero: "menina" } }))`;
 // orçamento de desenho (passe principal; renderer.info): TV/computador ≤ 250 chamadas, celular ≤ 180, ≤ 350 mil triângulos
-const PONTOS = [["praça", "teste.ir(0, 33); teste.olhar(Math.PI)"], ["Bairro das Casas", "teste.ir(-96, 2); teste.olhar(Math.PI * 0.82)"]];
+const PONTOS = [["praça", "teste.ir(0, 33); teste.olhar(Math.PI)"], ["Bairro das Casas", "teste.ir(-96, 2); teste.olhar(Math.PI * 0.82)"], ["portão do pátio da J.E", "teste.ir(147, -82.5); teste.olhar(-Math.PI / 2)"], ["chegada à Crescente Contabilidade", "teste.ir(-150, -47); teste.olhar(-0.6)"]];
 async function orcamento(t, maxCalls, rotulo) {
   for (const [nome, cmd] of PONTOS) {
     await t.ev(cmd); await espera(1200);
@@ -127,7 +127,7 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
       await foto("f1-corrida-portico", x0, z0, 2.2, 14, 6, 3);
       for (const [k, [x, z]] of E.pontos.entries()) { await ev(`teste.posVeiculo(${iv}, ${x}, ${z}, 0)`); await espera(450); ok((await info()).prox === k + 1 || !(await ev(`teste.missoes.ativa === 'corrida'`)), `corrida: passou pela bandeira ${k + 1}`); }
       await esperaEtapa(m, e); await ev("teste.sair()");
-    } else if (E.tipo === "levarVeiculo") {
+    } else if (E.tipo === "levarVeiculo" && E.veiculos !== "escolhido") {
       const dest = await posNpc(m.id, E.ate);
       if (E.de) {
         const n = await posNpc(m.id, E.de); await perto(n.x, n.z, 1.4, 1.4); await espera(400);
@@ -178,6 +178,20 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
     } else if (E.tipo === "voltar") {
       const n = await posNpc(m.id, E.ate); await perto(n.x, n.z); const c = await ev("teste.contexto"); await acao();
       ok(c?.includes("Contar"), `${m.id}: voltou e contou para ${m.npcs[E.ate].nome} ("${c}")`);
+    } else if (E.tipo === "escolherCarro") {
+      const vg = (await ev("teste.patioJE.vagas"))[3];
+      await ev(`teste.ir(${vg.x + Math.sin(vg.ang) * 3.1}, ${vg.z + Math.cos(vg.ang) * 3.1})`); await espera(800);
+      if (fotos) { await ev(`teste.vista([142, 10, -82.5], [164, 0.5, -82.5])`); await espera(1200); await t.foto(`${FOTOS}f5-patio-je.png`); await ev("teste.vista(null)"); }
+      const c = await ev("teste.contexto"); await acao(); await espera(2600);
+      ok(c?.includes("Quero este") && (await ev("teste.missoes.carroNovo"))?.cor === vg.hex && (await ev("teste.patioJE.escolhidos")).includes(3), `carroNovo: escolheu o carro ${vg.cor} ("${c}"), ganhou a chave e o carro virou de verdade`);
+    } else if (E.tipo === "levarVeiculo" && E.veiculos === "escolhido") {
+      const iv = await ev("teste.veiculos.findIndex((v) => v === teste.veiculos.find((q) => q.cor === teste.missoes.carroNovo.cor && Math.hypot(q.pos.x - teste.missoes.carroNovo.x, q.pos.z - teste.missoes.carroNovo.z) < 0.1))");
+      await ev(`teste.entrar(${iv})`); await espera(400);
+      await ev(`teste.posVeiculo(${iv}, ${E.portao[0]}, ${E.portao[1]}, -Math.PI / 2)`); await espera(700);
+      ok(/Boa viagem/.test(await balao()), `carroNovo: passando pelo portão o vendedor diz "${(await balao()).slice(0, 50)}"`);
+      if (fotos) { await ev(`teste.vista([${E.portao[0]} + 6, 4, ${E.portao[1]} + 7], [${E.portao[0]}, 1, ${E.portao[1]}])`); await espera(900); await t.foto(`${FOTOS}f5-carro-novo-portao.png`); await ev("teste.vista(null)"); }
+      const d = await posNpc(m.id, E.ate);
+      await ev(`teste.posVeiculo(${iv}, ${d.x + 1}, ${d.z - 8}, 0)`); await esperaEtapa(m, e); await ev("teste.sair()");
     } else if (E.tipo === "evento") {
       const L = await ev(`teste.LUGARES.find((l) => l.id === '${E.lugar}')`);
       await ev(`teste.ir(${L.x + L.dir[0] * 0.5}, ${L.z + L.dir[1] * 0.5})`); await espera(500);
@@ -190,6 +204,10 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
         await inter("ped-tiara", 600); await t.foto(`${FOTOS}f4-bella-escolheu.png`);
         await inter("embrulhar", 900);
         ok(await ev("teste.missoes.levando.includes('presente')"), "presente: escolheu a tiara, a Lápis Lilás embrulhou e o presente foi para a cabeça");
+      } else if (E.evento === "alvara") {
+        // Crescente Contabilidade: a contadora entrega o alvará, que vai na mão do Rabisco
+        await inter("contadora", 1000); await t.foto(`${FOTOS}f4-crescente-contadora.png`);
+        ok(await ev("teste.missoes.levando.includes('alvara') && teste.missoes.naMao === 'alvara'"), "alvara: a contadora entregou o alvará e ele foi para a mão do Rabisco");
       } else {
         await inter("halter", 1000);
         await inter("esteira", 1500); await t.foto(`${FOTOS}f4-rise-esteira.png`);

@@ -3,7 +3,7 @@
 //  (a) /tv mostra QR (decodificado = atalho curto /c/) e o código;  (b) controle aperta botão → vaga 1 (Rabisco), celular → vaga 2;
 //  (c) sem controle, 2 celulares → vagas 1 e 2;  (d) escolhe o Kart pelas setas + celular → jogo em modo TV, cada kart só pelo seu celular;
 //  (n) 2 jogadores: "Qual é o seu nome?" (no celular de cada um e/ou no teclado da tela pelas setas), nomes nas vagas, HUD e avisos;
-//  (e) celular cai e volta na mesma vaga;  (f) "Voltar ao menu da TV" (pela pausa, só com o celular) volta com os jogadores;  (g) Cidade em modo TV.
+//  (e) celular cai e volta na mesma vaga;  (f) "Voltar ao menu da TV" (pela pausa, só com o celular) volta com os jogadores;  (g) removido.
 // Uso: node --experimental-websocket ferramentas/teste/tv.mjs [http://localhost:8080]
 // Fotos em .claude/tmp/tv/.
 import { abrir, espera } from "./cdp.mjs";
@@ -149,7 +149,7 @@ if (quer("ab")) {
   ok(await t.ev("document.getElementById('vaga-2').textContent.includes('📱') && document.getElementById('dica-controle').hidden"), "(b) vaga 2 mostra 📱 e a dica some (vagas cheias)");
   // controle navega o menu: direcional → foco no 2º jogo
   await t.ev("__btn(0, 15, true)"); await espera(200); await t.ev("__btn(0, 15, false)"); await espera(250);
-  ok(await t.ev("tvTeste.foco === 'cidade-do-rabisco'"), "(b) direcional do controle move o foco entre os jogos");
+  ok(await t.ev("tvTeste.foco === 'rabiscopolis'"), "(b) direcional do controle move o foco entre os jogos");
   // celular navega o menu: joystick para a esquerda → volta ao Kart
   await joystick(c, -90, 0, 250);
   ok(await ate(t, "tvTeste.foco === 'rabisco-kart'", 3000), "(b) joystick do celular move o foco no menu da TV");
@@ -177,7 +177,7 @@ const v0 = await vagas(t);
 
 // ------------------------------------------------------------------ (d) escolhe o Kart pelas setas (controle remoto da TV) e o celular confirma
 await tecla(t, "ArrowRight", "ArrowRight", 39);
-ok(await t.ev("tvTeste.foco === 'cidade-do-rabisco'"), "(d) seta → (controle remoto da TV) move o foco");
+ok(await t.ev("tvTeste.foco === 'rabiscopolis'"), "(d) seta → (controle remoto da TV) move o foco");
 await tecla(t, "ArrowLeft", "ArrowLeft", 37);
 ok(await t.ev("tvTeste.foco === 'rabisco-kart'"), "(d) seta ← volta ao Kart");
 await segurar(c1, ".btn[data-btn=pulo]", 150); // botão do celular confirma (como o A do controle)
@@ -274,28 +274,6 @@ ok(await ate(t, "document.getElementById('vaga-1').textContent.includes('1 · Al
 ok(await ate(c1, "controleTeste.layout === 'padrao' && document.getElementById('pausar').hidden") && await ate(c2, "controleTeste.layout === 'padrao'"), "(f) celulares voltaram ao layout 'padrao' do menu");
 await foto(t, "tv-menu-de-volta.png");
 
-// ------------------------------------------------------------------ (g) Cidade em modo TV com os 2 celulares
-await tecla(t, "ArrowRight", "ArrowRight", 39);
-ok(await t.ev("tvTeste.foco === 'cidade-do-rabisco'"), "(g) seta → foca a Cidade");
-await tecla(t, "Enter", "Enter", 13); // OK do controle remoto da TV
-ok(await ate(t, "location.pathname.includes('/jogos/cidade-do-rabisco/') && !!window.teste && window.Jogadores?.tv === true", 30000), "(g) Cidade abriu em modo TV");
-ok(await ate(t, "Jogadores.salaTV.vagas.every((v) => v.tipo === 'celular' && v.conectado)", 10000), "(g) os 2 celulares voltaram nas vagas");
-ok(await ate(c1, "controleTeste.layout === 'cidade'") && await ate(c2, "controleTeste.layout === 'cidade'"), "(g) celulares no layout 'cidade' (joystick + ação)");
-ok(await ate(t, "document.activeElement?.tagName === 'BUTTON' && document.activeElement.textContent.includes('JOGAR')", 3000), "(g) foco já no 'JOGAR'");
-await segurar(c1, ".btn[data-btn=acao]", 120);
-ok(await ate(t, "teste.dois && !!teste.companheiro && Jogadores.modo === 2", 40000), "(g) Cidade em 2: Rabisco + Alice");
-ok(await t.ev("getComputedStyle(document.querySelector('.jd-camada')).display === 'none' && getComputedStyle(document.querySelector('.casca-topo .casca-redondo')).display === 'none'"), "(g) sem joystick nem botões de toque na tela");
-await espera(3500);
-const p0 = await t.ev("[teste.j.pos.x, teste.j.pos.z, teste.amigo.pos.x, teste.amigo.pos.z]");
-await joystick(c2, 0, -90, 2500);
-const p1 = await t.ev("[teste.j.pos.x, teste.j.pos.z, teste.amigo.pos.x, teste.amigo.pos.z]");
-const andouJ1 = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]), andouJ2 = Math.hypot(p1[2] - p0[2], p1[3] - p0[3]);
-ok(andouJ2 > 1 && andouJ1 < 0.3, `(g) joystick do celular 2 move só a Alice (Alice ${andouJ2.toFixed(1)} m, Rabisco ${andouJ1.toFixed(1)} m)`);
-await joystick(c1, 0, -90, 2500);
-const p2 = await t.ev("[teste.j.pos.x, teste.j.pos.z]");
-ok(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) > 0.5, `(g) joystick do celular 1 move o Rabisco (${Math.hypot(p2[0] - p1[0], p2[1] - p1[1]).toFixed(1)} m)`);
-await foto(t, "tv-cidade.png");
-await foto(c2, "controle-cidade-tv.png");
 
 ok(!errosDe(t).length, "TV: sem erros " + errosDe(t).join(" ; "));
 ok(!c1.erros.length && !c2.erros.length, "celulares: sem erros " + [...c1.erros, ...c2.erros].join(" ; "));
@@ -338,48 +316,6 @@ if (quer("h")) {
   ok(await ate(t, "tvTeste.vagas[0].tipo === 'controle' && tvTeste.vagas[0].conectado && tvTeste.jogadores === 1", 8000), "(h) o controle continua conectado na vaga 1 e a escolha '1 jogador' foi mantida");
   ok(!errosDe(t).length, "(h) sem erros " + errosDe(t).join(" ; "));
   await t.fechar();
-}
-
-// ------------------------------------------------------------------ (i) 1 jogador só, com UM celular: Cidade sem companheiro
-if (quer("i")) {
-  const t = await telaTV(`${BASE}/tv/?teste&sala=${encodeURIComponent(SALA)}`);
-  await ate(t, "window.tvTeste?.sala?.estado === 'aberta'");
-  const c = await celular(await t.ev("tvTeste.sala.link"));
-  ok(await ate(t, "tvTeste.vagas[0].tipo === 'celular' && tvTeste.vagas[0].conectado && !tvTeste.vagas[1].tipo", 8000), "(i) só um celular → vaga 1 (Rabisco)");
-  ok(await t.ev("tvTeste.jogadores === 1 && document.getElementById('jog-1').getAttribute('aria-pressed') === 'true'"), "(i) começa em 1 jogador");
-  // joystick do celular leva o foco ao Cidade e o botão confirma
-  await joystick(c, 90, 0, 250);
-  ok(await ate(t, "tvTeste.foco === 'cidade-do-rabisco'", 3000), "(i) joystick do celular escolhe o jogo");
-  await segurar(c, ".btn[data-btn=acao]", 150);
-  ok(await ate(t, "location.pathname.includes('/jogos/cidade-do-rabisco/') && !!window.teste && window.Jogadores?.tv === true", 30000), "(i) Cidade abriu em modo TV só com o celular 1");
-  ok(await ate(t, "Jogadores.salaTV.vagas[0].conectado", 10000) && await ate(c, "controleTeste.layout === 'cidade'"), "(i) celular voltou na vaga 1 com o layout 'cidade'");
-  ok(await t.ev("Jogadores.modo === 1 && !Jogadores.j2Pronto && !document.body.innerText.includes('conecte um controle')"), "(i) Cidade em 1 jogador, sem pedir jogador 2");
-  await segurar(c, ".btn[data-btn=acao]", 120);
-  ok(await ate(t, "!!teste.j && teste.dois === false && Jogadores.modo === 1", 40000), "(i) Cidade começou em 1 jogador (a criança do cadastro só acompanha, ninguém a controla)");
-  await espera(3000);
-  const p0 = await t.ev("[teste.j.pos.x, teste.j.pos.z]");
-  await joystick(c, 0, -90, 2500);
-  const p1 = await t.ev("[teste.j.pos.x, teste.j.pos.z]");
-  ok(Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) > 0.5, `(i) joystick do celular 1 move o Rabisco (${Math.hypot(p1[0] - p0[0], p1[1] - p0[1]).toFixed(1)} m)`);
-  await tecla(t, "ArrowUp", "ArrowUp", 38);
-  await t.cmd("Input.dispatchKeyEvent", { type: "keyDown", key: "ArrowUp", code: "ArrowUp", windowsVirtualKeyCode: 38 });
-  await espera(500);
-  const q0 = await t.ev("[teste.j.pos.x, teste.j.pos.z]");
-  await espera(1200);
-  const q1 = await t.ev("[teste.j.pos.x, teste.j.pos.z]");
-  await t.cmd("Input.dispatchKeyEvent", { type: "keyUp", key: "ArrowUp", code: "ArrowUp", windowsVirtualKeyCode: 38 });
-  ok(Math.hypot(q1[0] - q0[0], q1[1] - q0[1]) < 0.3, "(i) teclado da TV não pilota o Rabisco");
-  await segurar(c, "#pausar", 150);
-  ok(await ate(t, "!document.querySelector('.pausa-tela').hidden && !!document.querySelector('.pausa-tela .voltar-tv')", 3000), "(i) ⏸ do celular pausa e oferece 'Voltar ao menu da TV'");
-  await t.ev("document.querySelector('.pausa-tela .voltar-tv').click()");
-  ok(await ate(t, "location.pathname.endsWith('/tv/') && !!window.tvTeste", 10000), "(i) voltou para /tv");
-  ok(await ate(t, "tvTeste.vagas[0].tipo === 'celular' && tvTeste.vagas[0].conectado && tvTeste.jogadores === 1", 10000), "(i) o celular continua conectado na vaga 1");
-  // um 2º celular entra depois: a TV passa a 2 jogadores (e avisa), porque ninguém escolheu "1" de propósito
-  const c2 = await celular(await t.ev("tvTeste.sala.link"));
-  ok(await ate(t, "tvTeste.vagas[1].tipo === 'celular' && tvTeste.vagas[1].conectado && tvTeste.jogadores === 2", 8000), "(i) 2º celular entrou depois: a TV oferece 2 jogadores");
-  ok(await t.ev("document.getElementById('jog-2').getAttribute('aria-pressed') === 'true'"), "(i) '2 jogadores' fica marcado (e dá para voltar a '1 jogador')");
-  ok(!errosDe(t).length, "(i) TV sem erros " + errosDe(t).join(" ; "));
-  await c.fechar(); await c2.fechar(); await t.fechar();
 }
 
 ok(!/Alice|"in"|"x":/.test(relayLog), "relay não registra conteúdo das mensagens");

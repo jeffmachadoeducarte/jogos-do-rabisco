@@ -27,6 +27,9 @@
 //   { tipo: "voltar", ate }                                    — voltar e contar para quem pediu (ele comemora)
 //   { tipo: "evento", evento, lugar, texto, item? }            — acontece lá dentro de um lugar (embrulhou o presente na
 //                                                                  Bella Cat, terminou o treino na Rise Up); item vai na cabeça
+//   { tipo: "escolherCarro", de }                             — J.E: escolher um dos 5 carros do pátio ("⭐ Quero este!"); quem
+//                                                                  vende entrega a chave e o carro vira um carro de verdade
+//   levarVeiculo com veiculos: "escolhido" e portao: [x, z]    — sair dirigindo o carro escolhido pelo portão até quem espera
 //   { tipo: "orar", tapete: [x, z], olhar, ate }               — Pai Nosso: no tapete azul, mãos juntas, frase por frase
 //                                                                  (karaokê com as vozes cid-pai-1..11); o jogador 2 ora junto
 // npcs: { id: { nome, tipo, cor, x, z, rot?, acessorio?, escala?, casa?: n, escola?: [dx, dz], caixa?: cor } } — tipo de
@@ -34,6 +37,10 @@
 // escola: na porta da Educarte da idade da criança (Kids I até 4 anos, senão Kids II), deslocado [dx, dz];
 // caixa: caixinha de correio dessa cor ao lado. O primeiro da lista é quem pede (com um "!" em cima).
 // Só aparecem perto do Rabisco (orçamento de desenho). voz: { pedido?, fim? } reaproveita falas gravadas (cid-*).
+// Com o nome da criança (banco assets/voz/nomes): voz.pedidoNome (trecho depois do nome) + pedidoComNome ("{nome}, ...")
+// e agradece: { pre, pos, neutra, texto, textoSem, ms } (quem recebe agradece pelo nome antes do "fim" da anfitriã).
+// item.objeto (evento): vai na MÃO do Rabisco como objeto 3D (missoes-objetos.js), não na cabeça. levar.icone: do botão.
+// corAcessorio (cor do laço) e tenis (cor do tênis): cada personagem com as suas cores.
 
 export const MISSOES = [
   {
@@ -249,6 +256,37 @@ export const MISSOES = [
       { tipo: "voltar", ate: "treinadora" },
     ],
     fim: "Que treino bonito! Agora, água fresquinha e um descanso. Corpo saudável, coração alegre!",
+  },
+  {
+    id: "carroNovo", titulo: "Carro novo da J.E", icone: "🔑", tipo: "cidadania", voz: { pedido: "cid-je", fim: "cid-je-ok" }, parceiro: "je-multimarcas",
+    npcs: {
+      vendedor: { nome: "Seu Lápis Cinza, da J.E", tipo: "lapis", cor: 0x6b6b6b, x: 149.5, z: -77, rot: -Math.PI / 2, acessorio: "gravata" },
+      verde: { nome: "Seu Lápis Verde", tipo: "lapis", cor: 0x4cae5a, casa: 4, acessorio: "chapeu" },
+    },
+    pedido: "Olá, Rabisco! Bem-vindo à J.E Multimarcas, a loja de carros! Entre no pátio pelo portão e escolha o carro que você mais gostar. Chegue pertinho e aperte o botão!",
+    etapas: [
+      { tipo: "escolherCarro", de: "vendedor", fala: "É seu! Cuide bem dele! Aqui está a chave. Entre no carro e saia pelo portão!", voz: "cid-je-chave" },
+      { tipo: "levarVeiculo", veiculos: "escolhido", carga: { nome: "carro novo", emoji: "🔑" }, ate: "verde", portao: [150, -82.5], falaPortao: "Boa viagem! Leve o carro novo até a casa verde: o Seu Lápis Verde quer ver!", vozPortao: "cid-je-portao" },
+    ],
+    fim: "Uau, que carro lindo! Parabéns, Rabisco! Vamos agradecer a Deus por esse presente!",
+  },
+  {
+    // Crescente Contabilidade: a Diretora Sabrina pede na porta da escola da criança, a contadora entrega o alvará novo
+    // (vai na mão do Rabisco) e a diretora recebe. pedidoNome/agradece: falas emendadas com o nome da criança
+    // ("Alice" + "o alvará da escola venceu!..."); sem nome no banco, as falas neutras (cid-alvara, cid-alvara-obrigada).
+    id: "alvara", titulo: "Alvará da Escola", icone: "📜", tipo: "cidadania", parceiro: "crescente-contabilidade",
+    voz: { pedido: "cid-alvara", pedidoNome: "cid-alvara-pos", fim: "cid-alvara-ok" },
+    npcs: {
+      diretora: { nome: "Diretora Sabrina", tipo: "lapis", cor: 0xf48fc0, escola: [-4.5, 1.5], acessorio: "laco", corAcessorio: 0x8e5bd8, tenis: 0x8e5bd8 },
+    },
+    pedido: "Oi! O alvará da escola venceu! Vá até o escritório da Crescente Contabilidade buscar o alvará novo.",
+    pedidoComNome: "{nome}, o alvará da escola venceu! Vá até o escritório da Crescente Contabilidade buscar o alvará novo.",
+    etapas: [
+      { tipo: "evento", evento: "alvara", lugar: "parceiro-crescente-contabilidade", texto: "Vá até a Crescente Contabilidade e fale com a contadora", item: { id: "alvara", emoji: "📜", nome: "alvará", objeto: "alvara" } },
+      { tipo: "levar", ate: "diretora", icone: "📜" },
+    ],
+    agradece: { pre: "cid-alvara-obrigada-pre", pos: "cid-alvara-obrigada-pos", neutra: "cid-alvara-obrigada", texto: "Obrigada, {nome}! Agora a escola está em dia.", textoSem: "Obrigada! Agora a escola está em dia.", ms: 3300 },
+    fim: "Agora está tudo certinho! Ter uma boa contabilidade é essencial para qualquer empresa. Obrigada, Crescente Contabilidade!",
   },
   // ---- Igreja Reviver (a igreja da escola), de frente para a praça
   {

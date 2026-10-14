@@ -60,7 +60,7 @@ const ROTULOS = {
   celular: () => "Celular de controle ✓",
 };
 // layout dos botões no celular, por jogo (o jogo pode mandar o seu em Jogadores.configurar({ layout }))
-const layoutDoCaminho = () => (/rabisco-kart/.test(location.pathname) ? "kart" : /cidade-do-rabisco/.test(location.pathname) ? "cidade" : /super-rabisco/.test(location.pathname) ? "plataforma" : "padrao");
+const layoutDoCaminho = () => (/rabisco-kart/.test(location.pathname) ? "kart" : /cidade-do-rabisco|rabiscopolis/.test(location.pathname) ? "cidade" : /super-rabisco/.test(location.pathname) ? "plataforma" : "padrao");
 
 // ------------------------------------------------------------------ Estado
 let tipo = "revezamento";

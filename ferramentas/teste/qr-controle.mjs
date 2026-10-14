@@ -183,47 +183,6 @@ if (quer("kart")) {
   await t.fechar();
 }
 
-// ------------------------------------------------------------------ Cidade
-if (quer("cidade")) {
-  const t = await tela(`${BASE}/jogos/cidade-do-rabisco/?teste&jogadores=2&sala=${encodeURIComponent(SALA)}`);
-  await ate(t, "!!window.teste && !!document.querySelector('[data-jogadores]')");
-  const { codigo } = await conferirQr(t, "Cidade");
-  await foto(t, "host-cidade-qr.png");
-  // celular sem o código na URL: digita (primeiro um errado)
-  const c = await celular(`${BASE}/src/controle-remoto/?sala=${encodeURIComponent(SALA)}`);
-  ok(await ate(c, "!document.getElementById('tela-entrar').hidden"), "Cidade: controle sem código pede para digitar");
-  await foto(c, "controle-digitar-codigo.png");
-  const digitar = (cod) => c.ev(`(() => { const i = document.getElementById('codigo'); i.value = ${JSON.stringify(cod)}; i.dispatchEvent(new Event('input')); document.getElementById('form-codigo').requestSubmit(); })()`);
-  const errado = codigo === "ZZZZ" ? "YYYY" : "ZZZZ";
-  await digitar(errado.toLowerCase());
-  ok(await ate(c, "document.getElementById('erro-entrar').textContent.includes('Sala não encontrada')", 5000), "Cidade: código errado → 'Sala não encontrada, confira o código'");
-  await digitar(codigo.toLowerCase());
-  ok(await ate(c, "window.controleTeste?.conectado === true"), "Cidade: código digitado (minúsculo) entra na sala");
-  ok(await ate(c, "controleTeste.layout === 'cidade' && !!document.querySelector('.joy') && !!document.querySelector('.btn[data-btn=acao]')"), "Cidade: celular com joystick + ação");
-  ok(await ate(t, "Jogadores.celular?.conectado === true"), "Cidade: tela recebe o celular");
-  await foto(c, "controle-cidade-retrato.png");
-  await t.ev(`document.querySelector('.casca-abertura .botao.respira, .casca-abertura .casca-nivel').click()`);
-  ok(await ate(t, "teste.dois && !!teste.companheiro", 40000), "Cidade: começou em 2 com a criança do jogador 2");
-  await espera(3500);
-  const a0 = await t.ev("[teste.amigo.pos.x, teste.amigo.pos.z, teste.j.pos.x, teste.j.pos.z]");
-  const [jx, jy] = await centro(c, ".joy");
-  await c.arrasta(jx, jy, jx, jy - 90, 8, 3000); // joystick para cima e segura
-  const a1 = await t.ev("[teste.amigo.pos.x, teste.amigo.pos.z, teste.j.pos.x, teste.j.pos.z]");
-  const andouJ2 = Math.hypot(a1[0] - a0[0], a1[1] - a0[1]), andouJ1 = Math.hypot(a1[2] - a0[2], a1[3] - a0[3]);
-  ok(andouJ2 > 1 && andouJ1 < 0.3, `Cidade: joystick do celular move só a criança (criança ${andouJ2.toFixed(1)} m, Rabisco ${andouJ1.toFixed(1)} m)`);
-  await segurar(c, ".btn[data-btn=acao]", 120);
-  ok(await ate(t, "teste.amigo.acena > 0", 2000, 100), "Cidade: ação do celular = a criança acena");
-  await foto(t, "host-cidade-celular.png");
-  await c.cmd("Emulation.setDeviceMetricsOverride", { width: 844, height: 390, deviceScaleFactor: 2, mobile: true });
-  await espera(500);
-  ok(!(await c.transborda()), "Cidade: controle em paisagem sem rolagem lateral");
-  await foto(c, "controle-cidade-paisagem.png");
-  ok(!errosDe(t).length, "Cidade (tela): sem erros " + errosDe(t).join(" ; "));
-  ok(!c.erros.length, "Cidade (celular): sem erros " + c.erros.join(" ; "));
-  await c.fechar();
-  await t.fechar();
-}
-
 // sem nenhum dado de conteúdo no log do relay (só contagens)
 ok(!/Alice|"in"|"x":/.test(relayLog), "relay não registra conteúdo das mensagens");
 encerrar();

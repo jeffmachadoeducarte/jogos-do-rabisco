@@ -88,6 +88,7 @@ export function montarMundo(cena) {
   for (const l of LUGARES) {
     lugares.push({ ...l });
     const ox = l.x - l.dir[0] * l.recuo, oz = l.z - l.dir[1] * l.recuo;
+    if (l.parceiro?.tipo === "contabilidade") { por(P.escritorioCrescente(l), ox, oz, l.rot); continue; } // prédio-escritório (sem foto)
     if (l.parceiro) {
       const s = { x0: 0, x1: 0, z0: 0, z1: 0, y1: 20 };
       solidos.push(s);

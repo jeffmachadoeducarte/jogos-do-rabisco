@@ -413,6 +413,17 @@ falas.update({
     "cid-je-chave": "É seu! Cuide bem dele! Aqui está a chave. Entre no carro e saia pelo portão!",
     "cid-je-portao": "Boa viagem! Leve o carro novo até a casa verde: o Seu Lápis Verde quer ver!",
     "cid-je-ok": "Uau, que carro lindo! Parabéns, Rabisco! Vamos agradecer a Deus por esse presente!",
+    # Crescente Contabilidade (2026-10-14): missão Alvará da Escola. cid-alvara-pos e cid-alvara-obrigada-pre/pos são
+    # emendadas com o nome da criança (assets/voz/nomes): "Alice" + "o alvará da escola venceu!..."
+    "cid-alvara": "Oi! O alvará da escola venceu! Vá até o escritório da Crescente Contabilidade buscar o alvará novo.",
+    "cid-alvara-pos": "o alvará da escola venceu! Vá até o escritório da Crescente Contabilidade buscar o alvará novo.",
+    "cid-crescente-entrar": "Bem-vindo à Crescente Contabilidade! Fale com a contadora no balcão.",
+    "cid-crescente-dica": "Olá! Você veio buscar o alvará da escola? Venha aqui no balcão!",
+    "cid-crescente-alvara": "Aqui está o alvará novinho da escola, com o selinho! Leve para a Diretora Sabrina, na porta da escola.",
+    "cid-crescente-oi": "Olá! Aqui na Crescente Contabilidade a gente cuida das contas e dos documentos das empresas.",
+    "cid-alvara-obrigada-pre": "Obrigada,", "cid-alvara-obrigada-pos": "Agora a escola está em dia.",
+    "cid-alvara-obrigada": "Obrigada! Agora a escola está em dia.",
+    "cid-alvara-ok": "Agora está tudo certinho! Ter uma boa contabilidade é essencial para qualquer empresa. Obrigada, Crescente Contabilidade!",
     "cid-bella": "Oi, Rabisco! Que tal um presente para a Professora Lápis Turquesa? Entre aqui na Bella Cat e escolha um acessório bem bonito!",
     "cid-bella-escolha": "Que bom que você veio! Escolha um presente: chegue pertinho de um pedestal e aperte o botão!",
     "cid-bella-laco": "O laço rosa! Que lindo!", "cid-bella-colar": "O colar de pérolas brancas! Que lindo!", "cid-bella-pulseira": "A pulseira azul! Que linda!",

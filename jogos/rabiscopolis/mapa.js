@@ -136,13 +136,29 @@ export const LUGARES = [
   L("fazendinha", "Fazendinha", -95, 59.5, 0, -1, { raio: 18, recuo: 3, pegada: [44, 30], bairro: "Fazendinha" }),
 ];
 
-// lojas das empresas parceiras (src/parceiros.js), na ordem da lista: lado sul da Rua do Comércio
-// e, sobrando parceira, na Avenida da Esperança (bloco das Torres). A loja tem no máximo LOJA_MAX m de largura.
+// lojas das empresas parceiras (src/parceiros.js), na ordem da lista. A J.E Multimarcas (a 1ª, loja de carros) fica
+// na Avenida da Esperança, bairro Leste, com o pátio cercado de carros atrás (PATIO_JE); as outras no lado sul da Rua do Comércio.
+// Sobrando parceira, os pontos livres ficam reservados. A loja tem no máximo LOJA_MAX m de largura.
 export const LOJA_MAX = 19;
-export const PONTOS_PARCEIROS = [[70, 9, 0, -1], [93, 9, 0, -1], [116, 9, 0, -1], [95, -59.5, 0, 1], [118, -59.5, 0, 1]];
+// A Crescente Contabilidade (a 4ª) fica longe das outras, no oeste: lado sul da Avenida da Esperança, entre a Avenida do
+// Contorno e a Educarte Kids I, num prédio-escritório maior (PEGADA_ESCRITORIO).
+export const PONTOS_PARCEIROS = [[164, -59.5, 0, 1], [93, 9, 0, -1], [116, 9, 0, -1], [-160, -40.5, 0, -1], [118, -59.5, 0, 1]];
+export const PEGADA_ESCRITORIO = [16, 12];
+// pátio da J.E (atrás da loja, no bairro Leste, longe da praça: de lá não se vê nem custa nada): cercado, com o portão
+// aberto para a Avenida do Contorno (no lado x0, de z = portao[0] a portao[1]) e 5 carros em leque, cada um com o bico
+// para o portão (o escolhido sai dirigindo por ele)
+const PORTAO_JE = [152, -82.5];
+export const PATIO_JE = {
+  x0: 152, x1: 176, z0: -94, z1: -71, portao: [-86, -79], saida: [148.5, -82.5],
+  vagas: [[-0.6, "vermelho", 0xe53935], [-0.3, "azul", 0x1e6fe0], [0, "amarelo", 0xffc928], [0.3, "verde", 0x2bb24c], [0.6, "roxo", 0x8e5bd8]].map(([a, cor, hex], i) => {
+    const x = PORTAO_JE[0] + Math.cos(a) * 12, z = PORTAO_JE[1] + Math.sin(a) * 12;
+    return { x, z, cor, hex, modelo: i, ang: Math.atan2(PORTAO_JE[0] - x, PORTAO_JE[1] - z) };
+  }),
+};
 PARCEIROS.slice(0, PONTOS_PARCEIROS.length).forEach((p, i) => {
   const [x, z, dx, dz] = PONTOS_PARCEIROS[i];
-  LUGARES.push(L(`parceiro-${p.id}`, p.nome, x, z, dx, dz, { parceiro: p, pegada: [LOJA_MAX, 7.5], recuo: 1, bairro: "Comércio" }));
+  const escritorio = p.tipo === "contabilidade";
+  LUGARES.push(L(`parceiro-${p.id}`, p.nome, x, z, dx, dz, { parceiro: p, pegada: escritorio ? PEGADA_ESCRITORIO : [LOJA_MAX, 7.5], recuo: 1, bairro: escritorio ? "Oeste" : "Comércio" }));
 });
 export const lugar = (id) => LUGARES.find((l) => l.id === id);
 
@@ -190,7 +206,7 @@ export const VAGAS = [
   { x: 30, z: -40, ang: Math.PI / 2, tipo: "onibus" },
   { x: HELIPONTO.x, z: HELIPONTO.z, ang: -Math.PI / 2, tipo: "heli" },
   // Fatia 4: cada veículo perto do lugar dele
-  { x: 60.8, z: 7.4, ang: Math.PI / 2, tipo: "je" },                 // carro da J.E Multimarcas, na frente da loja
+  { x: 164, z: -40.5, ang: Math.PI / 2, tipo: "je" },                // carro da J.E Multimarcas, do outro lado da avenida
   { x: -40, z: -40.5, ang: Math.PI / 2, tipo: "ambulancia" },        // ambulância, do outro lado da rua do hospital
   { x: 14, z: -40.5, ang: Math.PI / 2, tipo: "bombeiro" },           // caminhão de bombeiro
   { x: 127, z: -20, ang: 0, tipo: "sorvete" },                       // van de sorvete, ao lado da sorveteria
@@ -213,7 +229,7 @@ export const PEGADAS_FIXAS = [
   { id: "praca", x0: PRACA.x - PRACA.r - 2, x1: PRACA.x + PRACA.r + 2, z0: PRACA.z - PRACA.r - 2, z1: PRACA.z + PRACA.r + 2 },
   { id: "parque", ...PARQUE }, { id: "fazenda", ...FAZENDA },
   { id: "esportes", ...ESPORTES }, { id: "quadra-area", ...QUADRA }, { id: "horta-area", ...HORTA },
-  { id: "parquinho-bebe", ...PARQUINHO_BEBE }, { id: "patio-kids2", ...PATIO_KIDS2 }, { id: "praia-area", ...PRAIA },
+  { id: "parquinho-bebe", ...PARQUINHO_BEBE }, { id: "patio-je", x0: PATIO_JE.x0, x1: PATIO_JE.x1, z0: PATIO_JE.z0, z1: PATIO_JE.z1 }, { id: "patio-kids2", ...PATIO_KIDS2 }, { id: "praia-area", ...PRAIA },
   { id: "heliponto-area", x0: HELIPONTO.x - HELIPONTO.r, x1: HELIPONTO.x + HELIPONTO.r, z0: HELIPONTO.z - HELIPONTO.r, z1: HELIPONTO.z + HELIPONTO.r },
   // pontos de parceira ainda livres ficam reservados (a próxima parceira já tem lugar)
   ...PONTOS_PARCEIROS.slice(PARCEIROS.length).map(([x, z, dx, dz], i) => ({ id: `reserva-parceira-${i}`, ...pegadaDe(x, z, [dx, dz], LOJA_MAX, 7.5, 1) })),

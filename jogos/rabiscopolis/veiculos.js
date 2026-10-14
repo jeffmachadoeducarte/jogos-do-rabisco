@@ -9,9 +9,10 @@ import { ROTAS } from "./mapa.js";
 
 export const CORES_CARRO = [0xec2e8c, 0x00b5f0, 0xff7a00, 0x58c43a, 0x8e6cff, 0xffcc1f];
 // veículo que o Rabisco pode dirigir: { g, tipo, pos, ang, vel, virar, giro, comp (meio comprimento), larg }
-export function criarVeiculo(tipo = "carro", cor = CORES_CARRO[0]) {
+export function criarVeiculo(tipo = "carro", cor = CORES_CARRO[0], enfeite = null) {
   const fab = { onibus: onibusFofo, heli: helicoptero, je: carroJE, ambulancia, sorvete: vanSorvete, bombeiro: caminhaoBombeiro, bici: () => bicicleta(cor), patinete: () => patinete(cor), barco: barquinho, trator }[tipo];
   const g = fab ? fab() : carroFofo(cor);
+  enfeite?.(g); // ex.: o carro novo da J.E sai com o enfeite que tinha no pátio
   if (tipo === "heli") g.rotation.order = "YXZ"; // inclina para a frente/lados sem embolar o giro
   // meio comprimento, meia largura e velocidade máxima de cada um
   const medidas = { onibus: [4.4, 1.5, 11], heli: [3.0, 1.9, 14], carro: [2.4, 1.2, 15], je: [2.3, 1.25, 16], ambulancia: [2.7, 1.3, 13], sorvete: [2.7, 1.3, 11], bombeiro: [3.6, 1.35, 11], bici: [0.85, 0.35, 8], patinete: [0.55, 0.3, 6], barco: [1.9, 1.3, 4.5], trator: [1.8, 1.0, 7] }[tipo] ?? [2.4, 1.2, 15];

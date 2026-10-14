@@ -1,11 +1,14 @@
 // Rabiscolândia: as lojas parceiras por dentro (vieram da Rabiscópolis): Bella Cat Make Biju (5 acessórios nos
-// pedestais, balcão de embrulhar presente, espelho de camarim, cerejeira rosa) e Academia Rise Up (esteiras, halteres,
-// colchonete, espelho e a faixa "Seu corpo é presente de Deus"). Montadas por montarSala (lugares-dentro.js) na
+// pedestais, balcão de embrulhar presente, espelho de camarim, cerejeira rosa), Academia Rise Up (esteiras, halteres,
+// colchonete, espelho e a faixa "Seu corpo é presente de Deus") e o escritório da Crescente Contabilidade (balcão com a
+// contadora, mesas com computador, arquivos de gaveta e estante de pastas; missão Alvará da Escola). Montadas por montarSala (lugares-dentro.js) na
 // primeira visita, no mesmo esquema das outras salas (14 × 9, vista em corte). A J.E Multimarcas vende só carros: não
 // tem sala aqui (o pátio de carros é na rua).
-//   montarBella(ctx) / montarRise(ctx), ctx = { g, ox, oz, inter, npcs, est, solido, I, npc, mesclar }
+//   montarBella(ctx) / montarRise(ctx) / montarCrescente(ctx), ctx = { g, ox, oz, inter, npcs, est, solido, I, npc, mesclar }
 
 import { THREE, mat, malha, caixa, caixaRedonda, texturaCanvas, mesclar } from "./base3d.js";
+import { alvara } from "./missoes-objetos.js";
+import { PARCEIROS } from "../../src/parceiros.js";
 
 const W = 14, D = 9;
 const tex = (w, h, f) => texturaCanvas(w, h, f);
@@ -176,4 +179,90 @@ export function montarRise({ g, ox, oz, inter, npcs, est, solido, I, npc }) {
     api.dizer("Treinadora Lápis Laranja", `${est.levantou}! ${est.levantou < 5 ? "Mais uma!" : "Cinco! Muito bem!"}`, 1400);
     if (est.levantou === 5) { if (est.correu) setTimeout(() => fimTreino(api), 900); else setTimeout(() => api.dizer("Treinadora Lápis Laranja", "Muito forte! Agora corra na esteira também. 🏃", 3000), 900); }
   }, 1.3);
+}
+
+// ------------------------------------------------------------------ Crescente Contabilidade
+// marrom e dourado da marca; a contadora (lápis marrom de laço dourado e tênis dourados) fica atrás do balcão, com o
+// alvará novinho em cima dele. Fora da missão ela só dá as boas-vindas.
+const MARROM = 0x813d18, MARROM_ESC = 0x5a2a10, DOURADO = 0xd4a937;
+function mesaComputador(fixo, x, z, cadeira) {
+  const tampo = caixaRedonda(1.9, 0.1, 0.95, mat(0xe9c79a), { raio: 0.04, contorno: 0.03 }); tampo.position.set(x, 0.78, z); fixo.add(tampo);
+  for (const sx of [-1, 1]) { const p = caixaRedonda(0.1, 0.74, 0.85, mat(MARROM), { raio: 0.03 }); p.position.set(x + sx * 0.85, 0.37, z); fixo.add(p); }
+  const monitor = caixaRedonda(0.85, 0.52, 0.07, mat(0x26282c), { raio: 0.03, contorno: 0.02 }); monitor.position.set(x, 1.22, z - 0.25); fixo.add(monitor);
+  const tela = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 0.42), new THREE.MeshToonMaterial({ color: 0x7fd6ff, emissive: 0x3aa0e0, emissiveIntensity: 0.5 })); tela.position.set(x, 1.22, z - 0.21); fixo.add(tela);
+  const pe = caixa(0.08, 0.14, 0.08, mat(0x26282c), { sombra: false }); pe.position.set(x, 0.9, z - 0.27); fixo.add(pe);
+  const teclado = caixaRedonda(0.6, 0.03, 0.2, mat(0xf4f4f4), { raio: 0.01, contorno: 0.01 }); teclado.position.set(x, 0.85, z + 0.12); fixo.add(teclado);
+  const papel = caixa(0.3, 0.02, 0.4, mat(0xffffff), { sombra: false }); papel.position.set(x + 0.65, 0.84, z + 0.05); papel.rotation.y = 0.2; fixo.add(papel);
+  if (cadeira) {
+    const assento = caixaRedonda(0.6, 0.1, 0.6, mat(MARROM_ESC), { raio: 0.04, contorno: 0.02 }); assento.position.set(x, 0.5, z + 0.8); fixo.add(assento);
+    const encosto = caixaRedonda(0.6, 0.6, 0.1, mat(MARROM_ESC), { raio: 0.04, contorno: 0.02 }); encosto.position.set(x, 0.85, z + 1.08); fixo.add(encosto);
+    const haste = caixa(0.07, 0.45, 0.07, mat(0x26282c), { sombra: false }); haste.position.set(x, 0.23, z + 0.8); fixo.add(haste);
+  }
+}
+export function montarCrescente({ g, ox, oz, inter, npcs, est, solido, I, npc }) {
+  const fixo = new THREE.Group(); g.add(fixo);
+  // banner da marca na parede da esquerda (o fundo tem o nome da sala)
+  const P = PARCEIROS.find((p) => p.id === "crescente-contabilidade");
+  const mBanner = new THREE.MeshToonMaterial({ color: MARROM });
+  const banner = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.2), mBanner); banner.rotation.y = Math.PI / 2; banner.position.set(-W / 2 + 0.22, 2.0, 1.2); banner.userData.dinamico = true; g.add(banner);
+  const mold = caixaRedonda(0.08, 1.4, 3.8, mat(DOURADO), { raio: 0.03 }); mold.position.set(-W / 2 + 0.13, 2.0, 1.2); fixo.add(mold);
+  if (P) new THREE.TextureLoader().load(`../../${P.foto}`, (t) => { t.colorSpace = THREE.SRGBColorSpace; Object.assign(mBanner, { map: t, emissiveMap: t, emissiveIntensity: 0.35 }); mBanner.color.set(0xffffff); mBanner.emissive.set(0xffffff); mBanner.needsUpdate = true; });
+  // balcão de atendimento (marrom com tampo dourado), no meio; a contadora fica atrás
+  const bz = -1.5;
+  const balcao = caixaRedonda(4.2, 0.72, 0.9, mat(MARROM), { raio: 0.08, contorno: 0.04 }); balcao.position.set(0, 0.36, bz); fixo.add(balcao);
+  const topo = caixaRedonda(4.4, 0.08, 1.05, mat(DOURADO), { raio: 0.03, contorno: 0.02 }); topo.position.set(0, 0.76, bz); fixo.add(topo);
+  const faixaB = caixa(4.22, 0.12, 0.02, mat(DOURADO), { sombra: false }); faixaB.position.set(0, 0.45, bz + 0.46); fixo.add(faixaB);
+  solido(0, bz, 4.4, 1.1, 0.9);
+  // carimbo e pilha de papéis no balcão
+  const pilha = caixa(0.42, 0.12, 0.32, mat(0xffffff), { sombra: false }); pilha.position.set(-1.3, 0.86, bz); fixo.add(pilha);
+  const carimbo = malha(new THREE.CylinderGeometry(0.09, 0.11, 0.14, 12), mat(MARROM_ESC), { contorno: 0.015 }); carimbo.position.set(-0.7, 0.87, bz); fixo.add(carimbo);
+  const cabo = malha(new THREE.SphereGeometry(0.07, 10, 8), mat(DOURADO), { contorno: 0.01 }); cabo.position.set(-0.7, 0.99, bz); fixo.add(cabo);
+  // mesas com computador (lado esquerdo) e cadeiras de espera (frente, à esquerda)
+  mesaComputador(fixo, -5.2, -3.2, true); solido(-5.2, -3.2, 2.0, 1.0, 1.2);
+  mesaComputador(fixo, -2.9, -3.2, true); solido(-2.9, -3.2, 2.0, 1.0, 1.2);
+  solido(-5.2, -2.4, 0.7, 0.7, 1.0); solido(-2.9, -2.4, 0.7, 0.7, 1.0);
+  for (const x of [-5.4, -4.6, -3.8]) {
+    const a = caixaRedonda(0.7, 0.12, 0.7, mat(DOURADO), { raio: 0.05, contorno: 0.02 }); a.position.set(x, 0.45, 3.5); fixo.add(a);
+    const e = caixaRedonda(0.7, 0.6, 0.12, mat(DOURADO), { raio: 0.05, contorno: 0.02 }); e.position.set(x, 0.8, 3.84); fixo.add(e);
+    for (const sx of [-0.28, 0.28]) { const p = caixa(0.06, 0.4, 0.06, mat(MARROM_ESC), { sombra: false }); p.position.set(x + sx, 0.2, 3.5); fixo.add(p); }
+  }
+  solido(-4.6, 3.6, 2.4, 0.9, 1.0);
+  // arquivos de gaveta (parede da direita) com puxadores dourados
+  for (const z of [-3.6, -2.6, -1.6]) {
+    const a = caixaRedonda(0.75, 1.5, 0.9, mat(0x9aa0a8), { raio: 0.05, contorno: 0.03 }); a.position.set(W / 2 - 0.5, 0.75, z); fixo.add(a);
+    for (const y of [0.35, 0.75, 1.15]) {
+      const fr = caixa(0.02, 0.32, 0.78, mat(0xb9bec6), { sombra: false }); fr.position.set(W / 2 - 0.88, y, z); fixo.add(fr);
+      const px = caixaRedonda(0.05, 0.05, 0.28, mat(DOURADO), { raio: 0.02 }); px.position.set(W / 2 - 0.9, y + 0.06, z); fixo.add(px);
+      const et = caixa(0.02, 0.07, 0.18, mat(0xffffff), { sombra: false }); et.position.set(W / 2 - 0.89, y - 0.07, z); fixo.add(et);
+    }
+  }
+  solido(W / 2 - 0.5, -2.6, 0.9, 3.0, 1.6);
+  // estante baixa de pastas coloridas (fundo, à direita, embaixo da janela)
+  const est1 = caixaRedonda(2.8, 1.1, 0.5, mat(MARROM), { raio: 0.05, contorno: 0.03 }); est1.position.set(3.4, 0.55, -D / 2 + 0.4); fixo.add(est1);
+  const cores = [0xd6402f, 0x1d6fe0, 0xffcc1f, 0x2bb24c, 0x8e5bd8, DOURADO];
+  for (const y of [0.28, 0.78]) for (let i = 0; i < 9; i++) { const pz = caixaRedonda(0.18, 0.4, 0.38, mat(cores[(i + (y > 0.5 ? 2 : 0)) % cores.length]), { raio: 0.02 }); pz.position.set(2.25 + i * 0.29, y + 0.06, -D / 2 + 0.5); fixo.add(pz); }
+  solido(3.4, -D / 2 + 0.4, 2.9, 0.6, 1.2);
+  // tapete marrom com borda dourada na frente do balcão
+  const tb = caixa(3.2, 0.02, 1.9, mat(DOURADO), { sombra: false }); tb.position.set(0, 0.03, 0.6); fixo.add(tb);
+  const tm = caixa(2.9, 0.025, 1.6, mat(MARROM), { sombra: false }); tm.position.set(0, 0.035, 0.6); fixo.add(tm);
+  mesclar(fixo);
+  // a contadora (lápis marrom, laço e tênis dourados) e o alvará em cima do balcão
+  const cont = npc("lapis", 0x8a4a22, 9, 0.9, "laco", { corAcessorio: 0xf2c34e, tenis: DOURADO, iris: "#2bb24c" });
+  cont.grupo.position.set(ox, 0.03, oz + bz - 1.0); npcs.push(cont);
+  const doc = alvara(); doc.rotation.x = -Math.PI / 2 + 0.25; doc.position.set(ox + 1.0, 0.82, oz + bz + 0.1);
+  const soltos = new THREE.Group(); soltos.add(doc); soltos.userData.dinamico = true;
+  npcs.push({ grupo: soltos, atualizar: () => { doc.visible = !est.alvara; } });
+  est.alvara = false;
+  I("contadora", "💬 Falar com a contadora", 0, bz + 1.25, (api) => {
+    cont.acenar(2.5);
+    if (api.missao?.() === "alvara" && !est.alvara) {
+      est.alvara = true; cont.pular(); api.sons.vitoria?.();
+      api.falar("cid-crescente-alvara");
+      api.dizer("Contadora Lápis Marrom", "Aqui está o alvará novinho da escola, com o selinho! Leve para a Diretora Sabrina, na porta da escola.", 5200);
+      api.evento?.("alvara");
+      return;
+    }
+    api.sons.moeda?.(); api.falar("cid-crescente-oi");
+    api.dizer("Contadora Lápis Marrom", "Olá! Aqui na Crescente Contabilidade a gente cuida das contas e dos documentos das empresas.", 4600);
+  }, 1.5);
 }

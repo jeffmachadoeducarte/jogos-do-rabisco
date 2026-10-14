@@ -245,8 +245,8 @@ if (quer("d")) {
   await t.fechar();
 }
 
-// ------------------------------------------------------------------ (e) casca e pausa (Rabiscópolis, Rabiscolândia, Memória)
-for (const id of quer("e") ? ["cidade-do-rabisco", "rabiscopolis", "memoria"] : []) {
+// ------------------------------------------------------------------ (e) casca e pausa (Rabiscolândia, Memória)
+for (const id of quer("e") ? ["rabiscopolis", "memoria"] : []) {
   const t = await aparelho(`${BASE}/jogos/${id}/?teste`, { mobile: false, largura: 1280, altura: 720 });
   await ate(t, "!!window.Engrenagem && !!document.querySelector('.casca-engrenagem')", 40000);
   await espera(1500);
@@ -261,7 +261,6 @@ for (const id of quer("e") ? ["cidade-do-rabisco", "rabiscopolis", "memoria"] : 
   const som = await t.ev("localStorage.getItem('rabisco.som')");
   if (id === "memoria") ok(som === "0", `(e) ${id}: M desliga o som`);
   else ok(som !== "0", `(e) ${id}: M é do mapa, não mexe no som`);
-  if (id === "cidade-do-rabisco") await foto(t, "rabiscopolis-engrenagem.png");
   ok(!errosDe(t).length, `(e) ${id}: sem erros ` + errosDe(t).join(" ; "));
   await t.fechar();
 }

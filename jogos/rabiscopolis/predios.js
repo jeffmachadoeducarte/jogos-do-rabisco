@@ -232,6 +232,47 @@ export function lojaDeParceiro(l, aoMudar) {
   return S;
 }
 
+// ---------- Crescente Contabilidade (parceira sem foto de fachada): prédio-escritório de 3 andares nas cores da marca
+// (marrom e dourado), com o banner da marca (assets/parceiros/crescente-contabilidade.webp) de letreiro grande no
+// segundo andar, porta de vidro com marquise dourada no térreo e a lua crescente dourada no alto.
+const MARROM = 0x813d18, MARROM_ESC = 0x5a2a10, DOURADO = 0xd4a937, OURO = 0xf2c34e;
+export function escritorioCrescente(l) {
+  const S = novo(), g = S.grupo;
+  const [W0, D0] = l.pegada, W = W0 - 1, D = D0 - 1, h = 11.2;
+  corpo(g, W, h, D, MARROM, { beiral: DOURADO, rodape: MARROM_ESC });
+  // frisos dourados entre os andares (só na frente e nas laterais da frente)
+  for (const y of [3.75, 8.25]) { const f = caixa(W - 1.1, 0.22, 0.3, mat(DOURADO), { contorno: 0.03, sombra: false }); f.position.set(0, y, 0.06); g.add(f); }
+  // térreo: porta de vidro no meio e duas vitrines; 3º andar: fileira de janelas de moldura dourada
+  porta(g, { z: 0.06, w: 2.6, h: 3.0, cor: MARROM_ESC });
+  for (const s of [-1, 1]) { const v = caixa(3.4, 1.9, 0.2, MAT.janela, { sombra: false }); v.position.set(s * 4.6, 1.85, 0.08); g.add(v); const m = caixa(3.7, 2.2, 0.14, mat(DOURADO), { sombra: false }); m.position.set(s * 4.6, 1.85, 0.02); g.add(m); }
+  janelas(g, { w: W - 1, andares: 1, z: 0.04, y0: 8.75, jh: 1.6, cor: DOURADO, colunas: 5 });
+  // banner (letreiro): moldura dourada e a arte da marca, que "brilha" um pouco para ler de longe e de noite
+  const bw = W - 2.2, bh = bw / 3;
+  const moldura = caixa(bw + 0.5, bh + 0.5, 0.3, mat(DOURADO), { contorno: 0.05, sombra: false }); moldura.position.set(0, 6.0, 0.15); g.add(moldura);
+  const mBanner = new THREE.MeshToonMaterial({ color: MARROM });
+  const banner = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh), mBanner); banner.position.set(0, 6.0, 0.31); banner.userData.dinamico = true; g.add(banner);
+  new THREE.TextureLoader().load(`../../${l.parceiro.foto}`, (t) => {
+    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+    Object.assign(mBanner, { map: t, emissiveMap: t, emissiveIntensity: 0.4 }); mBanner.color.set(0xffffff); mBanner.emissive.set(0xffffff); mBanner.needsUpdate = true;
+  });
+  // marquise dourada sobre a porta, com dois pilarzinhos
+  const marq = caixaRedonda(4.4, 0.3, 1.8, mat(DOURADO), { raio: 0.1, contorno: 0.04 }); marq.position.set(0, 3.35, 0.9); g.add(marq);
+  for (const x of [-1.95, 1.95]) { const p = malha(new THREE.CylinderGeometry(0.12, 0.12, 3.2, 8), mat(MARROM_ESC), { sombra: false }); p.position.set(x, 1.6, 1.6); g.add(p); }
+  // degrau e floreiras dos lados da porta
+  const degrau = caixa(3.6, 0.18, 0.9, mat(0xe8dcc6), { contorno: 0.03, sombra: false }); degrau.position.set(0, 0.09, 0.45); g.add(degrau);
+  for (const s of [-1, 1]) {
+    const vaso = caixa(0.9, 0.7, 0.7, mat(DOURADO), { contorno: 0.03, sombra: false }); vaso.position.set(s * 2.4, 0.35, 0.55); g.add(vaso);
+    const folha = malha(new THREE.IcosahedronGeometry(0.55, 0), mat(0x4cb83f), { sombra: false }); folha.position.set(s * 2.4, 1.05, 0.55); g.add(folha);
+  }
+  // lua crescente dourada no alto, de frente para a rua (como no logo), com três barrinhas de gráfico subindo, numa base
+  const base = caixa(4.2, 0.6, 1.2, mat(MARROM_ESC), { contorno: 0.04, sombra: false }); base.position.set(0, h + 0.75, -1.6); g.add(base);
+  const lua = malha(new THREE.TorusGeometry(1.45, 0.4, 7, 18, Math.PI * 1.3), mat(OURO), { contorno: 0.05, sombra: false }); lua.rotation.z = Math.PI * 0.5; lua.position.set(-0.2, h + 2.75, -1.6); g.add(lua);
+  [[0.05, 0.8], [0.55, 1.25], [1.05, 1.75]].forEach(([x, a]) => { const b = caixa(0.36, a, 0.36, mat(OURO), { contorno: 0.03, sombra: false }); b.position.set(x, h + 1.05 + a / 2, -1.6); g.add(b); });
+  sol(S, -W / 2 - 0.3, W / 2 + 0.3, -D - 0.3, 0.3, 20);
+  S.banner = banner;
+  return S;
+}
+
 // ---------- prédios de enchimento (moradias): prédio de janelas com sacadas ou sobrado de telhado
 export function predioEnchimento(p) {
   const S = novo(), g = S.grupo;

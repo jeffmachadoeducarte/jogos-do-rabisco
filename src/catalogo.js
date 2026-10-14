@@ -58,7 +58,6 @@ export const faixas = [
       { id: "kart-onibus", estilo: "corrida", nome: "Corrida do Ônibus", desc: "Conte os amigos que estão no ponto e passe pelo número certo: eles sobem no ônibus!", habilidade: "Contagem até 10", status: "pronto" },
       { id: "atelie", estilo: "colorir", nome: "Ateliê do Rabisco", desc: "Pincel livre, balde de tinta e adesivos. Misture azul com amarelo e descubra o verde.", habilidade: "Mistura de cores", status: "pronto" },
       { id: "camarim-profissoes", estilo: "vestir", nome: "Camarim das Profissões", desc: "Vista o Rabisco de bombeiro, médico, astronauta ou chef e veja ele trabalhar.", habilidade: "Profissões", status: "pronto" },
-      { id: "cidade-do-rabisco", estilo: "extra", nome: "Rabiscópolis", desc: "Cidade das missões em 3D, menor e mais fácil para começar: Igreja Reviver e Pai Nosso, lojas parceiras por dentro, sala de aula por idade, helicóptero e rádio gospel.", habilidade: "Exploração e cidadania", status: "pronto" },
       { id: "memoria", estilo: "extra", nome: "Memória da Turma", desc: "Jogo da memória com Rabisco, escola, materiais e amigos.", habilidade: "Memória e atenção", status: "pronto" },
       { id: "viagem-do-rabisco", estilo: "extra", nome: "Viagem do Rabisco", desc: "Viaje pelo mundo levando presentes aos amigos: paisagens, transportes, mapa do Brasil e pontos cardeais.", habilidade: "Geografia: lugares e mapa", status: "pronto" },
       { id: "horta-do-rabisco", estilo: "extra", nome: "Horta do Rabisco", desc: "Horta em 3D: dê água, sol e terra boa e veja a plantinha crescer da semente ao tomate. Dia e noite, estações e cuidar da natureza.", habilidade: "Ciências: plantas e natureza", status: "pronto" },
@@ -81,8 +80,7 @@ export const faixas = [
       { id: "resgate-no-parquinho", estilo: "extra", nome: "Resgate no Parquinho", desc: "O gatinho subiu lá no alto! Suba os andaimes, desvie das bolas e pegue as letras no caminho para salvá-lo.", habilidade: "Coordenação e letras", status: "pronto" },
       { id: "rabisco-e-a-arca", estilo: "plataforma", nome: "Rabisco e a Arca", desc: "Fliperama clássico na arca de Noé: suba vigas e escadas, pule os barris da Manchinha e pegue o animal, a cor ou o número que a voz pede em inglês. No fim, o arco-íris e um versículo.", habilidade: "Inglês: animais, cores e números", status: "pronto", ingles: true },
       { id: "english-kart-jr", estilo: "corrida", nome: "English Kart Jr.", desc: "Ouça a palavra em inglês e passe pelo portal com a figura certa.", habilidade: "Inglês: vocabulário", status: "pronto", ingles: true },
-      { id: "cidade-do-rabisco", estilo: "extra", nome: "Rabiscópolis", desc: "Cidade das missões em 3D, menor e mais fácil para começar: Igreja Reviver e Pai Nosso, lojas parceiras por dentro, sala de aula por idade, helicóptero e rádio gospel.", habilidade: "Exploração e cidadania", status: "pronto" },
-      { id: "rabiscopolis", estilo: "extra", nome: "Rabiscolândia", desc: "Cidade grande em 3D para viver o dia a dia: escolha e decore sua casa, 11 veículos, 10 profissões e 12 missões bíblicas, num mapa enorme com praia e mirante.", habilidade: "Convivência e valores", status: "pronto" },
+      { id: "rabiscopolis", estilo: "extra", nome: "Rabiscolândia", desc: "Cidade em 3D para viver o dia a dia: escolha e decore sua casa, 11 veículos, 10 profissões e 12 missões bíblicas, num mapa enorme com praia e mirante.", habilidade: "Convivência e valores", status: "pronto" },
     ],
   },
   {
@@ -100,8 +98,7 @@ export const faixas = [
       { id: "rabisco-robo", estilo: "extra", nome: "Rabisco Robô", desc: "Programe o caminho do Rabisco com blocos de comando.", habilidade: "Lógica e programação", status: "pronto" },
       { id: "rabisco-e-a-arca", estilo: "plataforma", nome: "Rabisco e a Arca", desc: "Fliperama clássico na arca de Noé: suba vigas e escadas, pule os barris da Manchinha e pegue o animal, a cor ou o número que a voz pede em inglês. No fim, o arco-íris e um versículo.", habilidade: "Inglês: vocabulário e frases", status: "pronto", ingles: true },
       { id: "english-kart", estilo: "corrida", nome: "English Kart", desc: "Leia a frase em inglês (\"It shines at night\") e passe pela figura certa para ganhar turbo.", habilidade: "Inglês: leitura", status: "pronto", ingles: true },
-      { id: "cidade-do-rabisco", estilo: "extra", nome: "Rabiscópolis", desc: "Cidade das missões em 3D, menor e mais fácil para começar: Igreja Reviver e Pai Nosso, lojas parceiras por dentro, sala de aula por idade, helicóptero e rádio gospel.", habilidade: "Exploração e cidadania", status: "pronto" },
-      { id: "rabiscopolis", estilo: "extra", nome: "Rabiscolândia", desc: "Cidade grande em 3D para viver o dia a dia: escolha e decore sua casa, 11 veículos, 10 profissões e 12 missões bíblicas, num mapa enorme com praia e mirante.", habilidade: "Convivência e valores", status: "pronto" },
+      { id: "rabiscopolis", estilo: "extra", nome: "Rabiscolândia", desc: "Cidade em 3D para viver o dia a dia: escolha e decore sua casa, 11 veículos, 10 profissões e 12 missões bíblicas, num mapa enorme com praia e mirante.", habilidade: "Convivência e valores", status: "pronto" },
     ],
   },
 ];

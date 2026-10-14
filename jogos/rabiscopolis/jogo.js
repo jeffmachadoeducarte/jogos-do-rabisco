@@ -21,6 +21,7 @@ import { criarCamera } from "./camera.js";
 import { criarCeu } from "./ceu.js";
 import { criarVeiculo, animarVeiculo, criarTransito, atualizarTransito, atualizarSemaforos, luzDe } from "./veiculos.js";
 import { criarMissoes } from "./missoes.js";
+import { criarPatioJE, enfeitarCarro } from "./je-patio.js";
 import { criarJogador2 } from "./jogador2.js";
 import { CODIGOS_J2, TECLAS_J1_EXTRA } from "../../src/motor/jogadores.js";
 import { criarMorador, criarVovo } from "./personagens.js";
@@ -187,7 +188,7 @@ let r3, cena, cam, ceu, mundo, fis, camera, rabisco, relogio, qualidade, vivo = 
 let hud, minimapa, mapaGrande, balao, bussola, caixa;
 const j = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), noChao: true, coyote: 0, buffer: 0, dir: 0 };
 const veiculos = []; let garagem = null; // veículo chamado pelo Rabifone (só um por vez)
-let transito = [], moradores = [], vovo = null, missoes = null, j2 = null;
+let transito = [], moradores = [], vovo = null, missoes = null, j2 = null, patioJE = null;
 let dentro = null, contexto = null, salvo = carregar(), alvoMapa = null;
 let emCasa = null, deco = null, fade = null; const interiores = {}; // casa por dentro (montada uma vez por planta)
 let emLugar = null, sorveteUI = null; const salas = {}; // lugares por dentro (Fatia 3), montados na primeira visita
@@ -233,12 +234,15 @@ function iniciar() {
   j.pos.set(LARGADA.x, 0.07, LARGADA.z); j.vel.set(0, 0, 0); j.dir = LARGADA.dir; camera.st.yaw = LARGADA.dir;
   for (const v of VAGAS) { const q = criarVeiculo(v.tipo, v.cor); q.pos.set(v.x, 0.03, v.z); q.ang = v.ang; cena.add(q.g, q.parado); animarVeiculo(q, 0, 0); veiculos.push(q); }
   transito = criarTransito(cena);
+  patioJE = criarPatioJE(cena, { solidos: mundo.solidos }); // pátio de carros da J.E (montado só de perto)
   criarMoradores();
   aplicarCasa();
   missoes = criarMissoes({
     cena, rabisco, vovo, salvo, sons, dizer: (...a) => dizer(...a),
     salvar: (d) => { Object.assign(salvo, { missoesFeitas: d.missoesFeitas, selos: d.selos }); salvar(salvo); },
     falar: (k) => { radio?.pausarPorFala(true); falar(k); },
+    // fala emendada com o nome da criança (banco assets/voz/nomes); false sem cadastro/nome gravado
+    falarNome: (pre, pos) => { radio?.pausarPorFala(true); return falarNome(pre, pos); }, nome: nomeCrianca,
     confete: () => jogo.confete?.(),
     pos: () => j.pos, veiculoAtual: () => dentro, ocupado: () => Boolean(emCasa || emLugar),
     raio: () => (qualidade.perfil.toque ? 35 : 45),
@@ -247,6 +251,9 @@ function iniciar() {
     aoConcluir: () => { alvoMapa = null; },
     pos2: () => (j2?.aPe ? j2.pos : null),
     // missões que vieram da Rabiscópolis: casas (quem espera na porta), idade (escola da criança), patinhos do lago
+    patioJE,
+    // o carro escolhido no pátio da J.E vira um carro de verdade, com o mesmo enfeite
+    adicionarVeiculo: (vg) => { const v = criarVeiculo("carro", vg.hex, (g) => enfeitarCarro(g, vg.modelo)); v.pos.set(vg.x, 0.03, vg.z); v.ang = vg.ang; animarVeiculo(v, 0, 0); cena.add(v.g, v.parado); veiculos.push(v); return v; },
     orar: (tp, fim) => comecarOracao(tp, fim), pararOracao: () => terminarOracao(false),
     casas: () => mundo.casas, idade: idadeCrianca, patos: () => mundo.anima.patos, chaoHeli: (x, z) => fis.chaoHeli(x, z),
   });
@@ -320,7 +327,7 @@ function parar() {
   emLugar = null; solidosDentro = []; for (const k of Object.keys(salas)) delete salas[k];
   radioUI?.sairDoCarro();
   if (r3) { r3.dispose(); r3 = null; }
-  veiculos.length = 0; transito = []; moradores = []; vovo = null; garagem = null; missoes = null;
+  veiculos.length = 0; transito = []; patioJE = null; moradores = []; vovo = null; garagem = null; missoes = null;
   jogo.palco.querySelector('.escolha-j2-rp')?.remove(); j2 = null;
   dentro = null; contexto = null; alvoMapa = null; oracao = null; trava = null;
   teclas.clear();
@@ -872,6 +879,7 @@ function passo(dt, ultimo) {
     j2?.passo(dt, t);
     atualizarMoradores(dt);
     missoes?.atualizar(dt, t);
+    patioJE?.atualizar(j.pos.x, j.pos.z);
     mundo.atualizar(dt, t);
     if (emLugar) emLugar.atualizar(dt, t);
     regras();
@@ -1064,7 +1072,7 @@ if (params.has("teste")) window.teste = {
   corCasa(hex) { trocarCorCasa(hex); },
   get corParedes() { const c = mundo.casas.find((k) => k.lote.numero === salvo.casa); return c?.grupo.userData.paredes.userData.cor; },
   get radio() { return radio; }, get radioUI() { return radioUI; }, falar: (k) => falar(k),
-  get missoes() { return missoes; },
+  get missoes() { return missoes; }, get patioJE() { return patioJE; },
   get trava() { return trava ? { pose: trava.pose ?? null, t: trava.t } : null; },
   get oracao() { return oracao ? { i: oracao.i, total: ORACAO.length, painel: !painelOracao.hidden, texto: painelOracao.textContent } : null; },
   proximaFrase: () => proximaFrase(),
