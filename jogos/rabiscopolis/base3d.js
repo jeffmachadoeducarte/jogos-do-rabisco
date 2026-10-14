@@ -160,6 +160,9 @@ export function fita(pts, fechada, a, b, y, material, repV, pular = null) {
 // ---------- árvore (copiada de cidade.js · arvoreReal; aqui em toon, copa de bolas lisas com contorno e
 // um tronco mais gordinho, para combinar com o traço do Rabisco). escala 1 ≈ 5,5 m.
 const FOLHAS = [0x5cc443, 0x4cb83f, 0x6fd15a, 0x3fae4a];
+// copa: bola baixa em polígonos (com o sombreamento em tons chapados fica fofinha e custa pouco)
+const copas = new Map();
+const geoCopa = (s) => { const k = s.toFixed(2); if (!copas.has(k)) copas.set(k, new THREE.SphereGeometry(s, 7, 5)); return copas.get(k); };
 export function arvoreReal(escala = 1, tipo = 0) {
   const g = new THREE.Group();
   const tronco = malha(new THREE.CylinderGeometry(0.26, 0.4, 2.6, 8), mat(0x9a6232), { contorno: 0.08, sombra: false });
@@ -170,7 +173,7 @@ export function arvoreReal(escala = 1, tipo = 0) {
     ? [[0, 3.2, 0, 1.25], [0, 4.4, 0, 1.0], [0, 5.3, 0, 0.7]] // pinheirinho de bolas
     : [[0, 3.7, 0, 1.65], [0.95, 3.2, 0.35, 1.1], [-0.85, 3.35, -0.4, 1.15]];
   for (const [x, y, z, s] of bolas) {
-    const b = malha(new THREE.IcosahedronGeometry(s, 1), folha, { contorno: 0.12, sombra: false });
+    const b = malha(geoCopa(s), folha, { contorno: 0.12, sombra: false });
     b.position.set(x, y, z);
     g.add(b);
   }

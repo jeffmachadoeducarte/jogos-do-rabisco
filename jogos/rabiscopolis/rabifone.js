@@ -16,6 +16,7 @@ const VEICULOS = [
   { tipo: "carro", cor: 0x00b5f0, nome: "Carro azul", emoji: "🚙" },
   { tipo: "carro", cor: 0xff7a00, nome: "Carro laranja", emoji: "🏎️" },
   { tipo: "onibus", cor: 0xffcc1f, nome: "Ônibus da escola", emoji: "🚌" },
+  { tipo: "heli", cor: 0x00b5f0, nome: "Helicóptero", emoji: "🚁" },
 ];
 const HORAS = [{ h: 8, nome: "Manhã", emoji: "🌅" }, { h: 13, nome: "Tarde", emoji: "☀️" }, { h: 18.6, nome: "Pôr do sol", emoji: "🌇" }, { h: 22, nome: "Noite", emoji: "🌙" }];
 

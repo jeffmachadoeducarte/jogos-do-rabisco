@@ -59,9 +59,12 @@ body.touch .rp-toque { display: block; }
 .rp-pe .rp-acao { right: 150px; bottom: 30px; width: 100px; height: 100px; background: rgba(255,204,31,0.75); font-size: 40px; }
 .rp-pe .rp-acao.ativo { width: auto; min-width: 120px; height: 72px; border-radius: 999px; padding: 0 16px; font-size: 20px; background: #ffcc1f; animation: acao-rp 1s ease-in-out infinite alternate; bottom: 44px; }
 .rp-pe .rp-fone { right: 34px; bottom: 156px; width: 76px; height: 76px; font-size: 34px; }
-.rp-carro { display: none; }
-.rp-no-carro .rp-carro { display: block; }
-.rp-no-carro .rp-pe, .rp-no-carro .jd-camada { display: none !important; }
+.rp-carro, .rp-heli { display: none; }
+.rp-no-carro .rp-carro, .rp-no-heli .rp-heli { display: block; }
+.rp-no-carro .rp-pe, .rp-no-carro .jd-camada, .rp-no-heli .rp-pe, .rp-no-heli .jd-camada { display: none !important; }
+.rp-pedais [data-b="subir"] { bottom: 150px; background: rgba(0,181,240,0.75); }
+.rp-pedais [data-b="descer"] { bottom: 30px; background: rgba(236,46,140,0.7); }
+.rp-pedais .rp-voar { right: 150px !important; bottom: 210px; width: 90px; height: 90px; background: rgba(88,196,58,0.8); }
 .rp-volante button { bottom: 34px; width: 108px; height: 108px; font-size: 44px; }
 .rp-volante button:first-child { left: 28px; } .rp-volante button:last-child { left: 150px; }
 .rp-pedais button { right: 28px; width: 104px; height: 104px; font-size: 44px; }
@@ -70,6 +73,10 @@ body.touch .rp-toque { display: block; }
 .rp-pedais .rp-sair { right: 150px; bottom: 44px; width: 104px; height: 70px; border-radius: 999px; font-size: 24px; background: #ffcc1f; }
 .rp-pedais .rp-fone { right: 150px; bottom: 140px; width: 70px; height: 70px; font-size: 30px; }
 
+/* rádio do carro (src/radio): no celular deitado fica à esquerda, embaixo do selo, longe dos pedais e do 📱 */
+@media (max-height: 520px) and (orientation: landscape) {
+  .radio-carro { --radio-topo: calc(env(safe-area-inset-top, 0px) + 96px); --radio-direita: calc(100vw - 296px); }
+}
 @media (max-height: 520px) and (orientation: landscape) {
   .hud-rp { top: 58px; } .chip-rp { font-size: 13px; border-width: 3px; }
   .minimapa-rp { width: 108px; height: 108px; top: 58px; border-width: 3px; }
@@ -80,7 +87,8 @@ body.touch .rp-toque { display: block; }
   .rp-volante button { width: 84px; height: 84px; bottom: 18px; font-size: 34px; }
   .rp-volante button:last-child { left: 120px; }
   .rp-pedais button { width: 80px; height: 80px; font-size: 34px; right: 18px; }
-  .rp-pedais [data-b="frente"] { bottom: 112px; } .rp-pedais [data-b="re"] { bottom: 18px; }
+  .rp-pedais [data-b="frente"], .rp-pedais [data-b="subir"] { bottom: 112px; } .rp-pedais [data-b="re"], .rp-pedais [data-b="descer"] { bottom: 18px; }
+  .rp-pedais .rp-voar { right: 112px !important; bottom: 160px; width: 64px; height: 64px; }
   .rp-pedais .rp-sair { right: 112px; bottom: 26px; width: 84px; height: 56px; font-size: 18px; }
   .rp-pedais .rp-fone { right: 112px; bottom: 100px; width: 56px; height: 56px; font-size: 24px; }
 }

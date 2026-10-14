@@ -77,5 +77,35 @@ export function criarFisica(mundo) {
     } else { v.pos.x = nx; v.pos.z = nz; }
     return forte;
   }
-  return { chaoEm, bate, livre, andar, dirigir, veiculoBate };
+  // Helicóptero: subir/descer, frente/ré e virar. O chão embaixo dele é o topo do que estiver ali (dá para pousar
+  // num telhado); não atravessa prédios (bate de leve e para), não cai e não explode; pousa devagar.
+  const R_HELI = 2.6;
+  const chaoHeli = (x, z) => {
+    let h = 0.03;
+    for (const s of solidos) if (x > s.x0 - R_HELI && x < s.x1 + R_HELI && z > s.z0 - R_HELI && z < s.z1 + R_HELI && s.y1 > h && s.y1 < 40) h = s.y1;
+    return h;
+  };
+  const heliBate = (x, z, alt) => solidos.some((s) => s.y1 > alt + 0.3 && x > s.x0 - R_HELI && x < s.x1 + R_HELI && z > s.z0 - R_HELI && z < s.z1 + R_HELI)
+    || (alt < 1 && circulos.some((c) => Math.hypot(x - c.x, z - c.z) < c.r + R_HELI)) || Math.abs(x) > BORDA + 4 || Math.abs(z) > BORDA + 4;
+  // ent = { ix, iy, subir, descer } · devolve { pousado }
+  function voar(v, ent, dt) {
+    v.rotor += (1 - v.rotor) * Math.min(1, dt * 1.5); // motor ligado enquanto o Rabisco pilota
+    const chao = chaoHeli(v.pos.x, v.pos.z);
+    const noAr = v.alt > chao + 0.08;
+    const vsAlvo = ent.subir && v.rotor > 0.6 ? 5.5 : ent.descer ? (v.alt - chao < 3 ? -1.4 : -4.5) : 0; // perto do chão desce devagar
+    v.vs += (vsAlvo - v.vs) * Math.min(1, dt * 3);
+    v.alt = Math.min(55, v.alt + v.vs * dt);
+    if (v.alt <= chao) { v.alt = chao; v.vs = Math.max(0, v.vs); }
+    const velAlvo = noAr ? (ent.iy > 0.15 ? ent.iy * v.vmax : ent.iy < -0.15 ? ent.iy * 5 : 0) : 0;
+    v.vel += (velAlvo - v.vel) * Math.min(1, dt * 1.6);
+    v.virar += (ent.ix - v.virar) * Math.min(1, dt * 6);
+    if (noAr || Math.abs(ent.ix) > 0.1) v.ang -= v.virar * 1.5 * dt * (noAr ? 1 : 0.4);
+    const nx = v.pos.x + Math.sin(v.ang) * v.vel * dt, nz = v.pos.z + Math.cos(v.ang) * v.vel * dt;
+    if (heliBate(nx, nz, v.alt)) v.vel *= -0.2; else { v.pos.x = nx; v.pos.z = nz; }
+    v.pos.y = v.alt;
+    return { pousado: v.alt - chaoHeli(v.pos.x, v.pos.z) < 0.15 };
+  }
+  // motor desligando quando ninguém pilota
+  function pararHeli(v, dt) { v.rotor = Math.max(0, v.rotor - dt * 0.5); v.vel = 0; v.vs = 0; }
+  return { chaoEm, bate, livre, andar, dirigir, veiculoBate, voar, pararHeli, chaoHeli };
 }

@@ -14,7 +14,7 @@ export function cerquinha(comprimento, { cor = BRANCO, altura = 1.05 } = {}) {
   g.userData.detalhe = true;
   const m = mat(cor);
   for (const y of [0.35, 0.78]) { const t = caixa(comprimento, 0.1, 0.07, m, { contorno: 0.03, sombra: false }); t.position.set(comprimento / 2, y, -0.06); g.add(t); }
-  const n = Math.max(2, Math.round(comprimento / 0.42));
+  const n = Math.max(2, Math.round(comprimento / 0.55));
   const geo = new THREE.BoxGeometry(0.2, altura, 0.07);
   const ponta = new THREE.ConeGeometry(0.14, 0.18, 4);
   for (let i = 0; i <= n; i++) {
@@ -49,8 +49,8 @@ function janela(w, h, corVeneziana) {
   const flores = new THREE.Group(); flores.userData.detalhe = true; g.add(flores);
   const vaso = caixa(w + 0.4, 0.3, 0.38, mat(0xb8653a), { contorno: 0.03 }); vaso.position.set(0, -h / 2 - 0.3, 0.2); g.add(vaso);
   const cores = [0xff5fa2, 0xffcc1f, 0xffffff, 0xff7a3d, 0xb08cff];
-  for (let i = 0; i < 5; i++) {
-    const f = malha(new THREE.IcosahedronGeometry(0.12, 0), mat(cores[i % cores.length]), { sombra: false });
+  for (let i = 0; i < 5; i += 2) {
+    const f = malha(new THREE.IcosahedronGeometry(0.14, 0), mat(cores[i % cores.length]), { sombra: false });
     f.position.set(-w / 2 + 0.05 + (i * (w - 0.1)) / 4, -h / 2 - 0.05, 0.22); flores.add(f);
     const folha = malha(new THREE.IcosahedronGeometry(0.1, 0), mat(0x4cb83f), { sombra: false }); folha.position.set(-w / 2 + 0.2 + (i * (w - 0.1)) / 4, -h / 2 - 0.14, 0.26); flores.add(folha);
   }
@@ -86,7 +86,7 @@ export function casa(lote) {
     sol(s < 0 ? -W / 2 : vao / 2, s < 0 ? -vao / 2 : W / 2, -0.45, -0.15, 1.2);
     // cerca viva: moitas redondinhas enfileiradas
     for (let z = -1.8, i = 0; z > -D + 1.5; z -= 2.7, i++) {
-      const m = malha(new THREE.IcosahedronGeometry(0.85, 1), mat(i % 2 ? 0x4cb83f : 0x5cc443), { contorno: 0.06, sombra: false });
+      const m = malha(new THREE.SphereGeometry(0.85, 7, 5), mat(i % 2 ? 0x4cb83f : 0x5cc443), { contorno: 0.06, sombra: false });
       m.scale.set(0.75, 0.85 + (i % 3) * 0.1, 1.75); m.userData.detalhe = true; m.position.set(s * (W / 2 - 0.5), 0.62, z); g.add(m);
     }
     sol(s * (W / 2 - 0.45) - 0.45, s * (W / 2 - 0.45) + 0.45, -D + 0.3, -0.9, 1.1);

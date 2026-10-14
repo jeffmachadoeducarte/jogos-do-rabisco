@@ -77,9 +77,15 @@ for (const rota of M.ROTAS) {
 
 // ---------- o resto que o jogo usa
 ok(M.LOTES.filter((l) => l.bairro === "Bairro das Casas").length === 8 && M.LOTES.length === 16 && new Set(M.LOTES.map((l) => l.numero)).size === 16, "8 lotes no Bairro das Casas e 8 na Vila das Flores, números únicos");
-ok(M.MORADORES.length === 10 && M.MORADORES.every((m) => M.RUAS.some((r) => r.id === m.rua)), "10 moradores do estojo, cada um numa rua que existe");
-ok(["praca", "igreja", "escola", "hospital", "bombeiros", "mercado", "padaria", "sorveteria", "parque", "fazendinha"].every((id) => M.lugar(id)), "todos os lugares do plano existem");
-ok(M.blocoDe(0, 0).join() === "1,1" && M.blocoDe(-149, 149).join() === "0,2", "blocos de 100 m (3 × 3)");
+ok(M.MORADORES.length >= 10 && M.MORADORES.every((m) => M.RUAS.some((r) => r.id === m.rua)), `${M.MORADORES.length} moradores do estojo, cada um numa rua que existe`);
+const PLANO = ["praca", "igreja", "kids1", "kids2", "biblioteca", "hospital", "veterinario", "bombeiros", "mercado", "padaria", "sorveteria", "correios", "lavarapido", "estudio", "parque", "praia", "mirante", "heliponto", "fazendinha", "campo"];
+ok(PLANO.every((id) => M.lugar(id)), `todos os lugares do plano existem (${PLANO.filter((id) => !M.lugar(id)).join(", ")})`);
+ok(!M.lugar("escola"), "a escola única saiu: agora são Educarte Kids I e Kids II");
+const k1 = M.lugar("kids1"), k2 = M.lugar("kids2");
+ok(k1 && k2 && Math.sign(k1.x) !== Math.sign(k2.x) && Math.hypot(k1.x - k2.x, k1.z - k2.z) > 300, `as duas escolas ficam em lados opostos, a ${k1 && k2 ? Math.round(Math.hypot(k1.x - k2.x, k1.z - k2.z)) : "?"} m uma da outra`);
+ok(M.VAGAS.some((v) => v.tipo === "heli" && Math.hypot(v.x - M.HELIPONTO.x, v.z - M.HELIPONTO.z) < 1), "o helicóptero fica no heliponto");
+ok(M.NBLOCOS === 5 && M.BORDA === 250, "cidade de 5 × 5 blocos (500 m)");
+ok(M.blocoDe(0, 0).join() === "2,2" && M.blocoDe(-249, 249).join() === "0,4" && M.blocoDe(160, -60).join() === "4,1", "blocos de 100 m (5 × 5)");
 
 console.log(falhas ? `${falhas} falha(s)` : "tudo certo");
 process.exit(falhas ? 1 : 0);

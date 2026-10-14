@@ -543,4 +543,264 @@ export function hortaComunitaria(H) {
   nome(casinha, "Horta", { y: 3.0, largura: 3.5, cor: "#3c9a4a" });
   return S;
 }
+
+// ================================================================== bairros de fora
+// ---------- Educarte Kids I (bebês de 4 meses a 4 anos): prédio baixinho em tons suaves (menta, rosa-bebê, lilás e
+// azul-bebê), telhados redondos como nuvens, janelas redondas, berçário com berços nas janelas, placa grande com a logo
+// e o nome, e o parquinho de bebê no pátio (piso emborrachado, escorregador baixinho, cavalinho de balanço, piscina de
+// bolinhas e caixa de areia, com cerquinha baixa).
+const PASTEL = { menta: 0xbff0dc, rosa: 0xffd3e2, lilas: 0xe2d4ff, azul: 0xcfe9ff, creme: 0xfff7e6, amarelo: 0xfff0a8 };
+function placaEscola(texto, cor, largura) {
+  const g = new THREE.Group();
+  const logo = new THREE.Mesh(new THREE.PlaneGeometry(largura * 0.32, largura * 0.16), new THREE.MeshToonMaterial({ map: carregarTextura("../../assets/marca/logos/azul-icone-rosa.png"), transparent: true, alphaTest: 0.3 }));
+  logo.position.set(-largura * 0.33, 0, 0.08); g.add(logo);
+  const fundo = caixaRedonda(largura, largura * 0.22, 0.25, mat(0xffffff), { raio: 0.25, contorno: 0.06 }); g.add(fundo);
+  const nomeL = letreiro(texto, largura * 0.62, { cor }); nomeL.position.set(largura * 0.17, 0, 0.1); g.add(nomeL);
+  return g;
+}
+export function educarteKids1(l, area) {
+  const S = novo(), g = S.grupo; const [W, D] = l.pegada;
+  const alas = [[-W / 2 + 6, PASTEL.menta, 0x7fd9b8], [0, PASTEL.rosa, 0xff9cc0], [W / 2 - 6, PASTEL.lilas, 0xb9a0f0]];
+  for (const [x, cor, teto] of alas) {
+    const ala = new THREE.Group(); ala.position.x = x; g.add(ala);
+    const c = caixaRedonda(11.5, 5, D - 4, mat(cor), { raio: 0.6, contorno: 0.1 }); c.position.set(0, 2.5, -(D - 4) / 2); ala.add(c);
+    // telhado de nuvem: três "bolas" achatadas
+    for (const [dx, r] of [[-3, 2.6], [0, 3.2], [3, 2.6]]) { const n = malha(new THREE.SphereGeometry(r, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(teto), { contorno: 0.08 }); n.scale.set(1, 0.55, (D - 4) / (2 * r)); n.position.set(dx, 5, -(D - 4) / 2); ala.add(n); }
+    // janelas redondas
+    for (const dx of [-3.2, 3.2]) {
+      const aro = malha(new THREE.TorusGeometry(0.95, 0.18, 8, 20), mat(0xffffff), { contorno: 0.03 }); aro.position.set(dx, 2.7, 0.05); ala.add(aro);
+      const v = malha(new THREE.CircleGeometry(0.95, 20), MAT.janela, { sombra: false }); v.position.set(dx, 2.7, 0.04); ala.add(v);
+    }
+  }
+  // porta de arco amarelinha com toldo listrado
+  porta(g, { z: 0.1, w: 2.8, h: 3.2, cor: 0xffcc1f, vidro: false });
+  const t = toldo(4.5, "#ff9cc0", "#ffffff"); t.position.set(0, 3.7, 0.2); g.add(t);
+  // ala lilás = berçário; cubinhos ABC coloridos na entrada
+  const ber = new THREE.Group(); ber.position.set(W / 2 - 6, 0, 0.12); g.add(ber); nome(ber, "Berçário", { y: 4.3, largura: 5, cor: "#8e6cff" });
+  [["A", 0xff9cc0], ["B", 0x9fd8ff], ["C", 0xfff0a8]].forEach(([, c], i) => { const cubo = caixaRedonda(0.9, 0.9, 0.9, mat(c), { raio: 0.15, contorno: 0.04 }); cubo.position.set(-3.6 + i * 1.0, 0.45 + (i === 1 ? 0.9 : 0), 1.4); cubo.rotation.y = i * 0.3; g.add(cubo); });
+  S.solidos.push({ x0: -4.2, x1: -1.4, z0: 0.9, z1: 1.9, y1: 1.9 });
+  const placa = placaEscola("Educarte Kids I", "#ec2e8c", 11); placa.position.set(0, 6.6, 0.4); g.add(placa);
+  // estrelinhas e nuvens decorando a fachada
+  for (const [x, y, c] of [[-W / 2 + 2, 4.2, 0xffcc1f], [W / 2 - 2, 4.2, 0x00b5f0], [-8, 1.2, 0xff9cc0], [8, 1.2, 0x58c43a]]) { const e = malha(new THREE.IcosahedronGeometry(0.45, 0), mat(c), { contorno: 0.03 }); e.position.set(x, y, 0.4); g.add(e); }
+  S.solidos.push({ x0: -W / 2, x1: W / 2, z0: -D + 4 - 0.2, z1: 0.2, y1: 20 });
+  // parquinho de bebê (área em coordenadas locais: atrás? no pátio ao lado) — feito em parquinhoBebe(area)
+  return S;
+}
+export function parquinhoBebe(A) {
+  const S = novo(), g = S.grupo;
+  const cx = (A.x0 + A.x1) / 2, cz = (A.z0 + A.z1) / 2, w = A.x1 - A.x0, d = A.z1 - A.z0;
+  // piso emborrachado colorido em quadrados
+  const cores = [PASTEL.menta, PASTEL.rosa, PASTEL.lilas, PASTEL.azul, PASTEL.amarelo];
+  for (let i = 0; i < Math.floor(w / 4); i++) for (let k = 0; k < Math.floor(d / 4); k++) {
+    const p = caixa(3.9, 0.08, 3.9, mat(cores[(i + k) % cores.length]), { sombra: false }); p.position.set(A.x0 + 2 + i * 4, 0.05, A.z0 + 2 + k * 4); g.add(p);
+  }
+  // escorregador baixinho
+  const torre = caixaRedonda(1.6, 1.2, 1.6, mat(PASTEL.rosa), { raio: 0.25, contorno: 0.05 }); torre.position.set(cx - 5, 0.6, cz - 3); g.add(torre);
+  const esc = caixaRedonda(1.0, 0.15, 2.6, mat(PASTEL.azul), { raio: 0.06, contorno: 0.04 }); esc.position.set(cx - 5, 0.6, cz - 1.2); esc.rotation.x = 0.42; g.add(esc);
+  S.solidos.push({ x0: cx - 5.8, x1: cx - 4.2, z0: cz - 3.8, z1: cz - 2.2, y1: 1.2 });
+  // cavalinho de balanço
+  const cav = new THREE.Group(); cav.position.set(cx + 4, 0, cz - 3); g.add(cav);
+  const base = malha(new THREE.TorusGeometry(1.0, 0.1, 6, 18, Math.PI), mat(PASTEL.lilas), { contorno: 0.03 }); base.rotation.z = Math.PI; base.position.y = 1.0; base.scale.y = 0.4; cav.add(base);
+  const corpo2 = malha(new THREE.CapsuleGeometry(0.35, 1.0, 4, 10), mat(0xfff4e0), { contorno: 0.04 }); corpo2.rotation.z = Math.PI / 2; corpo2.position.y = 0.95; cav.add(corpo2);
+  const cab = malha(new THREE.SphereGeometry(0.33, 12, 10), mat(0xfff4e0), { contorno: 0.04 }); cab.position.set(0.75, 1.4, 0); cav.add(cab);
+  const crina = malha(new THREE.SphereGeometry(0.2, 10, 8), mat(0xff9cc0)); crina.position.set(0.55, 1.65, 0); cav.add(crina);
+  // piscina de bolinhas
+  const pisc = malha(new THREE.CylinderGeometry(2, 2, 0.6, 24, 1, true), mat(PASTEL.azul, { side: THREE.DoubleSide }), { contorno: 0.04 }); pisc.position.set(cx, 0.3, cz + 3); g.add(pisc);
+  for (let i = 0; i < 40; i++) { const a = rnd() * 6.28, r = rnd() * 1.8; const b = malha(new THREE.IcosahedronGeometry(0.17, 0), mat([0xff9cc0, 0x9fd8ff, 0xfff0a8, 0xbff0dc][i % 4]), { sombra: false }); b.position.set(cx + Math.cos(a) * r, 0.4 + rnd() * 0.15, cz + 3 + Math.sin(a) * r); g.add(b); }
+  S.solidos.push({ x0: cx - 2, x1: cx + 2, z0: cz + 1, z1: cz + 5, y1: 0.6 });
+  // caixa de areia
+  const caixaA = caixaRedonda(3.6, 0.35, 3.6, mat(0xc98a4b), { raio: 0.1, contorno: 0.04 }); caixaA.position.set(cx + 5, 0.18, cz + 3); g.add(caixaA);
+  const areia = caixa(3.2, 0.06, 3.2, mat(0xf3dca0), { sombra: false }); areia.position.set(cx + 5, 0.36, cz + 3); g.add(areia);
+  // cerquinha baixa
+  for (const [x, z, comp, rot] of [[A.x0, A.z1, w, 0], [A.x0, A.z0, d, -Math.PI / 2], [A.x1, A.z0, d, -Math.PI / 2]]) { const c = cerquinha(comp, { cor: 0xffffff, altura: 0.8 }); c.position.set(x, 0.03, z); c.rotation.y = rot; g.add(c); }
+  return S;
+}
+
+// Educarte Kids II (5 a 12 anos): a escola oficial (escolaEducarte3D) com placa própria
+export function educarteKids2(l) {
+  const S = escola(l);
+  const placa = placaEscola("Educarte Kids II", "#00b5f0", 12); placa.position.set(0, 1.6, 0.6); S.grupo.add(placa);
+  for (const x of [-5.6, 5.6]) { const p = malha(new THREE.CylinderGeometry(0.12, 0.12, 1.6, 8), mat(0x2f3440), { contorno: 0.03 }); p.position.set(x, 0.8, 0.4); S.grupo.add(p); }
+  S.solidos.push({ x0: -6.2, x1: 6.2, z0: 0.2, z1: 0.8, y1: 3 });
+  return S;
+}
+// prédio "de loja" com um enfeite grande no telhado
+function lojinha(l, { cor, beiral, rodape, texto, corTexto, h = 6, vitrine = MAT.janela, enfeite = null, toldoCores = null }) {
+  const S = novo(), g = S.grupo; const [W, D] = l.pegada;
+  corpo(g, W, h, D, cor, { beiral, rodape });
+  const v = caixaRedonda(W - 7, 2.3, 0.2, vitrine, { raio: 0.1, contorno: 0.05 }); v.position.set(-2, 1.9, 0.06); g.add(v);
+  if (toldoCores) { const t = toldo(W - 1, ...toldoCores); t.position.set(0, 3.9, 0.1); g.add(t); }
+  porta(g, { x: W / 2 - 2.6, z: 0.2, w: 2.4, h: 3, cor: beiral, vidro: false });
+  nome(g, texto, { y: h - 1, largura: Math.min(W - 2, 9), cor: corTexto });
+  if (enfeite) { enfeite.position.y += h + 0.5; enfeite.position.z += -D / 2; g.add(enfeite); }
+  S.solidos.push({ x0: -W / 2, x1: W / 2, z0: -D, z1: 0, y1: 20 });
+  return S;
+}
+export function biblioteca(l) {
+  const S = novo(), g = S.grupo; const [W, D] = l.pegada;
+  corpo(g, W, 8, D - 2, 0xf3e6cf, { beiral: 0x8e6cff, rodape: 0xd8c7a6 });
+  for (const x of [-9, -4.5, 4.5, 9]) { const c = malha(new THREE.CylinderGeometry(0.45, 0.5, 7, 14), mat(0xffffff), { contorno: 0.05 }); c.position.set(x, 3.5, 0.6); g.add(c); }
+  const front = caixaRedonda(W - 2, 0.6, 2, mat(0x8e6cff), { raio: 0.15, contorno: 0.05 }); front.position.set(0, 7.2, 0.6); g.add(front);
+  janelas(g, { w: W - 8, andares: 2, z: 0.02, y0: 1.3, alt: 3.2, colunas: 3 });
+  porta(g, { z: 0.1, w: 3, h: 3.4, cor: 0x8e6cff, vidro: false });
+  // pilha de livros gigantes no telhado
+  const cores = [0xe8413c, 0x00b5f0, 0xffcc1f, 0x58c43a];
+  cores.forEach((c, i) => { const b = caixaRedonda(6 - i * 0.6, 0.9, 4, mat(c), { raio: 0.15, contorno: 0.06 }); b.position.set(0, 8.9 + i * 0.95, -D / 2); b.rotation.y = (i % 2 ? 0.25 : -0.15); g.add(b); });
+  nome(g, "Biblioteca", { y: 6.1, largura: 8, cor: "#8e6cff" });
+  S.solidos.push({ x0: -W / 2, x1: W / 2, z0: -D + 2, z1: 1.2, y1: 20 });
+  return S;
+}
+// patinha (enfeite do veterinário)
+function patinha(cor) {
+  const g = new THREE.Group();
+  const p = malha(new THREE.SphereGeometry(1.1, 16, 12), mat(cor), { contorno: 0.06 }); p.scale.set(1, 0.85, 0.35); g.add(p);
+  for (const [x, y] of [[-1.1, 1.0], [-0.4, 1.45], [0.4, 1.45], [1.1, 1.0]]) { const d = malha(new THREE.SphereGeometry(0.42, 12, 10), mat(cor), { contorno: 0.04 }); d.scale.z = 0.4; d.position.set(x, y, 0); g.add(d); }
+  return g;
+}
+function cachorrinho(cor = 0xd9a066) {
+  const g = new THREE.Group();
+  const c = malha(new THREE.CapsuleGeometry(0.32, 0.6, 4, 10), mat(cor), { contorno: 0.04 }); c.rotation.x = Math.PI / 2; c.position.y = 0.55; g.add(c);
+  const cab = malha(new THREE.SphereGeometry(0.34, 14, 10), mat(cor), { contorno: 0.04 }); cab.position.set(0, 0.95, 0.5); g.add(cab);
+  for (const s of [-1, 1]) { const o = malha(new THREE.SphereGeometry(0.15, 10, 8), mat(0x8a5a32)); o.scale.set(0.6, 1.3, 0.5); o.position.set(s * 0.28, 1.05, 0.45); g.add(o); const olho = malha(new THREE.SphereGeometry(0.06, 8, 6), mat(0x151515)); olho.position.set(s * 0.12, 1.02, 0.8); g.add(olho); }
+  const nariz = malha(new THREE.SphereGeometry(0.07, 8, 6), mat(0x151515)); nariz.position.set(0, 0.92, 0.84); g.add(nariz);
+  for (const [x, z] of [[-0.18, 0.3], [0.18, 0.3], [-0.18, -0.3], [0.18, -0.3]]) { const p = malha(new THREE.CylinderGeometry(0.08, 0.08, 0.35, 8), mat(cor)); p.position.set(x, 0.18, z); g.add(p); }
+  const rabo = malha(new THREE.CapsuleGeometry(0.06, 0.3, 4, 6), mat(cor)); rabo.position.set(0, 0.8, -0.55); rabo.rotation.x = -0.7; g.add(rabo);
+  return g;
+}
+export function veterinario(l) {
+  const S = lojinha(l, { cor: 0xd8f5ea, beiral: 0x1fc08e, rodape: 0x9fe3c8, texto: "Veterinário", corTexto: "#1fc08e", enfeite: patinha(0xff9cc0) });
+  const cao = cachorrinho(); cao.position.set(-4, 0.03, 2.2); cao.rotation.y = 0.6; S.grupo.add(cao);
+  const casinha = caixaRedonda(1.6, 1.3, 1.6, mat(0xe8413c), { raio: 0.15, contorno: 0.04 }); casinha.position.set(-6.6, 0.65, 1.8); S.grupo.add(casinha);
+  S.solidos.push({ x0: -7.4, x1: -5.8, z0: 1, z1: 2.6, y1: 1.3 });
+  return S;
+}
+export function lavaRapido(l) {
+  const S = novo(), g = S.grupo; const [W, D] = l.pegada;
+  // galpão aberto com arco e escovões giratórios coloridos
+  const teto = caixaRedonda(W, 0.6, D, mat(0x00b5f0), { raio: 0.2, contorno: 0.06 }); teto.position.set(0, 5.2, -D / 2); g.add(teto);
+  for (const x of [-W / 2 + 0.6, W / 2 - 0.6]) { const parede = caixaRedonda(1.2, 5, D, mat(0xffffff), { raio: 0.2, contorno: 0.06 }); parede.position.set(x, 2.5, -D / 2); g.add(parede); S.solidos.push({ x0: x - 0.6, x1: x + 0.6, z0: -D, z1: 0, y1: 20 }); }
+  const fundo = caixaRedonda(W, 5, 0.6, mat(0xffffff), { raio: 0.2, contorno: 0.06 }); fundo.position.set(0, 2.5, -D + 0.3); g.add(fundo); S.solidos.push({ x0: -W / 2, x1: W / 2, z0: -D, z1: -D + 0.6, y1: 20 });
+  for (const [x, c] of [[-4, 0xec2e8c], [4, 0x00b5f0]]) { const e = malha(new THREE.CylinderGeometry(1, 1, 4, 16), mat(c), { contorno: 0.05 }); e.position.set(x, 2.5, -D / 2); g.add(e); S.solidos.push({ x0: x - 1, x1: x + 1, z0: -D / 2 - 1, z1: -D / 2 + 1, y1: 4.5 }); }
+  const bolhas = new THREE.Group(); bolhas.userData.detalhe = true; g.add(bolhas);
+  for (let i = 0; i < 14; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.25 + rnd() * 0.35, 12, 8), new THREE.MeshToonMaterial({ color: 0xcff4ff, transparent: true, opacity: 0.6 })); b.position.set((rnd() - 0.5) * (W - 3), 5.6 + rnd() * 1.6, -rnd() * D); bolhas.add(b); }
+  const pl = new THREE.Group(); pl.position.set(0, 6.2, 0.4); g.add(pl); nome(pl, "Lava-Rápido Bolhinha", { y: 0, largura: 10, cor: "#00b5f0" });
+  return S;
+}
+function notaMusical(cor) {
+  const g = new THREE.Group();
+  const cab = malha(new THREE.SphereGeometry(0.9, 16, 12), mat(cor), { contorno: 0.06 }); cab.scale.set(1.25, 0.9, 0.6); cab.rotation.z = 0.4; g.add(cab);
+  const haste = caixaRedonda(0.3, 3.4, 0.3, mat(cor), { raio: 0.1, contorno: 0.04 }); haste.position.set(0.9, 1.6, 0); g.add(haste);
+  const bandeira = caixaRedonda(1.3, 0.5, 0.3, mat(cor), { raio: 0.15, contorno: 0.04 }); bandeira.position.set(1.4, 3.1, 0); bandeira.rotation.z = -0.5; g.add(bandeira);
+  return g;
+}
+export function estudio(l) {
+  const S = lojinha(l, { cor: 0xe2d4ff, beiral: 0x8e6cff, rodape: 0x151515, texto: "Estúdio Dó-Ré-Mi", corTexto: "#8e6cff", enfeite: notaMusical(0xec2e8c) });
+  // faixa de teclas de piano na frente
+  const [W] = l.pegada;
+  for (let i = 0; i < 12; i++) { const t = caixa(W / 12 - 0.06, 0.9, 0.12, mat(0xffffff), { sombra: false }); t.position.set(-W / 2 + (i + 0.5) * (W / 12), 4.4, 0.08); S.grupo.add(t); if (i % 7 !== 2 && i % 7 !== 6) { const p = caixa(0.4, 0.55, 0.16, mat(0x151515), { sombra: false }); p.position.set(-W / 2 + (i + 1) * (W / 12), 4.6, 0.1); S.grupo.add(p); } }
+  return S;
+}
+function envelope() {
+  const g = new THREE.Group();
+  const e = caixaRedonda(4, 2.6, 0.5, mat(0xffffff), { raio: 0.15, contorno: 0.06 }); g.add(e);
+  const aba = new THREE.Shape([new THREE.Vector2(-1.9, 1.2), new THREE.Vector2(1.9, 1.2), new THREE.Vector2(0, -0.1)]);
+  const a = malha(new THREE.ExtrudeGeometry(aba, { depth: 0.1, bevelEnabled: false }), mat(0xffcc1f), { contorno: 0.03 }); a.position.z = 0.26; g.add(a);
+  const selo = caixa(0.6, 0.7, 0.1, mat(0xe8413c), { sombra: false }); selo.position.set(1.4, 0.75, 0.3); g.add(selo);
+  return g;
+}
+export function correios(l) {
+  const S = lojinha(l, { cor: 0xfff0a8, beiral: 0x1d4fb8, rodape: 0xffcc1f, texto: "Correios", corTexto: "#1d4fb8", enfeite: envelope() });
+  const caixaC = caixaRedonda(0.9, 1.3, 0.8, mat(0xffcc1f), { raio: 0.25, contorno: 0.04 }); caixaC.position.set(-5.5, 0.65, 1.6); S.grupo.add(caixaC);
+  S.solidos.push({ x0: -6, x1: -5, z0: 1.2, z1: 2, y1: 1.3 });
+  return S;
+}
+// Mirante: torre de pedra com escada até uma plataforma a 6 m (dá para subir a pé), luneta e bandeirinhas
+export function mirante(l) {
+  const S = novo(), g = S.grupo; const [W, D] = l.pegada;
+  const H = 6, z0 = -D + 1, z1 = -7; // plataforma de z0 a z1
+  const base = caixaRedonda(12, H, z1 - z0, mat(0xd8d2c4), { raio: 0.4, contorno: 0.1 }); base.position.set(0, H / 2, (z0 + z1) / 2); g.add(base);
+  S.solidos.push({ x0: -6, x1: 6, z0, z1, y1: H });
+  const piso = caixaRedonda(12.6, 0.3, z1 - z0 + 0.6, mat(0xc98a4b), { raio: 0.1, contorno: 0.05 }); piso.position.set(0, H + 0.1, (z0 + z1) / 2); g.add(piso);
+  // grade em volta (deixa a escada livre)
+  for (const [x, z, comp, rot] of [[-6, z0, z1 - z0, -Math.PI / 2], [6, z0, z1 - z0, -Math.PI / 2], [-6, z0, 12, 0]]) { const c = cerquinha(comp, { cor: 0xffffff, altura: 1.0 }); c.position.set(x, H + 0.2, z); c.rotation.y = rot; c.userData.detalhe = false; g.add(c); }
+  for (const x of [-6, 2]) { const c = cerquinha(4, { cor: 0xffffff, altura: 1.0 }); c.position.set(x, H + 0.2, z1); c.userData.detalhe = false; g.add(c); }
+  S.solidos.push({ x0: -6.3, x1: -5.7, z0, z1, y1: H + 1.2 }, { x0: 5.7, x1: 6.3, z0, z1, y1: H + 1.2 }, { x0: -6, x1: 6, z0: z0 - 0.3, z1: z0 + 0.3, y1: H + 1.2 }, { x0: -6, x1: -2, z0: z1 - 0.3, z1: z1 + 0.3, y1: H + 1.2 }, { x0: 2, x1: 6, z0: z1 - 0.3, z1: z1 + 0.3, y1: H + 1.2 });
+  // escada (degraus de 0,33 m: o Rabisco sobe andando)
+  const n = Math.ceil(H / 0.33);
+  for (let i = 0; i < n; i++) {
+    const y = (i + 1) * (H / n), z = -0.6 - (i * (z1 - -0.6 + 0.0)) / n * -1;
+    const zz = -0.6 - i * (6.4 / n);
+    const d = caixa(4, y, 6.4 / n + 0.02, mat(i % 2 ? 0xe8e2d6 : 0xd8d2c4), { contorno: 0.03 }); d.position.set(0, y / 2, zz); g.add(d);
+    S.solidos.push({ x0: -2, x1: 2, z0: zz - 3.2 / n, z1: zz + 3.2 / n, y1: y });
+    void z;
+  }
+  // luneta, bandeirinhas e placa
+  const tripe = malha(new THREE.CylinderGeometry(0.08, 0.12, 1.2, 8), mat(0x2f3440), { contorno: 0.02 }); tripe.position.set(3, H + 0.85, z0 + 2); g.add(tripe);
+  const lun = malha(new THREE.CylinderGeometry(0.16, 0.22, 1.2, 12), mat(0xffcc1f), { contorno: 0.03 }); lun.rotation.x = 1.2; lun.position.set(3, H + 1.55, z0 + 1.8); g.add(lun);
+  const mastro = malha(new THREE.CylinderGeometry(0.08, 0.08, 4, 8), mat(0xffffff), { contorno: 0.02 }); mastro.position.set(-4.5, H + 2.2, z0 + 1.5); g.add(mastro);
+  const band = malha(new THREE.PlaneGeometry(1.6, 1), mat(0xec2e8c, { side: THREE.DoubleSide }), { sombra: false }); band.position.set(-3.7, H + 3.6, z0 + 1.5); g.add(band);
+  const pl = new THREE.Group(); pl.position.set(-4.5, 0, 0.3); g.add(pl); nome(pl, "Mirante", { y: 2.2, largura: 4, cor: "#3c9a4a" });
+  for (const s of [-1, 1]) { const p = malha(new THREE.CylinderGeometry(0.08, 0.08, 2.2, 8), mat(0x9a6232)); p.position.set(-4.5 + s * 1.8, 1.1, 0.3); g.add(p); }
+  return S;
+}
+// heliponto: círculo com o H, anel amarelo e luzinhas (de noite acendem)
+const texHeli = texturaCanvas(256, 256, (c, w, h) => {
+  c.clearRect(0, 0, w, h);
+  c.fillStyle = "#3a3f4c"; c.beginPath(); c.arc(128, 128, 126, 0, 7); c.fill();
+  c.strokeStyle = "#ffcc1f"; c.lineWidth = 12; c.beginPath(); c.arc(128, 128, 100, 0, 7); c.stroke();
+  c.fillStyle = "#ffffff"; c.font = "900 150px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("H", 128, 138);
+});
+export function heliponto(H) {
+  const S = novo(), g = S.grupo;
+  const pad = new THREE.Mesh(new THREE.CircleGeometry(H.r, 40), new THREE.MeshToonMaterial({ map: texHeli, transparent: true, alphaTest: 0.3 })); pad.rotation.x = -Math.PI / 2; pad.position.set(H.x, 0.08, H.z); pad.receiveShadow = true; g.add(pad);
+  for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; const l = malha(new THREE.SphereGeometry(0.22, 10, 8), MAT.lampada, { sombra: false }); l.position.set(H.x + Math.cos(a) * (H.r + 0.4), 0.2, H.z + Math.sin(a) * (H.r + 0.4)); g.add(l); }
+  return S;
+}
+// coqueiro, guarda-sol e a praia do lago
+function coqueiro(alt = 6) {
+  const g = new THREE.Group();
+  let y = 0, x = 0;
+  for (let i = 0; i < 6; i++) { const s = malha(new THREE.CylinderGeometry(0.22, 0.28, alt / 6 + 0.05, 8), mat(i % 2 ? 0xb9875a : 0xa8784d), { contorno: 0.03, sombra: false }); x += 0.12; s.position.set(x, y + alt / 12, 0); s.rotation.z = -0.12; g.add(s); y += alt / 6; }
+  for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; const f = malha(new THREE.ConeGeometry(0.45, 3, 4), mat(0x3fae4a), { contorno: 0.03, sombra: false }); f.position.set(x + Math.cos(a) * 1.3, y, Math.sin(a) * 1.3); f.rotation.set(Math.sin(a) * 1.2, 0, -Math.cos(a) * 1.2 - Math.PI / 2 * 0); f.rotation.z = Math.cos(a) * -1.3; f.rotation.x = Math.sin(a) * 1.3; g.add(f); }
+  for (let i = 0; i < 3; i++) { const c = malha(new THREE.SphereGeometry(0.25, 8, 6), mat(0x7a4a2a), { sombra: false }); c.position.set(x + (i - 1) * 0.3, y - 0.35, 0.2); g.add(c); }
+  return g;
+}
+function guardaSol(c1, c2) {
+  const g = new THREE.Group();
+  const haste = malha(new THREE.CylinderGeometry(0.06, 0.06, 2.6, 8), mat(0xffffff), { sombra: false }); haste.position.y = 1.3; g.add(haste);
+  for (let i = 0; i < 8; i++) { const fat = malha(new THREE.ConeGeometry(1.8, 0.8, 8, 1, true, (i / 8) * Math.PI * 2, Math.PI / 4), mat(i % 2 ? c1 : c2, { side: THREE.DoubleSide }), { sombra: true }); fat.position.y = 2.7; g.add(fat); }
+  const toalha = caixa(1.2, 0.04, 2, mat(c1), { sombra: false }); toalha.position.set(1.2, 0.08, 0.3); g.add(toalha);
+  return g;
+}
+export function praia(P, L2) {
+  const S = novo(), g = S.grupo;
+  const cx = (P.x0 + P.x1) / 2, cz = (P.z0 + P.z1) / 2;
+  const areia = new THREE.Mesh(new THREE.PlaneGeometry(P.x1 - P.x0, P.z1 - P.z0), mat(0xf3dca0)); areia.rotation.x = -Math.PI / 2; areia.position.set(cx, 0.04, cz); areia.receiveShadow = true; g.add(areia);
+  const raso = new THREE.Mesh(new THREE.CircleGeometry(L2.r + 1.8, 48), new THREE.MeshToonMaterial({ color: 0x8fe0ff })); raso.rotation.x = -Math.PI / 2; raso.position.set(L2.x, 0.06, L2.z); g.add(raso);
+  const agua = new THREE.Mesh(new THREE.CircleGeometry(L2.r, 48), new THREE.MeshToonMaterial({ color: 0x2fa6ef, emissive: 0x0a3a66, emissiveIntensity: 0.25 })); agua.rotation.x = -Math.PI / 2; agua.position.set(L2.x, 0.08, L2.z); agua.userData.dinamico = true; g.add(agua);
+  S.solidos.push({ circulo: true, x: L2.x, z: L2.z, r: L2.r - 0.5 });
+  S.agua = agua;
+  // boias e barquinho
+  const boias = [];
+  for (let i = 0; i < 3; i++) { const b = malha(new THREE.TorusGeometry(0.6, 0.22, 8, 18), mat([0xec2e8c, 0xffcc1f, 0x00b5f0][i]), { contorno: 0.03 }); b.rotation.x = Math.PI / 2; b.position.set(L2.x - 8 + i * 8, 0.2, L2.z - 6 + (i % 2) * 10); b.userData.dinamico = true; g.add(b); boias.push(b); }
+  S.boias = boias;
+  // coqueiros e guarda-sóis em volta do lago, quiosque de sucos na beira
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2 + 0.3, x = L2.x + Math.cos(a) * (L2.r + 11), z = L2.z + Math.sin(a) * (L2.r + 9);
+    if (z < P.z0 + 4 || z > P.z1 - 3 || x < P.x0 + 3 || x > P.x1 - 3) continue;
+    const c = coqueiro(5.5 + rnd() * 2); c.position.set(x, 0.04, z); c.rotation.y = rnd() * 6; g.add(c); S.solidos.push({ x0: x - 0.4, x1: x + 0.4, z0: z - 0.4, z1: z + 0.4, y1: 6 });
+  }
+  const cores = [[0xec2e8c, 0xffffff], [0x00b5f0, 0xffffff], [0xffcc1f, 0xff7a00], [0x58c43a, 0xffffff], [0x8e6cff, 0xffffff]];
+  cores.forEach(([a, b], i) => {
+    const ang = Math.PI * 0.1 + i * 0.42, x = L2.x + Math.cos(ang) * (L2.r + 5), z = L2.z + Math.sin(ang) * (L2.r + 4);
+    const gs = guardaSol(a, b); gs.position.set(x, 0.04, z); gs.rotation.y = -ang; g.add(gs); S.solidos.push({ x0: x - 0.15, x1: x + 0.15, z0: z - 0.15, z1: z + 0.15, y1: 3 });
+  });
+  const qx = P.x1 - 12, qz = P.z0 + 5;
+  const quiosque = new THREE.Group(); quiosque.position.set(qx, 0, qz + 2.5); g.add(quiosque);
+  corpo(quiosque, 6, 3, 4, 0xfff4e0, { beiral: 0xff7a00 });
+  const tetoQ = malha(new THREE.ConeGeometry(4.6, 2, 6), mat(0xe8b25a), { contorno: 0.06 }); tetoQ.position.set(0, 4.3, -2); quiosque.add(tetoQ);
+  nome(quiosque, "Sucos", { y: 2.4, largura: 4, cor: "#ff7a00" });
+  S.solidos.push({ x0: qx - 3, x1: qx + 3, z0: qz - 1.5, z1: qz + 2.5, y1: 20 });
+  return S;
+}
 export { onibus3D };

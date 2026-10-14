@@ -11,6 +11,8 @@ const URL_JOGO = `${BASE}/jogos/rabiscopolis/`;
 const FOTOS = fileURLToPath(new URL("../../.claude/tmp/rabiscopolis/", import.meta.url));
 mkdirSync(FOTOS, { recursive: true });
 let falhas = 0;
+// se o navegador cair, uma chamada fica esperando para sempre: o vigia encerra com falha em vez de sair calado
+const vigia = setTimeout(() => { console.log("✗ o teste travou (o navegador caiu?)"); process.exit(2); }, 50 * 60 * 1000);
 const ok = (c, msg) => { console.log(c ? "✓" : "✗", msg); if (!c) falhas++; };
 const ate = async (t, expr, ms = 40000, passo = 250) => { const fim = Date.now() + ms; while (Date.now() < fim) { if (await t.ev(expr).catch(() => false)) return true; await espera(passo); } return false; };
 // 404 das vozes ainda não geradas (rp-*) e do banco de nomes é esperado
@@ -76,6 +78,19 @@ const fps = (t) => t.ev(`new Promise((r) => { let n = 0; const t0 = performance.
   const p1 = await t.ev("[teste.dentro.pos.x, teste.dentro.pos.z]");
   const andou = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
   ok(andou > 5 && !atravessou, `(c) o carro andou ${andou.toFixed(1)} m em 2 s sem atravessar sólidos`);
+  // rádio gospel: liga no carro, abaixa quando a anfitriã fala, desliga ao sair
+  ok(await t.ev("!!teste.radio?.ligado && !teste.radioUI.el.hidden"), "rádio: entrou no carro, o rádio está tocando e o painel aparece");
+  await t.ev("teste.falar('rp-garagem')");
+  let abaixou = false;
+  for (let i = 0; i < 12 && !abaixou; i++) { await espera(150); abaixou = await t.ev("teste.radio.estado().abaixado"); }
+  ok(abaixou, "rádio: a fala gravada (MP3) abaixa o volume");
+  await t.foto(`${FOTOS}radio-rabiscolandia-1280.png`);
+  await t.ev("teste.sair()");
+  ok(await t.ev("!teste.radio.ligado && teste.radioUI.el.hidden"), "rádio: saiu do carro, o rádio para");
+  const hiR = await t.ev("teste.veiculos.findIndex((v) => v.tipo === 'heli')");
+  await t.ev(`teste.entrar(${hiR})`);
+  ok(await t.ev("!teste.radio.ligado && teste.radioUI.el.hidden"), "rádio: no helicóptero não liga");
+  await t.ev("teste.sair()");
   // foto: carro na avenida (Avenida da Alegria, z = 50)
   await t.ev("teste.sair(); (() => { const v = teste.veiculos[0]; v.pos.set(-20, 0.03, 52.8); v.ang = Math.PI / 2; v.vel = 0; })(); teste.entrar(0); teste.volante(0.6, 0)");
   await espera(1800);
@@ -110,6 +125,58 @@ const fps = (t) => t.ev(`new Promise((r) => { let n = 0; const t0 = performance.
     await t.foto(`${FOTOS}${arq}`);
   }
   await t.ev("teste.vista(null)");
+  // ---------- D: cidade maior (5 × 5 blocos), helicóptero e as duas escolas
+  ok(await t.ev("teste.mundo.blocos.length === 25"), "cidade de 5 × 5 blocos");
+  // helicóptero do heliponto: sobe, voa para a frente sem atravessar prédios, desce devagar e pousa
+  const hi = await t.ev("teste.veiculos.findIndex((v) => v.tipo === 'heli')");
+  ok(hi >= 0, "o helicóptero está no heliponto");
+  await t.ev(`teste.vista(null); teste.entrar(${hi})`);
+  await espera(400);
+  await t.foto(`${FOTOS}helicoptero-no-heliponto.png`);
+  await t.ev("teste.voar(true)");
+  await espera(2500);
+  const alt1 = await t.ev("teste.dentro.alt");
+  const h0 = await t.ev("[teste.dentro.pos.x, teste.dentro.pos.z]");
+  await t.ev("teste.volante(1, 0.15, { subir: false })");
+  let furou = false;
+  for (let i = 0; i < 10; i++) { await espera(250); if (await t.ev("teste.mundo.solidos.some((s) => s.y1 > teste.dentro.alt + 0.3 && teste.dentro.pos.x > s.x0 && teste.dentro.pos.x < s.x1 && teste.dentro.pos.z > s.z0 && teste.dentro.pos.z < s.z1)")) furou = true; }
+  const h1 = await t.ev("[teste.dentro.pos.x, teste.dentro.pos.z]");
+  await t.foto(`${FOTOS}helicoptero-voando.png`);
+  await t.ev("teste.volante(0, 0, { descer: true })");
+  let pousou = false;
+  for (let i = 0; i < 40 && !pousou; i++) { await espera(300); pousou = await t.ev("teste.dentro.alt - teste.chaoHeli(teste.dentro.pos.x, teste.dentro.pos.z) < 0.15"); }
+  const voou = Math.hypot(h1[0] - h0[0], h1[1] - h0[1]);
+  ok(alt1 > 4 && voou > 8 && !furou && pousou, `helicóptero: subiu a ${alt1.toFixed(1)} m, voou ${voou.toFixed(1)} m sem atravessar prédios e pousou devagar (${pousou})`);
+  ok(await t.ev("teste.dentro.g.userData.rotor.rotation.y !== 0"), "helicóptero: as hélices giram");
+  await t.ev("teste.volante(null); teste.sair()");
+  ok(await t.ev("teste.dentro === null"), "helicóptero: depois de pousar, o Rabisco sai");
+  // Garagem chama o helicóptero
+  await t.ev("teste.ir(0, 33); teste.olhar(Math.PI)");
+  await espera(400);
+  const dh = await t.ev("teste.garagem('heli')");
+  ok(dh != null && dh < 10, `app Garagem chama o helicóptero a ${dh?.toFixed?.(1)} m`);
+  // vista de cima da cidade maior, escolas e novos bairros
+  for (const [arq, pos, alvo, ir] of [
+    ["rabiscopolis-maior-vista.png", [0, 430, 300], [0, 0, 0], [0, 33]],
+    ["rabiscopolis-maior-praia.png", [30, 18, 160], [0, 0, 200], [0, 165]],
+    ["rabiscopolis-maior-mirante-heliponto.png", [-30, 20, -160], [5, 3, -192], [0, -170]],
+    ["rabiscopolis-maior-oeste.png", [-160, 18, -80], [-195, 2, -62], [-195, -45]],
+    ["rabiscopolis-maior-leste.png", [160, 18, 85], [195, 2, 66], [195, 45]],
+    ["escolas-kids-1.png", [-180, 9, 14], [-195, 4, -12], [-195, 5]],
+    ["escolas-kids-1-parquinho.png", [-185, 10, 48], [-195, 0, 22], [-195, 40]],
+    ["escolas-kids-2.png", [210, 10, 14], [195, 4, -14], [195, 5]],
+  ]) {
+    await t.ev(`teste.ir(${ir[0]}, ${ir[1]}); teste.vista(${JSON.stringify(pos)}, ${JSON.stringify(alvo)}, ${arq.includes("vista") ? "false" : "true"})`);
+    await espera(1800);
+    await t.foto(`${FOTOS}${arq}`);
+  }
+  await t.ev("teste.vista(null)");
+  // orçamento também nos bairros novos
+  for (const [nome, cmd] of [["Educarte Kids I", "teste.ir(-195, 4); teste.olhar(Math.PI)"], ["praia", "teste.ir(0, 160); teste.olhar(0)"]]) {
+    await t.ev(cmd); await espera(1200);
+    const m = await t.ev("teste.medir().total");
+    ok(m.calls <= 250 && m.tris <= 350000, `orçamento TV/computador em ${nome}: ${m.calls} chamadas, ${Math.round(m.tris / 1000)} mil triângulos`);
+  }
   // praça de dia e de noite
   await t.ev("teste.hora(13); teste.ir(0, 36); teste.olhar(Math.PI)");
   await espera(1500);
@@ -121,11 +188,6 @@ const fps = (t) => t.ev(`new Promise((r) => { let n = 0; const t0 = performance.
   ok(luz.janela > 0.5 && luz.lampada > 1, `(e) às 22 h as janelas acendem (emissivo ${luz.janela.toFixed(2)}, postes ${luz.lampada.toFixed(2)})`);
   await t.foto(`${FOTOS}praca-noite.png`);
   await t.ev("teste.hora(10)");
-  // vista de cima
-  await t.ev("teste.vista([0, 250, 175], [0, 0, 8], false)");
-  await espera(1500);
-  await t.foto(`${FOTOS}vista-de-cima.png`);
-  await t.ev("teste.vista(null)");
   // moradores de perto (protótipo no jogo): o Lápis Vermelho na Avenida da Alegria
   await t.ev("(() => { const m = teste.moradores[0].p.grupo; teste.ir(m.position.x + 3, m.position.z - 2); })()");
   await espera(600);
@@ -173,14 +235,52 @@ const fps = (t) => t.ev(`new Promise((r) => { let n = 0; const t0 = performance.
   ok(Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) > 3, `(g) segurando ▲ o carro anda (${Math.hypot(p1[0] - p0[0], p1[1] - p0[1]).toFixed(1)} m)`);
   await t.foto(`${FOTOS}celular-deitado-no-carro.png`);
   await espera(1500);
-  await t.toque(".rp-sair");
+  await t.toque(".rp-carro .rp-sair");
   await espera(500);
   ok(await t.ev("teste.dentro === null"), "(g) botão Sair tira o Rabisco do carro");
+  // helicóptero no toque: ◀ ▶ à esquerda; ▲ subir, ▼ descer, ➤ frente e Sair à direita
+  await t.ev("teste.entrar(teste.veiculos.findIndex((v) => v.tipo === 'heli'))");
+  await espera(600);
+  const hb = await t.ev(`[${vis('.rp-heli [data-b="esq"]')}, ${vis('.rp-heli [data-b="dir"]')}, ${vis('[data-b="subir"]')}, ${vis('[data-b="descer"]')}, ${vis('[data-b="voar"]')}, ${vis(".rp-heli .rp-sair")}, ${vis(".jd-camada")}, ${vis(".rp-carro")}]`);
+  ok(hb.slice(0, 6).every(Boolean) && !hb[6] && !hb[7], `(g) no helicóptero: ◀ ${hb[0]} ▶ ${hb[1]} ▲ ${hb[2]} ▼ ${hb[3]} ➤ ${hb[4]} Sair ${hb[5]}`);
+  const [sx, sy] = await t.ev(`(() => { const b = document.querySelector('[data-b="subir"]').getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2]; })()`);
+  await t.cmd("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: sx, y: sy }] });
+  await espera(1500);
+  await t.cmd("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  const altT = await t.ev("teste.dentro.alt");
+  ok(altT > 2, `(g) segurando ▲ o helicóptero sobe (${altT.toFixed(1)} m)`);
+  await t.foto(`${FOTOS}helicoptero-celular.png`);
+  await t.ev("teste.volante(0, 0, { descer: true })");
+  for (let i = 0; i < 30 && !(await t.ev("teste.dentro.alt - teste.chaoHeli(teste.dentro.pos.x, teste.dentro.pos.z) < 0.15")); i++) await espera(300);
+  await t.ev("teste.volante(null)");
+  await t.toque(".rp-heli .rp-sair");
+  await espera(500);
+  ok(await t.ev("teste.dentro === null"), "(g) depois de pousar, Sair tira o Rabisco do helicóptero");
   o = await olhar();
   ok(!PEDIDO.test(o.txt), "(h) depois de dirigir, nenhum pedido de controle/QR");
   ok(!errosDeVerdade(t).length, `(a) celular sem erro de console ${errosDeVerdade(t).slice(0, 4).join(" ; ")}`);
   } finally { await t.fechar(); }
 }
 
+// ------------------------------------------------------------------ celular deitado 844 × 390: rádio sem tapar os botões
+{
+  const t = await abrir("about:blank", { mobile: true, largura: 844, altura: 390 });
+  try {
+    await t.cmd("Page.addScriptToEvaluateOnNewDocument", { source: "navigator.getGamepads = () => [null, null, null, null];" });
+    await t.cmd("Page.navigate", { url: `${URL_JOGO}?teste&jogar&fixo` });
+    ok(await ate(t, "!!window.teste?.vivo && !!teste.mundo"), "844 × 390: começou");
+    await espera(1500);
+    await t.ev("teste.entrar(0)");
+    await espera(1200);
+    const r = await t.ev(`(() => { const caixa = (e) => { const b = e.getBoundingClientRect(); return [b.left, b.top, b.right, b.bottom]; };
+      const rad = caixa(teste.radioUI.el); const outros = [...document.querySelectorAll(".rp-carro button, .minimapa-rp, .casca-topo button")].filter((e) => e.offsetParent).map(caixa);
+      const bate = outros.filter((o) => !(o[2] <= rad[0] || o[0] >= rad[2] || o[3] <= rad[1] || o[1] >= rad[3])).length;
+      return { rad, bate, ligado: teste.radio.ligado }; })()`);
+    ok(r.ligado && r.bate === 0, `844 × 390: rádio tocando e o painel não encosta em botão nenhum (${r.bate} sobreposições)`);
+    await t.foto(`${FOTOS}radio-rabiscolandia-844.png`);
+  } finally { await t.fechar(); }
+}
+
+clearTimeout(vigia);
 console.log(falhas ? `${falhas} falha(s)` : "tudo certo");
 process.exit(falhas ? 1 : 0);

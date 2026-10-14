@@ -1,27 +1,36 @@
 // Rabiscolândia: traçado da cidade em dados puros (sem three.js), usado pela montagem 3D (mundo.js), pelo minimapa,
 // pela física e pelo teste em node (ferramentas/teste/rabiscopolis-mapa.mjs).
 //
-// A cidade tem ~300 × 300 m, dividida em 3 × 3 blocos de 100 m (só o bloco atual e os vizinhos ficam visíveis):
+// A cidade tem ~500 × 500 m, dividida em 5 × 5 blocos de 100 m (só o bloco atual e os vizinhos ficam visíveis).
+// O miolo (3 × 3, entre -150 e 150) é a cidade original; o anel de fora tem os bairros novos:
 //
-//            x: -150 ······ -50 ······· 50 ······ 150
-//   z -150   ┌──────────┬───────────┬──────────┐
-//            │ Morro    │  Escola   │ Torres   │      Avenida da Esperança (z = -50)
-//    -50     ├──────────┼───────────┼──────────┤
-//            │ Bairro   │  Centro   │ Comércio │      Rua das Casas (z = 0, oeste) · Rua do Comércio (z = 0, leste)
-//     50     ├──────────┼───────────┼──────────┤
-//            │Fazendinha│  Parque   │ Jardins  │      Avenida da Alegria (z = 50)
-//    150     └──────────┴───────────┴──────────┘      Avenida do Contorno em volta de tudo (cantos arredondados)
+//            x: -250 ····· -150 ····· -50 ······ 50 ······ 150 ····· 250
+//   z -250   ┌─────────┬──────────┬───────────┬──────────┬─────────┐
+//            │ Bosque  │ Bosque   │ Mirante + │ Bosque   │ Bosque  │   Rua do Mirante (x = 0, norte)
+//   -150     ├─────────┼──────────┼ Heliponto ┼──────────┼─────────┤
+//            │Veterin. │ Morro    │ Biblioteca│ Torres   │ Estúdio │   Avenida da Esperança (z = -50)
+//    -50     ├─────────┼──────────┼───────────┼──────────┼─────────┤
+//            │Kids I   │ Bairro   │ Centro    │ Comércio │ Kids II │   Rua das Casas / do Comércio (z = 0)
+//     50     ├─────────┼──────────┼───────────┼──────────┼─────────┤
+//            │Lava-ráp.│Fazendinha│ Parque    │ Esportes │ Correios│   Avenida da Alegria (z = 50)
+//    150     ├─────────┼──────────┼───────────┼──────────┼─────────┤
+//            │ Bosque  │ Bosque   │ Praia     │ Bosque   │ Bosque  │
+//    250     └─────────┴──────────┴───────────┴──────────┴─────────┘
+// Avenida do Contorno (anel de dentro, ±140) e Estrada da Serra (anel de fora, ±240), com cantos arredondados.
+// As duas escolas ficam em lados opostos: Educarte Kids I (bebês de 4 meses a 4 anos) no oeste e Educarte Kids II
+// (5 a 12 anos) no leste, a 390 m uma da outra.
 //
 // Unidade: o Rabisco tem 1,8 de altura. x para a direita, z para baixo (vista de cima). dir = para onde a fachada olha.
 
 import { PARCEIROS } from "../cidade-do-rabisco/parceiros.js";
 
-export const BORDA = 150;
+export const BORDA = 250;
+export const NBLOCOS = 5;
 export const BLOCO = 100;
 export const CALCADA = 3; // largura da calçada dos dois lados de cada rua
 
-// bloco (0..2, 0..2) de um ponto
-export const blocoDe = (x, z) => [Math.max(0, Math.min(2, Math.floor((x + BORDA) / BLOCO))), Math.max(0, Math.min(2, Math.floor((z + BORDA) / BLOCO)))];
+// bloco (0..4, 0..4) de um ponto
+export const blocoDe = (x, z) => [Math.max(0, Math.min(NBLOCOS - 1, Math.floor((x + BORDA) / BLOCO))), Math.max(0, Math.min(NBLOCOS - 1, Math.floor((z + BORDA) / BLOCO)))];
 
 const arco = (cx, cz, r, a0, a1, n) => {
   const pts = [];
@@ -40,14 +49,17 @@ function retanguloArredondado(x0, z0, x1, z1, r) {
 
 // ---------- ruas (w: largura do asfalto · fechada: volta para o começo)
 const CONTORNO = retanguloArredondado(-140, -140, 140, 140, 24);
+const SERRA = retanguloArredondado(-240, -240, 240, 240, 32);
 export const RUAS = [
   { id: "contorno", nome: "Avenida do Contorno", w: 12, fechada: true, pts: CONTORNO },
-  { id: "av-norte", nome: "Avenida da Esperança", w: 12, pts: [[-140, -50], [140, -50]] },
-  { id: "av-sul", nome: "Avenida da Alegria", w: 12, pts: [[-140, 50], [140, 50]] },
-  { id: "oeste", nome: "Rua do Sol", w: 11, pts: [[-50, -140], [-50, 140]] },
-  { id: "leste", nome: "Rua da Lua", w: 11, pts: [[50, -140], [50, 140]] },
-  { id: "casas", nome: "Rua das Casas", w: 9, pts: [[-140, 0], [-50, 0]] },
-  { id: "comercio", nome: "Rua do Comércio", w: 10, pts: [[50, 0], [140, 0]] },
+  { id: "serra", nome: "Estrada da Serra", w: 12, fechada: true, pts: SERRA },
+  { id: "av-norte", nome: "Avenida da Esperança", w: 12, pts: [[-240, -50], [240, -50]] },
+  { id: "av-sul", nome: "Avenida da Alegria", w: 12, pts: [[-240, 50], [240, 50]] },
+  { id: "oeste", nome: "Rua do Sol", w: 11, pts: [[-50, -240], [-50, 240]] },
+  { id: "leste", nome: "Rua da Lua", w: 11, pts: [[50, -240], [50, 240]] },
+  { id: "casas", nome: "Rua das Casas", w: 9, pts: [[-240, 0], [-50, 0]] },
+  { id: "comercio", nome: "Rua do Comércio", w: 10, pts: [[50, 0], [240, 0]] },
+  { id: "mirante", nome: "Rua do Mirante", w: 10, pts: [[0, -140], [0, -240]] },
   { id: "flores", nome: "Rua das Flores", w: 9, pts: [[-140, -95], [-50, -95]] },
 ];
 
@@ -98,7 +110,7 @@ export const LUGARES = [
   L("igreja", "Igreja Reviver", 0, -17, 0, 1, { recuo: 4, pegada: [26, 16], raio: 14, bairro: "Centro", foto: "assets/parceiros/igreja-reviver.webp?v=1", proporcao: 1024 / 550 }),
   // Escola, Hospital e Bombeiros: de frente para a Avenida da Esperança
   L("hospital", "Hospital Cuidar", -28, -59.5, 0, 1, { pegada: [18, 15], bairro: "Escola" }),
-  L("escola", "Escola Educarte", 0, -59.5, 0, 1, { pegada: [26, 16], raio: 14, bairro: "Escola" }),
+  L("biblioteca", "Biblioteca Ler é Bom", 0, -59.5, 0, 1, { pegada: [26, 16], raio: 14, bairro: "Escola" }),
   L("bombeiros", "Bombeiros", 29, -59.5, 0, 1, { pegada: [16, 15], bairro: "Escola" }),
   // Comércio: lado norte da Rua do Comércio
   L("mercado", "Mercado Cesta Cheia", 70, -9, 0, 1, { pegada: [20, 14], bairro: "Comércio" }),
@@ -110,6 +122,17 @@ export const LUGARES = [
   L("campo", "Campo de Futebol", 95, 59.5, 0, -1, { raio: 18, recuo: 0, bairro: "Esportes" }),
   L("quadra", "Quadra da Alegria", 98, -117, -1, 0, { raio: 14, recuo: 0, bairro: "Esportes" }),
   L("horta", "Horta Comunitária", 115, -101, 0, 1, { raio: 12, recuo: 0, bairro: "Esportes" }),
+  // bairros de fora: as duas escolas (uma em cada lado da cidade), veterinário, lava-rápido, estúdio de música,
+  // correios, mirante com heliponto e a praia do lago
+  L("kids1", "Educarte Kids I", -195, -8.5, 0, 1, { pegada: [34, 22], recuo: 2, raio: 18, bairro: "Educarte Kids I (bebês até 4 anos)" }),
+  L("kids2", "Educarte Kids II", 195, -8.5, 0, 1, { pegada: [32, 20], recuo: 2, raio: 18, bairro: "Educarte Kids II (5 a 12 anos)" }),
+  L("veterinario", "Veterinário Amigo Bicho", -195, -59.5, 0, 1, { pegada: [20, 15], bairro: "Oeste" }),
+  L("lavarapido", "Lava-Rápido Bolhinha", -195, 59.5, 0, -1, { pegada: [22, 14], bairro: "Oeste" }),
+  L("estudio", "Estúdio de Música Dó-Ré-Mi", 195, -59.5, 0, 1, { pegada: [18, 14], bairro: "Leste" }),
+  L("correios", "Correios", 195, 59.5, 0, -1, { pegada: [18, 14], bairro: "Leste" }),
+  L("mirante", "Mirante da Serra", -9.5, -190, 1, 0, { pegada: [18, 18], recuo: 1, raio: 14, bairro: "Norte" }),
+  L("heliponto", "Heliponto", 9.5, -190, -1, 0, { raio: 12, recuo: 0, bairro: "Norte" }),
+  L("praia", "Praia do Lago", 0, 149.5, 0, -1, { raio: 20, recuo: 0, bairro: "Sul" }),
   L("fazendinha", "Fazendinha", -95, 59.5, 0, -1, { raio: 18, recuo: 3, pegada: [44, 30], bairro: "Fazendinha" }),
 ];
 
@@ -153,6 +176,11 @@ export const CAMPO = { x: 95, z: 92, w: 30, d: 46 };            // campo de fute
 export const ESPORTES = { x0: 62, x1: 130, z0: 62, z1: 130 };    // campo, arquibancada e vestiário
 export const QUADRA = { x0: 100, x1: 130, z0: -130, z1: -104 };  // quadra poliesportiva
 export const HORTA = { x0: 100, x1: 130, z0: -98, z1: -72 };     // horta comunitária
+export const PARQUINHO_BEBE = { x0: -213, x1: -177, z0: 11, z1: 35 }; // pátio da Educarte Kids I
+export const PATIO_KIDS2 = { x0: 179, x1: 211, z0: 11, z1: 35 };     // quadra da Educarte Kids II
+export const HELIPONTO = { x: 30, z: -190, r: 10 };
+export const PRAIA = { x0: -44, x1: 44, z0: 157, z1: 230 };
+export const LAGO2 = { x: 0, z: 202, r: 24 };
 
 // ---------- vagas dos veículos que o Rabisco pode dirigir (fora do asfalto, na beira da rua)
 // tipo: "carro" (conversível) | "onibus" · ang: para onde a frente aponta (0 = +z)
@@ -160,6 +188,7 @@ export const VAGAS = [
   { x: 16, z: 37, ang: Math.PI / 2, tipo: "carro", cor: 0xec2e8c },
   { x: -18, z: 37, ang: -Math.PI / 2, tipo: "carro", cor: 0x00b5f0 },
   { x: 30, z: -40, ang: Math.PI / 2, tipo: "onibus" },
+  { x: HELIPONTO.x, z: HELIPONTO.z, ang: -Math.PI / 2, tipo: "heli" },
 ];
 export const LARGADA = { x: 0, z: 33, dir: Math.PI }; // na frente da praça, olhando para a igreja
 
@@ -174,9 +203,11 @@ export const PEGADAS_FIXAS = [
   { id: "praca", x0: PRACA.x - PRACA.r - 2, x1: PRACA.x + PRACA.r + 2, z0: PRACA.z - PRACA.r - 2, z1: PRACA.z + PRACA.r + 2 },
   { id: "parque", ...PARQUE }, { id: "fazenda", ...FAZENDA },
   { id: "esportes", ...ESPORTES }, { id: "quadra-area", ...QUADRA }, { id: "horta-area", ...HORTA },
+  { id: "parquinho-bebe", ...PARQUINHO_BEBE }, { id: "patio-kids2", ...PATIO_KIDS2 }, { id: "praia-area", ...PRAIA },
+  { id: "heliponto-area", x0: HELIPONTO.x - HELIPONTO.r, x1: HELIPONTO.x + HELIPONTO.r, z0: HELIPONTO.z - HELIPONTO.r, z1: HELIPONTO.z + HELIPONTO.r },
   // pontos de parceira ainda livres ficam reservados (a próxima parceira já tem lugar)
   ...PONTOS_PARCEIROS.slice(PARCEIROS.length).map(([x, z, dx, dz], i) => ({ id: `reserva-parceira-${i}`, ...pegadaDe(x, z, [dx, dz], LOJA_MAX, 7.5, 1) })),
-  ...VAGAS.map((v, i) => { const meioC = v.tipo === "onibus" ? 7.5 : 2.6, meioL = v.tipo === "onibus" ? 3 : 1.4, deitado = Math.abs(Math.sin(v.ang)) > 0.5; return { id: `vaga-${i}`, x0: v.x - (deitado ? meioC : meioL), x1: v.x + (deitado ? meioC : meioL), z0: v.z - (deitado ? meioL : meioC), z1: v.z + (deitado ? meioL : meioC) }; }),
+  ...VAGAS.filter((v) => v.tipo !== "heli").map((v, i) => { const meioC = v.tipo === "onibus" ? 7.5 : 2.6, meioL = v.tipo === "onibus" ? 3 : 1.4, deitado = Math.abs(Math.sin(v.ang)) > 0.5; return { id: `vaga-${i}`, x0: v.x - (deitado ? meioC : meioL), x1: v.x + (deitado ? meioC : meioL), z0: v.z - (deitado ? meioL : meioC), z1: v.z + (deitado ? meioL : meioC) }; }),
   { id: "largada", x0: LARGADA.x - 3, x1: LARGADA.x + 3, z0: LARGADA.z - 3, z1: LARGADA.z + 3 },
 ];
 export const PREDIOS = [];
@@ -184,9 +215,11 @@ export const PREDIOS = [];
   const r = semente(2027);
   const cores = ["#f6d2a8", "#bfe0f2", "#f5c4c4", "#c9eabf", "#fbe3a6", "#d8cdf2", "#ffd9b8", "#c4ece6"];
   const ocupado = (p) => [...PEGADAS_FIXAS, ...PREDIOS].some((o) => sobrepoe(p, o, 3));
-  for (let gx = -132; gx <= 132; gx += 17) for (let gz = -132; gz <= 132; gz += 17) {
+  for (let gx = -232; gx <= 232; gx += 17) for (let gz = -232; gz <= 232; gz += 17) {
     const x = gx + (r() - 0.5) * 3, z = gz + (r() - 0.5) * 3;
     const centro = Math.abs(x) < 50 && Math.abs(z) < 50;
+    const fora = Math.abs(gx) > 140 || Math.abs(gz) > 140; // anel de fora: menos prédios (bosques e casas)
+    if (fora && r() < 0.55) continue;
     const w = centro ? 11 + r() * 3 : 12 + r() * 5, d = centro ? 9 + r() * 2 : 11 + r() * 4;
     // fachada para a rua mais perto
     const gxR = distRua(x + 1, z).d - distRua(x - 1, z).d, gzR = distRua(x, z + 1).d - distRua(x, z - 1).d;
@@ -194,10 +227,10 @@ export const PREDIOS = [];
     const deitado = Math.abs(dir[0]) > 0.5;
     const p = { x0: x - (deitado ? d : w) / 2, x1: x + (deitado ? d : w) / 2, z0: z - (deitado ? w : d) / 2, z1: z + (deitado ? w : d) / 2 };
     const cantos = [[p.x0, p.z0], [p.x1, p.z0], [p.x1, p.z1], [p.x0, p.z1]];
-    if (cantos.some(([cx, cz]) => distRua(cx, cz).d < CALCADA + 1.5 || Math.abs(cx) > 128 || Math.abs(cz) > 128)) continue;
-    if (Math.hypot(x, z) > 175 || ocupado(p)) continue;
+    if (cantos.some(([cx, cz]) => distRua(cx, cz).d < CALCADA + 1.5 || Math.abs(cx) > 228 || Math.abs(cz) > 228)) continue;
+    if (ocupado(p)) continue;
     const andares = centro ? 2 + Math.floor(r() * 2) : 3 + Math.floor(r() * 5);
-    PREDIOS.push({ id: `predio-${PREDIOS.length}`, ...p, cx: x, cz: z, w, d, dir, rot: Math.atan2(dir[0], dir[1]), andares, cor: cores[Math.floor(r() * cores.length)], tipo: r() < 0.3 ? "sobrado" : "predio" });
+    PREDIOS.push({ id: `predio-${PREDIOS.length}`, ...p, cx: x, cz: z, w, d, dir, rot: Math.atan2(dir[0], dir[1]), andares, cor: cores[Math.floor(r() * cores.length)], tipo: r() < (fora ? 0.7 : 0.3) ? "sobrado" : "predio" });
   }
 }
 
@@ -212,6 +245,9 @@ export const ROTAS = [
   { id: "oeste", pts: [[-140, -50], [-50, -50], [-50, 50], [-140, 50]], carros: 2 },
   { id: "comercio", pts: [[50, 0], [140, 0], [140, 50], [50, 50]], carros: 1 },
   { id: "flores", pts: [[-140, -95], [-50, -95], [-50, -50], [-140, -50]], carros: 1 },
+  { id: "serra", pts: SERRA, carros: 5 },
+  { id: "leste-fora", pts: [[140, -50], [240, -50], [240, 50], [140, 50]], carros: 1 },
+  { id: "oeste-fora", pts: [[-240, -50], [-140, -50], [-140, 50], [-240, 50]], carros: 1 },
 ];
 
 // ---------- moradores do estojo: em que rua caminham (calçada) e de que tipo são
@@ -226,4 +262,8 @@ export const MORADORES = [
   { tipo: "caderno", cor: 0x1fc08e, nome: "Caderninho", rua: "comercio", lado: -1 },
   { tipo: "clipe", cor: 0xec2e8c, nome: "Clipe Rosa", rua: "casas", lado: 1 },
   { tipo: "lapis", cor: 0x58c43a, nome: "Lápis Verde", rua: "av-norte", lado: -1 },
+  { tipo: "giz", cor: 0x2f8fe8, nome: "Giz de Cera Azul", rua: "mirante", lado: 1 },
+  { tipo: "borracha", nome: "Borrachão", rua: "serra", lado: -1 },
+  { tipo: "caderno", cor: 0xff7a00, nome: "Caderno Laranja", rua: "av-sul", lado: 1 },
+  { tipo: "pincel", cor: 0x1fc08e, nome: "Pincel Verde", rua: "comercio", lado: 1 },
 ];

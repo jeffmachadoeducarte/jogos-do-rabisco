@@ -5,21 +5,30 @@
 
 import { THREE, mesclar } from "./base3d.js";
 import { carro } from "../cidade-do-rabisco/cidade.js";
-import { carroFofo, onibusFofo } from "./carros.js";
+import { carroFofo, onibusFofo, helicoptero } from "./carros.js";
 import { ROTAS } from "./mapa.js";
 
 export const CORES_CARRO = [0xec2e8c, 0x00b5f0, 0xff7a00, 0x58c43a, 0x8e6cff, 0xffcc1f];
 // veículo que o Rabisco pode dirigir: { g, tipo, pos, ang, vel, virar, giro, comp (meio comprimento), larg }
 export function criarVeiculo(tipo = "carro", cor = CORES_CARRO[0]) {
-  const g = tipo === "onibus" ? onibusFofo() : carroFofo(cor);
-  return { g, tipo, cor, pos: new THREE.Vector3(), ang: 0, vel: 0, virar: 0, giro: 0, batida: 0, buzina: 0, comp: tipo === "onibus" ? 4.4 : 2.4, larg: tipo === "onibus" ? 1.5 : 1.2, vmax: tipo === "onibus" ? 11 : 15 };
+  const g = tipo === "onibus" ? onibusFofo() : tipo === "heli" ? helicoptero() : carroFofo(cor);
+  if (tipo === "heli") g.rotation.order = "YXZ"; // inclina para a frente/lados sem embolar o giro
+  const medidas = { onibus: [4.4, 1.5, 11], heli: [3.0, 1.9, 14], carro: [2.4, 1.2, 15] }[tipo] ?? [2.4, 1.2, 15];
+  return { g, tipo, cor: tipo === "heli" ? 0x00b5f0 : cor, pos: new THREE.Vector3(), ang: 0, vel: 0, virar: 0, giro: 0, batida: 0, buzina: 0, comp: medidas[0], larg: medidas[1], vmax: medidas[2], alt: 0.03, vs: 0, rotor: 0 };
 }
 export function animarVeiculo(v, dt, t) {
   v.g.position.copy(v.pos);
   v.g.rotation.y = v.ang;
+  if (v.tipo === "heli") {
+    // hélices giram com o motor; inclina um pouco para onde vai
+    v.g.userData.rotor.rotation.y += v.rotor * dt * 28;
+    v.g.userData.rotorCauda.rotation.x += v.rotor * dt * 40;
+    v.g.rotation.x += (Math.min(0.25, v.vel * 0.015) - v.g.rotation.x) * Math.min(1, dt * 4);
+    v.g.rotation.z += (v.virar * 0.18 * Math.min(1, v.rotor) - v.g.rotation.z) * Math.min(1, dt * 4);
+  }
   v.giro += (v.vel * dt) / 0.44;
   for (const r of v.g.userData.rodas) r.rotation.x = v.giro;
-  if (v.g.userData.seta.visible) v.g.userData.seta.position.y = (v.tipo === "onibus" ? 5.2 : 3.2) + Math.sin(t * 4) * 0.2;
+  if (v.g.userData.seta.visible) v.g.userData.seta.position.y = (v.tipo === "onibus" ? 5.2 : v.tipo === "heli" ? 5.6 : 3.2) + Math.sin(t * 4) * 0.2;
 }
 
 // ---------- trânsito

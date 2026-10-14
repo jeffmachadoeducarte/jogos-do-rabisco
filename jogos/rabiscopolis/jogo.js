@@ -23,7 +23,9 @@ import { criarRabifone } from "./rabifone.js";
 import { criarToque } from "./toque.js";
 import { carregar, salvar } from "./salvar.js";
 import { criarQualidade } from "./qualidade.js";
-import { RUAS, segmentos, LOTES, VAGAS, LARGADA, LUGARES, LAGO, PARQUE, PRACA, FAZENDA, BORDA, MORADORES, distRua } from "./mapa.js";
+import { criarRadio } from "../../src/radio/radio.js";
+import { criarRadioUI } from "../../src/radio/radio-ui.js";
+import { RUAS, segmentos, LOTES, VAGAS, LARGADA, LUGARES, LAGO, PARQUE, PRACA, FAZENDA, BORDA, MORADORES, distRua, PRAIA, LAGO2, HELIPONTO } from "./mapa.js";
 
 const params = new URLSearchParams(location.search);
 const CONTROLES = [
@@ -33,6 +35,7 @@ const CONTROLES = [
   { id: "dir", nome: "Direita", teclas: ["KeyD", "ArrowRight"] },
   { id: "pular", nome: "Pular (no carro: buzina)", teclas: ["Space"], botoes: [0, 1], controle: "pulo" },
   { id: "acao", nome: "Ação (entrar, sair, morar aqui)", teclas: ["KeyF", "Enter"], botoes: [2, 3], controle: "acao" },
+  { id: "descer", nome: "Helicóptero: descer (pulo sobe)", teclas: ["ShiftLeft", "KeyZ"] },
   { id: "fone", nome: "Rabifone", teclas: ["Tab", "KeyC"], botoes: [8], controle: "select" },
   { id: "girarE", nome: "Girar a câmera ⟲", teclas: ["KeyQ"] },
   { id: "girarD", nome: "Girar a câmera ⟳", teclas: ["KeyE"] },
@@ -60,7 +63,8 @@ const jogo = criarCasca({
   jogadores: false, // 1 jogador nesta fatia: no celular sozinho nunca pede controle nem QR
   aoComecar: iniciar,
   aoSair: parar,
-  aoPausar: () => { teclas.clear(); toque?.zerar(); },
+  aoPausar: () => { teclas.clear(); toque?.zerar(); radioUI?.sairDoCarro(); },
+  aoContinuar: () => { if (dentro && dentro.tipo !== "heli") radioUI?.entrarNoCarro(); },
   aoControle: lerControle,
 });
 preCarregarFalas([]);
@@ -107,10 +111,19 @@ function lerControle({ segura, apertou, eixoX, eixoY }) {
   pad.gx = gx;
   if (apertou.pulo) pad.puloNovo = true;
   pad.pulo = segura.pulo;
+  // helicóptero: A/RB sobem (pulo), LB/LT descem
+  pad.descer = false;
+  for (const p of navigator.getGamepads?.() ?? []) if (p && (p.buttons[4]?.pressed || p.buttons[6]?.pressed)) pad.descer = true;
   if (apertou.acao) pad.acaoNova = true;
   if (apertou.select) fone?.abrir();
   if (apertou.voltar && mapaGrande && !mapaGrande.hidden) alternarMapa();
 }
+
+// ------------------------------------------------------------------ Rádio gospel (src/radio): só no carro e no ônibus
+// (no helicóptero não: LB desce o helicóptero e o painel usaria LB/RB/R3). O painel fica abaixo do minimapa
+// (no celular deitado, à esquerda, longe dos pedais e do 📱). Teclas R, [ e ]; as falas abaixam o volume sozinhas.
+let radio = null, radioUI = null;
+function garantirRadio() { if (!radio) { radio = criarRadio(); radioUI = criarRadioUI({ radio }); } }
 
 // ------------------------------------------------------------------ Estado
 let r3, cena, cam, ceu, mundo, fis, camera, rabisco, relogio, qualidade, vivo = false;
@@ -194,6 +207,7 @@ function iniciar() {
 }
 function parar() {
   vivo = false;
+  radioUI?.sairDoCarro();
   if (r3) { r3.dispose(); r3 = null; }
   veiculos.length = 0; transito = []; moradores = []; vovo = null; garagem = null;
   dentro = null; contexto = null; alvoMapa = null;
@@ -283,13 +297,14 @@ function morarAqui(c) {
   jogo.confete?.();
   const n = nomeCrianca();
   dizer("Rabiscolândia", n ? `Agora esta é a casa de ${n}! Que lar bonito!` : "Agora esta é a sua casa! Que lar bonito!", 4200);
-  falarNome("rp-casa-pre", "rp-casa-pos").then((ok) => { if (!ok) falar("rp-casa"); });
+  radio?.pausarPorFala(true);
+  falarNome("rp-casa-pre", "rp-casa-pos").then((ok) => { if (!ok) falar("rp-casa"); }).finally(() => setTimeout(() => radio?.pausarPorFala(false), 2500));
 }
 
 // ------------------------------------------------------------------ Veículos
 function pertoDeVeiculo() {
   let melhor = null, dm = Infinity;
-  for (const v of veiculos) { const d = Math.hypot(v.pos.x - j.pos.x, v.pos.z - j.pos.z) - (v.tipo === "onibus" ? 3.5 : 0); if (d < 3.6 && d < dm) { dm = d; melhor = v; } }
+  for (const v of veiculos) { const d = Math.hypot(v.pos.x - j.pos.x, v.pos.z - j.pos.z) - (v.tipo === "onibus" ? 3.5 : v.tipo === "heli" ? 1.5 : 0); if (d < 3.6 && v.alt < 1 && d < dm) { dm = d; melhor = v; } }
   return melhor;
 }
 function entrar(v) {
@@ -301,20 +316,28 @@ function entrar(v) {
   v.g.userData.seta.visible = false;
   sons.pisao();
   camera.st.manual = 0;
-  toque?.modo("carro");
+  toque?.modo(v.tipo === "heli" ? "heli" : "carro");
+  if (v.tipo !== "heli") { garantirRadio(); radioUI.entrarNoCarro(); } // dentro do gesto da criança (ação/toque)
+  if (v.tipo === "heli") {
+    const toqueTela = document.body.classList.contains("touch"), comControle = document.body.classList.contains("com-controle");
+    dizer("Rabiscolândia", toqueTela ? "Hélices girando! ▲ sobe, ▼ desce, ➤ voa para a frente. Para sair, pouse no chão." : comControle ? "Hélices girando! A sobe, LB desce, alavanca para a frente voa. Para sair, pouse no chão." : "Hélices girando! Espaço sobe, Shift desce, W voa para a frente. Para sair, pouse no chão.", 4600);
+    return;
+  }
   if (!entrar.falou) { entrar.falou = true; falar(v.tipo === "onibus" ? "rp-onibus" : "rp-carro"); dizer("Rabiscolândia", "Cinto afivelado! Para a frente acelera, para trás freia. Aperte a ação de novo para sair.", 4200); }
 }
 function sair() {
   const v = dentro;
   if (!v || Math.abs(v.vel) > 3) return;
+  if (v.tipo === "heli" && v.alt - fis.chaoHeli(v.pos.x, v.pos.z) > 0.3) { dizer("Rabiscolândia", "Primeiro pouse o helicóptero: segure para descer até encostar no chão.", 2600); return; }
   const lx = Math.cos(v.ang), lz = -Math.sin(v.ang), fx = Math.sin(v.ang), fz = Math.cos(v.ang);
   const lado = v.larg + 1.3;
   const op = [[lx * lado, lz * lado], [-lx * lado, -lz * lado], [-fx * (v.comp + 1.4), -fz * (v.comp + 1.4)], [fx * (v.comp + 1.4), fz * (v.comp + 1.4)]];
   const [ox, oz] = op.find(([ox, oz]) => !fis.bate(v.pos.x + ox, v.pos.z + oz, 0.1)) ?? op[0];
   dentro = null; v.vel = 0;
+  radioUI?.sairDoCarro();
   cena.add(rabisco.grupo); rabisco.grupo.visible = true;
   if (v.g.userData.cima) v.g.userData.cima.visible = true;
-  j.pos.set(v.pos.x + ox, 0.07, v.pos.z + oz); j.vel.set(0, 0, 0); j.dir = v.ang;
+  j.pos.set(v.pos.x + ox, v.tipo === "heli" ? Math.max(0.07, v.alt) : 0.07, v.pos.z + oz); j.vel.set(0, 0, 0); j.dir = v.ang;
   rabisco.grupo.position.copy(j.pos); rabisco.grupo.rotation.set(0, j.dir, 0);
   v.g.userData.seta.visible = true;
   sons.pisao();
@@ -325,11 +348,12 @@ function chamarVeiculo(tipo, cor) {
   if (dentro) { dizer("Rabifone", "Saia do veículo para chamar outro."); return null; }
   if (garagem) { cena.remove(garagem.g); veiculos.splice(veiculos.indexOf(garagem), 1); garagem = null; }
   const v = criarVeiculo(tipo, cor);
-  const R = tipo === "onibus" ? 4.6 : 3.4;
+  const R = tipo === "onibus" ? 4.6 : tipo === "heli" ? 5 : 3.4, RMAX = tipo === "heli" ? 9.5 : 5.9;
   let ponto = null;
-  for (let r = R; r < 5.9 && !ponto; r += 0.4) for (let a = 0; a < 6.28 && !ponto; a += 0.39) {
+  for (let r = R; r < RMAX && !ponto; r += 0.4) for (let a = 0; a < 6.28 && !ponto; a += 0.39) {
     const ang = j.dir + Math.PI / 2 + a, x = j.pos.x + Math.sin(ang) * r, z = j.pos.z + Math.cos(ang) * r;
-    if (!fis.veiculoBate(v, x, z, j.dir, veiculos.map((o) => ({ x: o.pos.x, z: o.pos.z, raio: o.comp })))) ponto = [x, z];
+    const livreAqui = tipo === "heli" ? fis.chaoHeli(x, z) < 0.5 && !fis.veiculoBate(v, x, z, j.dir, veiculos.map((o) => ({ x: o.pos.x, z: o.pos.z, raio: o.comp + 2 }))) : !fis.veiculoBate(v, x, z, j.dir, veiculos.map((o) => ({ x: o.pos.x, z: o.pos.z, raio: o.comp })));
+    if (livreAqui) ponto = [x, z];
   }
   if (!ponto) { dizer("Rabifone", "Aqui está muito apertado! Vá para um lugar mais aberto, como a rua."); return null; }
   v.pos.set(ponto[0], 0.03, ponto[1]); v.ang = j.dir;
@@ -339,7 +363,7 @@ function chamarVeiculo(tipo, cor) {
   garagem = v;
   sons.moeda?.();
   falar("rp-garagem");
-  dizer("Rabifone", tipo === "onibus" ? "O ônibus da escola chegou! Entre e leve todo mundo para passear." : "Seu carro chegou! Chegue perto e aperte a ação para entrar.", 3600);
+  dizer("Rabifone", tipo === "heli" ? "O helicóptero pousou do seu lado! Chegue perto e aperte a ação." : tipo === "onibus" ? "O ônibus da escola chegou! Entre e leve todo mundo para passear." : "Seu carro chegou! Chegue perto e aperte a ação para entrar.", 3600);
   return v;
 }
 function mudarHora(h) {
@@ -355,7 +379,8 @@ function entrada() {
   let iy = (tem("frente") ? 1 : 0) - (tem("tras") ? 1 : 0);
   ix += pad.x; iy += pad.y;
   if (toque) {
-    if (dentro) { ix += (toque.carro.dir ? 1 : 0) - (toque.carro.esq ? 1 : 0); iy += (toque.carro.frente ? 1 : 0) - (toque.carro.re ? 1 : 0); }
+    if (dentro?.tipo === "heli") { ix += (toque.carro.dir ? 1 : 0) - (toque.carro.esq ? 1 : 0); iy += toque.carro.voar ? 1 : 0; }
+    else if (dentro) { ix += (toque.carro.dir ? 1 : 0) - (toque.carro.esq ? 1 : 0); iy += (toque.carro.frente ? 1 : 0) - (toque.carro.re ? 1 : 0); }
     else { ix += toque.x; iy += toque.y; }
   }
   if (entradaTeste) { ix = entradaTeste.virar; iy = entradaTeste.acel; }
@@ -394,7 +419,7 @@ function posicionarCamera(k, dt, andando = false) {
   const giro = (tem("girarD") ? 1 : 0) - (tem("girarE") ? 1 : 0) + pad.gx * 1.2;
   const arrasto = toque && !dentro ? toque.girar() : 0;
   const P = dentro?.tipo === "onibus" ? _pOnibus.set(dentro.pos.x + Math.sin(dentro.ang) * 2.6, dentro.pos.y, dentro.pos.z + Math.cos(dentro.ang) * 2.6) : dentro ? dentro.pos : j.pos;
-  camera.posicionar({ P, ref: dentro ? dentro.ang : j.dir, dirigindo: Boolean(dentro), andando, giro, arrasto, onibus: dentro?.tipo === "onibus" }, k, dt);
+  camera.posicionar({ P, ref: dentro ? dentro.ang : j.dir, dirigindo: Boolean(dentro), andando, giro, arrasto, onibus: dentro?.tipo === "onibus", heli: dentro?.tipo === "heli" }, k, dt);
   ceu.seguir(P.x, P.z);
   mundo.visibilidade(P.x, P.z);
 }
@@ -414,7 +439,15 @@ function passo(dt, ultimo) {
   if (!jogo.pausado) {
     const ent = entrada();
     let andando = false;
-    if (dentro) {
+    if (dentro?.tipo === "heli") {
+      const subir = tem("pular") || pad.pulo || toque?.carro.subir || entradaTeste?.subir;
+      const descer = tem("descer") || pad.descer || toque?.carro.descer || entradaTeste?.descer;
+      fis.voar(dentro, { ix: ent.ix, iy: ent.iy, subir, descer }, dt);
+      pad.puloNovo = false; if (toque) toque.puloNovo = false;
+      j.pos.set(dentro.pos.x, dentro.alt + 0.07, dentro.pos.z); j.dir = dentro.ang;
+      rabisco.atualizar(dt, { modo: "dirigir", virar: dentro.virar });
+      andando = Math.abs(dentro.vel) > 1;
+    } else if (dentro) {
       const outros = transito.map((k) => ({ x: k.g.position.x, z: k.g.position.z, raio: 2.2 })).concat(veiculos.filter((v) => v !== dentro).map((v) => ({ x: v.pos.x, z: v.pos.z, raio: v.comp })));
       if (fis.dirigir(dentro, ent, dt, outros)) { sons.batida(); navigator.vibrate?.(30); }
       if ((pad.puloNovo || toque?.puloNovo) && dentro.buzina <= 0) { sons.buzina(); dentro.buzina = 0.8; }
@@ -441,13 +474,13 @@ function passo(dt, ultimo) {
       // carro da cidade encostando no Rabisco a pé: empurra devagar
       for (const k of transito) { const ex = j.pos.x - k.g.position.x, ez = j.pos.z - k.g.position.z, d = Math.hypot(ex, ez); if (d < 2.4 && d > 0.01 && j.pos.y < 2) { j.pos.x += (ex / d) * dt * 4; j.pos.z += (ez / d) * dt * 4; } }
     }
-    for (const v of veiculos) animarVeiculo(v, dt, t);
+    for (const v of veiculos) { if (v.tipo === "heli" && v !== dentro) fis.pararHeli(v, dt); animarVeiculo(v, dt, t); }
     atualizarSemaforos(mundo.semaforos, t);
-    const alvos = [{ x: j.pos.x, z: j.pos.z, raio: dentro ? 1.6 : 0.6 }, ...veiculos.filter((v) => v !== dentro).map((v) => ({ x: v.pos.x, z: v.pos.z, raio: v.larg }))];
+    const alvos = [{ x: j.pos.x, z: j.pos.z, raio: dentro ? 1.6 : 0.6 }, ...veiculos.filter((v) => v !== dentro && v.alt < 1.5).map((v) => ({ x: v.pos.x, z: v.pos.z, raio: v.larg }))];
     atualizarTransito(transito, mundo.semaforos, alvos, dt, t);
     for (const k of transito) k.g.visible = Math.hypot(k.g.position.x - j.pos.x, k.g.position.z - j.pos.z) < (qualidade.perfil.toque ? 60 : mundo.alcance - 20);
     // a seta "entre aqui" só aparece perto (e nunca no veículo que ele dirige)
-    for (const v of veiculos) v.g.userData.seta.visible = v !== dentro && Math.hypot(v.pos.x - j.pos.x, v.pos.z - j.pos.z) < 25;
+    for (const v of veiculos) { const d = Math.hypot(v.pos.x - j.pos.x, v.pos.z - j.pos.z); v.g.userData.seta.visible = v !== dentro && d < 25; v.g.visible = v === dentro || d < mundo.alcance - 10; }
     atualizarMoradores(dt);
     mundo.atualizar(dt, t);
     regras();
@@ -498,7 +531,9 @@ function desenharMapa(c, S, nomes = false) {
   c.clearRect(0, 0, S, S);
   c.fillStyle = "#7ccf52"; c.fillRect(0, 0, S, S);
   c.fillStyle = "#5fb83f"; for (const A of [PARQUE, FAZENDA]) { const [x0, z0] = P(A.x0, A.z0); c.fillRect(x0, z0, (A.x1 - A.x0) * k, (A.z1 - A.z0) * k); }
-  c.fillStyle = "#3fb6f5"; c.beginPath(); c.arc(...P(LAGO.x, LAGO.z), LAGO.r * k, 0, 7); c.fill();
+  c.fillStyle = "#f3dca0"; { const [x0, z0] = P(PRAIA.x0, PRAIA.z0); c.fillRect(x0, z0, (PRAIA.x1 - PRAIA.x0) * k, (PRAIA.z1 - PRAIA.z0) * k); }
+  c.fillStyle = "#3fb6f5"; for (const L of [LAGO, LAGO2]) { c.beginPath(); c.arc(...P(L.x, L.z), L.r * k, 0, 7); c.fill(); }
+  c.fillStyle = "#3a3f4c"; c.beginPath(); c.arc(...P(HELIPONTO.x, HELIPONTO.z), HELIPONTO.r * k, 0, 7); c.fill();
   c.fillStyle = "rgba(255,248,235,0.9)";
   for (const s of mundo.solidos) if (s.y1 > 8 && s.x1 - s.x0 > 5) { const [x0, z0] = P(s.x0, s.z0); c.fillRect(x0, z0, (s.x1 - s.x0) * k, (s.z1 - s.z0) * k); }
   c.lineCap = c.lineJoin = "round";
@@ -536,6 +571,7 @@ if (params.has("teste")) window.teste = {
   get salvo() { return carregar(); }, get fone() { return fone; }, get transito() { return transito; }, get moradores() { return moradores; },
   get ceu() { return ceu; }, get estat() { return { ...estat, fps: qualidade?.fps ?? 0, blocos: mundo.blocosVisiveis(), malhas: mundo.malhas }; },
   get vivo() { return vivo; },
+  get radio() { return radio; }, get radioUI() { return radioUI; }, falar: (k) => falar(k),
   get r3() { return r3; }, get cena() { return cena; }, get cam() { return cam; }, get rabisco() { return rabisco; }, get vovo() { return vovo; },
   // desenha um quadro agora e devolve o custo (com e sem o passe de sombra)
   medir() { r3.render(cena, cam); const a = { calls: r3.info.render.calls, tris: r3.info.render.triangles }; const s = ceu.sol.castShadow; ceu.sol.castShadow = false; r3.shadowMap.needsUpdate = true; r3.render(cena, cam); const b = { calls: r3.info.render.calls, tris: r3.info.render.triangles }; ceu.sol.castShadow = s; return { total: a, semSombra: b }; },
@@ -545,7 +581,9 @@ if (params.has("teste")) window.teste = {
   acao() { pad.acaoNova = true; },
   entrar(i = 0) { const v = veiculos[i]; if (dentro) sair(); j.pos.set(v.pos.x + 2, 0.07, v.pos.z); entrar(v); },
   sair() { if (dentro) dentro.vel = 0; sair(); },
-  volante(acel, virar = 0) { entradaTeste = acel == null ? null : { acel, virar }; },
+  volante(acel, virar = 0, extra = {}) { entradaTeste = acel == null ? null : { acel, virar, ...extra }; },
+  voar(subir, descer = false) { entradaTeste = { acel: entradaTeste?.acel ?? 0, virar: entradaTeste?.virar ?? 0, subir, descer }; },
+  get chaoHeli() { return (x, z) => fis.chaoHeli(x, z); },
   garagem(tipo = "carro", cor = 0xff7a00) { const v = chamarVeiculo(tipo, cor); return v ? Math.hypot(v.pos.x - j.pos.x, v.pos.z - j.pos.z) : null; },
   hora(h) { ceu.hora(h); },
   dentroDeSolido(x, z) { return fis.bate(x, z, 0.5, 0); },
