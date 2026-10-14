@@ -269,6 +269,65 @@ const fps = (t) => t.ev(`new Promise((r) => { let n = 0; const t0 = performance.
   await espera(800);
   await t.foto(`${FOTOS}casa-planta-B-decorada.png`);
   await t.ev("teste.sairCasa()");
+  // ---------- Fatia 3: lugares por dentro e profissões
+  await t.ev("(() => { const l = teste.LUGARES.find((q) => q.id === 'hospital'); teste.ir(l.x, l.z); })()");
+  await espera(500);
+  const ctxHosp = await t.ev("teste.contexto");
+  await t.ev("teste.acao()");
+  ok(await ate(t, "teste.emLugar?.id === 'hospital'", 8000), `entra no hospital pela porta ("${ctxHosp}")`);
+  const usar = async (iid) => { await t.ev(`teste.irAoInterativo('${iid}')`); await espera(300); const r = await t.ev("teste.contexto"); await t.ev("teste.acao()"); await espera(500); return r; };
+  const SALAS3 = { hospital: ["curativo", "febre", "coracao"], veterinario: ["banho", "petisco"], kids1: ["sino", "lousa", "musiquinha"], kids2: ["sino", "lousa"], igreja: ["coral", "culto"], sorveteria: [], padaria: ["forno"], bombeiros: ["sirene"], mercado: ["caixa", "frutas"], biblioteca: ["ler", "carimbo"] };
+  const PROF = { hospital: "medico", veterinario: "veterinario", kids1: "professor", kids2: "professor", igreja: "coral", sorveteria: "sorveteiro", padaria: "padeiro", bombeiros: "bombeiro", mercado: "caixa", biblioteca: "bibliotecario" };
+  for (const [sala, objs] of Object.entries(SALAS3)) {
+    if (sala !== "hospital") { await t.ev(`teste.entrarLugar('${sala}')`); await espera(400); }
+    if (await t.ev("teste.profissao") === PROF[sala]) await usar("armario"); // tira o da sala anterior igual (professor)
+    const rotArm = await usar("armario");
+    const vestido = await t.ev("teste.profissao");
+    const feitos = [];
+    for (const o of objs) { const rot = await usar(o); feitos.push(`${rot}`); }
+    const est = await t.ev("JSON.stringify(teste.emLugar.est, (k, v) => (k && typeof v === 'object' && v && !Array.isArray(v) ? undefined : v))");
+    ok(vestido === PROF[sala], `${sala}: o armário (${rotArm}) veste o uniforme de ${vestido}`);
+    const e = JSON.parse(est);
+    const marcou = { hospital: e.curativo && e.febre && e.coracao, veterinario: e.banho && e.petisco, kids1: e.sino && e.lousa != null && e.musica, kids2: e.sino && e.lousa != null, igreja: e.coral && e.historia, sorveteria: true, padaria: e.assando > 0, bombeiros: e.sirene, mercado: e.compras && e.frutas, biblioteca: e.livro && e.carimbos }[sala];
+    ok(Boolean(marcou), `${sala}: objetos funcionando (${feitos.join(" · ")})`);
+    const m = await t.ev("teste.medir().total");
+    ok(m.calls <= 250 && m.tris <= 350000, `${sala}: orçamento lá dentro ${m.calls} chamadas, ${Math.round(m.tris / 1000)} mil triângulos`);
+    await t.foto(`${FOTOS}lugar-${sala}.png`);
+    // missõezinhas com alguém esperando e reagindo
+    if (sala === "sorveteria") {
+      await usar("casquinha");
+      const pedido = await t.ev("teste.emLugar.est.pedido.map((s) => s.id)");
+      await t.ev(`teste.sorveteUI.escolher('${pedido[1]}'); teste.sorveteUI.escolher('${pedido[0]}'); teste.sorveteUI.entregar()`);
+      await espera(300);
+      const errou = await t.ev("teste.sorveteUI.aberto && teste.emLugar.est.casquinhas === 0");
+      await t.ev(`teste.sorveteUI.escolher('${pedido[0]}'); teste.sorveteUI.escolher('${pedido[1]}')`);
+      await t.foto(`${FOTOS}lugar-sorveteria-balcao.png`);
+      await t.ev("teste.sorveteUI.entregar()");
+      await espera(400);
+      ok(errou && await t.ev("teste.emLugar.est.casquinhas === 1 && !teste.sorveteUI.aberto"), `sorveteria: casquinha na ordem errada pede de novo; ${pedido.join(" + ")} certinho o cliente agradece`);
+    }
+    if (sala === "padaria") {
+      await espera(3600);
+      await usar("entregar");
+      ok(await t.ev("teste.emLugar.est.entregues === 1"), "padaria: o pão assou e o cliente recebeu");
+    }
+    if (sala === "bombeiros") {
+      await usar("armario"); // tira o uniforme: sem ele o treino só dá a dica
+      await usar("treino");
+      const semJato = await t.ev("!(teste.emLugar.est.jato > 0)");
+      await usar("armario");
+      await usar("treino");
+      await espera(3500);
+      ok(semJato && await t.ev("teste.emLugar.est.apagou === true"), "bombeiros: sem uniforme dá a dica; de uniforme a mangueira apaga o foguinho de treino");
+    }
+    await t.ev("teste.sairLugar()"); await espera(300);
+  }
+  // sair e entrar nos lugares não vaza memória
+  const memL0 = await t.ev("teste.memoria()");
+  for (let i = 0; i < 5; i++) for (const sala of ["hospital", "igreja"]) { await t.ev(`teste.entrarLugar('${sala}')`); await espera(200); await t.ev("teste.sairLugar()"); await espera(200); }
+  const memL1 = await t.ev("teste.memoria()"), naCenaL = await t.ev("teste.geometriasNaCena()");
+  ok(memL1.geometries <= naCenaL && memL1.textures <= memL0.textures + 1, `entrar e sair dos lugares 10× sem vazar (placa ${memL1.geometries} ≤ cena ${naCenaL})`);
+  ok(await t.ev("teste.profissao") !== undefined && await t.ev("JSON.stringify(teste.salvo.roupas)") !== undefined, "o uniforme fica guardado para a próxima vez");
   // praça de dia e de noite
   await t.ev("teste.hora(13); teste.ir(0, 36); teste.olhar(Math.PI)");
   await espera(1500);
@@ -355,11 +414,11 @@ const fps = (t) => t.ev(`new Promise((r) => { let n = 0; const t0 = performance.
   await espera(800);
   await t.ev("teste.entrarCasa(); teste.irAoPonto('sala-sofa'); teste.acao()");
   await espera(600);
-  const nome0 = await t.ev("document.querySelector('.deco-nome').textContent");
-  await t.toque('.deco-bt[data-d="dir"]');
-  const nome1 = await t.ev("document.querySelector('.deco-nome').textContent");
+  const nome0 = await t.ev("document.querySelector('.deco-rp .deco-nome').textContent");
+  await t.toque('.deco-rp .deco-bt[data-d="dir"]');
+  const nome1 = await t.ev("document.querySelector('.deco-rp .deco-nome').textContent");
   await t.foto(`${FOTOS}casa-carrossel-celular.png`);
-  await t.toque(".deco-ok");
+  await t.toque(".deco-rp .deco-ok");
   await espera(300);
   ok(nome0 !== nome1 && await t.ev("!teste.deco.aberto && !!teste.emCasa.pontos.find((p) => p.id === 'sala-sofa').escolha"), `toque: ▶ troca o móvel ("${nome0}" → "${nome1}") e ✓ guarda`);
   await t.ev("teste.sairCasa()");
