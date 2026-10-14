@@ -225,6 +225,8 @@ export function montarSala(id) {
       const hs = HISTORIAS[hist % HISTORIAS.length]; hist++; est.historia = hs.titulo;
       api.sentar?.(); api.falar(hs.fala); api.dizer(hs.titulo, hs.texto, 14000); prof.acenar(3);
     });
+    // orar o Pai Nosso de frente para a cruz (a mesma oração da missão, sem precisar de missão)
+    I("orar", "🙏 Orar o Pai Nosso", -0.6, -0.9, (api) => { est.orou = (est.orou ?? 0) + 1; api.orar?.(); });
     est.coralNpcs = coral;
   }
   if (id === "sorveteria") {

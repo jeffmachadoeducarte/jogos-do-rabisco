@@ -48,7 +48,7 @@ export function gatinho(cor = 0xff9f43) {
   const nariz = malha(new THREE.SphereGeometry(0.035, 8, 6), mat(0xff6f9a), { sombra: false }); nariz.position.set(0, 0.63, 0.43); g.add(nariz);
   const rabo = new THREE.Group(); rabo.position.set(0, 0.2, -0.32); rabo.userData.dinamico = true; g.add(rabo);
   const r1 = malha(new THREE.CapsuleGeometry(0.05, 0.42, 4, 8), pelo, { contorno: 0.02, sombra: false }); r1.position.y = 0.22; r1.rotation.x = -0.35; rabo.add(r1);
-  g.scale.setScalar(1.3); // um pouco maiores: dá para achar de longe
+  g.scale.setScalar(0.62); // gatinho de verdade: ~1/3 da altura do Rabisco (1,8 m)
   mesclar(g);
   g.userData.rabo = rabo;
   return g;
@@ -64,6 +64,7 @@ export function bau() {
   const tampa = new THREE.Group(); tampa.position.set(0, 0.68, -0.4); tampa.userData.dinamico = true; g.add(tampa);
   const t = malha(new THREE.CylinderGeometry(0.42, 0.42, 1.22, 16, 1, false, 0, Math.PI), madeira, { contorno: CONTORNO, sombra: false }); t.rotation.z = Math.PI / 2; t.scale.set(0.6, 1, 1); t.position.set(0, 0, 0.4); tampa.add(t);
   const brilho = malha(new THREE.SphereGeometry(0.3, 10, 8), mat(0xffe680, { emissive: 0xffd84a, emissiveIntensity: 0.6 }), { sombra: false }); brilho.position.y = 0.62; brilho.scale.set(1.4, 0.4, 0.9); brilho.visible = false; brilho.userData.dinamico = true; g.add(brilho);
+  g.scale.setScalar(0.75); // baú de criança: na altura do joelho do Rabisco
   mesclar(g);
   g.userData.tampa = tampa; g.userData.brilho = brilho;
   return g;
@@ -120,6 +121,17 @@ export function caixaFrutas() {
   const cx = caixaRedonda(1.3, 0.6, 0.9, mat(0xd9a96b), { raio: 0.06, contorno: CONTORNO }); cx.position.y = 0.3; g.add(cx);
   for (const x of [-0.45, 0, 0.45]) { const r = caixaRedonda(0.08, 0.62, 0.92, mat(0xb07a3e), { raio: 0.02 }); r.position.set(x, 0.3, 0); g.add(r); }
   [[-0.35, 0.18, 0xff8a1f], [0, 0.1, 0xffd84a], [0.35, 0.2, 0xff8a1f], [-0.15, -0.2, 0xff8a1f], [0.2, -0.15, 0x58c43a]].forEach(([x, z, c]) => { const f = malha(new THREE.SphereGeometry(0.17, 10, 8), mat(c), { contorno: 0.02, sombra: false }); f.position.set(x, 0.66, z); g.add(f); });
+  mesclar(g);
+  return g;
+}
+
+// tapete azul da oração (Pai Nosso), com barrado amarelo e uma cruz branca bordada
+export function tapeteOracao() {
+  const g = new THREE.Group();
+  const borda = caixaRedonda(2.4, 0.05, 1.7, mat(0xffcc1f), { raio: 0.02, sombra: false }); borda.position.y = 0.03; g.add(borda);
+  const meio = caixaRedonda(2.1, 0.06, 1.4, mat(0x1f6fe0), { raio: 0.02, sombra: false }); meio.position.y = 0.04; g.add(meio);
+  const v = caixaRedonda(0.14, 0.07, 0.8, mat(0xffffff), { raio: 0.02, sombra: false }); v.position.y = 0.05; g.add(v);
+  const h = caixaRedonda(0.5, 0.07, 0.14, mat(0xffffff), { raio: 0.02, sombra: false }); h.position.set(0, 0.05, -0.12); g.add(h);
   mesclar(g);
   return g;
 }

@@ -132,6 +132,26 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
     } else if (E.tipo === "voltar") {
       const n = await posNpc(m.id, E.ate); await perto(n.x, n.z); const c = await ev("teste.contexto"); await acao();
       ok(c?.includes("Contar"), `${m.id}: voltou e contou para ${m.npcs[E.ate].nome} ("${c}")`);
+    } else if (E.tipo === "orar") {
+      const [x, z] = E.tapete;
+      await ev(`teste.ir(${x}, ${z + 3})`); await espera(500);
+      ok(await ev("teste.oracao === null"), "painosso: antes de pisar no tapete, nada de oração");
+      await ev(`teste.ir(${x}, ${z})`); await espera(900);
+      const o = await ev("teste.oracao");
+      ok(o && o.painel && /orar juntos/i.test(o.texto), `painosso: no tapete começa a oração ("${o?.texto?.slice(0, 40)}")`);
+      // anda para a frente: o Rabisco não sai do tapete enquanto ora
+      await ev("teste.volante(1, 0)"); await espera(800); await ev("teste.volante(null)");
+      const pz = await ev("teste.j.pos.z");
+      ok(Math.abs(pz - z) < 0.2, `painosso: parado no tapete orando (z ${pz.toFixed(2)})`);
+      for (let k = 0; k < 4; k++) { await ev("teste.proximaFrase()"); await espera(k === 2 ? 2600 : 300); }
+      const meio = await ev("teste.oracao");
+      ok(meio?.i === 3 && /venha o teu reino|seja feita/i.test(meio.texto), `painosso: frase ${meio?.i + 1} de ${meio?.total} no karaokê ("${meio?.texto?.slice(0, 40)}")`);
+      if (fotos) await t.foto(`${FOTOS}f2-painosso-karaoke.png`);
+      const maos = await ev("(() => { const r = teste.rabisco; return [r.bracoE.ombro.rotation.x, r.bracoE.cotovelo.rotation.x]; })()");
+      ok(maos[0] < -0.5 && maos[1] < -0.8, `painosso: mãos juntas (ombro ${maos[0].toFixed(2)}, cotovelo ${maos[1].toFixed(2)})`);
+      for (let k = 0; k < 12 && (await ev("teste.oracao !== null")); k++) { await ev("teste.proximaFrase()"); await espera(250); }
+      ok(await ev("teste.oracao === null"), "painosso: depois do Amém a oração termina");
+      await esperaEtapa(m, e);
     } else ok(false, `${m.id}: etapa ${E.tipo} sem teste`);
   }
   for (const m of M) {
@@ -579,6 +599,16 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   ok(await t.ev("teste.garagem('barco') == null"), "Garagem: longe do lago, o barquinho não vem (avisa para ir ao lago)");
   // ---------- Fatia 5: missões
   await testarMissoes(t, { ok, espera, FOTOS });
+  // Fatia 2 da migração: dentro da Igreja Reviver também dá para orar o Pai Nosso
+  await t.ev("teste.entrarLugar('igreja')"); await espera(600);
+  await t.ev("teste.irAoInterativo('orar')"); await espera(500);
+  const rotOrar = await t.ev("teste.contexto");
+  await t.ev("teste.acao()"); await espera(700);
+  ok(rotOrar?.includes("Pai Nosso") && (await t.ev("teste.oracao?.painel")), `igreja por dentro: "${rotOrar}" começa a oração`);
+  await t.foto(`${FOTOS}f2-igreja-dentro-orar.png`);
+  for (let k = 0; k < 14 && (await t.ev("teste.oracao !== null")); k++) { await t.ev("teste.proximaFrase()"); await espera(200); }
+  ok(await t.ev("teste.oracao === null"), "igreja por dentro: a oração termina no Amém");
+  await t.ev("teste.sairLugar()"); await espera(400);
   // praça de dia e de noite
   await t.ev("teste.hora(13); teste.ir(0, 36); teste.olhar(Math.PI)");
   await espera(1500);

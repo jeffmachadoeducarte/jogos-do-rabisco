@@ -25,6 +25,8 @@
 //   { tipo: "pistas", pistas: [{ x, z, texto, voz }] }         — caça ao tesouro: um baú por vez; cada um dá a pista
 //   { tipo: "entregar", entregas: [{ item, ate }] }            — cada carta (item pego antes) para quem tem a caixinha da cor
 //   { tipo: "voltar", ate }                                    — voltar e contar para quem pediu (ele comemora)
+//   { tipo: "orar", tapete: [x, z], olhar, ate }               — Pai Nosso: no tapete azul, mãos juntas, frase por frase
+//                                                                  (karaokê com as vozes cid-pai-1..11); o jogador 2 ora junto
 // npcs: { id: { nome, tipo, cor, x, z, rot?, acessorio?, escala?, casa?: n, escola?: [dx, dz], caixa?: cor } } — tipo de
 // personagens.js (lapis, giz, borracha...) ou bichinho (ovelha, coelho, gato); casa: na porta da casa n (posição na hora);
 // escola: na porta da Educarte da idade da criança (Kids I até 4 anos, senão Kids II), deslocado [dx, dz];
@@ -221,6 +223,28 @@ export const MISSOES = [
         aPe: "Que bom que você veio! Mas a doutora pediu para vir de helicóptero: pouse aqui pertinho.", vozAPe: "rp-remedio-heli" },
     ],
     fim: "Meu remédio! Obrigada, Rabisco! Que voo lindo! Deus cuida de nós com tanto carinho.",
+  },
+  // ---- Igreja Reviver (a igreja da escola), de frente para a praça
+  {
+    id: "convite", titulo: "Convite para o culto infantil", icone: "💌", tipo: "biblica", voz: { pedido: "cid-igreja" },
+    npcs: {
+      tia: { nome: "Tia Lápis Lilás", tipo: "lapis", cor: 0xa98ce0, x: -6.5, z: -18, acessorio: "laco" },
+      vermelhinho: { nome: "Lápis Vermelhinho", tipo: "lapis", cor: 0xe8413c, x: 86, z: -7.5, escala: 0.6, acessorio: "bone" },
+      amarelinho: { nome: "Lápis Amarelinho", tipo: "lapis", cor: 0xffcc1f, x: 20, z: 76, escala: 0.6, acessorio: "laco" },
+      verdinho: { nome: "Lápis Verdinho", tipo: "lapis", cor: 0x58c43a, x: -94, z: -5.5, escala: 0.6, acessorio: "bone" },
+    },
+    pedido: "Oi, Rabisco! Hoje tem culto infantil na Igreja Reviver! Convide três amigos lápis pela cidade e traga todos aqui. Siga os coraçõezinhos!",
+    etapas: [{ tipo: "seguirVarios", quem: ["vermelhinho", "amarelinho", "verdinho"], ate: "tia", rotulo: "💌 Convidar", fala: "Oba! Eu vou ao culto infantil!", voz: "cid-convite", falaTodos: "Eu também vou! Três amigos! Agora vamos todos para a Igreja Reviver!", vozTodos: "cid-convite-todos" }],
+    fim: "Que alegria! A turma toda chegou para o culto infantil. Obrigada por convidar os amigos!",
+    verso: { texto: "Que alegria quando me chamam para ir à casa de Deus!", ref: "baseado em Salmos 122.1" },
+  },
+  {
+    id: "painosso", titulo: "Orar o Pai Nosso", icone: "🙏", tipo: "biblica", voz: { pedido: "cid-painosso" },
+    npcs: { tio: { nome: "Tio Lápis Azul", tipo: "lapis", cor: 0x1f3a8a, x: 6.5, z: -18, acessorio: "gravata" } },
+    pedido: "Oi, Rabisco! Vamos orar juntos o Pai Nosso? Venha para o tapete azul na porta da igreja. Eu falo uma frase e você repete comigo, bem devagarinho.",
+    etapas: [{ tipo: "orar", tapete: [0, -19.2], olhar: Math.PI, ate: "tio" }],
+    fim: "Amém! Deus ouve a nossa oração, a de cada criança.",
+    verso: { texto: "Jesus ensinou os amigos a conversar com Deus, chamando Deus de Pai.", ref: "baseado em Mateus 6.9-13" },
   },
 ];
 // palavras que não podem aparecer em nada que a criança vê ou ouve (teste rabiscopolis-conteudo.mjs)

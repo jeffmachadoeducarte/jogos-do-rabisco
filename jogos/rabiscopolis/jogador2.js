@@ -45,6 +45,7 @@ function cracha(nome) {
 export function criarJogador2(ctx) {
   const { cena, caixa, fis, J, j, sons, dizer } = ctx;
   const st = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), noChao: true, coyote: 0, buffer: 0, dir: 0 };
+  let orando = null;
   let modelo = null, escolha = null, ui = null, foco = 0, opcoes = [], acena = 0, buzina = 0, assento = null, seguindo = false;
   let ent = { x: 0, y: 0, pulo: false, puloNovo: false, acao: false, acaoNova: false };
   let ctxAcao = null;
@@ -167,6 +168,14 @@ export function criarJogador2(ctx) {
   // ---------- passo da física (pode rodar mais de uma vez por quadro)
   function passo(dt, t) {
     if (!modelo) return;
+    if (orando) { // Pai Nosso: ajoelhadinho do lado do Rabisco, de mãos juntas
+      st.pos.set(orando.x, 0.07, orando.z); st.vel.set(0, 0, 0); st.dir = orando.dir;
+      modelo.grupo.position.copy(st.pos); modelo.grupo.rotation.set(0, st.dir, 0);
+      modelo.atualizar(dt, { modo: "parado", vel: 0 });
+      modelo.m?.orar(true);
+      ent.puloNovo = ent.acaoNova = false;
+      return;
+    }
     const v = ctx.veiculo();
     acena -= dt; buzina -= dt;
     if (assento) {
@@ -232,6 +241,7 @@ export function criarJogador2(ctx) {
 
   return {
     quadro, passo, regras, enquadrar, entrar, sair, escolher, colocarPerto,
+    orar(o) { if (!o) { orando = null; modelo?.m?.orar(false); return; } if (!modelo || assento) return; orando = o; },
     get ativo() { return Boolean(modelo); }, get escolhendo() { return Boolean(ui); }, get escolha() { return escolha; },
     get pos() { return modelo ? st.pos : null; }, get st() { return st; }, get modelo() { return modelo; },
     get sentado() { return Boolean(assento); }, get seguindo() { return seguindo; }, get acena() { return acena; }, get buzina() { return buzina; },

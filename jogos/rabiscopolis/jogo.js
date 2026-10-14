@@ -54,6 +54,13 @@ const CONTROLES = [
   { id: "girarD", nome: "Girar a câmera ⟳", teclas: ["KeyE"] },
   { id: "mapa", nome: "Mapa grande", teclas: ["KeyM"] },
 ];
+// Pai Nosso (Mateus 6.9-13, texto tradicional): uma frase por vez, cada uma com a sua voz (cid-pai-1..11, da Rabiscópolis)
+const ORACAO = [
+  "Pai nosso, que estás no céu,", "santificado seja o teu nome.", "Venha o teu reino,", "seja feita a tua vontade,", "assim na terra como no céu.",
+  "O pão nosso de cada dia nos dá hoje.", "Perdoa as nossas ofensas,", "assim como nós perdoamos a quem nos tem ofendido.",
+  "E não nos deixes cair em tentação,", "mas livra-nos do mal.", "Amém.",
+];
+const ESPERA_REPETIR = 4.5; // segundos depois da voz até seguir sozinho (a criança repete junto)
 // falas gravadas (chaves rp-*; o texto fica em falas.mjs → falas.json, para gerar depois)
 const FALAS = ["rp-titulo", "rp-intro", "rp-casa", "rp-casa-pre", "rp-casa-pos", "rp-carro", "rp-onibus", "rp-garagem", "rp-noite", "rp-dia"];
 
@@ -186,6 +193,7 @@ let emCasa = null, deco = null, fade = null; const interiores = {}; // casa por 
 let emLugar = null, sorveteUI = null; const salas = {}; // lugares por dentro (Fatia 3), montados na primeira visita
 let solidosDentro = []; // colisões da sala/casa em que o Rabisco está
 let entradaTeste = null;
+let oracao = null, painelOracao = null, audiosOracao = null; // Pai Nosso no tapete da igreja (ou lá dentro)
 let acaoJ2 = null; // balãozinho rosa: o que a ação do jogador 2 faz agora
 // idade da criança do cadastro (src/motor/familia.js); ?idade=N na URL vale para testar
 function idadeCrianca() {
@@ -238,6 +246,7 @@ function iniciar() {
     aoConcluir: () => { alvoMapa = null; },
     pos2: () => (j2?.aPe ? j2.pos : null),
     // missões que vieram da Rabiscópolis: casas (quem espera na porta), idade (escola da criança), patinhos do lago
+    orar: (tp, fim) => comecarOracao(tp, fim), pararOracao: () => terminarOracao(false),
     casas: () => mundo.casas, idade: idadeCrianca, patos: () => mundo.anima.patos, chaoHeli: (x, z) => fis.chaoHeli(x, z),
   });
 
@@ -265,6 +274,7 @@ function iniciar() {
   });
   acaoJ2 = el("div", { class: "acao-j2-rp", hidden: "" }); caixa.append(acaoJ2);
   fade = el("div", { class: "fade-rp" }); caixa.append(fade);
+  painelOracao = el("div", { class: "oracao-rp", hidden: "", "aria-live": "polite" }); caixa.append(painelOracao);
   sorveteUI = criarSorveteUI(caixa);
   deco = criarDecorar(caixa, {
     aoTrocar: (e) => { if (emCasa && pontoDeco) colocar(emCasa.int, pontoDeco, e); },
@@ -311,7 +321,7 @@ function parar() {
   if (r3) { r3.dispose(); r3 = null; }
   veiculos.length = 0; transito = []; moradores = []; vovo = null; garagem = null; missoes = null;
   jogo.palco.querySelector('.escolha-j2-rp')?.remove(); j2 = null;
-  dentro = null; contexto = null; alvoMapa = null;
+  dentro = null; contexto = null; alvoMapa = null; oracao = null;
   teclas.clear();
 }
 
@@ -460,6 +470,8 @@ function vestir(id) {
 function tirarUniforme() { tirarProfissao(rabisco); salvo.roupas = []; salvar(salvo); }
 const apiLugar = () => ({
   dizer, falar, sons, rabisco,
+  // dentro da Igreja Reviver também dá para orar o Pai Nosso (de frente para a cruz)
+  orar: () => comecarOracao({ x: j.pos.x, z: j.pos.z, olhar: Math.PI }, () => dizer("Igreja Reviver", "Amém! Deus ouve a nossa oração. 🙏", 4200)),
   profissao: () => rabisco.profissao ?? null,
   vestir, tirar: tirarUniforme,
   abrirSorvete: (sabores, cb) => { teclas.clear(); toque?.zerar(); sorveteUI.abrir(sabores, cb); },
@@ -677,6 +689,14 @@ function entrada() {
 function regras() {
   // o que a ação faz agora
   contexto = null;
+  if (oracao) {
+    const passou = relogio.elapsedTime - oracao.inicio, pode = passou > Math.min(oracao.dur * 0.6, oracao.dur - 0.3);
+    contexto = pode ? { rotulo: oracao.i === ORACAO.length - 1 ? "🙏 Amém!" : "🙏 Amém, próxima", fazer: () => proximaFrase() } : { rotulo: "🙏 Orando…", fazer: () => {} };
+    const quer = pad.acaoNova || toque?.acaoNova;
+    pad.acaoNova = false; if (toque) { toque.acaoNova = false; toque.sairNovo = false; toque.foneNovo = false; }
+    if (quer) contexto.fazer();
+    return;
+  }
   if (emLugar) {
     const it = interativoPerto();
     if (Math.hypot(emLugar.porta[0] - j.pos.x, emLugar.porta[1] - j.pos.z) < 1.6) contexto = { rotulo: "🚪 Sair", fazer: () => sairLugar() };
@@ -718,6 +738,14 @@ function posicionarCamera(k, dt, andando = false) {
   const giro = (tem("girarD") ? 1 : 0) - (tem("girarE") ? 1 : 0) + pad.gx * 1.2;
   const arrasto = toque && !dentro ? toque.girar() : 0;
   const dois = j2?.enquadrar(); // 2 jogadores a pé: a câmera mira o meio dos dois e afasta para caber
+  if (oracao) { // oração: a câmera para atrás do Rabisco, olhando para a igreja (ou para a cruz)
+    const fx = Math.sin(oracao.olhar), fz = Math.cos(oracao.olhar);
+    camera.st.vista = { pos: [oracao.x - fx * 4.6, 2.5, oracao.z - fz * 4.6], alvo: [oracao.x + fx * 3, 1.6, oracao.z + fz * 3] };
+    camera.posicionar({ P: j.pos }, k, dt);
+    ceu.seguir(j.pos.x, j.pos.z);
+    mundo.visibilidade(j.pos.x, j.pos.z);
+    return;
+  }
   if (emCasa || emLugar) { // casa de bonecas: de cima e da frente, sem teto
     const cx = dois ? dois.x : j.pos.x, cz = dois ? dois.z : j.pos.z, af = dois ? Math.min(4, dois.afastar) : 0;
     camera.st.vista = { pos: [cx, 10.5 + af, cz + 9.2 + af * 0.8], alvo: [cx, 0.6, cz - 0.6] };
@@ -787,6 +815,12 @@ function passo(dt, ultimo) {
         if (vol) { vol.position.copy(meio); vol.scale.setScalar(Math.max(0.6, mE.distanceTo(mD) / 2 / 0.24)); vol.rotation.set(-1.0, 0, dentro.virar * 0.6); }
       }
       andando = Math.abs(dentro.vel) > 1;
+    } else if (oracao) {
+      pad.puloNovo = false; if (toque) toque.puloNovo = false;
+      j.pos.set(oracao.x, 0.07, oracao.z); j.vel.set(0, 0, 0); j.dir = oracao.olhar;
+      rabisco.grupo.position.copy(j.pos); rabisco.grupo.rotation.y = j.dir;
+      rabisco.atualizar(dt, { modo: "parado", vel: 0, vmax: VEL });
+      seguirOracao(dt);
     } else {
       const quer = pad.puloNovo || toque?.puloNovo;
       pad.puloNovo = false; if (toque) toque.puloNovo = false;
@@ -824,6 +858,67 @@ function passo(dt, ultimo) {
   }
 }
 const estat = { calls: 0, tris: 0, n: 0, t: 0 };
+
+// ------------------------------------------------------------------ Pai Nosso
+// O Rabisco fica parado no tapete, de mãos juntas, olhando para a igreja; a câmera para atrás dele e a luz fica mais
+// suave. Cada frase aparece grande, acendendo palavra por palavra enquanto a voz fala (karaokê); depois a criança
+// repete junto e aperta 🙏 (ou espera um pouquinho). Sem pressa e sem errar. O jogador 2 ora ao lado.
+function duracaoFrase(i) { const d = audiosOracao?.[i]?.duration; return Number.isFinite(d) && d > 0 ? d : 0.8 + ORACAO[i].length * 0.075; }
+function comecarOracao(tp, fim) {
+  if (oracao || dentro) return;
+  audiosOracao ??= ORACAO.map((_, i) => { const a = new Audio(`../../assets/voz/cid-pai-${i + 1}.mp3`); a.preload = "metadata"; return a; });
+  teclas.clear(); toque?.zerar();
+  oracao = { x: tp.x, z: tp.z, olhar: tp.olhar, i: -1, inicio: relogio.elapsedTime, dur: 2.8, luz: ceu.sol.intensity, exp: r3.toneMappingExposure, fim };
+  j.pos.set(tp.x, 0.07, tp.z); j.vel.set(0, 0, 0); j.dir = tp.olhar;
+  const lx = Math.cos(tp.olhar), lz = -Math.sin(tp.olhar);
+  j2?.orar?.({ x: tp.x + lx * 1.3, z: tp.z + lz * 1.3, dir: tp.olhar });
+  radio?.pausarPorFala(true);
+  painelOracao.hidden = false;
+  painelOracao.innerHTML = `<p class="frase">🙏 Vamos orar juntos.</p><p class="dica">Fique quietinho e repita comigo.</p>`;
+  falar("cid-pai-intro");
+}
+function proximaFrase() {
+  if (!oracao) return;
+  oracao.i++;
+  if (oracao.i >= ORACAO.length) return terminarOracao(true);
+  oracao.inicio = relogio.elapsedTime; oracao.dur = duracaoFrase(oracao.i);
+  const palavras = ORACAO[oracao.i].split(" ");
+  painelOracao.innerHTML = `<p class="frase">${palavras.map((w) => `<span>${w}</span>`).join(" ")}</p><p class="dica"></p><p class="conta">${oracao.i + 1} / ${ORACAO.length}</p>`;
+  falar(`cid-pai-${oracao.i + 1}`);
+}
+function terminarOracao(completa) {
+  if (!oracao) return;
+  const o = oracao; oracao = null;
+  ceu.sol.intensity = o.luz; r3.toneMappingExposure = o.exp;
+  camera.st.vista = null; camera.st.yaw = o.olhar;
+  painelOracao.hidden = true;
+  for (const rb of [rabisco, j2?.modelo?.c?.rabisco]) if (rb) rb.tronco.rotation.x = 0;
+  j2?.orar?.(null);
+  setTimeout(() => radio?.pausarPorFala(false), 2500);
+  if (completa) { jogo.confete?.(); sons.vitoria?.(); o.fim?.(); }
+}
+function seguirOracao(dt) {
+  const k = Math.min(1, dt * 1.5); // luz mais suave
+  ceu.sol.intensity += (oracao.luz * 0.6 - ceu.sol.intensity) * k;
+  r3.toneMappingExposure += (oracao.exp * 0.92 - r3.toneMappingExposure) * k;
+  // mãos juntas na frente do peito e cabeça um pouco baixa (o Rabisco e a criança do jogador 2)
+  for (const rb of [rabisco, j2?.modelo?.c?.rabisco]) {
+    if (!rb) continue;
+    rb.bracoE.ombro.rotation.set(-0.85, 0, -0.62); rb.bracoD.ombro.rotation.set(-0.85, 0, 0.62);
+    rb.bracoE.cotovelo.rotation.x = -1.05; rb.bracoD.cotovelo.rotation.x = -1.05;
+    rb.tronco.rotation.x = 0.1;
+  }
+  const passou = relogio.elapsedTime - oracao.inicio;
+  if (oracao.i >= 0) {
+    const spans = painelOracao.querySelectorAll(".frase span");
+    const acesas = Math.ceil(spans.length * Math.min(1, passou / (oracao.dur * 0.92)));
+    spans.forEach((sp, n) => sp.classList.toggle("dita", n < acesas));
+    const dica = painelOracao.querySelector(".dica");
+    const txt = passou > oracao.dur ? (oracao.i === ORACAO.length - 1 ? "Amém! 🙏" : "Agora você! Repita e aperte 🙏 para seguir.") : "";
+    if (dica.textContent !== txt) dica.textContent = txt;
+  }
+  if (passou > oracao.dur + (oracao.i < 0 ? 0.6 : ESPERA_REPETIR)) proximaFrase();
+}
 
 // ------------------------------------------------------------------ HUD: balão, botão de ação, bússola e mapa
 function dizer(nome, texto, ms = 4200) {
@@ -946,6 +1041,8 @@ if (params.has("teste")) window.teste = {
   get corParedes() { const c = mundo.casas.find((k) => k.lote.numero === salvo.casa); return c?.grupo.userData.paredes.userData.cor; },
   get radio() { return radio; }, get radioUI() { return radioUI; }, falar: (k) => falar(k),
   get missoes() { return missoes; },
+  get oracao() { return oracao ? { i: oracao.i, total: ORACAO.length, painel: !painelOracao.hidden, texto: painelOracao.textContent } : null; },
+  proximaFrase: () => proximaFrase(),
   get j2() { return j2; }, get dois() { return Boolean(j2?.ativo); }, get Jogadores() { return J; },
   // as duas pessoas aparecem na tela? (projeção dentro do quadro)
   get naTela() { const ps = [rabisco.grupo, j2?.modelo?.grupo].filter(Boolean); return ps.map((g) => { const v = new THREE.Vector3(); g.getWorldPosition(v); v.y += 1; v.project(cam); return Math.abs(v.x) < 1 && Math.abs(v.y) < 1 && v.z < 1; }); },

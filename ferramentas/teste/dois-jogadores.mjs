@@ -285,6 +285,15 @@ if (quer("rabiscolandia")) {
     await foto(t, "rabiscolandia-2-jogadores-padaria.png");
     await t.ev("teste.sairLugar()"); await espera(1200);
     ok(await t.ev("Math.hypot(teste.j2.pos.x - teste.j.pos.x, teste.j2.pos.z - teste.j.pos.z) < 4"), "Rabiscolândia: e sai junto");
+    // Pai Nosso: o jogador 2 ora junto, do lado do Rabisco, de mãos juntas
+    await t.ev("teste.missoes.aceitar('painosso')"); await espera(300);
+    await t.ev("teste.ir(0, -19.2)"); await espera(1200);
+    const ora = await t.ev("({ o: !!teste.oracao, d: Math.hypot(teste.j2.pos.x - teste.j.pos.x, teste.j2.pos.z - teste.j.pos.z), z: teste.j2.pos.z })");
+    ok(ora.o && ora.d > 0.8 && ora.d < 1.8 && Math.abs(ora.z + 19.2) < 0.3, `Rabiscolândia: no Pai Nosso o jogador 2 ora do lado do Rabisco (${ora.d.toFixed(1)} m)`);
+    await foto(t, "rabiscolandia-2-jogadores-orando.png");
+    for (let k = 0; k < 14 && (await t.ev("teste.oracao !== null")); k++) { await t.ev("teste.proximaFrase()"); await espera(200); }
+    await espera(600);
+    ok(await t.ev("teste.oracao === null && teste.j2.aPe"), "Rabiscolândia: depois do Amém o jogador 2 volta a andar");
     // controle 2 caiu: aviso amigável; voltou: segue
     await t.ev("__desconecta(1)"); await espera(900);
     ok(await t.ev(`!!document.querySelector('.jog-aviso:not([hidden])')?.textContent.includes('desconectou')`), "Rabiscolândia: controle do jogador 2 caiu → aviso amigável");

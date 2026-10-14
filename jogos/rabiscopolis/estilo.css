@@ -171,3 +171,18 @@ html.modo-tv .acao-rp, html.modo-tv .acao-j2-rp { font-size: 24px; }
 html.modo-tv .btn-fone-rp { opacity: 0.55; }
 /* com 2 jogadores a legenda "quem é quem" fica embaixo à esquerda: o botão do Rabifone sobe um pouco */
 .cena-rp.dois-rp .btn-fone-rp { bottom: 62px; }
+
+/* Pai Nosso: frase grande no alto, palavra por palavra (karaokê), no traço da Igreja Reviver */
+.oracao-rp {
+  position: absolute; z-index: 6; left: 50%; top: 12%; transform: translateX(-50%); width: min(860px, 86vw); text-align: center;
+  background: rgba(255, 252, 244, 0.94); border: 5px solid #1f3a8a; border-radius: 28px; box-shadow: 0 6px 0 #1f3a8a; padding: 16px 22px 12px;
+  pointer-events: none; animation: oracao-rp-entra 0.8s ease-out;
+}
+.oracao-rp[hidden] { display: none; }
+.oracao-rp .frase { margin: 0; font: 800 clamp(24px, 4.2vw, 46px) 'Baloo 2', sans-serif; line-height: 1.22; color: #151515; }
+.oracao-rp .frase span { color: #9aa3b8; transition: color 0.35s ease; }
+.oracao-rp .frase span.dita { color: #1f3a8a; }
+.oracao-rp .dica { margin: 6px 0 0; min-height: 1.3em; font: 700 clamp(14px, 2vw, 20px) 'Baloo 2', sans-serif; color: #8e6cff; }
+.oracao-rp .conta { margin: 2px 0 0; font: 700 13px 'Baloo 2', sans-serif; color: #8a8a8a; }
+body.touch .oracao-rp { top: 6%; width: min(620px, 60vw); padding: 10px 16px 8px; }
+@keyframes oracao-rp-entra { from { opacity: 0; transform: translate(-50%, -12px); } to { opacity: 1; transform: translateX(-50%); } }

@@ -13,7 +13,7 @@ import { THREE, mat, malha, caixaRedonda, texturaCanvas, arvoreReal, mesclar } f
 import { criarMorador } from "./personagens.js";
 import { MISSOES } from "./missoes-dados.js";
 import { lugar } from "./mapa.js";
-import { gatinho, bau, foguinho, portico, placaNumero, caixaFrutas, caixaCorreio, texturaEnvelope } from "./missoes-objetos.js";
+import { gatinho, bau, foguinho, portico, placaNumero, caixaFrutas, caixaCorreio, texturaEnvelope, tapeteOracao } from "./missoes-objetos.js";
 
 // figurinha redonda com emoji (itens, buraquinhos da horta)
 const texEmoji = new Map();
@@ -396,6 +396,7 @@ export function criarMissoes(ctx) {
   function largar() {
     if (!ativa) return;
     const M = ativa;
+    if (est.orando) ctx.pararOracao?.();
     limparEst(); fila.length = 0;
     limparItens(M.id);
     for (const nid of Object.keys(M.npcs)) { const n = npcs.get(`${M.id}:${nid}`); if (n) voltarAoLugar(n); }
@@ -438,6 +439,7 @@ export function criarMissoes(ctx) {
     if (E.tipo === "apagar") est.fogos = E.fogos.map(([x, z]) => { const g = temp(foguinho()); g.position.set(x, 0.03, z); return { x, z, g, agua: 0, jato: 0, perto: 0, apagado: false, fumaca: 0 }; });
     if (E.tipo === "pistas") { est.i = 0; est.baus = E.pistas.map((q) => { const g = temp(bau()); g.position.set(q.x, 0.03, q.z); g.rotation.y = Math.PI * 0.15; g.visible = false; return { ...q, g, aberto: 0 }; }); }
     if (E.tipo === "entregar") est.feitas = new Set();
+    if (E.tipo === "orar") { const g = temp(tapeteOracao()); g.position.set(E.tapete[0], 0.03, E.tapete[1]); g.rotation.y = E.olhar; est.orando = false; }
   }
   const veiculoServe = (E, v) => v && (E.veiculos === "porta-malas" ? !["bici", "patinete", "barco", "heli"].includes(v.tipo) : E.veiculos.includes(v.tipo));
   function avisar(quem, texto, voz = null, cada = 6) { if (aviso > 0) return; aviso = cada; dizer(quem, texto, 3200); if (voz) falar(voz); }
@@ -593,6 +595,12 @@ export function criarMissoes(ctx) {
       }
       if (!falta) { avancar(); return; }
     }
+    if (E.tipo === "orar" && !est.orando && !v && ctx.orar && Math.hypot(p.x - E.tapete[0], p.z - E.tapete[1]) < 1.3) {
+      // no tapete: começa a oração (jogo.js cuida da tela, da pose e das vozes); no fim, o Tio comemora
+      est.orando = true;
+      const M = ativa;
+      ctx.orar({ x: E.tapete[0], z: E.tapete[1], olhar: E.olhar }, () => { if (ativa === M && est.orando) { reagir(npcDe(ativa, E.ate)); avancar(); } });
+    }
     if (E.tipo === "pistas") {
       est.baus.forEach((b, i) => {
         if (i !== est.i) return;
@@ -617,6 +625,7 @@ export function criarMissoes(ctx) {
     if (E.tipo === "pistas") { const b = est.baus[est.i]; return b ? { x: b.x, z: b.z, emoji: "🗝️" } : null; }
     if (E.tipo === "entregar") { const p = pos(); const n = E.entregas.filter((en) => !est.feitas.has(en.item)).map((en) => npcDe(ativa, en.ate)).sort((a, b) => Math.hypot(npcPos(a)[0] - p.x, npcPos(a)[1] - p.z) - Math.hypot(npcPos(b)[0] - p.x, npcPos(b)[1] - p.z))[0]; if (!n) return null; const [x, z] = npcPos(n); return { x, z, emoji: "✉️" }; }
     if (E.tipo === "voltar") return npcAlvo(E.ate);
+    if (E.tipo === "orar") return { x: E.tapete[0], z: E.tapete[1], emoji: "🙏" };
     return undefined;
   }
   function textoNovo(E) {
@@ -631,6 +640,7 @@ export function criarMissoes(ctx) {
     if (E.tipo === "pistas") return `Pista ${est.i + 1} de ${E.pistas.length}: ache o baú`;
     if (E.tipo === "entregar") return `Entregue as cartas: ${est.feitas.size} de ${E.entregas.length}`;
     if (E.tipo === "voltar") return `Volte e conte para ${nomeDe(E.ate)}`;
+    if (E.tipo === "orar") return est.orando ? "Orando juntos o Pai Nosso 🙏" : "Pise no tapete azul na porta da igreja";
     return "";
   }
 
