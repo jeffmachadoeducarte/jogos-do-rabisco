@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prévia das Pessoas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root { --tinta: #151515; --rosa: #ec2e8c; --fundo: #d8efff; }
+  html, body { margin: 0; height: 100%; background: var(--fundo); overflow: hidden; font-family: "Baloo 2", system-ui, sans-serif; }
+  canvas { display: block; }
+  .barra { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: calc(100vw - 32px); }
+  .barra button { font: 800 16px "Baloo 2", system-ui, sans-serif; padding: 8px 16px; border-radius: 999px; border: 3px solid var(--tinta); background: #fff; color: var(--tinta); cursor: pointer; }
+  .barra button.ativo { background: var(--rosa); color: #fff; }
+  .titulo { position: fixed; top: 12px; left: 16px; font-weight: 800; font-size: 20px; color: var(--tinta); background: #fff; border: 3px solid var(--tinta); border-radius: 14px; padding: 4px 14px; }
+  .info { position: fixed; top: 12px; right: 16px; font-size: 13px; color: var(--tinta); background: rgba(255,255,255,0.85); border-radius: 10px; padding: 4px 10px; }
+</style>
+</head>
+<body>
+<div class="titulo" id="titulo">Diretora Sabrina · Kids II</div>
+<div class="info" id="info"></div>
+<div class="barra" id="barra">
+  <button data-a="parada" class="ativo">Parada</button>
+  <button data-a="andar">Andar</button>
+  <button data-a="acenar">Acenar</button>
+  <button data-a="comemorar">Comemorar</button>
+  <button data-a="receber">Receber</button>
+  <button data-a="orar">Orar</button>
+  <button data-a="girar">Girar: sim</button>
+  <button data-p="sabrina" class="ativo">Sabrina</button>
+  <button data-p="elaine">Elaine</button>
+  <button data-p="carina">Carina</button>
+  <button data-p="juntas">Todas</button>
+</div>
+<script type="module">
+import { THREE } from "../../src/motor3d/toon.js";
+import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
+import { TEX } from "./base3d.js";
+import { criarPessoa } from "./pessoas.js";
+
+const r3 = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+r3.outputColorSpace = THREE.SRGBColorSpace;
+r3.toneMapping = THREE.ACESFilmicToneMapping;
+r3.setPixelRatio(Math.min(2, devicePixelRatio));
+document.body.prepend(r3.domElement);
+const cena = new THREE.Scene();
+cena.background = new THREE.Color(0xd8efff);
+const cam = new THREE.PerspectiveCamera(35, 1, 0.1, 200);
+const sol = new THREE.DirectionalLight(0xfff2dc, 2.6); sol.position.set(4, 8, 6); cena.add(sol);
+cena.add(new THREE.HemisphereLight(0xdff0ff, 0x7cbf5a, 1.3));
+
+// chão da cidade: calçada no meio, grama em volta
+const grama = TEX.grama.clone(); grama.needsUpdate = true; grama.repeat.set(10, 10);
+const g = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshToonMaterial({ map: grama })); g.rotation.x = -Math.PI / 2; cena.add(g);
+const calc = TEX.calcada.clone(); calc.needsUpdate = true; calc.repeat.set(3, 3);
+const c = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), new THREE.MeshToonMaterial({ map: calc })); c.rotation.x = -Math.PI / 2; c.position.y = 0.01; cena.add(c);
+
+const pessoas = { sabrina: criarPessoa("sabrina"), elaine: criarPessoa("elaine"), carina: criarPessoa("carina") };
+const TITULOS = { sabrina: "Diretora Sabrina · Kids II", elaine: "Contadora Elaine · Crescente Contabilidade", carina: "Diretora Carina · Kids I", juntas: "Sabrina, Elaine e Carina" };
+const LUGAR = { sabrina: -1.2, elaine: 0, carina: 1.2 };
+for (const p of Object.values(pessoas)) cena.add(p.grupo);
+let sabrina = pessoas.sabrina, quem = "sabrina";
+function mostrar(q) {
+  quem = q;
+  for (const [id, p] of Object.entries(pessoas)) { p.grupo.visible = q === "juntas" || q === id; p.grupo.position.x = q === "juntas" ? LUGAR[id] : 0; }
+  sabrina = pessoas[q] ?? pessoas.sabrina;
+  document.getElementById("titulo").textContent = TITULOS[q];
+  for (const b of document.querySelectorAll("#barra button[data-p]")) b.classList.toggle("ativo", b.dataset.p === q);
+  const c = sabrina.custo, todas = Object.values(pessoas);
+  info.textContent = q === "juntas" ? `3 pessoas · ${todas.reduce((a, p) => a + p.custo.chamadas, 0)} chamadas · ${todas.reduce((a, p) => a + p.custo.triangulos, 0)} triângulos` : `${c.chamadas} chamadas · ${c.triangulos} triângulos (+${c.triangulosContorno} do contorno)`;
+}
+const rabisco = new Rabisco3D({ raiz: "../..", altura: 1.8 });
+rabisco.grupo.position.set(1.15, 0, 0.2); rabisco.grupo.rotation.y = -0.35;
+rabisco.grupo.visible = false;
+cena.add(rabisco.grupo);
+
+// alvará de exemplo (para o "receber")
+const alvara = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.26, 0.01), new THREE.MeshToonMaterial({ color: 0xfffbe8 }));
+alvara.rotation.x = -0.4;
+
+const est = { acao: "parada", girar: true, ang: 0.35, comRabisco: false, cam: { dist: 5.2, alt: 1.25, alvoY: 1.12 } };
+const info = document.getElementById("info");
+mostrar("sabrina");
+
+function fazer(a) {
+  if (a === "girar") { est.girar = !est.girar; document.querySelector("[data-a=girar]").textContent = `Girar: ${est.girar ? "sim" : "não"}`; return; }
+  est.acao = a;
+  const todas = quem === "juntas" ? Object.values(pessoas) : [sabrina];
+  for (const b of document.querySelectorAll("#barra button[data-a]")) if (b.dataset.a !== "girar") b.classList.toggle("ativo", b.dataset.a === a);
+  for (const s of todas) {
+    s.orar(a === "orar");
+    if (a === "acenar") s.acenar(3);
+    if (a === "comemorar") s.comemorar(3);
+    if (a === "parada") s.calma();
+    if (a !== "receber") { s.segurar(null); s.objeto(true); }
+  }
+  if (a === "receber") { sabrina.segurar(null); sabrina.receber(alvara); setTimeout(() => { if (est.acao === "receber") { sabrina.segurar(null); sabrina.objeto(true); } }, 4500); }
+}
+document.getElementById("barra").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b?.dataset.a) fazer(b.dataset.a); if (b?.dataset.p) { mostrar(b.dataset.p); fazer("parada"); } });
+
+function tamanho() { r3.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); }
+addEventListener("resize", tamanho); tamanho();
+
+const relogio = new THREE.Clock();
+function quadro() {
+  const dt = Math.min(0.05, relogio.getDelta());
+  if (est.girar) est.ang += dt * 0.35;
+  const andar = est.acao === "andar";
+  for (const p of Object.values(pessoas)) { p.grupo.rotation.y = est.ang; p.atualizar(dt, { modo: andar ? "andar" : "parado", vel: andar ? 2 : 0 }); }
+  if (est.comRabisco) rabisco.atualizar(dt, { modo: "parado" });
+  const { dist, alt, alvoY, x = est.comRabisco ? 0.55 : 0 } = est.cam;
+  cam.position.set(x, alt, dist); cam.lookAt(x, alvoY, 0);
+  r3.render(cena, cam);
+  requestAnimationFrame(quadro);
+}
+quadro();
+
+// para as capturas automáticas
+window.previa = {
+  get sabrina() { return sabrina; }, pessoas, mostrar, rabisco, est, fazer, r3,
+  vista(ang, { dist = 5.2, alt = 1.25, alvoY = 1.12, x, girar = false, rabisco: comR = false } = {}) {
+    est.ang = ang; est.girar = girar; est.cam = { dist, alt, alvoY, x }; est.comRabisco = comR; rabisco.grupo.visible = comR;
+  },
+  chamadas: () => r3.info.render.calls,
+  // chamadas de desenho de cada pessoa sozinha (sem chão, sem Rabisco)
+  medir() {
+    const out = {}, so = new THREE.Scene();
+    for (const [id, p] of Object.entries(pessoas)) {
+      const pai = p.grupo.parent, vis = p.grupo.visible;
+      so.add(p.grupo); p.grupo.visible = true;
+      r3.render(so, cam); out[id] = { chamadas: r3.info.render.calls, triangulosNaTela: r3.info.render.triangles };
+      pai.add(p.grupo); p.grupo.visible = vis;
+    }
+    return out;
+  },
+};
+</script>
+</body>
+</html>

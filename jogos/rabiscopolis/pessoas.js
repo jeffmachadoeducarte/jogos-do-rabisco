@@ -1,0 +1,961 @@
+// Rabiscolândia: PESSOAS de verdade em versão boneco (cartoon arredondado, cabeça oval, contorno preto e olhos
+// grandes no traço do Rabisco). Nenhuma foto vai para o jogo: são bonecos inspirados nelas. Elas não falam.
+//  - "sabrina": Diretora Sabrina (Educarte Kids II) — cabelo escuro longo e liso repartido de lado, cílios longos,
+//    conjunto rosa da Educarte com a logo azul no peito, unhas rosa, brincos e pulseira dourados, scarpin preto;
+//  - "elaine": Contadora Elaine (Crescente Contabilidade) — óculos gatinho de armação grossa, cabelo liso com
+//    pontas caramelo, blusa creme com listras onduladas azuis, broche azul, colar e argolas douradas, prancheta do alvará;
+//  - "carina": Diretora Carina (Educarte Kids I) — cabelo preto cacheado e volumoso, sorriso largo com dentes,
+//    olhos apertadinhos, vestido-camisa bege com gola, botões e cinto, colar de contas e brincos pendentes.
+//
+// Custo baixo: o corpo inteiro é UMA malha com esqueleto (cada peça presa ao seu osso) e UM material (cores por
+// vértice + um atlas desenhado em canvas com rosto, tecido, logo e capa do objeto da mão). O contorno preto é uma
+// segunda malha (casca empurrada pela normal no shader). Com a sombrinha redonda: 3 chamadas de desenho.
+//
+//   import { criarPessoa } from "./pessoas.js";
+//   const s = criarPessoa("sabrina");  cena.add(s.grupo);
+//   s.atualizar(dt, { modo: "andar", vel });       // modo "parado" | "andar" (vel > 0,2 também anda)
+//   s.acenar(2); s.pular(); s.comemorar(2.5); s.orar(true);
+//   s.receber(alvara3D);                           // guarda o objeto próprio (prancheta), estica as mãos e segura o alvará
+//   s.segurar(null); s.objeto(true); s.calma();     // larga, pega o objeto próprio de volta, encerra aceno/festa
+
+import { THREE, toon, texturaCanvas, aleatorio } from "../../src/motor3d/toon.js";
+import { sombraBlob } from "../../src/motor3d/objetos.js";
+
+const V3 = THREE.Vector3;
+const sstep = (x, a, b) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const lerp = (a, b, t) => a + (b - a) * t;
+
+// ---------------------------------------------------------------- atlas (1024 × 1024, coordenadas do canvas)
+const ATLAS = 1024;
+const REG = {
+  rosto: [0, 0, 512, 512],
+  logo: [512, 0, 512, 256],
+  capa: [512, 256, 192, 256],
+  branco: [704, 256, 320, 256],
+  torso: [0, 512, 512, 512],
+  tecido: [512, 512, 512, 512],
+};
+const uvReg = (reg, u, v) => { const [x, y, w, h] = REG[reg]; return [(x + u * w) / ATLAS, 1 - (y + (1 - v) * h) / ATLAS]; };
+
+// ---------------------------------------------------------------- montador da malha com esqueleto
+class Montador {
+  constructor() { this.pos = []; this.nrm = []; this.dir = []; this.uv = []; this.cor = []; this.si = []; this.sw = []; this.esp = []; this.tris = 0; }
+  // geo: geometria da peça · osso: índice ou função(p) → [[osso, peso], ...] · regiao: parte do atlas (u, v da peça)
+  // uvFn(p, u, v) → [u, v] troca o mapeamento · contorno: espessura da casca preta (0 = sem)
+  // caixa: contorno de peça com quinas (casca escalada a partir do centro, sem rachar nas arestas)
+  add(geo, { cor = 0xffffff, corFn = null, osso = 0, regiao = "branco", uvFn = null, contorno = 0.014, pos = [0, 0, 0], rot = [0, 0, 0], esc = 1, matriz = null, caixa = false } = {}) {
+    const g = geo.index ? geo.toNonIndexed() : geo.clone();
+    const M = matriz ? matriz.clone() : new THREE.Matrix4().compose(new V3(...pos), new THREE.Quaternion().setFromEuler(new THREE.Euler(...rot)), Array.isArray(esc) ? new V3(...esc) : new V3(esc, esc, esc));
+    const P = g.attributes.position, n = P.count;
+    let dirs = null;
+    if (caixa) {
+      g.computeBoundingBox();
+      const c = g.boundingBox.getCenter(new V3()), h = g.boundingBox.getSize(new V3()).multiplyScalar(0.5);
+      const q = new THREE.Quaternion(); M.decompose(new V3(), q, new V3());
+      dirs = [];
+      for (let i = 0; i < n; i++) { const d = new V3(P.getX(i), P.getY(i), P.getZ(i)).sub(c); d.set(d.x / h.x, d.y / h.y, d.z / h.z).applyQuaternion(q); dirs.push(d); }
+    }
+    g.applyMatrix4(M);
+    if (!g.attributes.normal) g.computeVertexNormals();
+    const N = g.attributes.normal, U = g.attributes.uv;
+    const col = new THREE.Color(cor);
+    const p = new V3();
+    for (let i = 0; i < n; i++) {
+      p.set(P.getX(i), P.getY(i), P.getZ(i));
+      this.pos.push(p.x, p.y, p.z);
+      this.nrm.push(N.getX(i), N.getY(i), N.getZ(i));
+      if (dirs) this.dir.push(dirs[i].x, dirs[i].y, dirs[i].z); else this.dir.push(N.getX(i), N.getY(i), N.getZ(i));
+      let u = U ? U.getX(i) : 0.5, v = U ? U.getY(i) : 0.5;
+      if (uvFn) [u, v] = uvFn(p, u, v);
+      const [uu, vv] = regiao === "branco" ? uvReg("branco", 0.5, 0.5) : uvReg(regiao, u, v);
+      this.uv.push(uu, vv);
+      if (corFn) { const cc = corFn(p); this.cor.push(cc.r, cc.g, cc.b); } else this.cor.push(col.r, col.g, col.b);
+      const pesos = typeof osso === "function" ? osso(p) : [[osso, 1]];
+      for (let k = 0; k < 4; k++) { this.si.push(pesos[k]?.[0] ?? 0); this.sw.push(pesos[k]?.[1] ?? 0); }
+      this.esp.push(contorno);
+    }
+    this.tris += n / 3;
+  }
+  geometrias() {
+    const g = new THREE.BufferGeometry();
+    const pos = new THREE.Float32BufferAttribute(this.pos, 3);
+    const si = new THREE.Uint16BufferAttribute(this.si, 4), sw = new THREE.Float32BufferAttribute(this.sw, 4);
+    g.setAttribute("position", pos);
+    g.setAttribute("normal", new THREE.Float32BufferAttribute(this.nrm, 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(this.uv, 2));
+    g.setAttribute("color", new THREE.Float32BufferAttribute(this.cor, 3));
+    g.setAttribute("skinIndex", si); g.setAttribute("skinWeight", sw);
+    // casca do contorno: mesmos vértices; a "normal" é a direção de empurrar e só entram as peças com contorno
+    const c = new THREE.BufferGeometry();
+    c.setAttribute("position", pos);
+    c.setAttribute("normal", new THREE.Float32BufferAttribute(this.dir, 3));
+    c.setAttribute("skinIndex", si); c.setAttribute("skinWeight", sw);
+    c.setAttribute("contorno", new THREE.Float32BufferAttribute(this.esp, 1));
+    const idx = [];
+    for (let i = 0; i < this.esp.length; i += 3) if (this.esp[i] > 0) idx.push(i, i + 1, i + 2);
+    c.setIndex(idx);
+    return { corpo: g, contorno: c, triCorpo: this.esp.length / 3, triContorno: idx.length / 3 };
+  }
+}
+
+// mecha de cabelo: fita com seção oval ao longo de uma curva, afinando na ponta (fora(P, t) = lado de fora)
+function mecha(pts, { w0 = 0.12, w1 = 0.05, d0 = 0.05, d1 = 0.02, lados = 6, passos = 10, fora }) {
+  const curva = new THREE.CatmullRomCurve3(pts, false, "centripetal");
+  const pos = [], nrm = [], uv = [], idx = [];
+  for (let i = 0; i <= passos; i++) {
+    const t = i / passos, P = curva.getPointAt(t), T = curva.getTangentAt(t);
+    const N = fora(P, t).clone(); N.addScaledVector(T, -N.dot(T)).normalize();
+    const B = new V3().crossVectors(T, N).normalize();
+    const ponta = t > 0.7 ? 1 - Math.pow((t - 0.7) / 0.3, 2) * 0.93 : 1;
+    const w = lerp(w0, w1, t) * ponta, d = lerp(d0, d1, t) * ponta;
+    for (let k = 0; k <= lados; k++) {
+      const a = (k / lados) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
+      pos.push(P.x + B.x * c * w / 2 + N.x * s * d / 2, P.y + B.y * c * w / 2 + N.y * s * d / 2, P.z + B.z * c * w / 2 + N.z * s * d / 2);
+      const nn = new V3().addScaledVector(B, c * d).addScaledVector(N, s * w).normalize();
+      nrm.push(nn.x, nn.y, nn.z); uv.push(k / lados, t);
+    }
+  }
+  const L = lados + 1;
+  for (let i = 0; i < passos; i++) for (let k = 0; k < lados; k++) { const a = i * L + k, b = a + L; idx.push(a, a + 1, b, b, a + 1, b + 1); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute("normal", new THREE.Float32BufferAttribute(nrm, 3));
+  g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+  // confere o sentido dos triângulos (a face tem de olhar para fora, senão o contorno inverte)
+  const pa = new V3().fromArray(pos, idx[0] * 3), pb = new V3().fromArray(pos, idx[1] * 3), pc = new V3().fromArray(pos, idx[2] * 3);
+  const tri = new V3().crossVectors(pb.clone().sub(pa), pc.clone().sub(pa));
+  if (tri.dot(new V3().fromArray(nrm, idx[0] * 3)) < 0) for (let i = 0; i < idx.length; i += 3) { const x = idx[i + 1]; idx[i + 1] = idx[i + 2]; idx[i + 2] = x; }
+  g.setIndex(idx);
+  return g;
+}
+
+// ---------------------------------------------------------------- desenhos do atlas
+const logos = new Map(); // url → Image (carrega uma vez)
+function carregarLogo(url, aoCarregar) {
+  if (!logos.has(url)) { const im = new Image(); im.src = url; logos.set(url, { im, fila: [] }); im.onload = () => { for (const f of logos.get(url).fila) f(); }; }
+  const l = logos.get(url);
+  if (l.im.complete && l.im.naturalWidth) aoCarregar(l.im); else l.fila.push(() => aoCarregar(l.im));
+}
+
+// rosto: retalho OPACO de esfera (az ±60°, polar 45°–150°) pintado com a cor da pele, então emenda sem marca
+const ROSTO = { az: 60, pol0: 45, pol1: 150 };
+const hex = (n) => `#${new THREE.Color(n).getHexString()}`;
+function desenharRosto(c, p, fechado) {
+  const f = p.rosto;
+  const kx = 512 / (2 * ROSTO.az), ky = 512 / (ROSTO.pol1 - ROSTO.pol0);
+  const X = (az) => 256 + az * kx, Y = (pol) => (pol - ROSTO.pol0) * ky;
+  c.fillStyle = hex(p.pele); c.fillRect(0, 0, 512, 512);
+  c.lineCap = c.lineJoin = "round";
+  // bochechas rosadas (degradê suave: o retalho é opaco)
+  for (const s of [-1, 1]) {
+    c.save(); c.translate(X(s * 31), Y(112)); c.scale(1, (ky / kx) * 0.62);
+    const g = c.createRadialGradient(0, 0, 2, 0, 0, 46);
+    g.addColorStop(0, f.bochecha); g.addColorStop(1, "rgba(255,96,130,0)");
+    c.fillStyle = g; c.beginPath(); c.arc(0, 0, 46, 0, Math.PI * 2); c.fill(); c.restore();
+  }
+  // cílios longos curvados para cima, saindo do delineado (do meio para a ponta de fora)
+  const cilios = (rx, ry, s, cy = 0, esc = 1) => {
+    c.strokeStyle = "#151515"; c.lineCap = "round";
+    for (const [a, comp, larg] of f.cilios) {
+      const aa = s > 0 ? a : Math.PI - a, x0 = Math.cos(aa) * (rx + 1), y0 = cy + Math.sin(aa) * (ry + 1) * esc;
+      const nx = Math.cos(aa), ny = Math.sin(aa); // para fora do olho
+      const L = comp;
+      c.lineWidth = larg;
+      c.beginPath(); c.moveTo(x0, y0);
+      c.quadraticCurveTo(x0 + nx * L * 0.6, y0 + ny * L * 0.6 - L * 0.1, x0 + nx * L * 0.75 + s * L * 0.35, y0 + ny * L * 0.55 - L * 0.55);
+      c.stroke();
+    }
+  };
+  // olhos grandes (no traço do Rabisco: branco com contorno, íris, pupila e brilho) com delineado e cílios
+  for (const s of [-1, 1]) {
+    const ox = X(s * 22), oy = Y(96), rx = 12 * kx, ry = 13 * ky * 0.84;
+    if (fechado) {
+      c.save(); c.translate(ox, oy + 8);
+      c.strokeStyle = "#151515"; c.lineWidth = 12;
+      c.beginPath(); c.ellipse(0, 0, rx, ry * 0.45, 0, Math.PI * 0.06, Math.PI * 0.94); c.stroke();
+      // cílios para baixo quando fecha
+      c.lineWidth = 7;
+      for (const k of [0, 1, 2]) { const a = s > 0 ? 0.15 + k * 0.28 : Math.PI - 0.15 - k * 0.28; const x0 = Math.cos(a) * rx, y0 = Math.sin(a) * ry * 0.45; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x0 + s * 10 + Math.cos(a) * 8, y0 + 16); c.stroke(); }
+      c.restore();
+      continue;
+    }
+    if (f.olhos === "rindo") {
+      // olhos apertadinhos de quem está rindo: meia-lua com a íris espiando, pálpebra de cima grossa
+      c.save(); c.translate(ox, oy + ry * 0.3); c.rotate(s * -0.05);
+      const lua = () => { c.beginPath(); c.moveTo(-rx, 0); c.quadraticCurveTo(0, -ry * 1.15, rx, 0); c.quadraticCurveTo(0, -ry * 0.12, -rx, 0); c.closePath(); };
+      cilios(rx, ry * 0.55, s, -ry * 0.02, 1);
+      lua(); c.fillStyle = "#ffffff"; c.fill();
+      c.save(); lua(); c.clip();
+      const gi = c.createRadialGradient(-s * 3, -ry * 0.25, 2, -s * 3, -ry * 0.3, rx * 0.62);
+      f.iris.forEach((cor, i) => gi.addColorStop([0, 0.5, 0.85, 1][i], cor));
+      c.fillStyle = gi; c.beginPath(); c.arc(-s * 3, -ry * 0.3, rx * 0.62, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#120904"; c.beginPath(); c.arc(-s * 3, -ry * 0.3, rx * 0.32, 0, Math.PI * 2); c.fill();
+      c.fillStyle = "#ffffff"; c.beginPath(); c.arc(-s * 3 - rx * 0.24, -ry * 0.5, rx * 0.17, 0, Math.PI * 2); c.fill();
+      c.restore();
+      c.strokeStyle = "#151515"; c.lineWidth = 13;
+      c.beginPath(); c.moveTo(-rx - 2, 2); c.quadraticCurveTo(0, -ry * 1.18, rx + 2, 2); c.stroke();
+      c.lineWidth = 5; c.beginPath(); c.moveTo(-rx * 0.85, -1); c.quadraticCurveTo(0, -ry * 0.12, rx * 0.85, -1); c.stroke();
+      // ruguinha de riso embaixo
+      c.strokeStyle = "rgba(120,60,40,0.45)"; c.lineWidth = 4; c.beginPath(); c.moveTo(-rx * 0.6, ry * 0.32); c.quadraticCurveTo(0, ry * 0.5, rx * 0.6, ry * 0.32); c.stroke();
+      c.restore();
+      continue;
+    }
+    c.save(); c.translate(ox, oy); c.rotate(s * -0.07);
+    cilios(rx, ry, s);
+    c.fillStyle = "#ffffff"; c.strokeStyle = "#151515"; c.lineWidth = 7;
+    c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+    const ix = -s * 4, iy = ry * 0.16, irx = rx * 0.68, iry = ry * 0.68;
+    c.save(); c.beginPath(); c.ellipse(0, 0, rx - 3, ry - 3, 0, 0, Math.PI * 2); c.clip();
+    const gi = c.createRadialGradient(ix, iy + iry * 0.25, 3, ix, iy, iry);
+    f.iris.forEach((cor, i) => gi.addColorStop([0, 0.5, 0.85, 1][i], cor));
+    c.fillStyle = gi; c.beginPath(); c.ellipse(ix, iy, irx, iry, 0, 0, Math.PI * 2); c.fill();
+    c.lineWidth = 4; c.strokeStyle = "#151515"; c.stroke();
+    c.fillStyle = "#120904"; c.beginPath(); c.ellipse(ix, iy + 2, irx * 0.5, iry * 0.52, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#ffffff";
+    c.beginPath(); c.ellipse(ix - irx * 0.36, iy - iry * 0.38, irx * 0.3, iry * 0.26, -0.4, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(ix + irx * 0.4, iy + iry * 0.36, irx * 0.13, 0, Math.PI * 2); c.fill();
+    c.restore();
+    // delineado grosso em cima
+    c.strokeStyle = "#151515"; c.lineWidth = 14;
+    c.beginPath(); c.ellipse(0, 0, rx + 1, ry + 1, 0, Math.PI * 1.04, Math.PI * 1.96); c.stroke();
+    c.restore();
+  }
+  // sobrancelhas
+  c.fillStyle = f.sobrancelha;
+  const g2 = f.grossura;
+  for (const s of [-1, 1]) {
+    const xp = X(s * 24), xo = X(s * 34);
+    c.beginPath();
+    const ii = f.interno ?? 0;
+    c.moveTo(X(s * 8.5), Y(80.5 - ii));
+    c.quadraticCurveTo(X(s * 15), Y(75.6), xp, Y(73.8));
+    c.quadraticCurveTo(X(s * 30), Y(73.4), xo, Y(78.6));
+    c.quadraticCurveTo(X(s * 29), Y(73.4 + 3.2 * g2), xp, Y(73.8 + 3.1 * g2));
+    c.quadraticCurveTo(X(s * 15), Y(75.6 + 2.4 * g2 - ii * 0.5), X(s * 9), Y(80.5 + 2.7 * g2 - ii));
+    c.closePath(); c.fill();
+  }
+  // nariz: risquinho
+  c.strokeStyle = "#b46a52"; c.lineWidth = 6;
+  c.beginPath(); c.moveTo(X(-2.8), Y(108.5)); c.quadraticCurveTo(X(0), Y(110.6), X(2.8), Y(108.5)); c.stroke();
+  const mx = X(0), my = Y(116.5);
+  if (f.boca === "dentes") {
+    // sorriso largo de orelha a orelha mostrando os dentes de cima
+    const L = 17 * kx, H = 9 * ky, yy = my - 2;
+    const boca = () => { c.beginPath(); c.moveTo(mx - L, yy); c.quadraticCurveTo(mx, yy + H * 0.35, mx + L, yy); c.quadraticCurveTo(mx + L * 0.7, yy + H * 1.15, mx, yy + H * 1.2); c.quadraticCurveTo(mx - L * 0.7, yy + H * 1.15, mx - L, yy); c.closePath(); };
+    boca(); c.fillStyle = "#5a1a22"; c.fill();
+    c.save(); boca(); c.clip();
+    c.fillStyle = "#ffffff"; c.beginPath(); c.moveTo(mx - L, yy - 6); c.quadraticCurveTo(mx, yy + H * 0.35, mx + L, yy - 6); c.lineTo(mx + L, yy + H * 0.55); c.quadraticCurveTo(mx, yy + H * 0.95, mx - L, yy + H * 0.55); c.closePath(); c.fill();
+    c.strokeStyle = "rgba(150,150,160,0.7)"; c.lineWidth = 2.5;
+    for (let i = -3; i <= 3; i++) { const x = mx + i * L * 0.24; c.beginPath(); c.moveTo(x, yy); c.lineTo(x, yy + H * 0.62 - Math.abs(i) * 4); c.stroke(); }
+    c.fillStyle = "#e46a7c"; c.beginPath(); c.ellipse(mx, yy + H * 1.15, L * 0.4, H * 0.2, 0, 0, Math.PI * 2); c.fill();
+    c.restore();
+    c.strokeStyle = f.batom; c.lineWidth = 7; boca(); c.stroke();
+    c.strokeStyle = "#151515"; c.lineWidth = 5;
+    for (const s of [-1, 1]) { c.beginPath(); c.moveTo(mx + s * (L - 2), yy - 1); c.quadraticCurveTo(mx + s * (L + 8), yy - 4, mx + s * (L + 10), yy - 14); c.stroke(); }
+  } else if (f.boca === "aberta") {
+    // sorriso largo e aberto, com dentes, língua e batom
+    const L = 15 * kx, H = 10.5 * ky;
+    const boca = () => { c.beginPath(); c.moveTo(mx - L, my); c.quadraticCurveTo(mx, my + H * 0.22, mx + L, my); c.quadraticCurveTo(mx + L * 0.82, my + H, mx, my + H * 1.02); c.quadraticCurveTo(mx - L * 0.82, my + H, mx - L, my); c.closePath(); };
+    boca(); c.fillStyle = "#4a1420"; c.fill();
+    c.save(); boca(); c.clip();
+    c.fillStyle = "#ffffff"; c.beginPath(); c.moveTo(mx - L, my - 4); c.quadraticCurveTo(mx, my + H * 0.22, mx + L, my - 4); c.lineTo(mx + L, my + H * 0.3); c.quadraticCurveTo(mx, my + H * 0.52, mx - L, my + H * 0.3); c.closePath(); c.fill();
+    c.fillStyle = "#f2708f"; c.beginPath(); c.ellipse(mx + 4, my + H * 0.98, L * 0.55, H * 0.36, 0, 0, Math.PI * 2); c.fill();
+    c.restore();
+    c.strokeStyle = f.batom; c.lineWidth = 8; boca(); c.stroke();
+    c.strokeStyle = "#151515"; c.lineWidth = 5;
+    for (const s of [-1, 1]) { c.beginPath(); c.moveTo(mx + s * (L - 3), my - 1); c.quadraticCurveTo(mx + s * (L + 7), my - 3, mx + s * (L + 10), my - 13); c.stroke(); }
+  } else {
+    // sorriso discreto de boca fechada, lábios com batom rosado
+    const L = 11 * kx, yy = my + 8;
+    c.fillStyle = f.batom;
+    c.beginPath(); c.moveTo(mx - L, yy - 2); c.quadraticCurveTo(mx - L * 0.5, yy - 16, mx, yy - 9); c.quadraticCurveTo(mx + L * 0.5, yy - 16, mx + L, yy - 2);
+    c.quadraticCurveTo(mx, yy + 26, mx - L, yy - 2); c.closePath(); c.fill();
+    c.strokeStyle = "#7a2c3a"; c.lineWidth = 6;
+    c.beginPath(); c.moveTo(mx - L - 4, yy - 6); c.quadraticCurveTo(mx, yy + 12, mx + L + 4, yy - 6); c.stroke();
+    c.fillStyle = "rgba(255,255,255,0.45)"; c.beginPath(); c.ellipse(mx + 8, yy + 9, 9, 3.5, 0, 0, Math.PI * 2); c.fill();
+  }
+}
+
+// ---------------------------------------------------------------- roupas (textura do torso e do tecido)
+const TORSO_Y0 = 0.74, TORSO_Y1 = 1.525, TORSO_Z = 0.74;
+function listras(c, w, h, cor) { c.fillStyle = cor; for (let x = 4; x < w; x += 14) c.fillRect(x, 0, 2, h); }
+// listras onduladas (tipo zebra) na horizontal
+function ondas(c, w, h, r, voltas = 6) {
+  c.fillStyle = r.fundo; c.fillRect(0, 0, w, h);
+  for (let y0 = 22, i = 0; y0 < h + 40; y0 += 64, i++) {
+    const fase = i * 1.7, amp = 9 + (i % 3) * 3;
+    const yy = (x) => y0 + Math.sin(x / w * Math.PI * voltas + fase) * amp + ((x / 18 | 0) % 2 ? 2 : -2);
+    c.fillStyle = r.onda;
+    c.beginPath(); c.moveTo(0, yy(0));
+    for (let x = 0; x <= w; x += 8) c.lineTo(x, yy(x));
+    for (let x = w; x >= 0; x -= 8) c.lineTo(x, yy(x) + 16 + Math.sin(x / 23 + i) * 5);
+    c.closePath(); c.fill();
+    c.strokeStyle = r.fio; c.lineWidth = 3;
+    c.beginPath(); for (let x = 0; x <= w; x += 8) { const y = yy(x) + 30 + Math.sin(x / 40 + i * 2) * 4; if (x) c.lineTo(x, y); else c.moveTo(x, y); } c.stroke();
+  }
+}
+// linho liso com trama bem leve e pregas suaves
+function linho(c, w, h, r) {
+  c.fillStyle = r.fundo; c.fillRect(0, 0, w, h);
+  const rnd = aleatorio(7);
+  c.fillStyle = r.trama;
+  for (let i = 0; i < 900; i++) c.fillRect(rnd() * w, rnd() * h, 1 + rnd() * 3, 1);
+  c.fillStyle = r.prega;
+  for (let x = 20; x < w; x += 64) c.fillRect(x + rnd() * 10, 0, 3, h);
+}
+function desenharTecido(c, p) {
+  const r = p.roupa;
+  if (r.tipo === "blazer") { c.fillStyle = r.terno; c.fillRect(0, 0, 512, 512); listras(c, 512, 512, r.listra); }
+  else if (r.tipo === "vestido") linho(c, 512, 512, r);
+  else ondas(c, 512, 512, r, 2);
+}
+function desenharTorso(c, p) {
+  // u em volta (frente = 256, lado esquerdo dela à direita), v de cima (gola) para baixo (barra)
+  const r = p.roupa;
+  const Y = (y) => ((TORSO_Y1 - y) / (TORSO_Y1 - TORSO_Y0)) * 512;
+  if (r.tipo === "vestido") {
+    linho(c, 512, 512, r);
+    // decote em V aberto pela gola, colar de contas (pérola e dourado), carcela com botões
+    const vY = Y(1.33);
+    c.fillStyle = hex(p.pele);
+    c.beginPath(); c.moveTo(256 - 50, 0); c.lineTo(256 + 50, 0); c.lineTo(256, vY); c.closePath(); c.fill();
+    c.strokeStyle = r.costura; c.lineWidth = 5; c.beginPath(); c.moveTo(256 - 50, 0); c.lineTo(256, vY); c.lineTo(256 + 50, 0); c.stroke();
+    for (let i = 0; i <= 12; i++) {
+      const t = i / 12, x = 256 + (t - 0.5) * 70, y = Y(1.505) + Math.sin(t * Math.PI) * 30;
+      c.fillStyle = i % 2 ? "#e9b84a" : "#fff8ec"; c.strokeStyle = "rgba(90,60,30,0.6)"; c.lineWidth = 1.5;
+      c.beginPath(); c.arc(x, y, i % 2 ? 4.5 : 5.5, 0, Math.PI * 2); c.fill(); c.stroke();
+    }
+    c.strokeStyle = r.costura; c.lineWidth = 4; c.beginPath(); c.moveTo(256 + 8, vY); c.lineTo(256 + 8, 512); c.stroke();
+    for (let y = vY + 40; y < 470; y += 56) { c.fillStyle = r.botao; c.beginPath(); c.arc(256 + 2, y, 7, 0, Math.PI * 2); c.fill(); c.strokeStyle = r.costura; c.lineWidth = 2; c.stroke(); }
+    return;
+  }
+  if (r.tipo === "blusa") {
+    ondas(c, 512, 512, r);
+    // decote redondo com a pele e o colar fino dourado
+    c.fillStyle = hex(p.pele);
+    c.beginPath(); c.moveTo(256 - 64, 0); c.quadraticCurveTo(256 - 50, Y(1.44), 256, Y(1.43)); c.quadraticCurveTo(256 + 50, Y(1.44), 256 + 64, 0); c.closePath(); c.fill();
+    c.strokeStyle = r.gola; c.lineWidth = 6;
+    c.beginPath(); c.moveTo(256 - 64, 0); c.quadraticCurveTo(256 - 50, Y(1.44), 256, Y(1.43)); c.quadraticCurveTo(256 + 50, Y(1.44), 256 + 64, 0); c.stroke();
+    c.strokeStyle = "#e7b53c"; c.lineWidth = 5;
+    c.beginPath(); c.moveTo(256 - 46, 0); c.quadraticCurveTo(256, Y(1.47) + 10, 256 + 46, 0); c.stroke();
+    const yb = Y(r.barra ?? TORSO_Y0) - 5;
+    c.lineWidth = 8; c.strokeStyle = r.gola; c.beginPath(); c.moveTo(0, yb); c.lineTo(512, yb); c.stroke();
+    return;
+  }
+  c.fillStyle = r.terno; c.fillRect(0, 0, 512, 512);
+  listras(c, 512, 512, r.listra);
+  // blusa em V e lapelas com o recorte (gola alfaiate)
+  const vY = Y(1.17);
+  c.fillStyle = r.blusa;
+  c.beginPath(); c.moveTo(256 - 58, 0); c.lineTo(256 + 58, 0); c.lineTo(256, vY); c.closePath(); c.fill();
+  c.fillStyle = "rgba(255,255,255,0.35)"; c.fillRect(256 - 50, 0, 100, 10);
+  for (const s of [-1, 1]) {
+    c.fillStyle = r.lapela; c.strokeStyle = r.costura; c.lineWidth = 4;
+    c.beginPath();
+    c.moveTo(256 + s * 58, 0); c.lineTo(256 + s * 2, vY); c.lineTo(256 + s * 30, vY - 40); c.lineTo(256 + s * 92, 92);
+    c.lineTo(256 + s * 74, 84); c.lineTo(256 + s * 96, 52); c.lineTo(256 + s * 92, 0);
+    c.closePath(); c.fill(); c.stroke();
+  }
+  // abotoamento e a abertura do blazer embaixo
+  c.strokeStyle = r.costura; c.lineWidth = 4;
+  c.beginPath(); c.moveTo(256, vY); c.lineTo(256, Y(1.03)); c.quadraticCurveTo(256 - 6, Y(0.9), 256 - 34, 512); c.stroke();
+  c.beginPath(); c.moveTo(256, Y(1.03)); c.quadraticCurveTo(256 + 6, Y(0.9), 256 + 34, 512); c.stroke();
+  c.fillStyle = r.blusa; c.beginPath(); c.arc(256, Y(1.07), 12, 0, Math.PI * 2); c.fill(); c.stroke();
+  // bolsos com aba
+  for (const s of [-1, 1]) { c.fillStyle = r.lapela; c.beginPath(); c.roundRect(256 + s * 112 - 38, Y(0.93) - 8, 76, 18, 6); c.fill(); c.stroke(); }
+  // barra, costura das costas e das laterais
+  c.lineWidth = 3; c.globalAlpha = 0.6;
+  c.beginPath(); c.moveTo(0, 0); c.lineTo(0, 512); c.moveTo(512, 0); c.lineTo(512, 512); c.stroke();
+  for (const x of [128, 384]) { c.beginPath(); c.moveTo(x, 70); c.lineTo(x, 512); c.stroke(); }
+  c.globalAlpha = 1; c.lineWidth = 6; c.beginPath(); c.moveTo(0, 508); c.lineTo(512, 508); c.stroke();
+}
+
+// capa do objeto da mão (192 × 256)
+function desenharCapa(c, tipo) {
+  if (tipo === "biblia") {
+    c.fillStyle = "#c41d2a"; c.fillRect(0, 0, 192, 256);
+    c.fillStyle = "rgba(0,0,0,0.15)"; c.fillRect(0, 0, 14, 256);
+    c.strokeStyle = "#f5c542"; c.lineWidth = 4; c.strokeRect(22, 12, 158, 232);
+    c.fillStyle = "#f5c542"; c.fillRect(96 - 9, 40, 18, 92); c.fillRect(96 - 32, 66, 64, 18);
+    c.font = "900 38px 'Baloo 2', system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
+    c.fillText("BÍBLIA", 101, 176);
+    c.font = "700 22px 'Baloo 2', system-ui, sans-serif"; c.fillText("Sagrada", 101, 210);
+  } else if (tipo === "prancheta") {
+    // folha do alvará presa na prancheta: título, linhas e carimbo
+    c.fillStyle = "#fffdf6"; c.fillRect(0, 0, 192, 256);
+    c.fillStyle = "#1f4fa8"; c.font = "900 34px 'Baloo 2', system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
+    c.fillText("ALVARÁ", 96, 46);
+    c.fillStyle = "#b9c2d0"; for (let i = 0; i < 6; i++) c.fillRect(24, 84 + i * 20, i % 3 === 2 ? 90 : 144, 7);
+    c.strokeStyle = "#2a9a4a"; c.lineWidth = 6; c.beginPath(); c.arc(140, 212, 26, 0, Math.PI * 2); c.stroke();
+    c.beginPath(); c.moveTo(127, 212); c.lineTo(137, 222); c.lineTo(154, 201); c.stroke();
+    c.strokeStyle = "#151515"; c.lineWidth = 3; c.beginPath(); c.moveTo(24, 226); c.quadraticCurveTo(50, 206, 64, 222); c.quadraticCurveTo(76, 234, 96, 214); c.stroke();
+  }
+}
+
+function desenharLogo(c, im, borda = "#c51b72", fio = "#f3a3c9") {
+  // selo branco bordado: a logo azul precisa de fundo claro para aparecer no rosa
+  c.clearRect(0, 0, 512, 256);
+  c.fillStyle = borda; c.beginPath(); c.roundRect(4, 4, 504, 248, 54); c.fill();
+  c.fillStyle = "#ffffff"; c.beginPath(); c.roundRect(14, 14, 484, 228, 46); c.fill();
+  c.setLineDash([10, 8]); c.strokeStyle = fio; c.lineWidth = 3; c.beginPath(); c.roundRect(26, 26, 460, 204, 38); c.stroke(); c.setLineDash([]);
+  if (im) { const h = 196, w = (im.naturalWidth / im.naturalHeight) * h; c.drawImage(im, 256 - w / 2, 128 - h / 2 + 2, w, h); }
+}
+
+const atlas = new Map(); // id → { aberto, fechado }
+function texturasDe(id, p) {
+  if (atlas.has(id)) return atlas.get(id);
+  const em = (c, reg, fn) => { const [x, y, w, h] = REG[reg]; c.save(); c.translate(x, y); c.beginPath(); c.rect(0, 0, w, h); c.clip(); fn(); c.restore(); };
+  const fazer = (fechado) => texturaCanvas(ATLAS, ATLAS, (c) => {
+    c.clearRect(0, 0, ATLAS, ATLAS);
+    em(c, "branco", () => { c.fillStyle = "#ffffff"; c.fillRect(0, 0, 320, 256); });
+    em(c, "tecido", () => desenharTecido(c, p));
+    em(c, "torso", () => desenharTorso(c, p));
+    em(c, "capa", () => desenharCapa(c, p.objeto?.tipo));
+    em(c, "logo", () => desenharLogo(c, null));
+    em(c, "rosto", () => desenharRosto(c, p, fechado));
+  });
+  const t = { aberto: fazer(false), fechado: fazer(true) };
+  for (const tx of [t.aberto, t.fechado]) tx.anisotropy = 4;
+  atlas.set(id, t);
+  // a logo chega depois: desenha por cima nas duas texturas
+  if (p.logo) carregarLogo(p.logo.url, (im) => {
+    for (const tx of [t.aberto, t.fechado]) { em(tx.image.getContext("2d"), "logo", () => desenharLogo(tx.image.getContext("2d"), im)); tx.needsUpdate = true; }
+  });
+  // a fonte da capa pode chegar depois também
+  if (p.objeto) document.fonts?.ready?.then(() => {
+    for (const tx of [t.aberto, t.fechado]) { const c = tx.image.getContext("2d"); em(c, "capa", () => desenharCapa(c, p.objeto.tipo)); tx.needsUpdate = true; }
+  });
+  return t;
+}
+
+// material do contorno: casca preta empurrada pela "normal" da casca (já com o esqueleto aplicado)
+let matContorno = null;
+function materialContorno() {
+  if (matContorno) return matContorno;
+  matContorno = new THREE.MeshBasicMaterial({ color: 0x151515, side: THREE.BackSide });
+  matContorno.onBeforeCompile = (s) => {
+    s.vertexShader = s.vertexShader
+      .replace("#include <common>", "#include <common>\nattribute float contorno;")
+      .replace("#include <skinning_vertex>", "#include <skinning_vertex>\ntransformed += objectNormal * contorno;");
+  };
+  matContorno.customProgramCacheKey = () => "contorno-pessoa";
+  return matContorno;
+}
+
+// ---------------------------------------------------------------- ossos (posições de descanso, em metros)
+const OSSOS = [
+  ["quadril", -1, [0, 0.88, 0]],
+  ["tronco", 0, [0, 1.0, 0]],
+  ["cabeca", 1, [0, 1.58, 0]],
+  ["ombroE", 1, [0.285, 1.4, 0]],
+  ["cotoveloE", 3, [0.29, 1.12, 0]],
+  ["maoE", 4, [0.29, 0.82, 0]],
+  ["objeto", 5, [0.29, 0.82, 0]],
+  ["ombroD", 1, [-0.285, 1.4, 0]],
+  ["cotoveloD", 7, [-0.29, 1.12, 0]],
+  ["maoD", 8, [-0.29, 0.82, 0]],
+  ["pernaE", 0, [0.105, 0.88, 0]],
+  ["joelhoE", 10, [0.105, 0.5, 0]],
+  ["pernaD", 0, [-0.105, 0.88, 0]],
+  ["joelhoD", 12, [-0.105, 0.5, 0]],
+  ["cabeloTras", 1, [0, 1.64, -0.12]],
+];
+const O = Object.fromEntries(OSSOS.map(([n], i) => [n, i]));
+
+// ---------------------------------------------------------------- cabeça e tronco (medidas)
+const R = 0.25, HC = new V3(0, 1.825, 0), HS = new V3(0.78, 1.08, 0.92); // cabeça oval: raio, centro e achatamento
+// afina o queixo (rosto oval): estreita a parte de baixo da cabeça, mais nos lados que na frente
+const afinar = (x, y, z) => {
+  const r = Math.hypot(x, y, z) || 1, el = Math.asin(THREE.MathUtils.clamp(y / r, -1, 1));
+  const t = sstep(-el, -0.05, 1.25);
+  return [x * (1 - 0.3 * t), y, z * (1 - 0.1 * t)];
+};
+function formaCabeca(g) {
+  const P = g.attributes.position;
+  for (let i = 0; i < P.count; i++) { const [x, y, z] = afinar(P.getX(i), P.getY(i), P.getZ(i)); P.setXYZ(i, x, y, z); }
+  g.computeVertexNormals();
+  return g;
+}
+const naCabeca = (az, el, k = 1) => {
+  const [x, y, z] = afinar(Math.sin(az) * Math.cos(el) * R * k, Math.sin(el) * R * k, Math.cos(az) * Math.cos(el) * R * k);
+  return new V3(x * HS.x, y * HS.y, z * HS.z).add(HC);
+};
+const rTorso = (() => {
+  const chaves = [[0.74, 0.236], [0.8, 0.246], [0.9, 0.238], [0.97, 0.222], [1.04, 0.207], [1.14, 0.216], [1.25, 0.238], [1.34, 0.244], [1.41, 0.232], [1.47, 0.192], [1.505, 0.12], [1.525, 0.0]];
+  const sp = new THREE.SplineCurve(chaves.map(([y, r]) => new THREE.Vector2(r, y)));
+  const am = sp.getPoints(240);
+  return (y) => { for (let i = 1; i < am.length; i++) if (am[i].y >= y) { const a = am[i - 1], b = am[i]; return lerp(a.x, b.x, (y - a.y) / Math.max(1e-6, b.y - a.y)); } return 0; };
+})();
+// ajuste do corpo da pessoa que está sendo montada (cintura mais marcada, barra mais alta)
+let corpoAtual = { aperto: 0, barra: TORSO_Y0 };
+const raio = (y) => rTorso(y) * (1 - corpoAtual.aperto * Math.exp(-(((y - 1.07) / 0.13) ** 2)));
+const naRoupa = (a, y, fora = 0) => {
+  const r = raio(y);
+  const n = new V3(Math.sin(a), 0, Math.cos(a) / TORSO_Z).normalize();
+  return new V3(r * Math.sin(a), y, r * TORSO_Z * Math.cos(a)).addScaledVector(n, fora);
+};
+// selo curvo colado na roupa (logo), afastado "fora" metros: sem briga de profundidade
+function seloNaRoupa(a0, y0, W, H, fora) {
+  const nx = 8, ny = 3, r0 = raio(y0), da = W / (r0 * Math.hypot(Math.cos(a0), TORSO_Z * Math.sin(a0)));
+  const pos = [], uv = [], idx = [];
+  for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) { const q = naRoupa(a0 + (i / nx - 0.5) * da, y0 + (j / ny - 0.5) * H, fora); pos.push(q.x, q.y, q.z); uv.push(i / nx, j / ny); }
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const a = j * (nx + 1) + i, b = a + nx + 1; idx.push(a, a + 1, b + 1, a, b + 1, b); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+
+// ---------------------------------------------------------------- penteados
+// h: { m, cabelo(pontos, opções, peso, contorno, cor), naCabeca, pesoFrente, pesoTras, calota(H, opções) }
+const CABELOS = {
+  // Sabrina: liso, longo, repartido do lado direito dela com a franja varrida; o lado direito cai na frente do ombro
+  sabrinaLado(h) {
+    const { cabelo, naCabeca: nc, pesoFrente, pesoTras } = h;
+    h.calota((az) => 0.5 - 0.1 * THREE.MathUtils.clamp(az, -1, 1));
+    cabelo([nc(-0.5, 1.12, 1.05), nc(-0.18, 0.86, 1.1), nc(0.3, 0.64, 1.11), nc(0.72, 0.48, 1.1), nc(1.0, 0.24, 1.08), nc(1.1, -0.06, 1.05)], { w0: 0.16, w1: 0.1, d0: 0.06, d1: 0.04 });
+    cabelo([nc(-0.5, 1.12, 1.05), nc(-0.72, 0.82, 1.1), nc(-0.98, 0.46, 1.1), nc(-1.1, 0.12, 1.07), nc(-1.14, -0.12, 1.04)], { w0: 0.12, w1: 0.08, d0: 0.05, d1: 0.035 });
+    cabelo([nc(-1.55, 0.35, 1.02), nc(-1.62, -0.05, 1.08), new V3(-0.23, 1.6, 0.06), new V3(-0.225, 1.48, 0.15), new V3(-0.21, 1.34, 0.2), new V3(-0.2, 1.2, 0.215), new V3(-0.22, 1.13, 0.22)], { w0: 0.15, w1: 0.11, d0: 0.07, d1: 0.04, passos: 12 }, pesoFrente);
+    cabelo([nc(-1.85, 0.3, 1.02), nc(-1.9, -0.1, 1.08), new V3(-0.28, 1.6, -0.01), new V3(-0.29, 1.46, 0.08), new V3(-0.285, 1.32, 0.12), new V3(-0.3, 1.24, 0.13)], { w0: 0.12, w1: 0.08, d0: 0.06, d1: 0.035 }, pesoFrente);
+    // lado esquerdo dela: por cima do ombro, caindo para trás (deixa a logo à mostra)
+    cabelo([nc(1.55, 0.35, 1.02), nc(1.66, -0.05, 1.08), new V3(0.25, 1.6, -0.04), new V3(0.27, 1.5, -0.11), new V3(0.25, 1.34, -0.15), new V3(0.26, 1.24, -0.15)], { w0: 0.15, w1: 0.1, d0: 0.07, d1: 0.04 }, pesoTras);
+    h.costas(1.13);
+    h.brilho();
+  },
+  // Carina: preto, cacheado e volumoso até os ombros, repartido do lado direito dela; cachos de bolinhas + espirais
+  carinaCachos(h) {
+    const { m, naCabeca: nc, cb } = h;
+    const H = (az) => 0.56 - 0.08 * THREE.MathUtils.clamp(az, -1, 1);
+    h.calota(H, { volume: 0.1 });
+    const rnd = aleatorio(31);
+    const bola = (P, r, peso) => m.add(new THREE.SphereGeometry(1, 6, 5), { cor: rnd() < 0.55 ? cb.cor : cb.cor2, osso: peso, pos: P.toArray(), esc: [r, r * 0.9, r], rot: [rnd() * 3, rnd() * 3, 0], contorno: 0.008 });
+    // casca de cachos em volta da cabeça (espiral de Fibonacci), sem cobrir o rosto
+    const N = 46;
+    for (let i = 0; i < N; i++) {
+      const yy = 1 - ((i + 0.5) / N) * 1.25, el = Math.asin(THREE.MathUtils.clamp(yy, -1, 1)), az = ((i * 2.39996) % (Math.PI * 2)) - Math.PI;
+      if (Math.abs(az) < 1.2 && el < H(az) + 0.16) continue;
+      bola(nc(az, el, 1.1 + rnd() * 0.07), 0.048 + rnd() * 0.014, O.cabeca);
+    }
+    // franja de cachos varrida na testa (do lado da risca para o outro)
+    for (const [az, el] of [[-0.35, 0.95], [-0.05, 0.86], [0.25, 0.78], [0.55, 0.68], [0.85, 0.52], [1.05, 0.32], [-0.7, 0.8], [-0.95, 0.55]]) bola(nc(az, el, 1.1), 0.05, O.cabeca);
+    // volume descendo até os ombros pelos lados e pelas costas
+    for (const [y, rr, n] of [[1.75, 0.235, 14], [1.66, 0.26, 14], [1.57, 0.27, 13], [1.49, 0.27, 11]]) {
+      for (let k = 0; k < n; k++) {
+        const az = -Math.PI + ((k + rnd() * 0.4) / n) * Math.PI * 2;
+        if (Math.abs(az) < (y > 1.6 ? 1.15 : 1.35)) continue;
+        const P = new V3(Math.sin(az) * rr, y + (rnd() - 0.5) * 0.03, Math.cos(az) * rr * 0.86 - 0.02);
+        bola(P, 0.054 + rnd() * 0.016, y > 1.7 ? O.cabeca : Math.cos(az) < -0.2 ? O.cabeloTras : O.tronco);
+      }
+    }
+    // cachos em espiral (molinha) caindo dos lados do rosto e atrás
+    for (const [az, y0, comp] of [[-1.22, 1.74, 0.22], [1.2, 1.72, 0.2], [-1.6, 1.66, 0.24], [1.62, 1.66, 0.22], [-2.4, 1.56, 0.17], [2.4, 1.56, 0.17], [3.1, 1.52, 0.16]]) {
+      const base = new V3(Math.sin(az) * 0.25, y0, Math.cos(az) * 0.22 - 0.01), pts = [];
+      for (let i = 0; i <= 24; i++) { const t = i / 24, th = t * Math.PI * 2 * 2.5; pts.push(base.clone().add(new V3(Math.cos(th) * 0.024, -t * comp, Math.sin(th) * 0.024))); }
+      const peso = Math.cos(az) < -0.2 ? h.pesoTras : h.pesoFrente;
+      m.add(mecha(pts, { w0: 0.042, w1: 0.03, d0: 0.036, d1: 0.026, lados: 4, passos: 18, fora: (P) => new V3(P.x - base.x, 0.001, P.z - base.z) }), { cor: cb.cor, osso: peso, contorno: 0.007 });
+    }
+  },
+  // Elaine: liso, abaixo dos ombros, risca quase no meio, caindo dos dois lados do rosto; raiz escura e pontas caramelo
+  elaineMeio(h) {
+    const { cabelo, naCabeca: nc, pesoFrente } = h;
+    h.calota((az) => 0.66 - 0.04 * THREE.MathUtils.clamp(az, -1, 1), { volume: 0.06 });
+    // as duas "cortinas" que saem da risca e emolduram o rosto
+    cabelo([nc(-0.14, 1.2, 1.05), nc(0.25, 0.92, 1.1), nc(0.68, 0.62, 1.11), nc(0.98, 0.28, 1.1), nc(1.12, -0.08, 1.08), nc(1.2, -0.42, 1.08)], { w0: 0.15, w1: 0.1, d0: 0.06, d1: 0.04 });
+    cabelo([nc(-0.14, 1.2, 1.05), nc(-0.5, 0.92, 1.1), nc(-0.86, 0.62, 1.11), nc(-1.08, 0.28, 1.1), nc(-1.18, -0.08, 1.08), nc(-1.24, -0.42, 1.08)], { w0: 0.15, w1: 0.1, d0: 0.06, d1: 0.04 });
+    // mechas da frente: caem na frente dos dois ombros até o peito
+    for (const s of [1, -1]) {
+      cabelo([nc(s * 1.3, 0.3, 1.04), nc(s * 1.36, -0.25, 1.1), new V3(s * 0.2, 1.6, 0.07), new V3(s * 0.215, 1.47, 0.15), new V3(s * 0.205, 1.33, 0.2), new V3(s * 0.2, 1.22, 0.215), new V3(s * 0.22, 1.16, 0.22)], { w0: 0.15, w1: 0.11, d0: 0.07, d1: 0.04, passos: 12 }, pesoFrente);
+      cabelo([nc(s * 1.75, 0.3, 1.02), nc(s * 1.8, -0.1, 1.08), new V3(s * 0.27, 1.6, 0.0), new V3(s * 0.285, 1.46, 0.07), new V3(s * 0.28, 1.33, 0.1), new V3(s * 0.3, 1.26, 0.11)], { w0: 0.12, w1: 0.08, d0: 0.06, d1: 0.035 }, pesoFrente);
+    }
+    h.costas(1.18);
+    h.brilho(0.9);
+  },
+};
+
+// ---------------------------------------------------------------- montagem do corpo
+function montarPessoa(p) {
+  const m = new Montador();
+  const cap = (r, l, capSeg = 2, rad = 8) => new THREE.CapsuleGeometry(r, l, capSeg, rad);
+  const esf = (ws = 12, hs = 8) => new THREE.SphereGeometry(1, ws, hs);
+  const SKIN = p.pele, r = p.roupa;
+
+  // --- tronco (lathe) com a textura da roupa
+  corpoAtual = { aperto: r.aperto ?? 0, barra: r.barra ?? TORSO_Y0 };
+  const y0 = corpoAtual.barra;
+  const pts = [new THREE.Vector2(0.0001, y0)];
+  const NP = 22;
+  for (let i = 0; i <= NP; i++) { const y = lerp(y0, TORSO_Y1 - 0.004, i / NP); pts.push(new THREE.Vector2(Math.max(0.0001, raio(y) * (y < y0 + 0.03 ? 0.97 : 1)), y)); }
+  const torso = new THREE.LatheGeometry(pts, 20, Math.PI, Math.PI * 2);
+  torso.scale(1, 1, TORSO_Z);
+  m.add(torso, { osso: (q) => (q.y < 0.92 ? [[O.quadril, 1 - sstep(q.y, 0.82, 0.92)], [O.tronco, sstep(q.y, 0.82, 0.92)]] : [[O.tronco, 1]]), regiao: "torso", uvFn: (q, u) => [u, (q.y - TORSO_Y0) / (TORSO_Y1 - TORSO_Y0)], contorno: 0.016 });
+  // vestido: saia evasê até o joelho, cinto na cintura e gola de camisa
+  if (r.saia) {
+    const sp = [];
+    const N = 14, ya = 1.0, yb = r.saia.fim;
+    sp.push(new THREE.Vector2(0.0001, yb));
+    for (let i = 0; i <= N; i++) { const y = lerp(yb, ya, i / N), t = (ya - y) / (ya - yb); sp.push(new THREE.Vector2(Math.max(raio(y) * 1.03 + 0.006, lerp(raio(ya) + 0.006, r.saia.raio, Math.pow(t, 0.8))), y)); }
+    const saia = new THREE.LatheGeometry(sp, 20, Math.PI, Math.PI * 2); saia.scale(1, 1, 0.82);
+    m.add(saia, { osso: O.quadril, regiao: "tecido", contorno: 0.016 });
+    const rb = raio(1.022) + 0.008;
+    const cinto = new THREE.LatheGeometry([new THREE.Vector2(rb - 0.004, 0.998), new THREE.Vector2(rb + 0.004, 1.004), new THREE.Vector2(rb + 0.006, 1.022), new THREE.Vector2(rb + 0.004, 1.04), new THREE.Vector2(rb - 0.004, 1.046)], 20);
+    cinto.scale(1, 1, TORSO_Z * 1.04);
+    m.add(cinto, { cor: r.cinto, osso: O.tronco, contorno: 0.006 });
+    const fivela = naRoupa(0.55, 1.022, 0.014);
+    m.add(esf(10, 6), { cor: p.ouro, osso: O.tronco, pos: fivela.toArray(), rot: [0, 0.55, 0], esc: [0.022, 0.022, 0.01], contorno: 0.004 });
+  }
+  if (r.gola) {
+    const gola = new THREE.TorusGeometry(0.08, 0.014, 5, 16, Math.PI * 2 - 1.0);
+    m.add(gola, { cor: r.gola, osso: O.tronco, pos: [0, 1.525, 0], rot: [Math.PI / 2, 0, Math.PI / 2 + 0.5], esc: [1, 1, 1.4], contorno: 0.006 });
+    for (const s of [1, -1]) m.add(esf(8, 6), { cor: r.gola, osso: O.tronco, pos: [s * 0.055, 1.5, 0.11], rot: [0.5, s * 0.5, s * 0.7], esc: [0.045, 0.012, 0.035], contorno: 0.006 });
+  }
+  // quadril da calça
+  const calca = r.calcaTecido ? { regiao: "tecido", cor: r.calca } : { cor: r.calca };
+  m.add(esf(12, 8), { osso: O.quadril, ...calca, pos: [0, 0.86, 0], esc: [0.205, 0.11, 0.155], contorno: 0.014 });
+  // logo no peito, lado esquerdo dela: selo curvo acompanhando a roupa, 8 mm para fora (sem piscar)
+  if (p.logo) m.add(seloNaRoupa(p.logo.a, p.logo.y, p.logo.w, p.logo.w / 2, 0.008), { osso: O.tronco, regiao: "logo", contorno: 0 });
+  // broche redondo (Elaine)
+  if (p.broche) { const q = naRoupa(p.broche.a, p.broche.y, 0.004), ang = Math.atan2(q.x, q.z / TORSO_Z); m.add(esf(10, 6), { cor: p.broche.cor, osso: O.tronco, pos: q.toArray(), rot: [0, ang, 0], esc: [0.032, 0.032, 0.014], contorno: 0.006 }); m.add(esf(6, 4), { cor: 0x8fa2e0, osso: O.tronco, pos: naRoupa(p.broche.a - 0.04, p.broche.y + 0.012, 0.016).toArray(), esc: [0.009, 0.006, 0.003], contorno: 0 }); }
+
+  // --- pescoço, colar, cabeça, orelhas, brincos, rosto
+  m.add(cap(0.064, 0.05, 2, 8), { cor: SKIN, osso: O.tronco, pos: [0, 1.545, 0], contorno: 0.01 });
+  if (p.gargantilha) m.add(new THREE.TorusGeometry(0.066, 0.007, 4, 18), { cor: p.gargantilha, osso: O.tronco, pos: [0, 1.548, 0.004], rot: [Math.PI / 2 + 0.12, 0, 0], contorno: 0 });
+  m.add(formaCabeca(new THREE.SphereGeometry(R, 28, 18)), { cor: SKIN, osso: O.cabeca, pos: HC.toArray(), esc: HS.toArray(), contorno: 0.016 });
+  for (const s of [1, -1]) {
+    m.add(esf(8, 6), { cor: SKIN, osso: O.cabeca, pos: naCabeca(s * 1.57, -0.08, 0.97).toArray(), esc: [0.03, 0.054, 0.042], contorno: 0.01 });
+    if (p.brinco === "pendente") {
+      const b0 = naCabeca(s * 1.53, -0.32, 1.0);
+      m.add(esf(8, 6), { cor: p.ouro, osso: O.cabeca, pos: b0.toArray(), esc: 0.014, contorno: 0.004 });
+      m.add(cap(0.006, 0.03, 2, 5), { cor: p.ouro, osso: O.cabeca, pos: [b0.x, b0.y - 0.028, b0.z], contorno: 0.003 });
+      m.add(esf(8, 6), { cor: p.ouro, osso: O.cabeca, pos: [b0.x, b0.y - 0.058, b0.z], esc: [0.014, 0.02, 0.014], contorno: 0.004 });
+    } else if (p.brinco === "argola") m.add(new THREE.TorusGeometry(0.022, 0.005, 4, 14), { cor: p.ouro, osso: O.cabeca, pos: naCabeca(s * 1.55, -0.36, 1.02).toArray(), rot: [0, Math.PI / 2, 0], contorno: 0.004 });
+    else m.add(esf(8, 6), { cor: p.ouro, osso: O.cabeca, pos: naCabeca(s * 1.53, -0.32, 1.0).toArray(), esc: 0.018, contorno: 0.006 });
+  }
+  {
+    const d2r = THREE.MathUtils.degToRad;
+    const rosto = formaCabeca(new THREE.SphereGeometry(R * 1.006, 14, 12, Math.PI / 2 - d2r(ROSTO.az), d2r(2 * ROSTO.az), d2r(ROSTO.pol0), d2r(ROSTO.pol1 - ROSTO.pol0)));
+    m.add(rosto, { osso: O.cabeca, regiao: "rosto", pos: HC.toArray(), esc: HS.toArray(), contorno: 0 });
+  }
+  // óculos de armação grossa, formato gatinho (pontas de fora levantadas)
+  if (p.oculos) {
+    const aro = (s) => {
+      const pts = [];
+      for (let i = 0; i < 20; i++) {
+        const t = (i / 20) * Math.PI * 2, cx = Math.cos(t), sy = Math.sin(t);
+        // gatinho: topo reto e largo, base arredondada, ponta de fora puxada para cima
+        const ret = p.oculos.forma === "retangulo";
+        const sc = Math.sign(cx) * Math.pow(Math.abs(cx), ret ? 0.35 : 0.55), ss = Math.sign(sy) * Math.pow(Math.abs(sy), ret ? 0.4 : 0.7); // cantos "quadrados" arredondados
+        let az = 19 * sc, el = sy > 0 ? 8.5 * ss : 9.5 * ss;
+        const fora = Math.max(0, s * cx);
+        if (!ret) { el += 7.5 * Math.pow(fora, 4) * Math.max(0, sy + 0.4); az += s * 4 * Math.pow(fora, 3) * Math.max(0, sy + 0.3); }
+        pts.push(naCabeca(THREE.MathUtils.degToRad(s * 22.5 + az), THREE.MathUtils.degToRad(-5.5 + el), 1.08));
+      }
+      return new THREE.CatmullRomCurve3(pts, true, "centripetal");
+    };
+    const cor = p.oculos.cor, esp = p.oculos.esp;
+    for (const s of [1, -1]) {
+      m.add(new THREE.TubeGeometry(aro(s), 40, esp, 5, true), { cor, osso: O.cabeca, contorno: 0.004 });
+      // haste até a orelha
+      const h0 = naCabeca(THREE.MathUtils.degToRad(s * 42), THREE.MathUtils.degToRad(4), 1.08), h1 = naCabeca(s * 1.2, 0.03, 1.1), h2 = naCabeca(s * 1.55, 0.0, 1.06);
+      m.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([h0, h1, h2]), 8, esp * 0.75, 4), { cor, osso: O.cabeca, contorno: 0 });
+    }
+    const p0 = naCabeca(THREE.MathUtils.degToRad(-6), THREE.MathUtils.degToRad(-2), 1.06), p1 = naCabeca(0, THREE.MathUtils.degToRad(-1), 1.075), p2 = naCabeca(THREE.MathUtils.degToRad(6), THREE.MathUtils.degToRad(-2), 1.06);
+    m.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([p0, p1, p2]), 6, esp * 0.8, 4), { cor, osso: O.cabeca, contorno: 0 });
+  }
+
+  // --- cabelo
+  const cb = p.cabelo;
+  const corCabelo = cb.pontas ? (q) => new THREE.Color(cb.cor).lerp(new THREE.Color(cb.pontas), sstep(q.y, 1.72, 1.2)) : null;
+  const fora = (P) => { const cy = lerp(P.y, HC.y, sstep(P.y, 1.5, 1.78)); return new V3(P.x, P.y - cy, P.z + 0.04); };
+  const h = {
+    m, naCabeca, fora, cb,
+    pesoFrente: (q) => { const w = sstep(q.y, 1.64, 1.42); return [[O.cabeca, 1 - w], [O.tronco, w]]; },
+    pesoTras: (q) => { const w = sstep(q.y, 1.76, 1.5); return [[O.cabeca, 1 - w], [O.cabeloTras, w]]; },
+    cabelo: (pts, op, peso = O.cabeca, contorno = 0.013, cor = null) => m.add(mecha(pts, { fora, lados: 6, passos: 9, ...op }), { cor: cor ?? cb.cor, corFn: cor ? null : corCabelo, osso: peso, contorno }),
+    // calota com a linha do cabelo: H(az) = altura da linha na testa (rad); por baixo da têmpora fica aberto
+    calota(H, { volume = 0.04 } = {}) {
+      const g = new THREE.SphereGeometry(R * 1.075, 24, 16);
+      const P = g.attributes.position, d = new V3();
+      for (let i = 0; i < P.count; i++) {
+        d.set(P.getX(i), P.getY(i), P.getZ(i)).normalize();
+        const az = Math.atan2(d.x, d.z), el = Math.asin(THREE.MathUtils.clamp(d.y, -1, 1));
+        const W = lerp(1.78, 1.0, sstep(el, 0.04, 0.26));
+        const rosto = sstep(H(az) - el, 0, 0.09) * sstep(W - Math.abs(az), 0, 0.12);
+        const queixo = sstep(-0.3 - el, 0, 0.12) * sstep(2.0 - Math.abs(az), 0, 0.2);
+        const k = lerp(1, 0.84, Math.max(rosto, queixo)) * (1 + volume * sstep(el, 0.3, 1.2));
+        P.setXYZ(i, P.getX(i) * k, P.getY(i) * k, P.getZ(i) * k);
+      }
+      formaCabeca(g);
+      m.add(g, { cor: cb.cor, osso: O.cabeca, pos: HC.toArray(), esc: HS.toArray(), contorno: 0.016 });
+    },
+    // costas: cortina de mechas até o meio das costas, pontas viradinhas
+    costas(fim) {
+      for (const [i, aDeg] of [130, 155, 180, 205, 230].entries()) {
+        const a = THREE.MathUtils.degToRad(aDeg), s = Math.sin(a), c = Math.cos(a), comp = [0, 0.03, -0.02, 0.025, 0][i];
+        h.cabelo([naCabeca(a, 0.5, 1.0), naCabeca(a, -0.15, 1.1), new V3(s * 0.27, 1.55, c * 0.26 - 0.04), new V3(s * 0.27, 1.38, c * 0.25 - 0.03), new V3(s * 0.26, fim + 0.07 - comp, c * 0.25 - 0.02), new V3(s * 0.3, fim - comp, c * 0.29 - 0.02)], { w0: 0.2, w1: 0.13, d0: 0.08, d1: 0.045, passos: 10 }, h.pesoTras);
+      }
+    },
+    // brilho do cabelo (faixa clara de desenho animado)
+    brilho(el = 0.95) { for (const s of [1, -1]) h.cabelo([naCabeca(s * 1.2, el, 1.108), naCabeca(s * 1.65, el - 0.12, 1.112), naCabeca(s * 2.1, el - 0.28, 1.108)], { w0: 0.03, w1: 0.026, d0: 0.012, d1: 0.01, lados: 4, passos: 5 }, O.cabeca, 0, cb.brilho); },
+  };
+  CABELOS[cb.estilo](h);
+
+  // --- braços (descanso: caídos ao lado do corpo)
+  for (const s of [1, -1]) {
+    const E = s > 0, x = s * 0.29;
+    const ombro = E ? O.ombroE : O.ombroD, cot = E ? O.cotoveloE : O.cotoveloD, mao = E ? O.maoE : O.maoD;
+    m.add(cap(r.manga === "longa" ? 0.054 : 0.06, 0.18), { osso: ombro, regiao: "tecido", pos: [x, 1.27, 0], contorno: 0.013 });
+    if (r.manga === "dobrada") {
+      m.add(cap(0.058, 0.06), { osso: cot, regiao: "tecido", pos: [x, 1.05, 0], contorno: 0.013 });
+      m.add(new THREE.TorusGeometry(0.06, 0.02, 5, 12), { cor: r.forro, osso: cot, pos: [x, 0.97, 0], rot: [Math.PI / 2, 0, 0], contorno: 0.008 });
+      m.add(cap(0.042, 0.06), { cor: SKIN, osso: cot, pos: [x, 0.9, 0], contorno: 0.01 });
+    } else {
+      m.add(cap(0.05, 0.17), { osso: cot, regiao: "tecido", pos: [x, 0.985, 0], contorno: 0.012 });
+      m.add(new THREE.TorusGeometry(0.047, 0.012, 5, 12), { cor: r.punho, osso: cot, pos: [x, 0.855, 0], rot: [Math.PI / 2, 0, 0], contorno: 0.006 });
+    }
+    // mão: palma achatada (virada para o corpo), quatro dedinhos separados e levemente dobrados, polegar na frente
+    m.add(esf(10, 8), { cor: SKIN, osso: mao, pos: [x, 0.788, 0.004], esc: [0.032, 0.048, 0.05], contorno: 0.009 });
+    for (const [i, z] of [-0.033, -0.011, 0.011, 0.032].entries()) {
+      const comp = [0.026, 0.036, 0.038, 0.03][i], cy = 0.748 - comp * 0.4, xx = x + s * 0.004;
+      m.add(cap(0.0102, comp, 2, 6), { cor: SKIN, osso: mao, pos: [xx, cy, z * 1.06], rot: [z * 3, 0, -s * 0.28], contorno: 0.0055 });
+      // unha pintada nas costas da ponta do dedo (lado de fora da mão)
+      if (p.unhas) m.add(esf(6, 4), { cor: p.unhas, osso: mao, pos: [xx + s * 0.0088 - s * comp * 0.14, cy - comp / 2 + 0.003, z * 1.06 - z * 0.08], rot: [z * 3, 0, -s * 0.28], esc: [0.0055, 0.0125, 0.0092], contorno: 0 });
+    }
+    m.add(cap(0.0125, 0.022, 2, 6), { cor: SKIN, osso: mao, pos: [x - s * 0.006, 0.772, 0.044], rot: [0.35, 0, -s * 0.35], contorno: 0.0055 });
+    if (E && p.pulseira) m.add(new THREE.TorusGeometry(0.048, 0.012, 5, 14), { cor: p.ouro, osso: cot, pos: [x, 0.845, 0], rot: [Math.PI / 2, 0, 0], contorno: 0.006 });
+  }
+
+  // --- pernas: calça, tornozelo e sapatilha com saltinho
+  for (const s of [1, -1]) {
+    const x = s * 0.105, perna = s > 0 ? O.pernaE : O.pernaD, joelho = s > 0 ? O.joelhoE : O.joelhoD;
+    m.add(cap(0.09, 0.2, 2, 10), { osso: perna, ...calca, pos: [x, 0.69, 0], contorno: 0.014 });
+    m.add(cap(0.076, 0.33, 2, 10), { osso: joelho, ...calca, pos: [x, 0.355, 0], contorno: 0.01 });
+    m.add(cap(0.04, 0.04, 2, 8), { cor: SKIN, osso: joelho, pos: [x, 0.1, 0.005], contorno: 0.008 });
+    // scarpin: bico fino, peito do pé à mostra e saltinho
+    m.add(esf(12, 8), { cor: p.sapato, osso: joelho, pos: [x, 0.04, 0.05], esc: [0.058, 0.04, 0.125], contorno: 0.011 });
+    m.add(esf(10, 6), { cor: SKIN, osso: joelho, pos: [x, 0.07, 0.03], esc: [0.042, 0.03, 0.06], contorno: 0 });
+    m.add(cap(0.017, 0.035, 2, 6), { cor: p.sapato, osso: joelho, pos: [x, 0.03, -0.055], rot: [0.15, 0, 0], contorno: 0.006 });
+  }
+  return m;
+}
+
+// objeto da mão esquerda (osso "objeto"), montado no espaço local do osso
+const OBJETOS = {
+  biblia(m, M) {
+    const peca = (geo, cor, pos, contorno = 0.01) => m.add(geo, { cor, matriz: M.clone().multiply(new THREE.Matrix4().makeTranslation(...pos)), osso: O.objeto, caixa: true, contorno });
+    const W = 0.17, H = 0.23, D = 0.055;
+    peca(new THREE.BoxGeometry(W, H, 0.009), 0xc41d2a, [0, 0, D / 2 - 0.0045]);
+    peca(new THREE.BoxGeometry(W, H, 0.009), 0xc41d2a, [0, 0, -D / 2 + 0.0045]);
+    peca(new THREE.BoxGeometry(0.012, H, D), 0xa8141f, [-W / 2 + 0.006, 0, 0]);
+    peca(new THREE.BoxGeometry(W - 0.016, H - 0.014, D - 0.016), 0xfff1d0, [0.004, 0, 0], 0.006);
+    m.add(new THREE.PlaneGeometry(W - 0.012, H - 0.01), { osso: O.objeto, regiao: "capa", contorno: 0, matriz: M.clone().multiply(new THREE.Matrix4().makeTranslation(0.003, 0, D / 2 + 0.002)) });
+  },
+  prancheta(m, M) {
+    const peca = (geo, cor, pos, contorno = 0.008) => m.add(geo, { cor, matriz: M.clone().multiply(new THREE.Matrix4().makeTranslation(...pos)), osso: O.objeto, caixa: true, contorno });
+    const W = 0.2, H = 0.27;
+    peca(new THREE.BoxGeometry(W, H, 0.012), 0xb07a45, [0, 0, 0]);
+    peca(new THREE.BoxGeometry(0.08, 0.035, 0.022), 0xc8d0da, [0, H / 2 - 0.022, 0.012], 0.006);
+    m.add(new THREE.PlaneGeometry(W - 0.03, H - 0.06), { osso: O.objeto, regiao: "capa", contorno: 0, matriz: M.clone().multiply(new THREE.Matrix4().makeTranslation(0, -0.012, 0.0075)) });
+  },
+};
+
+// ---------------------------------------------------------------- receitas das pessoas
+const PELE_SABRINA = 0xf2c4a0;
+const PESSOAS = {
+  sabrina: {
+    nome: "Diretora Sabrina", escola: "kids2",
+    pele: PELE_SABRINA, ouro: 0xf2bb3d, sapato: 0x1d1c22, unhas: 0xff2d95, gargantilha: 0x2a1a14, brinco: "ponto", pulseira: true,
+    rosto: {
+      iris: ["#2e1608", "#6e3a18", "#a8652c", "#5a2e12"], sobrancelha: "#22110a", grossura: 1, boca: "aberta", batom: "#b03f5c", bochecha: "rgba(255,96,130,0.5)",
+      // cílios BEM longos, curvados para cima: [ângulo no olho, comprimento, espessura]
+      cilios: [[-0.95, 30, 6], [-0.62, 40, 7], [-0.32, 46, 7.5], [-0.05, 40, 7], [0.2, 28, 6]],
+    },
+    cabelo: { estilo: "sabrinaLado", cor: 0x2b1913, brilho: 0x6a4432 },
+    roupa: { tipo: "blazer", manga: "dobrada", terno: "#ec2e8c", listra: "rgba(255,175,214,0.3)", blusa: "#ffcfe3", lapela: "#e0207f", costura: "#9e1259", forro: 0xffc2dc, calca: 0xf4f4f4, calcaTecido: true },
+    logo: { url: new URL("../../assets/marca/logos/azul.png", import.meta.url).href, a: 0.6, y: 1.245, w: 0.19 },
+    objeto: null, // sem nada nas mãos (pedido do Jefferson)
+  },
+  elaine: {
+    nome: "Contadora Elaine", empresa: "Crescente Contabilidade",
+    pele: 0xf7d8c4, ouro: 0xe9b949, sapato: 0x1d1c22, brinco: "argola", pulseira: false,
+    rosto: {
+      iris: ["#2a1608", "#5e3a1c", "#8f6a3a", "#4a2e14"], sobrancelha: "#4a2e1c", grossura: 0.7, interno: 2.5, boca: "discreta", batom: "#d9707f", bochecha: "rgba(255,120,140,0.42)",
+      cilios: [[-0.6, 18, 5], [-0.3, 22, 5.5], [-0.05, 18, 5]],
+    },
+    oculos: { cor: 0x241410, esp: 0.0085 },
+    cabelo: { estilo: "elaineMeio", cor: 0x4a2f1f, pontas: 0xb98a55, brilho: 0x8a6444 },
+    roupa: { tipo: "blusa", manga: "longa", aperto: 0.12, barra: 0.83, fundo: "#f1e4d2", onda: "#2f3f8f", fio: "#6b5040", gola: "#d9c6ad", punho: 0xe8d8c2, calca: 0x2e3348 },
+    broche: { a: -0.42, y: 1.2, cor: 0x1f2a5c },
+    objeto: { tipo: "prancheta", pos: [0.06, 0.05, 0.05], rot: [-0.1, 0.25, -0.05] },
+  },
+  carina: {
+    nome: "Diretora Carina", escola: "kids1",
+    pele: 0xd9a07a, ouro: 0xe9b84a, sapato: 0x1d1c22, brinco: "pendente", pulseira: false,
+    rosto: {
+      olhos: "rindo",
+      iris: ["#1e0f06", "#4a2a14", "#7a4a26", "#3a200e"], sobrancelha: "#140b07", grossura: 1.05, interno: 2.5, boca: "dentes", batom: "#a85a52", bochecha: "rgba(235,90,100,0.45)",
+      cilios: [[-0.35, 20, 6], [-0.1, 16, 5.5]],
+    },
+    // óculos pretos retangulares (aparecem só numa foto): deixado desligado, para ligar é só descomentar
+    oculos: null, // { forma: "retangulo", cor: 0x151515, esp: 0.009 },
+    cabelo: { estilo: "carinaCachos", cor: 0x17110e, cor2: 0x2c201a, brilho: 0x3d2c24 },
+    roupa: {
+      tipo: "vestido", manga: "dobrada", aperto: 0.1, fundo: "#e6d3b3", trama: "rgba(150,120,80,0.18)", prega: "rgba(150,120,80,0.12)", costura: "#b39468", botao: "#f4ead8",
+      forro: 0xd8c29e, gola: 0xeadbbf, cinto: 0xcdb28a, calca: 0xd9a07a, saia: { fim: 0.46, raio: 0.3 },
+    },
+    objeto: null,
+  },
+};
+void PELE_SABRINA;
+
+// ---------------------------------------------------------------- pessoa
+export function criarPessoa(id = "sabrina", { escala = 1, nome = null } = {}) {
+  const p = PESSOAS[id];
+  if (!p) throw new Error(`pessoa desconhecida: ${id}`);
+  const grupo = new THREE.Group();
+  const raiz = new THREE.Group(); // pulo e estica-e-achata
+  grupo.add(raiz);
+
+  // esqueleto
+  const ossos = OSSOS.map(([n]) => { const b = new THREE.Bone(); b.name = n; return b; });
+  OSSOS.forEach(([, pai, w], i) => { const b = ossos[i]; if (pai >= 0) { ossos[pai].add(b); b.position.set(...w).sub(new V3(...OSSOS[pai][2])); } else b.position.set(...w); });
+  raiz.add(ossos[0]);
+
+  const mont = montarPessoa(p);
+  // pose de segurar o objeto: calcula onde ele fica na mão e guarda isso no espaço do osso da mão
+  const POSE_OBJ = { oEx: -0.12, oEz: 0.04, cE: -1.0, mEx: 0.25 };
+  if (p.objeto) {
+    const aplicar = (sim) => {
+      ossos[O.ombroE].rotation.set(sim ? POSE_OBJ.oEx : 0, 0, sim ? POSE_OBJ.oEz : 0);
+      ossos[O.cotoveloE].rotation.set(sim ? POSE_OBJ.cE : 0, 0, 0);
+      ossos[O.maoE].rotation.set(sim ? POSE_OBJ.mEx : 0, 0, 0);
+      raiz.updateMatrixWorld(true);
+    };
+    aplicar(true);
+    const maoPose = ossos[O.maoE].matrixWorld.clone();
+    const mundo = new THREE.Matrix4().compose(new V3().setFromMatrixPosition(maoPose).add(new V3(...p.objeto.pos)), new THREE.Quaternion().setFromEuler(new THREE.Euler(...p.objeto.rot)), new V3(1, 1, 1));
+    const local = maoPose.clone().invert().multiply(mundo);
+    aplicar(false);
+    OBJETOS[p.objeto.tipo](mont, ossos[O.maoE].matrixWorld.clone().multiply(local));
+  }
+  const { corpo: geo, contorno: geoC, triCorpo, triContorno } = mont.geometrias();
+  const tex = texturasDe(id, p);
+  const matCorpo = new THREE.MeshToonMaterial({ map: tex.aberto, vertexColors: true, gradientMap: toon(0xffffff).gradientMap, alphaTest: 0.5 });
+  const malha = new THREE.SkinnedMesh(geo, matCorpo);
+  const casca = new THREE.SkinnedMesh(geoC, materialContorno());
+  const esq = new THREE.Skeleton(ossos);
+  raiz.add(malha, casca);
+  raiz.updateMatrixWorld(true);
+  malha.bind(esq); casca.bind(esq, malha.bindMatrix);
+  for (const mm of [malha, casca]) { mm.boundingSphere = new THREE.Sphere(new V3(0, 1.1, 0), 1.5); mm.castShadow = false; mm.receiveShadow = true; }
+  casca.raycast = () => {};
+  const sombra = sombraBlob(0.5, 0.32);
+  grupo.add(sombra);
+  grupo.scale.setScalar(escala); // só agora: o objeto e o esqueleto foram medidos em escala 1
+
+  const ALTURA = 2.15;
+  grupo.userData = { tipo: "pessoa", id, nome: nome ?? p.nome, altura: ALTURA * escala };
+
+  // ---------------- animação
+  const B = (n) => ossos[O[n]];
+  const atual = {};
+  let tempo = Math.random() * 10, fase = 0, piscar = 2, aceno = 0, festa = 0, recebe = 0, juntas = false;
+  let vy = 0, py = 0, objQuer = Boolean(p.objeto), objEsc = objQuer ? 1 : 0, segurando = null, pendente = null, olharAlvo = 0, olharT = 3;
+  const k0 = (dt, v) => 1 - Math.exp(-dt * v);
+
+  function pose(andando, vel) {
+    const a = { mYE: 0.55, mYD: 0.55, qY: 0, corpoY: 0, tronX: 0, tronY: 0, tronZ: 0, cabX: 0, cabY: 0, cabZ: 0, oEx: 0, oEz: 0.1, cE: -0.12, mEx: 0, oDx: 0, oDz: -0.1, cD: -0.12, mDx: 0, pE: 0, jE: 0, pD: 0, jD: 0, tX: 0, tZ: 0, sq: 1 };
+    const t = tempo;
+    if (andando) {
+      const s = Math.sin(fase), c = Math.cos(fase), amp = Math.min(0.55, 0.32 + vel * 0.06);
+      a.pE = -amp * s; a.pD = amp * s;
+      a.jE = 0.08 + Math.max(0, c) * 0.85; a.jD = 0.08 + Math.max(0, -c) * 0.85;
+      a.oEx = amp * 0.85 * s; a.oDx = -amp * 0.85 * s; a.cE = a.cD = -0.3;
+      a.corpoY = 0.025 * Math.cos(2 * fase) - 0.01;
+      a.tronX = 0.05; a.tronY = s * 0.09; a.qY = -s * 0.07; a.cabY = -s * 0.05; a.cabX = -0.03;
+      a.tX = 0.12 + Math.sin(2 * fase) * 0.05; a.tZ = s * 0.06;
+    } else {
+      // parada: respira, balança de leve e às vezes olha para o lado
+      a.tronX = Math.sin(t * 1.6) * 0.012; a.tronZ = Math.sin(t * 0.7) * 0.02;
+      a.cabZ = Math.sin(t * 0.8 + 1) * 0.05; a.cabY = olharAlvo; a.cabX = Math.sin(t * 0.6) * 0.03;
+      a.sq = 1 + Math.sin(t * 2.2) * 0.008;
+      a.oEz = 0.1 + Math.sin(t * 1.6) * 0.015; a.oDz = -0.1 - Math.sin(t * 1.6) * 0.015;
+      a.tX = Math.sin(t * 1.1) * 0.02; a.tZ = Math.sin(t * 0.8) * 0.02;
+    }
+    // objeto na mão esquerda (encostado no quadril)
+    if (objQuer && !juntas) { a.oEx = POSE_OBJ.oEx + (andando ? Math.sin(fase) * 0.06 : 0); a.oEz = POSE_OBJ.oEz; a.cE = POSE_OBJ.cE; a.mEx = POSE_OBJ.mEx; a.mYE = 0; }
+    // segurando algo na mão direita (ex.: o alvará): mão na frente do corpo
+    if (segurando && recebe <= 0) { a.oDx = -0.55; a.oDz = 0.06; a.cD = -0.85; a.mDx = 0.2; a.mYD = 0; }
+    if (juntas) { a.oEx = a.oDx = -0.62; a.oEz = -0.52; a.oDz = 0.52; a.cE = a.cD = -1.5; a.mEx = a.mDx = 0; a.mYE = a.mYD = 0; a.cabX = 0.22; a.cabY = 0; }
+    if (recebe > 0) { a.oEx = a.oDx = -1.15; a.oEz = -0.14; a.oDz = 0.14; a.cE = a.cD = -0.4; a.mEx = a.mDx = 0.1; a.mYE = a.mYD = 0; a.tronX = 0.08; a.cabX = 0.08; }
+    if (aceno > 0) { a.oDz = -2.45 + Math.sin(t * 11) * 0.32; a.oDx = -0.15; a.cD = -0.35; a.cabZ = -0.1; a.tronZ = 0.04; }
+    if (festa > 0) {
+      a.oEz = 2.5 + Math.sin(t * 9) * 0.25; a.oDz = -2.5 - Math.sin(t * 9 + 1) * 0.25; a.oEx = a.oDx = -0.1; a.cE = a.cD = -0.25;
+      a.tronZ = Math.sin(t * 4.5) * 0.06; a.cabZ = Math.sin(t * 4.5) * 0.08; a.tX = 0.1;
+    }
+    if (py > 0) { a.pE = a.pD = -0.25; a.jE = a.jD = 0.45; a.tX = 0.18; }
+    return a;
+  }
+
+  const api = {
+    grupo, id, tipo: "pessoa", nome: nome ?? p.nome, altura: ALTURA * escala, escola: p.escola, empresa: p.empresa,
+    ossos: Object.fromEntries(OSSOS.map(([n], i) => [n, ossos[i]])),
+    custo: { chamadas: 3, triangulos: triCorpo, triangulosContorno: triContorno },
+    pular() { if (py <= 0.001) vy = 3.2; },
+    // segura o piscar por s segundos (fotos, cenas)
+    olhosAbertos(s = 5) { piscar = s; },
+    // encerra aceno, festa e "receber" na hora (volta para a pose parada)
+    calma() { aceno = festa = recebe = 0; pendente = null; },
+    acenar(s = 1.8) { aceno = Math.max(aceno, s); },
+    comemorar(s = 2.5) { festa = Math.max(festa, s); api.pular(); },
+    orar(sim = true) { juntas = sim; },
+    // mostra/guarda o objeto próprio da mão esquerda (prancheta da Elaine); quem não tem, ignora
+    objeto(sim = true) { objQuer = sim && Boolean(p.objeto); },
+    // estica as duas mãos para receber; com objeto, ele vai para a mão direita (e o objeto próprio é guardado)
+    receber(obj = null, s = 1.4) { recebe = s; objQuer = false; if (obj) pendente = obj; },
+    segurar(obj) {
+      if (segurando && segurando !== obj) segurando.parent?.remove(segurando);
+      segurando = obj || null;
+      if (obj) { B("maoD").add(obj); if (!obj.userData.posNaMao) obj.position.set(0, -0.08, 0.05); }
+    },
+    atualizar(dt, a1 = {}, a2) {
+      const op = a1 && typeof a1 === "object" ? a1 : (a2 ?? {});
+      const vel = op.vel ?? 0, andando = op.modo === "andar" || vel > 0.2;
+      tempo += dt;
+      if (andando) fase += dt * (4.2 + Math.min(6, vel) * 0.9);
+      // piscar (de olhos fechados enquanto ora)
+      piscar -= dt;
+      let fechado = juntas;
+      if (piscar <= 0) { fechado = true; if (piscar < -0.13) piscar = 2 + Math.random() * 3; }
+      const mapa = fechado ? tex.fechado : tex.aberto;
+      if (matCorpo.map !== mapa) matCorpo.map = mapa;
+      // olhar em volta de vez em quando
+      olharT -= dt; if (olharT <= 0) { olharT = 2.5 + Math.random() * 4; olharAlvo = Math.random() < 0.5 ? 0 : (Math.random() - 0.5) * 0.7; }
+      // pulo
+      vy -= 13 * dt; py = Math.max(0, py + vy * dt); if (py === 0) vy = Math.max(vy, 0);
+      if (festa > 0 && py === 0 && vy === 0) api.pular();
+      aceno = Math.max(0, aceno - dt); festa = Math.max(0, festa - dt);
+      if (recebe > 0) { recebe -= dt; if (pendente && recebe < 0.9) { api.segurar(pendente); pendente = null; } }
+      const alvo = pose(andando, vel);
+      const k = k0(dt, andando ? 16 : 10);
+      for (const c in alvo) atual[c] = atual[c] === undefined ? alvo[c] : atual[c] + (alvo[c] - atual[c]) * k;
+      const A = atual;
+      raiz.position.y = py + A.corpoY;
+      const sq = py > 0 ? 1 + Math.min(0.08, vy * 0.02) : A.sq;
+      raiz.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq));
+      B("quadril").rotation.set(0, A.qY, 0);
+      B("tronco").rotation.set(A.tronX, A.tronY, A.tronZ);
+      B("cabeca").rotation.set(A.cabX, A.cabY, A.cabZ);
+      B("ombroE").rotation.set(A.oEx, 0, A.oEz); B("cotoveloE").rotation.x = A.cE; B("maoE").rotation.set(A.mEx, -A.mYE, -0.1);
+      B("ombroD").rotation.set(A.oDx, 0, A.oDz); B("cotoveloD").rotation.x = A.cD; B("maoD").rotation.set(A.mDx, A.mYD, 0.1);
+      B("pernaE").rotation.x = A.pE; B("joelhoE").rotation.x = A.jE;
+      B("pernaD").rotation.x = A.pD; B("joelhoD").rotation.x = A.jD;
+      B("cabeloTras").rotation.set(A.tX, 0, A.tZ);
+      objEsc += ((objQuer ? 1 : 0) - objEsc) * k0(dt, 12);
+      B("objeto").scale.setScalar(Math.max(0.0001, objEsc));
+      sombra.scale.setScalar(1 - Math.min(0.4, py * 0.6));
+    },
+  };
+  api.atualizar(0.016);
+  return api;
+}
+
+export const PESSOAS_IDS = Object.keys(PESSOAS);
