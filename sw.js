@@ -1,7 +1,7 @@
 // Service worker do app Jogos do Rabisco: abre rápido e continua funcionando sem internet.
 // Páginas e código: busca na rede primeiro (pega a versão nova) e usa a cópia guardada se estiver sem internet.
 // Vozes, imagens e fontes: usa a cópia guardada primeiro (não mudam) e só baixa o que falta.
-const VERSAO = "rabisco-v3";
+const VERSAO = "rabisco-v4-login";
 const ESSENCIAIS = ["./", "./index.html", "./src/app.js", "./src/style.css", "./src/catalogo.js", "./vendor/three.module.min.js", "./manifest.webmanifest", "./assets/app/icone-192.png"];
 
 self.addEventListener("install", (e) => {
@@ -15,6 +15,7 @@ const CODIGO = /\.(html|js|css|json|webmanifest)$|\/$/;
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
+  if (req.mode === "navigate") return; // deixa o navegador mostrar a janela de login
   const url = new URL(req.url);
   const mesmoSite = url.origin === self.location.origin;
   const fonte = url.hostname.endsWith("fonts.googleapis.com") || url.hostname.endsWith("fonts.gstatic.com");
