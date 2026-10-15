@@ -410,27 +410,28 @@ falas.update({
     "cid-je": "Olá, Rabisco! Bem-vindo à J.E Multimarcas, a loja de carros! Entre no pátio pelo portão e escolha o carro que você mais gostar. Chegue pertinho e aperte o botão!",
     "cid-je-vermelho": "Quero este! O carro vermelho!", "cid-je-azul": "Quero este! O carro azul!", "cid-je-amarelo": "Quero este! O carro amarelo!",
     "cid-je-verde": "Quero este! O carro verde!", "cid-je-roxo": "Quero este! O carro roxo!",
-    "cid-je-chave": "É seu! Cuide bem dele! Aqui está a chave. Entre no carro e saia pelo portão!",
+    "cid-je-preto": "Quero este! O carro preto!", "cid-je-prata": "Quero este! O carro prata!", "cid-je-branco": "Quero este! O carro branco!", "cid-je-grafite": "Quero este! O carro grafite!",
+    "cid-je-chave": "O Seu Lápis Cinza entregou a chave: o carro é seu! Cuide bem dele. Entre no carro e saia pelo portão!",
     "cid-je-portao": "Boa viagem! Leve o carro novo até a casa verde: o Seu Lápis Verde quer ver!",
     "cid-je-ok": "Uau, que carro lindo! Parabéns, Rabisco! Vamos agradecer a Deus por esse presente!",
     # Crescente Contabilidade (2026-10-14): missão Alvará da Escola. cid-alvara-pos e cid-alvara-obrigada-pre/pos são
     # emendadas com o nome da criança (assets/voz/nomes): "Alice" + "o alvará da escola venceu!..."
-    "cid-alvara": "Oi! O alvará da escola venceu! Vá até o escritório da Crescente Contabilidade buscar o alvará novo.",
-    "cid-alvara-pos": "o alvará da escola venceu! Vá até o escritório da Crescente Contabilidade buscar o alvará novo.",
-    "cid-crescente-entrar": "Bem-vindo à Crescente Contabilidade! Fale com a contadora no balcão.",
-    "cid-crescente-dica": "Olá! Você veio buscar o alvará da escola? Venha aqui no balcão!",
-    "cid-crescente-alvara": "Aqui está o alvará novinho da escola, com o selinho! Leve para a Diretora Sabrina, na porta da Educarte Kids II.",
-    "cid-crescente-oi": "Olá! Aqui na Crescente Contabilidade a gente cuida das contas e dos documentos das empresas.",
-    "cid-alvara-obrigada-pre": "Obrigada,", "cid-alvara-obrigada-pos": "Agora a escola está em dia.",
-    "cid-alvara-obrigada": "Obrigada! Agora a escola está em dia.",
+    "cid-alvara": "Oi! O alvará da escola venceu! Vá até a Crescente Contabilidade e fale com a contadora Elaine para buscar o alvará novo.",
+    "cid-alvara-pos": "o alvará da escola venceu! Vá até a Crescente Contabilidade e fale com a contadora Elaine para buscar o alvará novo.",
+    "cid-crescente-entrar": "Bem-vindo à Crescente Contabilidade! Fale com a contadora Elaine no balcão.",
+    "cid-crescente-dica": "Você veio buscar o alvará da escola? A contadora Elaine está esperando no balcão!",
+    "cid-crescente-alvara": "A contadora Elaine entregou o alvará novinho da escola, com o selinho! Leve para a Diretora Sabrina, na porta da Educarte Kids II.",
+    "cid-crescente-oi": "A contadora Elaine acenou! Na Crescente Contabilidade, ela cuida das contas e dos documentos das empresas.",
+    "cid-alvara-obrigada-pre": "A Diretora Sabrina agradece,", "cid-alvara-obrigada-pos": "Agora a escola está em dia.",
+    "cid-alvara-obrigada": "A Diretora Sabrina agradece! Agora a escola está em dia.",
     "cid-alvara-ok": "Agora está tudo certinho! Ter uma boa contabilidade é essencial para qualquer empresa. Obrigada, Crescente Contabilidade!",
-    "cid-bella": "Oi, Rabisco! Que tal um presente para a Professora Lápis Turquesa? Entre aqui na Bella Cat e escolha um acessório bem bonito!",
+    "cid-bella": "Oi, Rabisco! Que tal um presente para a Professora Lápis Turquesa? Entre na Bella Cat e escolha um acessório bem bonito!",
     "cid-bella-escolha": "Que bom que você veio! Escolha um presente: chegue pertinho de um pedestal e aperte o botão!",
     "cid-bella-laco": "O laço rosa! Que lindo!", "cid-bella-colar": "O colar de pérolas brancas! Que lindo!", "cid-bella-pulseira": "A pulseira azul! Que linda!",
     "cid-bella-bolsa": "A bolsinha roxa! Que linda!", "cid-bella-tiara": "A tiara amarela, cheia de brilhos! Que linda!",
     "cid-bella-embrulho": "Pronto, embrulhadinho! Agora leve o presente até a Professora Lápis Turquesa, na porta da escola!",
-    "cid-bella-ok": "Que lindo! Obrigada por lembrar de mim, Rabisco. Deus te abençoe!",
-    "cid-rise": "Oi, Rabisco! Bem-vindo à Academia Rise Up! Aqui a gente cuida do corpo que Deus nos deu. Entre pela porta e vamos treinar!",
+    "cid-bella-ok": "Que lindo! A Professora Lápis Turquesa amou o presente. Obrigada por lembrar dela, Rabisco! Deus te abençoe!",
+    "cid-rise": "Oi, Rabisco! Esta é a Academia Rise Up, onde a gente cuida do corpo que Deus nos deu. Entre pela porta e vamos treinar!",
     "cid-rise-esteira": "Primeiro, a esteira! Suba na esteira do meio e corra: aperte o botão ou vá para a frente!",
     "cid-rise-corre": "Isso! Continue correndo!",
     "cid-rise-peso": "Que corrida! Agora vamos levantar o halter. Vá até o colchonete laranja e aperte o botão cinco vezes!",
@@ -560,11 +561,19 @@ falas.update({
 # <<< FIM DO BLOCO Rádio <<<
 
 
+# Texto para fala: o que aparece escrito na tela não muda, só o que a voz lê.
+# "J.E Multimarcas" se pronuncia "Jóta Ê Multimarcas" (E fechado, como em "você").
+# Conferido: "Jóta Ê" sai com o E fechado (F1 ~480 Hz); "Jóta É" sai aberto (~750 Hz); "J.E" a voz lê "J e" solto.
+import re
+def para_fala(texto):
+    return re.sub(r"\bJ\.? ?E(?= Multimarcas)", "Jóta Ê", texto, flags=re.I)
+
+
 async def gerar(chave, texto, marcas=None, voz=None):
     caminho = os.path.join(SAIDA, f"{chave}.mp3")
     if os.path.exists(caminho) and not REFAZER and marcas is None:
         return
-    com = edge_tts.Communicate(texto, voz or VOZ, rate=RITMO_FALA.get(chave, RITMO), boundary="WordBoundary")
+    com = edge_tts.Communicate(para_fala(texto), voz or VOZ, rate=RITMO_FALA.get(chave, RITMO), boundary="WordBoundary")
     with open(caminho, "wb") as f:
         async for parte in com.stream():
             if parte["type"] == "audio":

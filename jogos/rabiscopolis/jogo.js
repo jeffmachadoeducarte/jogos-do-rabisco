@@ -504,8 +504,10 @@ function entrarLugar(id, imediato = false) {
     minimapa.hidden = true;
     posicionarCamera(1, 0);
     const def = SALAS[id];
-    if (def.dica && missoes?.ativa === def.dica.missao) { falar(def.dica.fala); dizer(s.nome, def.dica.texto, 4600); }
-    else { falar(def.fala ?? "rp-lugar-entrar"); dizer(s.nome, def.boasVindas ?? "Bem-vindo! Vista o uniforme no armário 👔 e brinque com os objetos marcados.", 4200); }
+    // nas lojas parceiras quem fala é a anfitriã narrando (os personagens parceiros, por enquanto, não falam)
+    const quem = id.startsWith("parceiro-") ? "Rabiscolândia" : s.nome;
+    if (def.dica && missoes?.ativa === def.dica.missao) { falar(def.dica.fala); dizer(quem, def.dica.texto, 4600); }
+    else { falar(def.fala ?? "rp-lugar-entrar"); dizer(quem, def.boasVindas ?? "Bem-vindo! Vista o uniforme no armário 👔 e brinque com os objetos marcados.", 4200); }
   };
   imediato ? fazer() : escurecer(fazer);
 }
@@ -597,6 +599,7 @@ function entrar(v) {
   j.vel.set(0, 0, 0);
   v.g.add(rabisco.grupo); const a = v.g.userData.motorista; rabisco.grupo.position.set(a.x, a.y - 2.0 * rabisco.escala, a.z); rabisco.grupo.rotation.set(0, 0, 0);
   if (v.g.userData.cima) v.g.userData.cima.visible = false; // ônibus: janelas e teto somem para ver o Rabisco dirigindo
+  v.g.userData.aoEntrar?.(rabisco); // moto: põe o capacete
   v.g.userData.seta.visible = false;
   sons.pisao();
   camera.st.manual = 0;
@@ -628,6 +631,7 @@ function sair() {
   toque?.especial(null);
   cena.add(rabisco.grupo); rabisco.grupo.visible = true;
   if (v.g.userData.cima) v.g.userData.cima.visible = true;
+  v.g.userData.aoSair?.(rabisco); // moto: tira o capacete
   j.pos.set(v.pos.x + ox, v.tipo === "heli" ? Math.max(0.07, v.alt) : 0.07, v.pos.z + oz); j.vel.set(0, 0, 0); j.dir = v.ang;
   rabisco.grupo.position.copy(j.pos); rabisco.grupo.rotation.set(0, j.dir, 0);
   j2?.sair(v, v.pos.x - ox, v.pos.z - oz); // o jogador 2 desce do outro lado
@@ -727,7 +731,7 @@ function regras() {
   else {
     const v = pertoDeVeiculo();
     const lp = mundo.lugares.find((l) => SALAS[l.id] && Math.hypot(l.x - j.pos.x, l.z - j.pos.z) < 3.2);
-    const ROT = { onibus: "🚌 Dirigir", heli: "🚁 Pilotar", bici: "🚲 Pedalar", patinete: "🛴 Andar", barco: "🚣 Remar", trator: "🚜 Dirigir", bombeiro: "🚒 Dirigir", ambulancia: "🚑 Dirigir", sorvete: "🍦 Dirigir" };
+    const ROT = { onibus: "🚌 Dirigir", heli: "🚁 Pilotar", bici: "🚲 Pedalar", moto: "🏍️ Pilotar", patinete: "🛴 Andar", barco: "🚣 Remar", trator: "🚜 Dirigir", bombeiro: "🚒 Dirigir", ambulancia: "🚑 Dirigir", sorvete: "🍦 Dirigir" };
     if (v) contexto = { rotulo: ROT[v.tipo] ?? "🚗 Entrar", fazer: () => entrar(v) };
     else if (lp) contexto = { rotulo: `🚪 Entrar: ${SALAS[lp.id].nome}`, fazer: () => entrarLugar(lp.id) };
     else {
@@ -830,6 +834,7 @@ function passo(dt, ultimo) {
         const mE = rabisco.bracoE.cotovelo.localToWorld(new THREE.Vector3(0, -0.82, 0)), mD = rabisco.bracoD.cotovelo.localToWorld(new THREE.Vector3(0, -0.82, 0));
         const meio = mE.clone().add(mD).multiplyScalar(0.5); dentro.g.worldToLocal(meio);
         if (vol) { vol.position.copy(meio); vol.scale.setScalar(Math.max(0.6, mE.distanceTo(mD) / 2 / 0.24)); vol.rotation.set(-1.0, 0, dentro.virar * 0.6); }
+        dentro.g.userData.posar?.(rabisco, dentro); // moto: inclinado para a frente, mãos no guidão, pés nas pedaleiras
       }
       andando = Math.abs(dentro.vel) > 1;
     } else if (trava) {
@@ -1084,6 +1089,7 @@ if (params.has("teste")) window.teste = {
   // desenha um quadro agora e devolve o custo (com e sem o passe de sombra)
   medir() { r3.render(cena, cam); const a = { calls: r3.info.render.calls, tris: r3.info.render.triangles }; const s = ceu.sol.castShadow; ceu.sol.castShadow = false; r3.shadowMap.needsUpdate = true; r3.render(cena, cam); const b = { calls: r3.info.render.calls, tris: r3.info.render.triangles }; ceu.sol.castShadow = s; return { total: a, semSombra: b }; },
   ir(x, z) { if (dentro) sair(); j.pos.set(x, 0.07, z); j.vel.set(0, 0, 0); posicionarCamera(1, 0); },
+  get camYaw() { return camera.st.yaw; }, // o "para a frente" do andar (fisica.andar); os testes de andar de verdade leem
   olhar(yaw) { camera.st.yaw = yaw; camera.st.manual = 5; posicionarCamera(1, 0); },
   vista(pos, alvo, neblina = true) { camera.st.vista = pos ? { pos, alvo } : null; const longe = pos && !neblina; mundo.alcance = longe ? 2000 : qualidade.perfil.toque ? (quadro.doisToque ? 78 : 95) : 140; cena.fog.far = longe ? 2000 : mundo.alcance; cena.fog.near = longe ? 1500 : 60; if (pos) mundo.visibilidade(alvo[0], alvo[2]); if (pos && !neblina) mundo.blocos.forEach((b) => (b.visible = true)); posicionarCamera(1, 0); },
   acao() { pad.acaoNova = true; },

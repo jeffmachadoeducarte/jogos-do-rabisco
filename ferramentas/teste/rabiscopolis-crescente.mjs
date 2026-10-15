@@ -3,9 +3,12 @@
 //  - a Diretora Sabrina (lápis rosa) pede na porta da escola da criança; a anfitriã chama a criança pelo nome
 //    ("Alice" + "o alvará da escola venceu!...") e fala "Crescente Contabilidade";
 //  - lá dentro a contadora entrega o alvará, que vai na MÃO do Rabisco; a diretora recebe na porta da escola;
-//  - no fim: "Obrigada, Alice! ..." e a fala exata da anfitriã; sem erro de console.
+//  - no fim: "Obrigada, Alice! ..." e a fala exata da anfitriã; sem erro de console;
+//  - ANDANDO DE VERDADE (seção 4): sem teleporte nem gancho, com teclado (1280 × 720) e com o joystick de toque
+//    (celular deitado 844 × 390), o Rabisco anda da calçada até a porta, entra pela ação, anda até a contadora (e, na
+//    Bella Cat e na Rise Up, até o balcão/halter) e usa a ação; falha se não chegar. No 2 jogadores, o controle 1 anda.
 // Fotos em .claude/tmp/crescente/. Nunca toca som: o Chrome do cdp.mjs abre com --mute-audio.
-// Uso: node --experimental-websocket ferramentas/teste/rabiscopolis-crescente.mjs [http://localhost:8080] [1,2]
+// Uso: node --experimental-websocket ferramentas/teste/rabiscopolis-crescente.mjs [http://localhost:8080] [1,2,3,4]
 import { mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { abrir, espera } from "./cdp.mjs";
@@ -14,7 +17,8 @@ const BASE = process.argv[2] || "http://localhost:8080";
 const SO = (process.argv[3] || "").split(",").filter(Boolean);
 const URL_JOGO = `${BASE}/jogos/rabiscopolis/`;
 const FOTOS = fileURLToPath(new URL("../../.claude/tmp/crescente/", import.meta.url));
-mkdirSync(FOTOS, { recursive: true });
+const FOTOS_RP = fileURLToPath(new URL("../../.claude/tmp/rabiscopolis/", import.meta.url));
+mkdirSync(FOTOS, { recursive: true }); mkdirSync(FOTOS_RP, { recursive: true });
 let falhas = 0;
 const vigia = setTimeout(() => { console.log("✗ o teste travou (o navegador caiu?)"); process.exit(2); }, 20 * 60 * 1000);
 const ok = (c, msg) => { console.log(c ? "✓" : "✗", msg); if (!c) falhas++; };
@@ -62,7 +66,7 @@ async function umJogador() {
     await ev("teste.acao()"); await espera(1500);
     ok(await ev("teste.missoes.ativa === 'alvara'"), `missão aceita — ${await ev("JSON.stringify(teste.missoes.texto())")}`);
     const b0 = await balao(t);
-    ok(/Alice, o alvará da escola venceu! Vá até o escritório da Crescente Contabilidade/.test(b0), `a anfitriã chama a Alice pelo nome e fala "Crescente Contabilidade" ("${b0.slice(0, 90)}")`);
+    ok(/^RabiscolândiaAlice, o alvará da escola venceu! Vá até a Crescente Contabilidade e fale com a contadora Elaine para buscar o alvará novo\./.test(b0), `a anfitriã chama a Alice pelo nome e fala "Crescente Contabilidade" e "contadora Elaine" ("${b0.slice(0, 90)}")`);
     ok(await baixou(t, "cid-alvara-pos") && await baixou(t, "nomes/alice"), "a voz é a gravada (nome Alice + cid-alvara-pos), nada de voz do navegador");
     const a = await ev("teste.missoes.alvo()");
     ok(a && Math.hypot(a.x - L.x, a.z - L.z) < 1, `a seta/bússola aponta para a porta da Crescente (${a?.emoji})`);
@@ -84,6 +88,8 @@ async function umJogador() {
     await ev("teste.irAoInterativo('contadora')"); await espera(200);
     const c2 = await ev("teste.contexto");
     await ev("teste.acao()"); await espera(1000);
+    const bC = await balao(t);
+    ok(/^RabiscolândiaA contadora Elaine entregou o alvará/.test(bC), `quem fala é a anfitriã narrando, não a contadora ("${bC.slice(0, 60)}")`);
     ok(c2?.includes("contadora") && (await ev("teste.missoes.etapa")) === 1 && await ev("teste.missoes.levando.includes('alvara')"), `a contadora entregou o alvará ("${c2}")`);
     ok((await ev("teste.missoes.naMao")) === "alvara" && await ev("!!teste.rabisco.bracoD.cotovelo.children.find((o) => o.userData.item === 'alvara')"), "o alvará (papel com selo) está na mão do Rabisco");
     ok(await baixou(t, "cid-crescente-alvara"), "a contadora fala com a voz gravada");
@@ -110,13 +116,177 @@ async function umJogador() {
     const bAg = await balao(t);
     await t.foto(`${FOTOS}5-entrega-diretora.png`);
     ok(await ev("teste.missoes.ativa === null && teste.missoes.feitas.includes('alvara')"), "entregou e a missão terminou (selo no Passaporte)");
-    ok(/Obrigada, Alice! Agora a escola está em dia\./.test(bAg), `a Diretora Sabrina agradece ("${bAg.slice(0, 60)}")`);
+    ok(/^RabiscolândiaA Diretora Sabrina agradece, Alice! Agora a escola está em dia\./.test(bAg), `a anfitriã narra que a Diretora Sabrina agradece ("${bAg.slice(0, 70)}")`);
     ok((await ev("teste.missoes.naMao")) === null, "o alvará saiu da mão do Rabisco");
     ok(await ate(t, `document.querySelector('.balao-rp')?.textContent.includes(${JSON.stringify(FIM)})`, 8000), `no fim a anfitriã diz: "${FIM}"`);
     // o MP3 só entra na lista quando termina de baixar: espera um pouco
     ok(await ate(t, "performance.getEntriesByType('resource').some((r) => r.name.includes('/assets/voz/cid-alvara-ok.mp3'))", 10000) && await baixou(t, "cid-alvara-obrigada-pos"), "as falas do fim são as gravadas (cid-alvara-obrigada-pre/pos e cid-alvara-ok)");
     await ev("teste.vista(null)");
     ok(!errosDeVerdade(t).length, `sem erro de console ${errosDeVerdade(t).slice(0, 4).join(" ; ")}`);
+  } finally { await t.fechar(); }
+}
+
+// ------------------------------------------------------------------ andar de verdade (sem teleporte)
+// Anda até (x, z) só pela entrada que o jogador usa: a cada 100 ms lê a posição e a câmera e escolhe a direção
+// (teclas: setas; toque: o dedo segura o joystick e arrasta; controle: o eixo do pad). Devolve { chegou, log }.
+const CAM = "[Math.sin(teste.camYaw), Math.cos(teste.camYaw)]"; // o mesmo "frente" que fisica.andar usa
+const SETAS = { ArrowUp: 38, ArrowDown: 40, ArrowLeft: 37, ArrowRight: 39 };
+function entradaTeclas(t) {
+  const presas = new Set();
+  const solta = async (k) => { await t.cmd("Input.dispatchKeyEvent", { type: "keyUp", key: k, code: k, windowsVirtualKeyCode: SETAS[k] }); presas.delete(k); };
+  return {
+    async mandar(ix, iy) {
+      const quer = new Set([iy > 0.38 && "ArrowUp", iy < -0.38 && "ArrowDown", ix > 0.38 && "ArrowRight", ix < -0.38 && "ArrowLeft"].filter(Boolean));
+      for (const k of [...presas]) if (!quer.has(k)) await solta(k);
+      for (const k of quer) if (!presas.has(k)) { await t.cmd("Input.dispatchKeyEvent", { type: "keyDown", key: k, code: k, windowsVirtualKeyCode: SETAS[k] }); presas.add(k); }
+    },
+    async parar() { for (const k of [...presas]) await solta(k); },
+    digital: true,
+    async acao() { for (const type of ["keyDown", "keyUp"]) { await t.cmd("Input.dispatchKeyEvent", { type, key: "f", code: "KeyF", windowsVirtualKeyCode: 70 }); await espera(120); } },
+  };
+}
+// o dedo pousa onde o jogador pousaria: metade esquerda, de baixo para cima, no primeiro ponto em que o joystick
+// recebe o toque (se nada da metade esquerda chega ao joystick, o teste falha: algo está tapando o controle)
+const PONTO_JOYSTICK = `(() => { for (let y = innerHeight - 70; y > innerHeight * 0.35; y -= 20) for (let x = 90; x < innerWidth * 0.42; x += 30) { const e = document.elementFromPoint(x, y); if (e?.closest('.jd-camada') && !e.closest('button')) return [x, y]; } return null; })()`;
+function entradaToque(t) {
+  let O = null; const R = 56; let segurando = false;
+  return {
+    async mandar(ix, iy) {
+      if (!segurando) {
+        O = await t.ev(PONTO_JOYSTICK);
+        if (!O) { const o = await t.ev("(() => { const e = document.elementFromPoint(150, innerHeight - 110); return e ? (e.className || e.tagName) + '' : null; })()"); throw new Error(`toque: nenhum ponto da metade esquerda chega ao joystick (em (150, ${"h-110"}) está "${o}")`); }
+        await t.cmd("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: O[0], y: O[1] }] }); segurando = true; await espera(30);
+      }
+      const m = Math.hypot(ix, iy) || 1, pt = { x: O[0] + (ix / m) * R * 1.3, y: O[1] - (iy / m) * R * 1.3 };
+      await t.cmd("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [pt] });
+    },
+    digital: false,
+    async parar() { if (segurando) await t.cmd("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] }); segurando = false; },
+    async acao() { await t.toque(".rp-acao"); },
+  };
+}
+function entradaPad(t, p) {
+  return {
+    async mandar(ix, iy) { await t.ev(`__eixo(${p}, ${ix}, ${-iy})`); },
+    async parar() { await t.ev(`__eixo(${p}, 0, 0)`); },
+    async acao() { await t.ev(`__btn(${p}, 2, true)`); await espera(400); await t.ev(`__btn(${p}, 2, false)`); await espera(150); },
+  };
+}
+// espera os quadros voltarem ao normal (a 1ª visita monta a sala e compila sombreadores: no Chrome sem janela um quadro
+// chega a levar segundos, e uma tecla apertada nesse meio-tempo vira um passo enorme)
+const UM_QUADRO = "new Promise((r) => requestAnimationFrame(() => r()))";
+async function estabilizar(t, ms = 20000) {
+  const fim = Date.now() + ms; let bons = 0;
+  while (Date.now() < fim && bons < 4) {
+    const t0 = Date.now(); await t.ev("new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))");
+    bons = Date.now() - t0 < 150 ? bons + 1 : 0;
+  }
+}
+// o limite é em passinhos (o Chrome sem janela às vezes leva segundos por quadro; tempo de relógio não serve de limite)
+async function andarAte(t, ent, alvo, { raio = 0.5, passos = 40, ms = 120000, pos = "[teste.j.pos.x, teste.j.pos.z]", chegou = null } = {}) {
+  await estabilizar(t);
+  const log = [], fim = Date.now() + ms, ini = await t.ev(pos);
+  const andou = async () => { const [x, z] = await t.ev(pos); return Math.hypot(x - ini[0], z - ini[1]); };
+  let parado = 0, ultimo = null;
+  try {
+    while (Date.now() < fim && log.length < passos) {
+      const [x, z, fx, fz] = await t.ev(`[...${pos}, ...${CAM}]`);
+      log.push(`(${x.toFixed(2)}, ${z.toFixed(2)})`);
+      const dx = alvo[0] - x, dz = alvo[1] - z, d = Math.hypot(dx, dz);
+      if (d < raio && (!chegou || await t.ev(chegou))) return { chegou: true, log, andou: await andou() };
+      // parado 1,5 s com a entrada apertada = bloqueado
+      if (ultimo && Math.hypot(x - ultimo[0], z - ultimo[1]) < 0.02) { if (++parado >= 12) return { chegou: false, log, preso: [x, z], andou: await andou() }; } else parado = 0;
+      ultimo = [x, z];
+      const wx = dx / d, wz = dz / d;
+      // inverso de fisica.andar: wx = fx·iy − fz·ix, wz = fz·iy + fx·ix
+      let iy = fx * wx + fz * wz, ix = -fz * wx + fx * wz;
+      // passinhos: aperta por um quadro e solta (no Chrome sem janela um quadro leva 0,1–0,3 s e a leitura pela CDP
+      // demora mais que isso; segurando direto o Rabisco passava do ponto e ficava indo e voltando)
+      await ent.mandar(ix, iy); await t.ev(UM_QUADRO); await ent.parar(); await t.ev(UM_QUADRO);
+    }
+    return { chegou: false, log, andou: await andou() };
+  } finally { await ent.parar(); await espera(250); }
+}
+// sai da calçada, anda até a porta, entra pela ação e anda até o interativo `alvoId` (com um ponto de passagem opcional)
+// `empurra`: no fim, anda contra o móvel do interativo (balcão) nessa direção: o móvel segura o Rabisco dentro da zona
+// da ação, como faz uma criança que encosta no balcão (com quadros lentos um passinho de tecla passa de 3 m)
+async function entrarEAndar(t, ent, lugarId, alvoId, { rotulo, passa = null, empurra = null, nome }) {
+  const L = await t.ev(`teste.LUGARES.find((l) => l.id === '${lugarId}')`);
+  // começa na calçada, 5 m na frente da porta, olhando para ela (a câmera vem de trás)
+  await t.ev(`teste.ir(${L.x + L.dir[0] * 5}, ${L.z + L.dir[1] * 5}); teste.olhar(${Math.atan2(-L.dir[0], -L.dir[1])})`); await espera(900);
+  // anda até a porta e aperta a ação quando aparece "Entrar" (se o embalo passou do ponto, anda de novo: até 3 vezes)
+  let r0, entrou = false;
+  for (let k = 0; k < 3 && !entrou; k++) {
+    r0 = await andarAte(t, ent, [L.x + L.dir[0] * 0.6, L.z + L.dir[1] * 0.6], { raio: 2.5, chegou: "(teste.contexto || '').includes('Entrar')" });
+    if (!r0.chegou) break;
+    if (!(await t.ev("(teste.contexto || '').includes('Entrar')"))) continue;
+    await ent.acao();
+    entrou = await ate(t, `teste.emLugar?.id === '${lugarId}'`, 6000);
+  }
+  ok(r0.chegou, `${nome}: andou da calçada até a porta (${r0.log.length} passos${r0.chegou ? "" : `; parou em ${r0.log.slice(-3).join(" → ")}`})`);
+  ok(entrou, `${nome}: entrou pela porta com a ação`);
+  if (!entrou) return { chegou: false, L };
+  await espera(900);
+  const e0 = await t.ev("[teste.j.pos.x, teste.j.pos.z]");
+  ok(!(await t.ev(`teste.dentroDeSolido(${e0[0]}, ${e0[1]})`)), `${nome}: o ponto de entrada não está dentro de nada`);
+  const it = await t.ev(`teste.emLugar.interativos.find((i) => i.id === '${alvoId}')`);
+  const caminho = [...(passa ? [[it.pos[0] + passa[0], it.pos[1] + passa[1]]] : []), empurra ? [it.pos[0] + empurra[0] * 3, it.pos[1] + empurra[1] * 3] : it.pos];
+  let r = { chegou: true, log: [] };
+  for (let k = 0; k < caminho.length && r.chegou; k++) {
+    const ultimoP = k === caminho.length - 1;
+    const rk = await andarAte(t, ent, caminho[k], ultimoP ? { raio: empurra ? 9 : 2.5, chegou: `(teste.contexto || '').includes(${JSON.stringify(rotulo)})` } : { raio: 1.0 });
+    r = { chegou: rk.chegou, log: [...r.log, ...rk.log] };
+  }
+  const p = await t.ev("[teste.j.pos.x, teste.j.pos.z]");
+  ok(r.chegou, `${nome}: andou da porta até "${rotulo}" (${Math.hypot(p[0] - e0[0], p[1] - e0[1]).toFixed(1)} m em ${r.log.length} passos${r.chegou ? "" : `; parou em ${r.log.slice(-4).join(" → ")} — o alvo era (${it.pos.map((v) => v.toFixed(2)).join(", ")})`})`);
+  return { chegou: r.chegou, L, it };
+}
+
+// ------------------------------------------------------------------ seção 4: andar de verdade nas 3 parceiras (teclado e toque)
+async function andarDeVerdade(modo) {
+  const toque = modo === "toque";
+  const t = await abrir("about:blank", toque ? { mobile: true, largura: 844, altura: 390 } : { largura: 1280, altura: 720 });
+  const nomeM = toque ? "toque 844×390" : "teclado";
+  try {
+    await t.cmd("Page.addScriptToEvaluateOnNewDocument", { source: FAMILIA + (toque ? "navigator.getGamepads = () => [null, null, null, null];" : "") });
+    await t.cmd("Page.navigate", { url: `${URL_JOGO}?teste&jogar&fixo` });
+    ok(await ate(t, "!!window.teste?.vivo && !!teste.mundo"), `${nomeM}: carregou`);
+    await espera(2500);
+    if (toque) ok(await t.ev("!!document.querySelector('.jd-camada') && document.querySelector('.jd-camada').offsetParent !== null"), `${nomeM}: o joystick de toque aparece`);
+    const ent = toque ? entradaToque(t) : entradaTeclas(t);
+    // a missão do alvará ativa (pedida na porta da escola, pela ação de verdade)
+    const d = await t.ev("teste.missoes.npc('alvara', 'diretora')");
+    await t.ev(`teste.ir(${d.x + 1.4}, ${d.z + 1.2})`); await espera(900);
+    await ent.acao(); await espera(1200);
+    ok(await t.ev("teste.missoes.ativa === 'alvara'"), `${nomeM}: missão Alvará aceita`);
+    // Crescente: da calçada até a contadora, e a ação entrega o alvará
+    const c = await entrarEAndar(t, ent, "parceiro-crescente-contabilidade", "contadora", { rotulo: "contadora", empurra: [0, -1], nome: `${nomeM} · Crescente` });
+    if (c.chegou) {
+      const pj = await t.ev("[teste.j.pos.x, teste.j.pos.z]");
+      ok(pj[1] > c.it.pos[1] - 0.6, `${nomeM} · Crescente: chegou pela frente do balcão (z ${pj[1].toFixed(2)})`);
+      if (!toque) await t.foto(`${FOTOS_RP}crescente-balcao.png`);
+      await ent.acao(); await espera(1000);
+      ok(await t.ev("teste.missoes.naMao === 'alvara'"), `${nomeM} · Crescente: a contadora entregou o alvará (na mão do Rabisco)`);
+      if (!toque) await t.foto(`${FOTOS_RP}crescente-balcao-alvara.png`);
+      // depois da fala o Rabisco continua andando: volta até a porta
+      await espera(800);
+      const rv = await andarAte(t, ent, [c.it.pos[0], (await t.ev("teste.j.pos.z")) + 3], { raio: 0.8, passos: 8 });
+      ok(rv.andou > 1.5, `${nomeM} · Crescente: depois de falar com a contadora o Rabisco anda de novo (${rv.andou.toFixed(1)} m)`);
+    }
+    await t.ev("teste.sairLugar()"); await espera(700);
+    // Bella Cat: até o balcão de presente; Rise Up: até o halter (e depois do halter anda de novo)
+    await entrarEAndar(t, ent, "parceiro-bella-cat", "embrulhar", { rotulo: "Embrulhar", passa: [-1.4, 0], empurra: [1, 0], nome: `${nomeM} · Bella Cat` });
+    await t.ev("teste.sairLugar()"); await espera(700);
+    const r = await entrarEAndar(t, ent, "parceiro-rise-up", "halter", { rotulo: "halter", nome: `${nomeM} · Rise Up` });
+    if (r.chegou) {
+      await ent.acao(); await espera(300);
+      await ate(t, "teste.trava === null", 15000); await espera(300);
+      const z0 = await t.ev("teste.j.pos.z");
+      const rv = await andarAte(t, ent, [await t.ev("teste.j.pos.x"), z0 + 3], { raio: 0.8, passos: 8 });
+      ok(rv.andou > 1.5, `${nomeM} · Rise Up: depois do halter o Rabisco anda de novo (${rv.andou.toFixed(1)} m)`);
+    }
+    await t.ev("teste.sairLugar()"); await espera(500);
+    ok(!errosDeVerdade(t).length, `${nomeM}: sem erro de console ${errosDeVerdade(t).slice(0, 4).join(" ; ")}`);
   } finally { await t.fechar(); }
 }
 
@@ -155,8 +325,17 @@ async function doisJogadores() {
     await ev("teste.entrarLugar('parceiro-crescente-contabilidade')"); await espera(1500);
     const dl = await ev("Math.hypot(teste.j2.pos.x - teste.j.pos.x, teste.j2.pos.z - teste.j.pos.z)");
     ok(dl < 4, `2 jogadores: o jogador 2 entra junto na Crescente (${dl.toFixed(1)} m)`);
-    await ev("teste.irAoInterativo('contadora')"); await espera(300);
-    await ev("teste.acao()"); await espera(1000);
+    // a parede da frente fica 1,6 m atrás de onde o Rabisco nasce: o jogador 2 tem de estar do lado de dentro
+    const fora = await ev("teste.j2.pos.z - teste.j.pos.z");
+    ok(fora < 1.3, `2 jogadores: o jogador 2 nasce dentro da sala, não no vão da porta (${fora.toFixed(2)} m atrás do Rabisco)`);
+    // o Rabisco anda até a contadora com o controle 1 de verdade (sem teleporte) e o jogador 2 também se mexe lá dentro
+    const ci = await ev("teste.emLugar.interativos.find((i) => i.id === 'contadora')");
+    const r1 = await andarAte(t, entradaPad(t, 0), ci.pos, { raio: 2.5, chegou: "(teste.contexto || '').includes('contadora')" });
+    ok(r1.chegou, `2 jogadores: o Rabisco anda com o controle até a contadora${r1.chegou ? "" : ` (parou em ${r1.log.slice(-3).join(" → ")})`}`);
+    const q0 = await ev("[teste.j2.pos.x, teste.j2.pos.z]");
+    const r2 = await andarAte(t, entradaPad(t, 1), [q0[0] - 2.5, q0[1] + 0.5], { raio: 0.8, passos: 8, pos: "[teste.j2.pos.x, teste.j2.pos.z]" });
+    ok(r2.andou > 1.2, `2 jogadores: o jogador 2 anda lá dentro${r2.chegou ? "" : ` (parou em ${r2.log.slice(-3).join(" → ")})`}`);
+    await aperta(0, 2); await espera(1000);
     ok((await ev("teste.missoes.naMao")) === "alvara", "2 jogadores: o alvará está na mão do Rabisco");
     await t.foto(`${FOTOS}6-dois-jogadores-dentro.png`);
     await ev("teste.sairLugar()"); await espera(800);
@@ -188,6 +367,7 @@ async function idadeBaixa() {
 if (!SO.length || SO.includes("3")) await idadeBaixa();
 if (!SO.length || SO.includes("1")) await umJogador();
 if (!SO.length || SO.includes("2")) await doisJogadores();
+if (!SO.length || SO.includes("4")) { await andarDeVerdade("teclado"); await andarDeVerdade("toque"); }
 clearTimeout(vigia);
 console.log(falhas ? `\n${falhas} falha(s)` : "\ntudo certo");
 process.exit(falhas ? 1 : 0);

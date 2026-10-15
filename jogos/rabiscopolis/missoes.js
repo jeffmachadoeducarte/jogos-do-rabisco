@@ -209,6 +209,9 @@ export function criarMissoes(ctx) {
     n.seguindo = false; n.andando = false; n.esperou = n.disseVerde = false;
   }
 
+  // missões de parceiras (Bella Cat, Rise Up, J.E, Crescente): por enquanto os personagens parceiros não falam; quem
+  // fala é a anfitriã narrando (o balão mostra "Rabiscolândia")
+  const quemFala = (M, nome) => (M?.parceiro ? "Rabiscolândia" : nome);
   function aceitar(id) {
     const M = MISSOES.find((x) => x.id === id);
     if (!M || ativa) return false;
@@ -220,10 +223,10 @@ export function criarMissoes(ctx) {
     if (M.voz?.pedidoNome) {
       // a anfitriã chama a criança pelo nome: "Alice, o alvará da escola venceu! ..." (sem nome no banco: a fala neutra)
       Promise.resolve(ctx.falarNome?.(null, M.voz.pedidoNome)).then((ok) => { if (!ok) falar(M.voz.pedido); });
-      dizer(M.npcs[M.quem].nome, nm && M.pedidoComNome ? M.pedidoComNome.replace("{nome}", nm) : M.pedido, 6500);
+      dizer(quemFala(M, M.npcs[M.quem].nome), nm && M.pedidoComNome ? M.pedidoComNome.replace("{nome}", nm) : M.pedido, 6500);
     } else {
       falar(M.voz?.pedido ?? `rp-m-${M.id}-pedido`);
-      dizer(M.npcs[M.quem].nome, M.pedido, 6500);
+      dizer(quemFala(M, M.npcs[M.quem].nome), M.pedido, 6500);
     }
     prepararEtapa();
     return true;
@@ -263,12 +266,12 @@ export function criarMissoes(ctx) {
     if (M.agradece) {
       // quem recebeu agradece com o nome da criança ("Obrigada, Alice! ..."); depois a anfitriã diz o fim
       const A = M.agradece, nm = ctx.nome?.();
-      dizer(M.npcs[destino]?.nome ?? "Rabiscolândia", nm ? A.texto.replace("{nome}", nm) : A.textoSem, A.ms);
+      dizer(quemFala(M, M.npcs[destino]?.nome ?? "Rabiscolândia"), nm ? A.texto.replace("{nome}", nm) : A.textoSem, A.ms);
       Promise.resolve(ctx.falarNome?.(A.pre, A.pos)).then((ok) => { if (!ok) falar(A.neutra); });
       concluir.t2 = setTimeout(() => { falar(M.voz?.fim ?? `rp-m-${M.id}-fim`); dizer("Rabiscolândia", M.fim, 6500); }, A.ms);
     } else {
       falar(M.voz?.fim ?? `rp-m-${M.id}-fim`);
-      dizer(ultimoReceptor ?? M.npcs[destino]?.nome ?? "Rabiscolândia", M.fim, 5200);
+      dizer(quemFala(M, ultimoReceptor ?? M.npcs[destino]?.nome ?? "Rabiscolândia"), M.fim, 5200);
     }
     ultimoReceptor = null;
     if (M.verso) concluir.t = setTimeout(() => { falar(`rp-m-${M.id}-verso`); dizer(`📖 ${M.titulo}`, `${M.verso.texto} <i>(${M.verso.ref})</i>`, 7500); }, 5400);
@@ -524,7 +527,7 @@ export function criarMissoes(ctx) {
       ctx.patioJE.escolher(i);
       carroEscolhido = ctx.adicionarVeiculo?.(vg) ?? null;
       const n = npcDe(ativa, E.de); n.m?.acenar(3); n.m?.pular();
-      dizer(n.dados.nome, E.fala, 4200); if (E.voz) falar(E.voz);
+      dizer(quemFala(ativa, n.dados.nome), E.fala, 4200); if (E.voz) falar(E.voz);
       const s = spriteEmoji("🔑", 0.6); s.userData.item = "chave"; sobreCabeca.add(s); levando.push("chave");
       avancar();
     }, 1900);
@@ -624,7 +627,7 @@ export function criarMissoes(ctx) {
         } else if (!v && Math.hypot(p.x - n.casa[0], p.z - n.casa[1]) < 3.4) avisar(n.dados.nome, E.aPe ?? "Venha de carro!", E.vozAPe, 7);
         else if (v && !veiculoServe(E, v) && Math.hypot(v.pos.x - n.casa[0], v.pos.z - n.casa[1]) < 9) avisar(n.dados.nome, "Aqui não cabe a caixa! Venha de carro. 🚗", null, 6);
       } else {
-        if (E.portao && !est.passouPortao && v && v === carroEscolhido && Math.hypot(v.pos.x - E.portao[0], v.pos.z - E.portao[1]) < 6) { est.passouPortao = true; dizer(ativa.npcs[ativa.quem].nome, E.falaPortao, 4200); if (E.vozPortao) falar(E.vozPortao); }
+        if (E.portao && !est.passouPortao && v && v === carroEscolhido && Math.hypot(v.pos.x - E.portao[0], v.pos.z - E.portao[1]) < 6) { est.passouPortao = true; dizer(quemFala(ativa, ativa.npcs[ativa.quem].nome), E.falaPortao, 4200); if (E.vozPortao) falar(E.vozPortao); }
         const certo = E.de ? v === est.veiculo : veiculoServe(E, v);
         const pousou = !E.pousar || (v && v.alt - (ctx.chaoHeli?.(v.pos.x, v.pos.z) ?? 0) < 0.4);
         if (certo && Math.abs(v.vel) < 2 && pousou && Math.hypot(v.pos.x - dx2, v.pos.z - dz2) < (E.pousar ? 16 : 12)) {

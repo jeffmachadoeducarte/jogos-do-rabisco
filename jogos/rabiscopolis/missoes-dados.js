@@ -240,17 +240,17 @@ export const MISSOES = [
       lilas: { nome: "Lápis Lilás, da Bella Cat", tipo: "lapis", cor: 0xa98ce0, x: 100.5, z: 8.2, acessorio: "laco" },
       professora: { nome: "Professora Lápis Turquesa", tipo: "lapis", mesmo: "escola:professora" },
     },
-    pedido: "Oi, Rabisco! Que tal um presente para a Professora Lápis Turquesa? Entre aqui na Bella Cat e escolha um acessório bem bonito!",
+    pedido: "Oi, Rabisco! Que tal um presente para a Professora Lápis Turquesa? Entre na Bella Cat e escolha um acessório bem bonito!",
     etapas: [
       { tipo: "evento", evento: "embrulhou", lugar: "parceiro-bella-cat", texto: "Entre na Bella Cat, escolha e embrulhe um presente", item: { id: "presente", emoji: "🎁", nome: "presente" } },
       { tipo: "levar", ate: "professora" },
     ],
-    fim: "Que lindo! Obrigada por lembrar de mim, Rabisco. Deus te abençoe!",
+    fim: "Que lindo! A Professora Lápis Turquesa amou o presente. Obrigada por lembrar dela, Rabisco! Deus te abençoe!",
   },
   {
     id: "exercicio", titulo: "Treino na Rise Up", icone: "💪", tipo: "cidadania", voz: { pedido: "cid-rise" }, parceiro: "rise-up",
     npcs: { treinadora: { nome: "Treinadora Lápis Laranja", tipo: "lapis", cor: 0xff7a00, x: 123.5, z: 8.2, acessorio: "bone" } },
-    pedido: "Oi, Rabisco! Bem-vindo à Academia Rise Up! Aqui a gente cuida do corpo que Deus nos deu. Entre pela porta e vamos treinar!",
+    pedido: "Oi, Rabisco! Esta é a Academia Rise Up, onde a gente cuida do corpo que Deus nos deu. Entre pela porta e vamos treinar!",
     etapas: [
       { tipo: "evento", evento: "treinou", lugar: "parceiro-rise-up", texto: "Entre na Rise Up: corra na esteira e levante o halter 5 vezes" },
       { tipo: "voltar", ate: "treinadora" },
@@ -265,14 +265,14 @@ export const MISSOES = [
     },
     pedido: "Olá, Rabisco! Bem-vindo à J.E Multimarcas, a loja de carros! Entre no pátio pelo portão e escolha o carro que você mais gostar. Chegue pertinho e aperte o botão!",
     etapas: [
-      { tipo: "escolherCarro", de: "vendedor", fala: "É seu! Cuide bem dele! Aqui está a chave. Entre no carro e saia pelo portão!", voz: "cid-je-chave" },
+      { tipo: "escolherCarro", de: "vendedor", fala: "O Seu Lápis Cinza entregou a chave: o carro é seu! Cuide bem dele. Entre no carro e saia pelo portão!", voz: "cid-je-chave" },
       { tipo: "levarVeiculo", veiculos: "escolhido", carga: { nome: "carro novo", emoji: "🔑" }, ate: "verde", portao: [150, -82.5], falaPortao: "Boa viagem! Leve o carro novo até a casa verde: o Seu Lápis Verde quer ver!", vozPortao: "cid-je-portao" },
     ],
     fim: "Uau, que carro lindo! Parabéns, Rabisco! Vamos agradecer a Deus por esse presente!",
   },
   {
     // Kids I: Diretora Carina (missão própria a fazer)
-    // Crescente Contabilidade: a Diretora Sabrina (só da Educarte Kids II) pede na porta da escola, a contadora entrega o alvará novo
+    // Crescente Contabilidade: a Diretora Sabrina (só da Educarte Kids II) pede na porta da escola, a contadora Elaine entrega o alvará novo
     // (vai na mão do Rabisco) e a diretora recebe. pedidoNome/agradece: falas emendadas com o nome da criança
     // ("Alice" + "o alvará da escola venceu!..."); sem nome no banco, as falas neutras (cid-alvara, cid-alvara-obrigada).
     id: "alvara", titulo: "Alvará da Escola", icone: "📜", tipo: "cidadania", parceiro: "crescente-contabilidade",
@@ -280,13 +280,13 @@ export const MISSOES = [
     npcs: {
       diretora: { nome: "Diretora Sabrina", tipo: "lapis", cor: 0xf48fc0, escola: [-4.5, 1.5], unidade: "kids2", acessorio: "laco", corAcessorio: 0x8e5bd8, tenis: 0x8e5bd8 },
     },
-    pedido: "Oi! O alvará da escola venceu! Vá até o escritório da Crescente Contabilidade buscar o alvará novo.",
-    pedidoComNome: "{nome}, o alvará da escola venceu! Vá até o escritório da Crescente Contabilidade buscar o alvará novo.",
+    pedido: "Oi! O alvará da escola venceu! Vá até a Crescente Contabilidade e fale com a contadora Elaine para buscar o alvará novo.",
+    pedidoComNome: "{nome}, o alvará da escola venceu! Vá até a Crescente Contabilidade e fale com a contadora Elaine para buscar o alvará novo.",
     etapas: [
-      { tipo: "evento", evento: "alvara", lugar: "parceiro-crescente-contabilidade", texto: "Vá até a Crescente Contabilidade e fale com a contadora", item: { id: "alvara", emoji: "📜", nome: "alvará", objeto: "alvara" } },
+      { tipo: "evento", evento: "alvara", lugar: "parceiro-crescente-contabilidade", texto: "Vá até a Crescente Contabilidade e fale com a contadora Elaine", item: { id: "alvara", emoji: "📜", nome: "alvará", objeto: "alvara" } },
       { tipo: "levar", ate: "diretora", icone: "📜" },
     ],
-    agradece: { pre: "cid-alvara-obrigada-pre", pos: "cid-alvara-obrigada-pos", neutra: "cid-alvara-obrigada", texto: "Obrigada, {nome}! Agora a escola está em dia.", textoSem: "Obrigada! Agora a escola está em dia.", ms: 3300 },
+    agradece: { pre: "cid-alvara-obrigada-pre", pos: "cid-alvara-obrigada-pos", neutra: "cid-alvara-obrigada", texto: "A Diretora Sabrina agradece, {nome}! Agora a escola está em dia.", textoSem: "A Diretora Sabrina agradece! Agora a escola está em dia.", ms: 3300 },
     fim: "Agora está tudo certinho! Ter uma boa contabilidade é essencial para qualquer empresa. Obrigada, Crescente Contabilidade!",
   },
   // ---- Igreja Reviver (a igreja da escola), de frente para a praça

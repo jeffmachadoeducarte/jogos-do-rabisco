@@ -116,9 +116,14 @@ export function criarJogador2(ctx) {
     caixa.classList.remove("dois-rp");
     modelo = null; assento = null; seguindo = false;
   }
+  // ao lado do Rabisco, num ponto livre que ele ALCANÇA andando em linha reta: ao entrar numa sala o Rabisco nasce de
+  // costas para a porta, e "atrás e ao lado" caía no vão da porta, do lado de fora da parede (o jogador 2 ficava preso)
   function colocarPerto() {
-    const a = j.dir;
-    const [lx, lz] = fis.livre(j.pos.x - Math.sin(a) * 1.2 + Math.cos(a) * 1.4, j.pos.z - Math.cos(a) * 1.2 - Math.sin(a) * 1.4, 0.5);
+    const a = j.dir, sa = Math.sin(a), ca = Math.cos(a);
+    const alcanca = (x, z) => { const d = Math.hypot(x - j.pos.x, z - j.pos.z), n = Math.ceil(d / 0.2); for (let k = 0; k <= n; k++) { const f = k / n; if (fis.bate(j.pos.x + (x - j.pos.x) * f, j.pos.z + (z - j.pos.z) * f, 0.1)) return false; } return true; };
+    const opcoes = [[-1.2, 1.4], [-1.2, -1.4], [0, 1.4], [0, -1.4], [0.9, 1.4], [0.9, -1.4]].map(([tras, lado]) => [j.pos.x + sa * tras + ca * lado, j.pos.z + ca * tras - sa * lado]);
+    const boa = opcoes.find(([x, z]) => !fis.bate(x, z, 0.1, 0.5) && alcanca(x, z));
+    const [lx, lz] = boa ?? fis.livre(j.pos.x - sa * 1.2 + ca * 1.4, j.pos.z - ca * 1.2 - sa * 1.4, 0.5);
     st.pos.set(lx, j.pos.y, lz); st.vel.set(0, 0, 0); st.dir = j.dir; st.noChao = true;
     if (modelo) { cena.add(modelo.grupo); modelo.grupo.position.copy(st.pos); modelo.grupo.rotation.set(0, st.dir, 0); }
   }

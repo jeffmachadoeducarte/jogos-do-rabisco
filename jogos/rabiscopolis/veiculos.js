@@ -5,23 +5,27 @@
 
 import { THREE, mesclar } from "./base3d.js";
 import { carro, carroFofo, onibusFofo, helicoptero, carroJE, ambulancia, vanSorvete, caminhaoBombeiro, bicicleta, patinete, barquinho, trator } from "./carros.js";
+import { motoEsportiva } from "./motos.js";
 import { ROTAS } from "./mapa.js";
 
 export const CORES_CARRO = [0xec2e8c, 0x00b5f0, 0xff7a00, 0x58c43a, 0x8e6cff, 0xffcc1f];
 // veículo que o Rabisco pode dirigir: { g, tipo, pos, ang, vel, virar, giro, comp (meio comprimento), larg }
 export function criarVeiculo(tipo = "carro", cor = CORES_CARRO[0], enfeite = null) {
-  const fab = { onibus: onibusFofo, heli: helicoptero, je: carroJE, ambulancia, sorvete: vanSorvete, bombeiro: caminhaoBombeiro, bici: () => bicicleta(cor), patinete: () => patinete(cor), barco: barquinho, trator }[tipo];
-  const g = fab ? fab() : carroFofo(cor);
-  enfeite?.(g); // ex.: o carro novo da J.E sai com o enfeite que tinha no pátio
+  const fab = { onibus: onibusFofo, heli: helicoptero, je: carroJE, ambulancia, sorvete: vanSorvete, bombeiro: caminhaoBombeiro, bici: () => bicicleta(cor), patinete: () => patinete(cor), barco: barquinho, trator, moto: () => motoEsportiva(cor) }[tipo];
+  const g0 = fab ? fab() : carroFofo(cor);
+  const g = enfeite?.(g0) ?? g0; // o enfeite pode trocar o carro (ex.: o carro novo da J.E sai igual ao do pátio)
   if (tipo === "heli") g.rotation.order = "YXZ"; // inclina para a frente/lados sem embolar o giro
   // meio comprimento, meia largura e velocidade máxima de cada um
-  const medidas = { onibus: [4.4, 1.5, 11], heli: [3.0, 1.9, 14], carro: [2.4, 1.2, 15], je: [2.3, 1.25, 16], ambulancia: [2.7, 1.3, 13], sorvete: [2.7, 1.3, 11], bombeiro: [3.6, 1.35, 11], bici: [0.85, 0.35, 8], patinete: [0.55, 0.3, 6], barco: [1.9, 1.3, 4.5], trator: [1.8, 1.0, 7] }[tipo] ?? [2.4, 1.2, 15];
-  const ud = g.userData; g.userData = {}; // (o userData do grupo tem objetos: não entra na cópia)
-  const parado = g.clone(true);
-  g.userData = ud;
-  parado.traverse((o) => { if (o.userData.dinamico && o !== parado && !o.userData.cima) o.visible = false; });
-  for (const o of [...parado.children]) if (!o.visible) parado.remove(o);
-  mesclar(parado);
+  const medidas = { onibus: [4.4, 1.5, 11], heli: [3.0, 1.9, 14], carro: [2.4, 1.2, 15], je: [2.3, 1.25, 16], ambulancia: [2.7, 1.3, 13], sorvete: [2.7, 1.3, 11], bombeiro: [3.6, 1.35, 11], bici: [0.85, 0.35, 8], patinete: [0.55, 0.3, 6], barco: [1.9, 1.3, 4.5], trator: [1.8, 1.0, 7], moto: [1.25, 0.45, 17] }[tipo] ?? [2.4, 1.2, 15];
+  let parado = g.userData.fazerParado?.(); // carros da J.E: a versão parada já vem mesclada (com os materiais de verdade)
+  if (!parado) {
+    const ud = g.userData; g.userData = {}; // (o userData do grupo tem objetos: não entra na cópia)
+    parado = g.clone(true);
+    g.userData = ud;
+    parado.traverse((o) => { if (o.userData.dinamico && o !== parado && !o.userData.cima) o.visible = false; });
+    for (const o of [...parado.children]) if (!o.visible) parado.remove(o);
+    mesclar(parado);
+  }
   parado.visible = false;
   if (tipo === "heli") parado.rotation.order = "YXZ";
   return { g, parado, tipo, cor: tipo === "heli" ? 0x00b5f0 : cor, pos: new THREE.Vector3(), ang: 0, vel: 0, virar: 0, giro: 0, batida: 0, buzina: 0, comp: medidas[0], larg: medidas[1], vmax: medidas[2], alt: 0.03, vs: 0, rotor: 0 };
@@ -37,8 +41,15 @@ export function animarVeiculo(v, dt, t) {
     v.g.rotation.x += (Math.min(0.25, v.vel * 0.015) - v.g.rotation.x) * Math.min(1, dt * 4);
     v.g.rotation.z += (v.virar * 0.18 * Math.min(1, v.rotor) - v.g.rotation.z) * Math.min(1, dt * 4);
   }
-  v.giro += (v.vel * dt) / 0.44;
+  v.giro += (v.vel * dt) / (v.g.userData.raioRoda ?? 0.44);
+  // vidro com insulfilm (carros da J.E): fica mais claro com gente dentro, para ver quem está dirigindo
+  const vd = v.g.userData.vidro; if (vd) vd.opacity = v.g.children.length > v.g.userData.nPecas ? 0.42 : 0.74;
   for (const r of v.g.userData.rodas) r.rotation.x = v.giro;
+  if (v.tipo === "moto") { // inclina nas curvas; parada, apoia no descanso lateral
+    const pilotando = v.g.children.length > v.g.userData.nPecas, alvo = pilotando ? v.virar * Math.min(1, Math.abs(v.vel) / 7) * 0.4 : -0.12;
+    v.inclina = dt ? (v.inclina ?? alvo) + (alvo - (v.inclina ?? alvo)) * Math.min(1, dt * 5) : alvo;
+    v.g.rotation.z = v.parado.rotation.z = v.inclina; v.g.userData.descanso.visible = !pilotando;
+  }
   if (v.g.userData.seta.visible) v.g.userData.seta.position.y = (v.tipo === "onibus" ? 5.2 : v.tipo === "heli" ? 5.6 : v.tipo === "bombeiro" ? 4.0 : ["ambulancia", "sorvete"].includes(v.tipo) ? 4.2 : 3.0) + Math.sin(t * 4) * 0.2;
   if (v.tipo === "barco") { v.g.position.y = 0.05 + Math.sin(t * 2) * 0.05; v.g.rotation.z = Math.sin(t * 1.6) * 0.04; }
   // sirene (ambulância e bombeiro): luzes piscando enquanto liga

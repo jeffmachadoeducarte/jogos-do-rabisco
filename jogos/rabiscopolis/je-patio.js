@@ -1,58 +1,55 @@
 // Rabiscolândia: o pátio cercado da J.E Multimarcas (a loja de carros parceira), atrás da loja (bairro Leste, Avenida da
-// Esperança). Cinco carros fofos expostos em leque, cada um com um enfeite (aerofólio, santantônio com estepe,
-// florzinha, prancha de surfe, frisos cromados) e a plaquinha de "preço" de brincadeira ("R$ 1 sorriso", "R$ 2
-// abraços"...). O portão abre para a avenida. A J.E vende SÓ carros.
-// Orçamento: montado só quando o Rabisco chega perto (~70 m) e mesclado em poucas malhas (cerca + chão numa, os 5
-// carros noutra, as plaquinhas numa textura só); quando um carro é escolhido, o grupo dos carros é refeito sem ele e
-// sai um carro de verdade (com rodas que giram) no lugar.
+// Esperança). A J.E vende SÓ carros, e só carro POPULAR REBAIXADO: cinco carros "de verdade" (carros-je.js) expostos em
+// leque — o 1º é o hatch preto inspirado no Gol G5 — cada um com a plaquinha de nome e de "preço" de brincadeira
+// ("R$ 1 sorriso", "R$ 2 abraços"...). O portão abre para a avenida.
+// Orçamento: montado só quando o Rabisco chega perto (~75 m) e mesclado em poucas malhas (cerca + chão numa, os 5
+// carros em 6 — uma por material —, as plaquinhas numa textura só); quando um carro é escolhido, o grupo dos carros é
+// refeito sem ele e sai o mesmo carro dirigível (rodas que giram, volante) no lugar.
 //   const P = criarPatioJE(cena, { solidos });  P.atualizar(x, z);  P.escolher(i) → { cor, hex, modelo, x, z, ang }
 
-import { THREE, mat, malha, caixa, caixaRedonda, texturaCanvas, mesclar } from "./base3d.js";
-import { carroFofo } from "./carros.js";
+import { THREE, malha, caixa, caixaRedonda, texturaCanvas, mesclar, mat } from "./base3d.js";
+import { carroJE, MODELOS_JE, mesclarPorMaterial } from "./carros-je.js";
 import { PATIO_JE } from "./mapa.js";
 
 export const PRECOS = ["R$ 1 sorriso", "R$ 2 abraços", "R$ 3 obrigados", "R$ 4 sorrisos", "R$ 5 abraços"];
-// enfeite de cada modelo (copiado e adaptado de jogos/cidade-do-rabisco/jogo.js · enfeitarCarro)
+// nome genérico da plaquinha: "Hatch preto rebaixado" (sem marca)
+export const nomeCarro = (vg) => `${MODELOS_JE[vg.modelo]?.nome.replace(" rebaixado", "") ?? "Carro"} ${vg.cor}`;
+// o carro que sai do pátio (jogo.js: criarVeiculo("carro", vg.hex, (g) => enfeitarCarro(g, vg.modelo))): devolve o
+// mesmo modelo da vaga, dirigível, no lugar do carro fofo
 export function enfeitarCarro(g, modelo) {
-  const branco = mat(0xffffff), preto = mat(0x262626), cromo = mat(0xdfe6ee);
-  const peca = (geo, m, x, y, z, c = 0.02) => { const b = malha(geo, m, { contorno: c, sombra: false }); b.position.set(x, y, z); g.add(b); return b; };
-  const bx = (w, h, d, m, x, y, z) => { const b = caixaRedonda(w, h, d, m, { raio: Math.min(w, h, d) * 0.3, contorno: 0.02, sombra: false }); b.position.set(x, y, z); g.add(b); return b; };
-  if (modelo === 0) { bx(2.1, 0.08, 0.45, preto, 0, 1.62, -2.15); for (const x of [-0.75, 0.75]) bx(0.08, 0.36, 0.12, preto, x, 1.42, -2.1); }
-  else if (modelo === 1) { peca(new THREE.TorusGeometry(0.95, 0.07, 8, 20, Math.PI), preto, 0, 1.15, -1.25); peca(new THREE.TorusGeometry(0.28, 0.13, 6, 16), preto, 0, 1.0, -2.65); peca(new THREE.CylinderGeometry(0.17, 0.17, 0.2, 12), branco, 0, 1.0, -2.65).rotation.x = Math.PI / 2; }
-  else if (modelo === 2) { for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; peca(new THREE.SphereGeometry(0.13, 10, 8), branco, Math.cos(a) * 0.17, 1.24, 1.55 + Math.sin(a) * 0.17, 0).scale.y = 0.4; } peca(new THREE.SphereGeometry(0.11, 10, 8), mat(0xec2e8c), 0, 1.27, 1.55, 0).scale.y = 0.5; }
-  else if (modelo === 3) { for (const z of [-1.3, -2.1]) bx(2.0, 0.06, 0.1, preto, 0, 1.45, z); const p = peca(new THREE.SphereGeometry(1, 16, 8), mat(0xffcc1f), 0, 1.55, -1.7); p.scale.set(0.35, 0.06, 1.5); }
-  else { for (const s of [-1, 1]) bx(0.04, 0.08, 3.8, cromo, s * 1.17, 0.78, 0); peca(new THREE.OctahedronGeometry(0.16), mat(0xffd84a), 0, 1.36, 2.05); }
+  const vg = PATIO_JE.vagas.find((v) => v.modelo === modelo);
+  return vg && MODELOS_JE[modelo] ? carroJE(modelo, vg.hex) : g;
 }
-// plaquinhas: as 5 numa textura só (cada uma usa um pedaço da imagem)
-let texPlacas = null;
+// plaquinhas: as 5 numa textura só (cada uma usa um pedaço da imagem) e num material só
+let texPlacas = null, matPlaca = null;
 function texturaPlacas() {
   return (texPlacas ??= texturaCanvas(1280, 176, (c) => {
     PATIO_JE.vagas.forEach((vg, i) => {
       const x0 = i * 256, cor = `#${new THREE.Color(vg.hex).getHexString()}`;
       c.fillStyle = "#ffffff"; c.fillRect(x0, 0, 256, 176); c.lineWidth = 10; c.strokeStyle = "#151515"; c.strokeRect(x0 + 5, 5, 246, 166);
-      c.fillStyle = cor; c.fillRect(x0 + 10, 10, 236, 62);
-      c.font = "900 44px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.lineWidth = 6; c.strokeText(vg.cor.toUpperCase(), x0 + 128, 44); c.fillStyle = "#ffffff"; c.fillText(vg.cor.toUpperCase(), x0 + 128, 44);
-      c.font = "800 32px 'Baloo 2', sans-serif"; c.fillStyle = "#151515"; c.fillText(PRECOS[i], x0 + 128, 108);
-      c.fillStyle = "#ffb300"; c.font = "900 30px 'Baloo 2', sans-serif"; c.fillText("★ ★ ★", x0 + 128, 146);
+      c.fillStyle = cor; c.fillRect(x0 + 10, 10, 236, 74);
+      c.textAlign = "center"; c.textBaseline = "middle"; c.lineJoin = "round";
+      const nome = nomeCarro(vg);
+      let tam = 36; do { c.font = `900 ${tam}px 'Baloo 2', sans-serif`; tam -= 2; } while (c.measureText(nome).width > 222 && tam > 16); c.lineWidth = 6; c.strokeStyle = "#151515"; c.strokeText(nome, x0 + 128, 36); c.fillStyle = "#ffffff"; c.fillText(nome, x0 + 128, 36);
+      c.font = "800 22px 'Baloo 2', sans-serif"; c.lineWidth = 5; c.strokeText("rebaixado", x0 + 128, 67); c.fillStyle = "#ffcc1f"; c.fillText("rebaixado", x0 + 128, 67);
+      c.font = "800 32px 'Baloo 2', sans-serif"; c.fillStyle = "#151515"; c.fillText(PRECOS[i], x0 + 128, 114);
+      c.fillStyle = "#ffb300"; c.font = "900 28px 'Baloo 2', sans-serif"; c.fillText("★ ★ ★", x0 + 128, 150);
     });
   }));
 }
 function plaquinha(i) {
   const g = new THREE.Group();
   const geo = new THREE.PlaneGeometry(1.5, 1.03); const uv = geo.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setX(k, (i + uv.getX(k)) / 5);
-  const m = new THREE.MeshToonMaterial({ map: texturaPlacas(), emissive: 0xffffff, emissiveMap: texturaPlacas(), emissiveIntensity: 0.3, side: THREE.DoubleSide });
-  const placa = new THREE.Mesh(geo, m); g.add(placa);
+  matPlaca ??= new THREE.MeshToonMaterial({ map: texturaPlacas(), emissive: 0xffffff, emissiveMap: texturaPlacas(), emissiveIntensity: 0.3, side: THREE.DoubleSide });
+  const placa = new THREE.Mesh(geo, matPlaca); g.add(placa);
   const haste = malha(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6), mat(0x333333), { sombra: false }); haste.position.y = -0.85; g.add(haste);
-  g.position.set(0, 2.35, 1.0);
   return g;
 }
+// carro parado da vaga (já mesclado) e a plaquinha na frente dele
 export function carroExposto(vg) {
-  const g = carroFofo(vg.hex);
-  enfeitarCarro(g, vg.modelo);
-  g.userData.seta.visible = false;
-  g.add(plaquinha(vg.modelo));
-  return g;
+  return carroJE(vg.modelo, vg.hex, { parado: true });
 }
+const meioCarro = (vg) => { const m = MODELOS_JE[vg.modelo]; return m ? [(m.zF - m.zR) / 2, m.larg / 2, (m.zF + m.zR) / 2] : [2.3, 1.15, 0]; };
 
 export function criarPatioJE(cena, { solidos }) {
   const P = PATIO_JE, raiz = new THREE.Group(); raiz.visible = false; cena.add(raiz);
@@ -64,7 +61,7 @@ export function criarPatioJE(cena, { solidos }) {
   muros.push({ x0: P.x0, x1: P.x1, z0: P.z0 - 0.15, z1: P.z0 + 0.15 }, { x0: P.x0, x1: P.x1, z0: P.z1 - 0.15, z1: P.z1 + 0.15 }, { x0: P.x1 - 0.15, x1: P.x1 + 0.15, z0: P.z0, z1: P.z1 });
   muros.push({ x0: P.x0 - 0.15, x1: P.x0 + 0.15, z0: P.z0, z1: g0 }, { x0: P.x0 - 0.15, x1: P.x0 + 0.15, z0: g1, z1: P.z1 });
   for (const m of muros) solidos.push({ ...m, y1: 1.2 });
-  const solidosCarros = P.vagas.map((vg) => { const sa = Math.abs(Math.sin(vg.ang)), ca = Math.abs(Math.cos(vg.ang)); const hx = (sa * 2.3 + ca * 1.15) * 0.9, hz = (ca * 2.3 + sa * 1.15) * 0.9; const s = { x0: vg.x - hx, x1: vg.x + hx, z0: vg.z - hz, z1: vg.z + hz, y1: 1.0 }; solidos.push(s); return s; });
+  const solidosCarros = P.vagas.map((vg) => { const [c, l] = meioCarro(vg), sa = Math.abs(Math.sin(vg.ang)), ca = Math.abs(Math.cos(vg.ang)); const hx = (sa * c + ca * l) * 0.9, hz = (ca * c + sa * l) * 0.9; const s = { x0: vg.x - hx, x1: vg.x + hx, z0: vg.z - hz, z1: vg.z + hz, y1: 1.0 }; solidos.push(s); return s; });
   function montarFixo() {
     fixo = new THREE.Group(); raiz.add(fixo);
     const piso = caixa(P.x1 - P.x0, 0.06, P.z1 - P.z0, mat(0xd9dde3), { sombra: false }); piso.position.set(cx, 0.03, cz); fixo.add(piso);
@@ -89,13 +86,18 @@ export function criarPatioJE(cena, { solidos }) {
   function montarCarros() {
     if (carros) { carros.removeFromParent(); carros.traverse((o) => { if (o.geometry && !o.geometry.userData.compartilhada) o.geometry.dispose(); }); }
     carros = new THREE.Group(); raiz.add(carros);
-    P.vagas.forEach((vg, i) => { if (escolhidos.has(i)) return; const g = carroExposto(vg); g.position.set(vg.x, 0.03, vg.z); g.rotation.y = vg.ang; carros.add(g); });
-    carros.traverse((o) => { if (o.userData.dinamico) o.userData.dinamico = false; });
-    mesclar(carros);
-    // orçamento (≤ 350 mil triângulos): no pátio os carros parados não fazem sombra própria e o contorno preto só fica
-    // no carro que sai dirigindo (de longe ninguém nota; de perto a cerca e a plaquinha chamam mais atenção)
-    const tirar = []; carros.traverse((o) => { if (o.isMesh) { o.castShadow = false; if (o.userData.contorno) tirar.push(o); } });
-    for (const o of tirar) { o.removeFromParent(); o.geometry.dispose(); }
+    const corpos = new THREE.Group(), placas = new THREE.Group(); carros.add(corpos, placas);
+    P.vagas.forEach((vg, i) => {
+      if (escolhidos.has(i)) return;
+      const g = carroExposto(vg); g.position.set(vg.x, 0.03, vg.z); g.rotation.y = vg.ang; corpos.add(g);
+      // plaquinha em pé ao lado do bico do carro, virada para quem chega pelo portão
+      const [c, l, zc] = meioCarro(vg), pl = plaquinha(i), d = zc + c - 0.5, lado = -(l + 0.55);
+      pl.position.set(vg.x + Math.sin(vg.ang) * d + Math.cos(vg.ang) * lado, 0.03 + 1.35, vg.z + Math.cos(vg.ang) * d - Math.sin(vg.ang) * lado); pl.rotation.y = vg.ang; placas.add(pl);
+    });
+    // os 5 carros viram 6 malhas (uma por material: lataria, escuro, metal, luzes, vidro e a sombrinha no chão)
+    mesclarPorMaterial(corpos);
+    for (const o of [...corpos.children]) if (!o.isMesh) { corpos.remove(o); o.traverse((q) => q.geometry?.dispose()); }
+    mesclar(placas);
   }
   return {
     raiz, vagas: P.vagas,

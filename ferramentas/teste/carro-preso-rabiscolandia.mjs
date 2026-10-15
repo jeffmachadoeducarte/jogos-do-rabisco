@@ -17,7 +17,7 @@ const vigia = setTimeout(() => { console.log("✗ o teste travou"); process.exit
 let falhas = 0;
 const ok = (c, msg) => { console.log(c ? "✓" : "✗", msg); if (!c) falhas++; };
 
-const TIPOS = ["carro", "je", "onibus", "ambulancia", "sorvete", "bombeiro", "trator", "bici", "patinete"];
+const TIPOS = ["carro", "je", "onibus", "ambulancia", "sorvete", "bombeiro", "trator", "bici", "patinete", "moto"];
 const CASOS = ["traseira", "lado", "frente", "re", "preso2", "dentro", "apé"];
 const OBST = ["nenhum", "poste", "arvore", "muro", "estacionado"];
 const mulberry = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };

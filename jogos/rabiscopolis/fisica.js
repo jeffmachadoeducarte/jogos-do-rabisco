@@ -38,10 +38,14 @@ export function criarFisica(mundo) {
     if (j.buffer > 0 && j.coyote > 0) { j.vel.y = PULO; j.buffer = j.coyote = 0; j.noChao = false; pulou = true; }
     if (!ent.segura && j.vel.y > 4) j.vel.y = 4;
     j.vel.y -= GRAV * dt;
+    // a borda da cidade só vale NA cidade: as salas e casas por dentro ficam longe (z = 1000/1200, x até 300) e são
+    // fechadas por paredes sólidas; com a borda valendo lá, o Rabisco não andava para a frente/trás em nenhum interior
+    // (e na Crescente, x = 260, e na Rise Up, x = 300, nem para os lados)
+    const naCidade = Math.abs(j.pos.x) < BORDA + 8 && Math.abs(j.pos.z) < BORDA + 8;
     const nx = j.pos.x + j.vel.x * dt;
-    if (!bate(nx, j.pos.z, j.pos.y) && Math.abs(nx) < BORDA + 8) j.pos.x = nx; else j.vel.x = 0;
+    if (!bate(nx, j.pos.z, j.pos.y) && (!naCidade || Math.abs(nx) < BORDA + 8)) j.pos.x = nx; else j.vel.x = 0;
     const nz = j.pos.z + j.vel.z * dt;
-    if (!bate(j.pos.x, nz, j.pos.y) && Math.abs(nz) < BORDA + 8) j.pos.z = nz; else j.vel.z = 0;
+    if (!bate(j.pos.x, nz, j.pos.y) && (!naCidade || Math.abs(nz) < BORDA + 8)) j.pos.z = nz; else j.vel.z = 0;
     const chao = chaoEm(j.pos.x, j.pos.z, j.pos.y);
     j.pos.y += j.vel.y * dt;
     if (j.pos.y <= chao) { j.pos.y = chao; j.vel.y = 0; j.noChao = true; } else j.noChao = j.pos.y - chao < 0.03;

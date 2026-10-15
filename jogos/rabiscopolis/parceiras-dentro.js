@@ -11,6 +11,8 @@ import { alvara } from "./missoes-objetos.js";
 import { PARCEIROS } from "../../src/parceiros.js";
 
 const W = 14, D = 9;
+// por enquanto os personagens parceiros não falam: a anfitriã narra (o balão mostra "Rabiscolândia")
+const NARRA = "Rabiscolândia";
 const tex = (w, h, f) => texturaCanvas(w, h, f);
 const quadro = (t, w, h, emissivo = 0.35) => new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshToonMaterial({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: emissivo }));
 const escrever = (c, s, x, y, tam, cor, peso = 800, max = 9999) => { c.font = `${peso} ${tam}px 'Baloo 2', sans-serif`; while (c.measureText(s).width > max && tam > 10) { tam -= 2; c.font = `${peso} ${tam}px 'Baloo 2', sans-serif`; } c.fillStyle = cor; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(s, x, y); };
@@ -103,13 +105,13 @@ export function montarBella({ g, ox, oz, inter, npcs, est, solido, I, npc }) {
     api.sons.moeda?.(); vend.acenar(2);
     api.falar(`cid-bella-${p.id}`);
     const presente = api.missao?.() === "presente";
-    api.dizer("Lápis Lilás", presente ? `${p.nome[0].toUpperCase()}${p.nome.slice(1)}! Que lindo! Agora traga aqui no balcão para eu embrulhar. 🎁` : `${p.nome[0].toUpperCase()}${p.nome.slice(1)}! Que lindo! Olhe todos os acessórios. 💗`, 3600);
+    api.dizer(NARRA, presente ? `${p.nome[0].toUpperCase()}${p.nome.slice(1)}! Que lindo! Agora leve até o balcão para a Lápis Lilás embrulhar. 🎁` : `${p.nome[0].toUpperCase()}${p.nome.slice(1)}! Que lindo! Olhe todos os acessórios da Bella Cat. 💗`, 3600);
   }, 1.0);
   I("embrulhar", "🎁 Embrulhar para presente", bx - 1.0, bz, (api) => {
-    if (!est.escolhido) { api.dizer("Lápis Lilás", "Primeiro escolha um acessório nos pedestais! 💝", 2600); return; }
+    if (!est.escolhido) { api.dizer(NARRA, "Primeiro escolha um acessório nos pedestais! 💝", 2600); return; }
     embrulho.visible = true; est.embrulhou = est.escolhido; vend.pular(); vend.acenar(2.5);
     api.sons.vitoria?.(); api.falar("cid-bella-embrulho");
-    api.dizer("Lápis Lilás", "Pronto, embrulhadinho! Agora leve o presente até a Professora Lápis Turquesa, na porta da escola!", 4600);
+    api.dizer(NARRA, "Pronto, embrulhadinho! Agora leve o presente até a Professora Lápis Turquesa, na porta da escola!", 4600);
     api.evento?.("embrulhou", { id: est.escolhido });
     setTimeout(() => (embrulho.visible = false), 1800);
   }, 1.3);
@@ -161,14 +163,14 @@ export function montarRise({ g, ox, oz, inter, npcs, est, solido, I, npc }) {
   const trein = npc("lapis", 0xff7a00, 14, 0.8, "bone"); trein.grupo.position.set(ox - 0.6, 0.03, oz - 3.2); npcs.push(trein);
   npcs.push({ grupo: soltos, atualizar: (dt) => { if (est.correndo > 0) cintaTex.offset.y -= dt * 2.4; } });
   est.correu = false; est.levantou = 0;
-  const fimTreino = (api) => { trein.pular(); trein.acenar(3); api.sons.vitoria?.(); api.confete?.(); api.falar("cid-rise-ok"); api.dizer("Treinadora Lápis Laranja", "Parabéns, Rabisco! Você foi forte e corajoso! Corpo saudável, coração alegre!", 4800); api.evento?.("treinou"); };
+  const fimTreino = (api) => { trein.pular(); trein.acenar(3); api.sons.vitoria?.(); api.confete?.(); api.falar("cid-rise-ok"); api.dizer(NARRA, "Parabéns, Rabisco! Você foi forte e corajoso! Corpo saudável, coração alegre!", 4800); api.evento?.("treinou"); };
   I("esteira", "🏃 Correr na esteira", -3.8, -1.2, (api) => {
     if (est.correndo > 0) return;
-    api.falar("cid-rise-esteira"); api.dizer("Treinadora Lápis Laranja", "Primeiro, a esteira! Corra bastante: a barrinha vai enchendo!", 3000);
+    api.falar("cid-rise-esteira"); api.dizer(NARRA, "Primeiro, a esteira! Corra bastante: a barrinha vai enchendo!", 3000);
     est.correndo = 4.5;
     api.travar?.({ x: ox - 3.8, z: oz - 2.6, dir: Math.PI, modo: "andar", vel: 6, segundos: 4.5, aoFim: () => {
       est.correndo = 0; est.correu = true; trein.acenar(2); api.sons.moeda?.();
-      api.falar("cid-rise-peso"); api.dizer("Treinadora Lápis Laranja", "Que corrida! Agora vamos levantar o halter. Vá até o colchonete laranja e aperte o botão cinco vezes!", 4200);
+      api.falar("cid-rise-peso"); api.dizer(NARRA, "Que corrida! Agora vamos levantar o halter. Vá até o colchonete laranja e aperte o botão cinco vezes!", 4200);
     }, progresso: (f) => api.dizer("🏃 Esteira", `${"🟧".repeat(Math.round(f * 10))}${"⬜".repeat(10 - Math.round(f * 10))}`, 900) });
     setTimeout(() => api.falar("cid-rise-corre"), 2000);
   }, 1.4);
@@ -176,13 +178,13 @@ export function montarRise({ g, ox, oz, inter, npcs, est, solido, I, npc }) {
     if (est.levantou >= 5) { est.levantou = 0; }
     est.levantou++; api.sons.pulo?.(); api.falar(`cid-num-${est.levantou}`);
     api.travar?.({ x: ox + 3.4, z: oz - 1.4, dir: Math.PI, modo: "parado", segundos: 0.7, pose: "halter", objeto: peso });
-    api.dizer("Treinadora Lápis Laranja", `${est.levantou}! ${est.levantou < 5 ? "Mais uma!" : "Cinco! Muito bem!"}`, 1400);
-    if (est.levantou === 5) { if (est.correu) setTimeout(() => fimTreino(api), 900); else setTimeout(() => api.dizer("Treinadora Lápis Laranja", "Muito forte! Agora corra na esteira também. 🏃", 3000), 900); }
+    api.dizer(NARRA, `${est.levantou}! ${est.levantou < 5 ? "Mais uma!" : "Cinco! Muito bem!"}`, 1400);
+    if (est.levantou === 5) { if (est.correu) setTimeout(() => fimTreino(api), 900); else setTimeout(() => api.dizer(NARRA, "Muito forte! Agora corra na esteira também. 🏃", 3000), 900); }
   }, 1.3);
 }
 
 // ------------------------------------------------------------------ Crescente Contabilidade
-// marrom e dourado da marca; a contadora (lápis marrom de laço dourado e tênis dourados) fica atrás do balcão, com o
+// marrom e dourado da marca; a contadora Elaine (lápis marrom de laço dourado e tênis dourados) fica atrás do balcão, com o
 // alvará novinho em cima dele. Fora da missão ela só dá as boas-vindas.
 const MARROM = 0x813d18, MARROM_ESC = 0x5a2a10, DOURADO = 0xd4a937;
 function mesaComputador(fixo, x, z, cadeira) {
@@ -246,23 +248,23 @@ export function montarCrescente({ g, ox, oz, inter, npcs, est, solido, I, npc })
   const tb = caixa(3.2, 0.02, 1.9, mat(DOURADO), { sombra: false }); tb.position.set(0, 0.03, 0.6); fixo.add(tb);
   const tm = caixa(2.9, 0.025, 1.6, mat(MARROM), { sombra: false }); tm.position.set(0, 0.035, 0.6); fixo.add(tm);
   mesclar(fixo);
-  // a contadora (lápis marrom, laço e tênis dourados) e o alvará em cima do balcão
-  const cont = npc("lapis", 0x8a4a22, 9, 0.9, "laco", { corAcessorio: 0xf2c34e, tenis: DOURADO, iris: "#2bb24c" });
+  // a contadora Elaine (lápis marrom, laço e tênis dourados) e o alvará em cima do balcão
+  const cont = npc("lapis", 0x8a4a22, 9, 0.9, "laco", { nome: "Contadora Elaine", corAcessorio: 0xf2c34e, tenis: DOURADO, iris: "#2bb24c" });
   cont.grupo.position.set(ox, 0.03, oz + bz - 1.0); npcs.push(cont);
   const doc = alvara(); doc.rotation.x = -Math.PI / 2 + 0.25; doc.position.set(ox + 1.0, 0.82, oz + bz + 0.1);
   const soltos = new THREE.Group(); soltos.add(doc); soltos.userData.dinamico = true;
   npcs.push({ grupo: soltos, atualizar: () => { doc.visible = !est.alvara; } });
   est.alvara = false;
-  I("contadora", "💬 Falar com a contadora", 0, bz + 1.25, (api) => {
+  I("contadora", "💬 Falar com a contadora Elaine", 0, bz + 1.25, (api) => {
     cont.acenar(2.5);
     if (api.missao?.() === "alvara" && !est.alvara) {
       est.alvara = true; cont.pular(); api.sons.vitoria?.();
       api.falar("cid-crescente-alvara");
-      api.dizer("Contadora Lápis Marrom", "Aqui está o alvará novinho da escola, com o selinho! Leve para a Diretora Sabrina, na porta da Educarte Kids II.", 5200);
+      api.dizer(NARRA, "A contadora Elaine entregou o alvará novinho da escola, com o selinho! Leve para a Diretora Sabrina, na porta da Educarte Kids II.", 5200);
       api.evento?.("alvara");
       return;
     }
     api.sons.moeda?.(); api.falar("cid-crescente-oi");
-    api.dizer("Contadora Lápis Marrom", "Olá! Aqui na Crescente Contabilidade a gente cuida das contas e dos documentos das empresas.", 4600);
+    api.dizer(NARRA, "A contadora Elaine acenou! Na Crescente Contabilidade, ela cuida das contas e dos documentos das empresas.", 4600);
   }, 1.5);
 }

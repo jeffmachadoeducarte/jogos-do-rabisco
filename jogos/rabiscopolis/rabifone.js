@@ -26,6 +26,7 @@ const VEICULOS = [
   { tipo: "trator", cor: 0x3c9a4a, nome: "Trator", emoji: "🚜" },
   { tipo: "bici", cor: 0xec2e8c, nome: "Bicicleta", emoji: "🚲" },
   { tipo: "patinete", cor: 0x00b5f0, nome: "Patinete", emoji: "🛴" },
+  { tipo: "moto", cor: 0xc8141c, nome: "Moto esportiva", emoji: "🏍️" },
   { tipo: "barco", cor: 0xffcc1f, nome: "Barquinho (no lago)", emoji: "🚣" },
 ];
 const HORAS = [{ h: 8, nome: "Manhã", emoji: "🌅" }, { h: 13, nome: "Tarde", emoji: "☀️" }, { h: 18.6, nome: "Pôr do sol", emoji: "🌇" }, { h: 22, nome: "Noite", emoji: "🌙" }];

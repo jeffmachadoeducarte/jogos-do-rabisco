@@ -32,8 +32,8 @@ export const SALAS = {
   // lojas parceiras por dentro (parceiras-dentro.js): sem armário de uniforme
   "parceiro-bella-cat": { nome: "Bella Cat Make Biju", piso: 0xfbeef5, parede: 0xf9dbe9, acento: 0xec2e8c, profissao: null, fala: "rp-bella-entrar", boasVindas: "Bem-vindo à Bella Cat! Chegue pertinho dos pedestais para ver os laços, colares e tiaras.",
     dica: { missao: "presente", fala: "cid-bella-escolha", texto: "Que bom que você veio! Escolha um presente: chegue pertinho de um pedestal e aperte o botão!" } },
-  "parceiro-crescente-contabilidade": { nome: "Crescente Contabilidade", piso: 0xf3e6cf, parede: 0xf7eedc, acento: 0x813d18, profissao: null, fala: "cid-crescente-entrar", boasVindas: "Bem-vindo à Crescente Contabilidade! Fale com a contadora no balcão.",
-    dica: { missao: "alvara", fala: "cid-crescente-dica", texto: "Olá! Você veio buscar o alvará da escola? Venha aqui no balcão!" } },
+  "parceiro-crescente-contabilidade": { nome: "Crescente Contabilidade", piso: 0xf3e6cf, parede: 0xf7eedc, acento: 0x813d18, profissao: null, fala: "cid-crescente-entrar", boasVindas: "Bem-vindo à Crescente Contabilidade! Fale com a contadora Elaine no balcão.",
+    dica: { missao: "alvara", fala: "cid-crescente-dica", texto: "Você veio buscar o alvará da escola? A contadora Elaine está esperando no balcão!" } },
   "parceiro-rise-up": { nome: "Academia Rise Up", piso: 0x4a4e55, parede: 0xf1ebe0, acento: 0xff7a00, profissao: null, fala: "rp-rise-entrar", boasVindas: "Bem-vindo à Academia Rise Up! Aqui a gente cuida do corpo que Deus nos deu. Corra na esteira e levante o halter!" },
 };
 export const IDS_SALAS = Object.keys(SALAS);
