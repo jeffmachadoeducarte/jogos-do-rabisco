@@ -157,6 +157,7 @@ function revestir(raiz, { pintura = {}, vidro, envMapIntensity = 0.55 } = {}) {
       let novo = m;
       if (m.isMeshBasicMaterial && m.map) {
         novo = m.clone(); novo.toneMapped = false; // logos: cor da marca exata, sem o filtro de cinema
+        if (m.side !== G.DoubleSide) decalque(novo); // a bandeira (dois lados, solta no ar) não é adesivo
       } else if (m.isMeshToonMaterial) {
         const hex = m.color.getHex();
         if (hex === VIDRO) novo = vidro;
@@ -178,7 +179,26 @@ function revestir(raiz, { pintura = {}, vidro, envMapIntensity = 0.55 } = {}) {
     }
     o.material = cache.get(m);
     o.receiveShadow = true;
+    if (o.material.userData.decalque) o.renderOrder = Math.max(o.renderOrder, 2);
   });
+}
+// Logo/adesivo colado numa superfície: sempre "ganha" da parede/placa atrás (deslocamento de polígono
+// em unidades do próprio buffer de profundidade, vale em qualquer aparelho), não escreve profundidade
+// (o retângulo transparente da imagem não recorta nada) e não projeta sombra quadrada.
+function decalque(m) {
+  m.polygonOffset = true; m.polygonOffsetFactor = -2; m.polygonOffsetUnits = -8;
+  m.depthWrite = false;
+  m.userData.decalque = true;
+  return m;
+}
+const ehDecalque = (o) => !!o.material?.userData?.decalque;
+// retângulo de cantos redondos (placas)
+function cantos(w, h, r) {
+  const f = new G.Shape();
+  f.moveTo(-w / 2 + r, -h / 2); f.lineTo(w / 2 - r, -h / 2); f.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r);
+  f.lineTo(w / 2, h / 2 - r); f.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2); f.lineTo(-w / 2 + r, h / 2);
+  f.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r); f.lineTo(-w / 2, -h / 2 + r); f.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
+  return f;
 }
 
 // ------------------------------------------------------------------ cena
@@ -194,7 +214,8 @@ export function iniciarCena(canvas, { raiz = ".", leve = false, quieto = false, 
   const cena = new G.Scene();
   const corNevoa = new G.Color(0xd9ecf7);
   cena.fog = new G.Fog(corNevoa, 55, 230);
-  const camera = new G.PerspectiveCamera(40, 16 / 9, 0.3, 900);
+  // perto = 1 (nada da cena fica a menos de ~12 m da câmera): mais precisão de profundidade para as peças finas
+  const camera = new G.PerspectiveCamera(40, 16 / 9, 1, 900);
 
   // céu visível + o mesmo céu como luz ambiente e reflexo (PMREM: uma vez só, na abertura)
   const ceu = new G.Mesh(new G.SphereGeometry(500, 32, 16), materialCeu(true));
@@ -254,17 +275,25 @@ export function iniciarCena(canvas, { raiz = ".", leve = false, quieto = false, 
   }
 
   // ---------------- escola: revestida com tinta, vidro espelhado e telhas
+  // Só nesta cena: prédio todo azul-claro, todos os telhados rosa e os dois lápis da entrada laranja
+  // (nos jogos a escola continua com as cores de sempre). A placa segue branca com a logo de texto azul
+  // e ícone rosa: contrasta com a parede azul-clara.
+  const AZUL_CLARO = 0x9ad6f8, TELHA_ROSA = COR3D.rosa;
   const vidro = new G.MeshStandardMaterial({ color: 0x8fb7cc, roughness: 0.05, metalness: 0.9, envMapIntensity: 1.5 });
-  const escola = escolaEducarte3D(texLogo, texIcone);
+  const escola = escolaEducarte3D(texLogo, texIcone, {
+    paredes: AZUL_CLARO, alaEsquerda: AZUL_CLARO, alaDireita: AZUL_CLARO, torre: AZUL_CLARO,
+    telhado: TELHA_ROSA, telhadoEsquerda: TELHA_ROSA, telhadoDireita: TELHA_ROSA,
+    lapis: [COR3D.laranja, COR3D.laranja],
+  });
   escola.position.set(3, 0, -6);
   revestir(escola, {
     vidro,
     pintura: {
       [COR3D.ciano]: { roughness: 0.42 }, [COR3D.laranja]: { roughness: 0.42 }, [COR3D.roxo]: { roughness: 0.42 },
-      [0xfff1d6]: { roughness: 0.9 }, [0xffe3ef]: { roughness: 0.9 }, [0xdff6ff]: { roughness: 0.9 },
+      [AZUL_CLARO]: { roughness: 0.88 },
     },
   });
-  escola.traverse((o) => { if (o.isMesh && o.visible) o.castShadow = true; });
+  escola.traverse((o) => { if (o.isMesh && o.visible && !ehDecalque(o)) o.castShadow = true; });
   cena.add(escola);
   // calçada clara na frente do prédio
   const calcada = new G.Mesh(new G.BoxGeometry(37, 0.12, 1.8), new G.MeshStandardMaterial({ color: 0xe9e4da, roughness: 0.92, envMapIntensity: 0.7 }));
@@ -364,10 +393,29 @@ export function iniciarCena(canvas, { raiz = ".", leve = false, quieto = false, 
       }
     }
   }
+  // Logo do ônibus: no objeto original ela fica no MESMO plano da faixa preta (x = 2,53 nos dois) e por
+  // cima das janelas (2,52): a placa de vidro/tinta e a logo disputavam o mesmo pixel e a logo piscava.
+  // Aqui ela sai dali e vai para uma plaquinha branca com borda ciano, entre a faixa e as janelas.
+  bus.traverse((o) => { if (o.isMesh && o.material?.map === texLogo) o.visible = false; });
+  {
+    const PZ = 1.5, PY = 3.0;
+    const borda = new G.Mesh(new G.ExtrudeGeometry(cantos(3.5, 1.5, 0.36), { depth: 0.05, bevelEnabled: true, bevelThickness: 0.025, bevelSize: 0.03, bevelSegments: 2 }),
+      new G.MeshPhysicalMaterial({ color: COR3D.ciano, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.15, envMapIntensity: 0.6 }));
+    const fundo = new G.Mesh(new G.ExtrudeGeometry(cantos(3.2, 1.22, 0.28), { depth: 0.04, bevelEnabled: false }),
+      new G.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, envMapIntensity: 0.5 }));
+    const logo = new G.Mesh(new G.PlaneGeometry(2.3, 2.3 * 252 / 481), decalque(new G.MeshBasicMaterial({ map: texLogo, transparent: true, toneMapped: false })));
+    for (const [m, x] of [[borda, 2.53], [fundo, 2.6], [logo, 2.66]]) {
+      m.rotation.y = Math.PI / 2; // a frente da forma (+z) vira para o lado do ônibus (+x)
+      m.position.set(x, PY, PZ);
+      m.receiveShadow = !ehDecalque(m);
+      bus.add(m);
+    }
+    logo.renderOrder = 2;
+  }
   bus.scale.setScalar(0.75);
   bus.rotation.y = rotBus;
   bus.position.copy(posBus);
-  bus.traverse((o) => { if (o.isMesh && o.visible) o.castShadow = true; });
+  bus.traverse((o) => { if (o.isMesh && o.visible && !ehDecalque(o)) o.castShadow = true; });
   cena.add(bus);
   const sombraBus = sombraBlob(1, 0.45);
   sombraBus.scale.set(3.2, 7.2, 1);
@@ -462,6 +510,7 @@ export function iniciarCena(canvas, { raiz = ".", leve = false, quieto = false, 
 
   // ------------------------------------------------------------------ tela, laço e controles
   const alvoCam = new G.Vector3(-1, 2.6, 4);
+  const alvo = new G.Vector3();
   function ajustarTela() {
     renderer.setSize(innerWidth, innerHeight, false);
     camera.aspect = innerWidth / innerHeight;
@@ -477,7 +526,11 @@ export function iniciarCena(canvas, { raiz = ".", leve = false, quieto = false, 
     const tc = quieto || foto ? 0 : t;
     const longe = camera.aspect < 0.9 ? 1.6 : 1;
     camera.position.set(-3 + Math.sin(tc * 0.12) * 4, 5.2 + Math.sin(tc * 0.2) * 0.3, 4 + 25 * longe);
-    camera.lookAt(alvoCam);
+    // em pé (celular/tablet) a câmera mira um pouco mais baixo: a cena sobe e o Rabisco fica acima do
+    // destaque da Rabiscolândia e das idades, que ocupam o pé da tela
+    alvo.copy(alvoCam);
+    if (longe > 1) alvo.y -= 2.4;
+    camera.lookAt(alvo);
   }
   function desenhar(dt) {
     if (t > modoAte) modoRabisco = "acenar";

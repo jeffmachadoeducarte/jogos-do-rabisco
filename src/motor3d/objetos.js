@@ -760,7 +760,9 @@ export function castelo3D(texLogo) {
 // ------------------------------------------------------------------ Escola Educarte (painel de entrada)
 // Prédio de dois andares nas cores da marca, entrada com colunas de lápis, torre com relógio,
 // placa da Educarte, parquinho (escorregador e balanço), mastro com bandeira e caminho de pedras.
-export function escolaEducarte3D(texLogo, texIcone) {
+// `cores` (opcional) troca só a pintura: { paredes, alaEsquerda, alaDireita, torre, telhado, telhadoEsquerda,
+// telhadoDireita, lapis: [esquerdo, direito] }. Sem ela, a escola sai exatamente como sempre foi.
+export function escolaEducarte3D(texLogo, texIcone, cores = {}) {
   const g = new G.Group();
   const caixa = (w, h, d, cor, x, y, z, contorno = 0.08) => {
     const m = peca(new G.BoxGeometry(w, h, d), cor, { contorno });
@@ -768,11 +770,11 @@ export function escolaEducarte3D(texLogo, texIcone) {
     g.add(m);
     return m;
   };
-  const CREME = 0xfff1d6, TELHA = COR3D.ciano;
+  const CREME = cores.paredes ?? 0xfff1d6, TELHA = cores.telhado ?? COR3D.ciano;
   // corpo principal e alas
   caixa(16, 7, 7, CREME, 0, 3.5, 0);
-  caixa(7, 5, 6, 0xffe3ef, -11.5, 2.5, 0.5);
-  caixa(7, 5, 6, 0xdff6ff, 11.5, 2.5, 0.5);
+  caixa(7, 5, 6, cores.alaEsquerda ?? 0xffe3ef, -11.5, 2.5, 0.5);
+  caixa(7, 5, 6, cores.alaDireita ?? 0xdff6ff, 11.5, 2.5, 0.5);
   // faixas coloridas (rodapé e entre andares)
   caixa(16.2, 0.5, 7.2, COR3D.rosa, 0, 0.25, 0, 0.04);
   caixa(16.2, 0.35, 7.2, COR3D.laranja, 0, 3.6, 0, 0.04);
@@ -789,10 +791,10 @@ export function escolaEducarte3D(texLogo, texIcone) {
     g.add(m);
   };
   telhado(17.4, 8, 3, TELHA, 0, 7, 0);
-  telhado(8.2, 7, 2.2, COR3D.laranja, -11.5, 5, 0.5);
-  telhado(8.2, 7, 2.2, COR3D.roxo, 11.5, 5, 0.5);
+  telhado(8.2, 7, 2.2, cores.telhadoEsquerda ?? COR3D.laranja, -11.5, 5, 0.5);
+  telhado(8.2, 7, 2.2, cores.telhadoDireita ?? COR3D.roxo, 11.5, 5, 0.5);
   // torre com relógio (o "e" da Educarte no mostrador) e ponta de lápis
-  caixa(4, 5, 4, 0xffffff, 0, 9.5, 0);
+  caixa(4, 5, 4, cores.torre ?? 0xffffff, 0, 9.5, 0);
   const ponta = peca(new G.ConeGeometry(3, 4, 4), COR3D.madeira, { contorno: 0.08 });
   ponta.rotation.y = Math.PI / 4;
   ponta.position.set(0, 14, 0);
@@ -832,7 +834,7 @@ export function escolaEducarte3D(texLogo, texIcone) {
   g.add(porta, portaDivisao);
   const toldo = caixa(5.4, 0.35, 2.4, COR3D.rosa, 0, 3.95, 4.6, 0.06);
   toldo.rotation.x = -0.12;
-  const coresLapis = [COR3D.amarelo, COR3D.verde];
+  const coresLapis = cores.lapis ?? [COR3D.amarelo, COR3D.verde];
   [-2.4, 2.4].forEach((x, i) => {
     const l = lapis3D(coresLapis[i], 3.6, 0.32);
     l.position.set(x, 0, 5.6);

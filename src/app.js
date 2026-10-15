@@ -154,6 +154,7 @@ function abrirFaixa(id) {
   $("jogos").scrollTop = 0;
   $("painel").hidden = false;
   $("boas-vindas").classList.add("recolhida");
+  $("destaque").classList.add("recolhida");
   desenharFaixas();
   comemorar();
   sons.destravar();
@@ -165,6 +166,7 @@ function fecharPainel() {
   faixaAberta = null;
   $("painel").hidden = true;
   $("boas-vindas").classList.remove("recolhida");
+  $("destaque").classList.remove("recolhida");
   desenharFaixas();
   ajustarRitmo();
 }
@@ -202,13 +204,21 @@ desenharFamilia();
 Familia.aoMudar(desenharFamilia);
 btnFamilia.addEventListener("click", () => Familia.abrirCadastro({ obrigatorio: false, titulo: "Nossa família" }));
 // um jogo só abre depois do cadastro (uma vez por aparelho); o link segue depois de salvar
-$("jogos").addEventListener("click", async (e) => {
-  const a = e.target.closest("a.jogo.pronto");
+const pedirCadastroAntes = (seletor) => async (e) => {
+  const a = e.target.closest(seletor);
   if (!a || Familia.completo() || params.has("semcadastro")) return;
   e.preventDefault();
   const salvou = await Familia.abrirCadastro({ obrigatorio: true });
   if (salvou) { comemorar(); setTimeout(() => { location.href = a.href; }, 350); }
-});
+};
+$("jogos").addEventListener("click", pedirCadastroAntes("a.jogo.pronto"));
+// destaque da tela inicial (Rabiscolândia): mesma regra do cadastro
+$("destaque").addEventListener("click", pedirCadastroAntes("a.destaque"));
+$("destaque").querySelector("img").src = `assets/portal-capas/rabiscopolis.webp?v=${CAPAS.versao}`;
+// no celular em pé e no tablet o destaque fica logo acima das idades: acompanha a altura delas
+if ("ResizeObserver" in window) {
+  new ResizeObserver(([e]) => document.documentElement.style.setProperty("--faixas-h", `${Math.round(e.target.getBoundingClientRect().height)}px`)).observe($("faixas"));
+}
 if (params.has("cadastro")) Familia.abrirCadastro({ obrigatorio: params.get("cadastro") !== "editar" });
 
 // Controle: direcional escolhe a idade ou o jogo, A abre, B volta para as idades

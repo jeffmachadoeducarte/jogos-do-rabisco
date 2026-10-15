@@ -46,7 +46,7 @@ body {
     linear-gradient(to top, rgba(8, 30, 52, 0.38), transparent 30%);
 }
 [hidden] { display: none !important; }
-.foto-cena .topo, .foto-cena .boas-vindas, .foto-cena .faixas, .foto-cena .som, .foto-cena .veu, .foto-cena .instalar-app { display: none !important; }
+.foto-cena .topo, .foto-cena .boas-vindas, .foto-cena .destaque, .foto-cena .faixas, .foto-cena .som, .foto-cena .veu, .foto-cena .instalar-app { display: none !important; }
 
 /* ------------------------------------------------------------------ cabeçalho */
 .topo {
@@ -97,6 +97,75 @@ body {
   box-shadow: 0 1px 1px rgba(10, 40, 70, 0.12), 0 8px 20px -6px rgba(10, 40, 70, 0.45);
 }
 .boas-vindas.recolhida { opacity: 0; transform: translateY(-16px); }
+
+/* ------------------------------------------------------------------ destaque: Rabiscolândia sempre na tela inicial
+   Computador e TV: cartão grande à direita (a escola e o Rabisco ficam livres no meio).
+   Celular em pé e tablet: faixa larga logo acima das idades (--faixas-h vem do app.js).
+   Celular deitado: cartão compacto à direita, entre o cabeçalho e as idades. */
+.destaque {
+  --borda-d: #c4136c;
+  position: fixed; z-index: 1;
+  right: clamp(16px, 2.4vw, 44px); top: calc(env(safe-area-inset-top, 0px) + clamp(132px, 19vh, 210px));
+  width: clamp(290px, 29vw, 520px);
+  display: flex; flex-direction: column; gap: 0;
+  color: var(--tinta); text-decoration: none; font-family: var(--texto);
+  /* moldura em degradê da marca (amarelo → rosa → ciano) com o miolo branco */
+  border: 4px solid transparent; border-radius: 28px; padding: 6px;
+  background:
+    linear-gradient(var(--branco), var(--branco)) padding-box,
+    linear-gradient(135deg, var(--amarelo), var(--rosa) 45%, var(--ciano)) border-box;
+  box-shadow:
+    0 6px 0 var(--borda-d),
+    0 12px 18px -6px rgba(8, 30, 52, 0.38), 0 30px 50px -24px rgba(8, 30, 52, 0.6);
+  transition: transform 0.3s var(--mola), box-shadow 0.3s var(--mola), opacity 0.3s;
+  animation: destaque-entra 0.6s var(--mola) 0.15s backwards;
+  -webkit-touch-callout: none;
+}
+@keyframes destaque-entra { from { opacity: 0; transform: translateY(18px) scale(0.96); } }
+.destaque:hover, .destaque:focus-visible { transform: translateY(-6px) rotate(-0.6deg); outline: none; }
+.destaque:focus-visible, .destaque.controle-foco {
+  outline: 6px solid var(--amarelo) !important; outline-offset: 4px;
+  box-shadow: 0 6px 0 var(--borda-d), 0 0 0 10px rgba(255, 204, 31, 0.28), 0 26px 40px -14px rgba(8, 30, 52, 0.65);
+}
+.destaque:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--borda-d), 0 6px 12px -4px rgba(8, 30, 52, 0.4); transition-duration: 0.08s; }
+.destaque.recolhida { opacity: 0; transform: translateY(-16px); pointer-events: none; visibility: hidden; transition: opacity 0.25s, transform 0.25s, visibility 0s 0.25s; }
+.destaque-capa {
+  position: relative; display: block; aspect-ratio: 16 / 10; overflow: hidden;
+  border-radius: 21px 21px 14px 14px; background: linear-gradient(150deg, #8fdcff, var(--ciano));
+  isolation: isolate;
+}
+.destaque-capa img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; transform: scale(1.02); transition: transform 0.6s var(--mola); }
+.destaque:hover .destaque-capa img, .destaque:focus-visible .destaque-capa img { transform: scale(1.08); }
+/* brilho que passa pela capa de vez em quando (chama a atenção sem piscar) */
+.destaque-capa::after {
+  content: ""; position: absolute; inset: -20% auto -20% -60%; width: 40%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-18deg); animation: destaque-brilho 5.5s ease-in-out 1.2s infinite;
+}
+@keyframes destaque-brilho { 0%, 70% { left: -60%; } 100% { left: 130%; } }
+.destaque-selo {
+  position: absolute; top: 10px; left: 10px; z-index: 1;
+  font-weight: 800; font-size: 14px; line-height: 1.5; color: #fff; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+  background: linear-gradient(180deg, #ff4fa3, var(--rosa)); border-radius: 999px; padding: 2px 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 3px 0 #b5156a, 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+.destaque-texto {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "nome jogar" "frase jogar";
+  align-items: center; gap: 0 12px; padding: 10px 8px 6px 10px;
+}
+.destaque-texto strong {
+  grid-area: nome; font-family: var(--titulo); font-weight: 900; line-height: 1.05;
+  font-size: clamp(24px, 2.5vw, 38px); color: #0a6fa8; letter-spacing: 0.2px;
+}
+.destaque-frase { grid-area: frase; font-weight: 700; font-size: clamp(14px, 1.2vw, 18px); line-height: 1.25; color: #3c4a57; margin-top: 2px; }
+.destaque-jogar {
+  grid-area: jogar; white-space: nowrap;
+  font-weight: 800; font-size: clamp(17px, 1.5vw, 22px); color: #fff; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+  background: linear-gradient(180deg, #ff9a2e, var(--laranja)); border-radius: 999px; padding: 6px 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 4px 0 #c45800, 0 8px 14px rgba(0, 0, 0, 0.25);
+  animation: destaque-pulso 2.4s ease-in-out infinite;
+}
+@keyframes destaque-pulso { 50% { transform: scale(1.06); } }
 
 /* ------------------------------------------------------------------ cartões de idade */
 .faixas {
@@ -332,7 +401,44 @@ body {
   .jogo h3 { font-size: 18px; }
   .jogo p { font-size: 14px; -webkit-line-clamp: 2; }
 }
+/* destaque no celular em pé e no tablet: faixa larga logo acima das idades */
+@media (max-width: 900px) {
+  .destaque {
+    top: auto; left: 16px; right: 16px; width: auto; max-width: 640px; margin: 0 auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 16px + var(--faixas-h, 200px) + 16px);
+    flex-direction: row; align-items: center; padding: 5px; border-radius: 26px;
+  }
+  .destaque-capa { width: 44%; flex: none; border-radius: 20px 12px 12px 20px; }
+  .destaque-texto { flex: 1; grid-template-columns: minmax(0, 1fr); grid-template-areas: "nome" "frase" "jogar"; align-content: center; gap: 2px; padding: 4px 6px 4px 12px; }
+  .destaque-texto strong { font-size: clamp(22px, 4.2vw, 32px); }
+  .destaque-frase { font-size: clamp(13px, 2.2vw, 17px); }
+  .destaque-jogar { justify-self: start; margin-top: 6px; font-size: clamp(15px, 2.6vw, 20px); padding: 4px 16px; }
+}
+@media (max-width: 560px) {
+  .destaque { left: 10px; right: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px + var(--faixas-h, 200px) + 12px); border-width: 3px; border-radius: 22px; padding: 4px; }
+  .destaque-capa { width: 42%; border-radius: 17px 10px 10px 17px; }
+  .destaque-selo { top: 6px; left: 6px; font-size: 11px; padding: 1px 8px; }
+  .destaque-texto { padding: 2px 4px 2px 10px; }
+  .destaque-texto strong { font-size: 21px; }
+  .destaque-frase { font-size: 12.5px; line-height: 1.2; }
+  .destaque-jogar { font-size: 15px; padding: 3px 14px; margin-top: 5px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 3px 0 #c45800, 0 6px 10px rgba(0, 0, 0, 0.22); }
+}
+/* destaque no celular deitado: cartão compacto à direita, abaixo da ⚙️ e acima das idades */
+@media (max-height: 520px) and (orientation: landscape) {
+  .destaque {
+    left: auto; bottom: auto; margin: 0; max-width: none;
+    top: calc(env(safe-area-inset-top, 0px) + 112px); right: calc(env(safe-area-inset-right, 0px) + 12px);
+    width: min(380px, 46vw); border-width: 3px; border-radius: 22px; padding: 4px;
+  }
+  .destaque-capa { width: 44%; border-radius: 17px 10px 10px 17px; }
+  .destaque-selo { top: 6px; left: 6px; font-size: 11px; padding: 1px 8px; }
+  .destaque-texto { padding: 2px 4px 2px 10px; }
+  .destaque-texto strong { font-size: 21px; }
+  .destaque-frase { font-size: 12.5px; line-height: 1.2; }
+  .destaque-jogar { font-size: 15px; padding: 3px 14px; margin-top: 4px; }
+}
 @media (prefers-reduced-motion: reduce) {
+  .destaque, .destaque-jogar, .destaque-capa::after, .destaque-capa img { transition: none; animation: none; }
   .faixa, .painel-jogos, .boas-vindas, .jogo, .capa-foto, #cena { transition: none; animation: none; }
   .jogo.inclinado, .jogo.pronto:focus-visible { transform: translateY(-4px); }
 }
