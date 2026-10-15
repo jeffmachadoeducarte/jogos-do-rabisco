@@ -245,17 +245,22 @@ function desenharRosto(c, p, fechado) {
     const rnd = aleatorio(11), mxB = X(0), myB = Y(116.5);
     c.fillStyle = f.barba.sombra;
     if (f.barba.cheia) {
-      // barba cheia: bochechas, queixo e bigode pintados por inteiro (a casca 3D continua a mesma cor nas laterais)
-      c.save(); c.filter = "blur(3px)";
-      c.beginPath(); c.moveTo(X(-60), Y(96)); c.lineTo(X(-60), Y(150)); c.lineTo(X(60), Y(150)); c.lineTo(X(60), Y(96));
-      c.quadraticCurveTo(X(44), Y(104), X(30), Y(108)); c.quadraticCurveTo(X(12), Y(106), X(0), Y(109)); c.quadraticCurveTo(X(-12), Y(106), X(-30), Y(108)); c.quadraticCurveTo(X(-44), Y(104), X(-60), Y(96));
-      c.closePath(); c.fill(); c.restore();
+      // barba curta: bochechas ralas (sombra suave), mandíbula um pouco mais escura e bigode ligado ao cavanhaque
+      c.save(); c.filter = "blur(5px)";
+      c.beginPath(); c.moveTo(X(-60), Y(100)); c.lineTo(X(-60), Y(150)); c.lineTo(X(60), Y(150)); c.lineTo(X(60), Y(100));
+      c.quadraticCurveTo(X(44), Y(108), X(30), Y(111)); c.quadraticCurveTo(X(12), Y(109), X(0), Y(111)); c.quadraticCurveTo(X(-12), Y(109), X(-30), Y(111)); c.quadraticCurveTo(X(-44), Y(108), X(-60), Y(100));
+      c.closePath(); c.fill();
+      c.fillStyle = f.barba.mandibula; c.fillRect(X(-60), Y(138), X(60) - X(-60), Y(150) - Y(138));
+      c.filter = "blur(2px)"; c.fillStyle = f.barba.cor;
+      c.beginPath(); c.moveTo(X(-19), Y(112)); c.quadraticCurveTo(X(-9), Y(108.6), X(0), Y(110)); c.quadraticCurveTo(X(9), Y(108.6), X(19), Y(112));
+      c.lineTo(X(21), Y(123)); c.quadraticCurveTo(X(21), Y(138), X(14), Y(146)); c.quadraticCurveTo(X(0), Y(153), X(-14), Y(146)); c.quadraticCurveTo(X(-21), Y(138), X(-21), Y(123)); c.closePath(); c.fill();
+      c.restore();
     } else {
     c.beginPath(); c.moveTo(X(-42), Y(108)); c.quadraticCurveTo(X(-36), Y(140), X(0), Y(150)); c.quadraticCurveTo(X(36), Y(140), X(42), Y(108));
     c.quadraticCurveTo(X(22), Y(118), X(0), Y(111)); c.quadraticCurveTo(X(-22), Y(118), X(-42), Y(108)); c.closePath(); c.fill();
     }
     c.fillStyle = f.barba.ponto;
-    for (let i = 0; i < 1600; i++) {
+    for (let i = 0; i < (f.barba.pontos ?? 1600); i++) {
       const az = (rnd() - 0.5) * 92, pol = 106 + rnd() * 44;
       const lim = 104 + Math.abs(az) * 0.05 + (Math.abs(az) < 26 ? 8 : 0);
       if (pol < lim) continue;
@@ -744,23 +749,24 @@ function montarPessoa(p) {
   }
   // barba e cavanhaque: casca colada no queixo e nas laterais do rosto (o resto da casca fica escondido por dentro)
   if (p.rosto.barba) {
-    const g = new THREE.SphereGeometry(R * 1.022, 30, 20);
+    const g = new THREE.SphereGeometry(R * (p.rosto.barba.cheia ? 1.012 : 1.022), 30, 20);
     const P = g.attributes.position, d = new V3();
     for (let i = 0; i < P.count; i++) {
       d.set(P.getX(i), P.getY(i), P.getZ(i)).normalize();
       const az = Math.abs(Math.atan2(d.x, d.z)), el = Math.asin(THREE.MathUtils.clamp(d.y, -1, 1));
       const ch = p.rosto.barba.cheia;
-      const topo = ch ? lerp(-0.12, 0.28, sstep(az, 0.6, 1.45)) : -0.1; // costeleta sobe até a orelha
-      const lados = sstep(topo - el, 0, 0.16) * sstep(az, ch ? 0.4 : 0.7, ch ? 0.62 : 0.85) * sstep(1.66 - az, 0, 0.16);
-      const queixoB = sstep((ch ? -0.64 : -0.68) - el, 0, 0.1) * sstep(1.75 - az, 0, 0.16);
-      const k = lerp(0.86, 1, Math.max(lados, queixoB)) * (1 + (ch ? 0.07 : 0.035) * sstep(-0.75 - el, 0, 0.3) * sstep(0.9 - az, 0, 0.3)); // queixo mais cheio
+      const topo = ch ? lerp(-0.45, 0.1, sstep(az, 1.0, 1.45)) : -0.1; // costeleta fina subindo até a orelha
+      const lados = sstep(topo - el, 0, 0.2) * sstep(az, ch ? 0.95 : 0.7, ch ? 1.2 : 0.85) * sstep(1.62 - az, 0, 0.2);
+      const queixoB = sstep((ch ? -0.72 : -0.68) - el, 0, 0.14) * sstep(1.75 - az, 0, 0.2);
+      // barba curta: casca rente ao rosto, só um tiquinho mais cheia no queixo
+      const k = lerp(0.86, 1, Math.max(lados, queixoB)) * (1 + (ch ? 0.012 : 0.035) * sstep(-0.75 - el, 0, 0.3) * sstep(0.9 - az, 0, 0.3));
       P.setXYZ(i, P.getX(i) * k, P.getY(i) * k, P.getZ(i) * k);
     }
     formaCabeca(g);
     const bb = p.rosto.barba, base = new THREE.Color(bb.cor3d), fio = new THREE.Color(bb.grisalho ?? bb.cor3d);
     // fios grisalhos espalhados (cor por vértice, sem textura)
-    const corB = bb.grisalho ? (q) => { const h = Math.abs(Math.sin(q.x * 912.7 + q.y * 433.1 + q.z * 271.9) * 43758.5) % 1; return base.clone().lerp(fio, h < 0.22 ? 0.45 : h < 0.4 ? 0.2 : 0); } : null;
-    m.add(g, { cor: bb.cor3d, corFn: corB, osso: O.cabeca, pos: HC.toArray(), esc: HS.toArray(), contorno: 0.009 });
+    const corB = bb.grisalho ? (q) => { const h = Math.abs(Math.sin(q.x * 912.7 + q.y * 433.1 + q.z * 271.9) * 43758.5) % 1; return base.clone().lerp(fio, h < (bb.fios ?? 0.22) ? 0.45 : 0); } : null;
+    m.add(g, { cor: bb.cor3d, corFn: corB, osso: O.cabeca, pos: HC.toArray(), esc: HS.toArray(), contorno: bb.cheia ? 0.005 : 0.009 });
   }
   // óculos de armação grossa, formato gatinho (pontas de fora levantadas)
   if (p.oculos) {
@@ -996,7 +1002,7 @@ const PESSOAS = {
     rosto: {
       olhoEsc: 0.8, iris: ["#1e1208", "#4a3018", "#7a5530", "#342010"], sobrancelha: "#3a2a1e", grossura: 1, interno: 1, boca: "dentes", batom: "#b46f63", bochecha: "rgba(240,90,90,0.38)",
       cilios: [[-0.3, 8, 4]],
-      barba: { cheia: true, sombra: "rgba(75,55,39,0.96)", ponto: "rgba(165,155,145,0.55)", cor: "#3e2d20", cor3d: 0x4b3727, grisalho: 0x9a9088 },
+      barba: { cheia: true, sombra: "rgba(120,88,60,0.34)", mandibula: "rgba(110,80,55,0.45)", ponto: "rgba(190,180,170,0.5)", pontos: 260, cor: "#6e4f36", cor3d: 0x6e4f36, grisalho: 0xb0a89e, fios: 0.07 },
     },
     cabelo: { estilo: "careca", cor: 0xf1c3a8 },
     bone: { cor: 0x17171b },
