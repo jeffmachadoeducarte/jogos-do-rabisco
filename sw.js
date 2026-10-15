@@ -5,7 +5,8 @@ const VERSAO = "rabisco-v4-login";
 const ESSENCIAIS = ["./", "./index.html", "./src/app.js", "./src/style.css", "./src/catalogo.js", "./vendor/three.module.min.js", "./manifest.webmanifest", "./assets/app/icone-192.png"];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(VERSAO).then((c) => c.addAll(ESSENCIAIS)).then(() => self.skipWaiting()));
+  // sem login o addAll dá 401: instala mesmo assim, para apagar a cópia antiga e deixar o navegador pedir a senha
+  e.waitUntil(caches.open(VERSAO).then((c) => c.addAll(ESSENCIAIS)).catch(() => {}).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", (e) => {
   e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== VERSAO).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
