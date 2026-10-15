@@ -271,13 +271,14 @@ export const MISSOES = [
     fim: "Uau, que carro lindo! Parabéns, Rabisco! Vamos agradecer a Deus por esse presente!",
   },
   {
-    // Crescente Contabilidade: a Diretora Sabrina pede na porta da escola da criança, a contadora entrega o alvará novo
+    // Kids I: Diretora Carina (missão própria a fazer)
+    // Crescente Contabilidade: a Diretora Sabrina (só da Educarte Kids II) pede na porta da escola, a contadora entrega o alvará novo
     // (vai na mão do Rabisco) e a diretora recebe. pedidoNome/agradece: falas emendadas com o nome da criança
     // ("Alice" + "o alvará da escola venceu!..."); sem nome no banco, as falas neutras (cid-alvara, cid-alvara-obrigada).
     id: "alvara", titulo: "Alvará da Escola", icone: "📜", tipo: "cidadania", parceiro: "crescente-contabilidade",
     voz: { pedido: "cid-alvara", pedidoNome: "cid-alvara-pos", fim: "cid-alvara-ok" },
     npcs: {
-      diretora: { nome: "Diretora Sabrina", tipo: "lapis", cor: 0xf48fc0, escola: [-4.5, 1.5], acessorio: "laco", corAcessorio: 0x8e5bd8, tenis: 0x8e5bd8 },
+      diretora: { nome: "Diretora Sabrina", tipo: "lapis", cor: 0xf48fc0, escola: [-4.5, 1.5], unidade: "kids2", acessorio: "laco", corAcessorio: 0x8e5bd8, tenis: 0x8e5bd8 },
     },
     pedido: "Oi! O alvará da escola venceu! Vá até o escritório da Crescente Contabilidade buscar o alvará novo.",
     pedidoComNome: "{nome}, o alvará da escola venceu! Vá até o escritório da Crescente Contabilidade buscar o alvará novo.",

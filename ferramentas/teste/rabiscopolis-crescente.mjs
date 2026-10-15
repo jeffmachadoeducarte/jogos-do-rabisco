@@ -172,6 +172,20 @@ async function doisJogadores() {
   } finally { await t.fechar(); }
 }
 
+// idade ≤ 4 (Kids I): a Diretora Sabrina continua na Educarte Kids II
+async function idadeBaixa() {
+  const t = await abrir("about:blank", { largura: 1280, altura: 720 });
+  try {
+    await t.cmd("Page.navigate", { url: `${URL_JOGO}?teste&jogar&fixo&idade=3` });
+    ok(await ate(t, "!!window.teste?.vivo && !!teste.mundo"), "carregou com ?idade=3");
+    await espera(1500);
+    const d = await t.ev("teste.missoes.npc('alvara', 'diretora')");
+    const k2 = await t.ev("teste.LUGARES.find((l) => l.id === 'kids2')");
+    const k1 = await t.ev("teste.LUGARES.find((l) => l.id === 'kids1')");
+    ok(Math.hypot(d.x - k2.x, d.z - k2.z) < 8 && Math.hypot(d.x - k1.x, d.z - k1.z) > 8, `idade 3: a Diretora Sabrina fica na Kids II (${d.x.toFixed(1)}, ${d.z.toFixed(1)})`);
+  } finally { await t.fechar?.(); }
+}
+if (!SO.length || SO.includes("3")) await idadeBaixa();
 if (!SO.length || SO.includes("1")) await umJogador();
 if (!SO.length || SO.includes("2")) await doisJogadores();
 clearTimeout(vigia);

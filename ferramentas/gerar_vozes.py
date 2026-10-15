@@ -419,7 +419,7 @@ falas.update({
     "cid-alvara-pos": "o alvará da escola venceu! Vá até o escritório da Crescente Contabilidade buscar o alvará novo.",
     "cid-crescente-entrar": "Bem-vindo à Crescente Contabilidade! Fale com a contadora no balcão.",
     "cid-crescente-dica": "Olá! Você veio buscar o alvará da escola? Venha aqui no balcão!",
-    "cid-crescente-alvara": "Aqui está o alvará novinho da escola, com o selinho! Leve para a Diretora Sabrina, na porta da escola.",
+    "cid-crescente-alvara": "Aqui está o alvará novinho da escola, com o selinho! Leve para a Diretora Sabrina, na porta da Educarte Kids II.",
     "cid-crescente-oi": "Olá! Aqui na Crescente Contabilidade a gente cuida das contas e dos documentos das empresas.",
     "cid-alvara-obrigada-pre": "Obrigada,", "cid-alvara-obrigada-pos": "Agora a escola está em dia.",
     "cid-alvara-obrigada": "Obrigada! Agora a escola está em dia.",

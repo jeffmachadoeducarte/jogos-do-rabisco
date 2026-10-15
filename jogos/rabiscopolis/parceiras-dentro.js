@@ -258,7 +258,7 @@ export function montarCrescente({ g, ox, oz, inter, npcs, est, solido, I, npc })
     if (api.missao?.() === "alvara" && !est.alvara) {
       est.alvara = true; cont.pular(); api.sons.vitoria?.();
       api.falar("cid-crescente-alvara");
-      api.dizer("Contadora Lápis Marrom", "Aqui está o alvará novinho da escola, com o selinho! Leve para a Diretora Sabrina, na porta da escola.", 5200);
+      api.dizer("Contadora Lápis Marrom", "Aqui está o alvará novinho da escola, com o selinho! Leve para a Diretora Sabrina, na porta da Educarte Kids II.", 5200);
       api.evento?.("alvara");
       return;
     }

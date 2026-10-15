@@ -86,17 +86,19 @@ function bichinho(tipo) {
   return g;
 }
 
-// quem fica na porta de uma casa (casa: n) ou da Educarte da idade da criança (escola: [dx, dz]) ganha a posição na hora
+// quem fica na porta de uma casa (casa: n) ou da Educarte da idade da criança (escola: [dx, dz]; com unidade: "kids2" fica sempre naquela) ganha a posição na hora
 // (as casas vêm de mundo.js; a idade, do cadastro ou de ?idade=N). Também os itens com casa: n.
 export function escolaDaIdade(idade) { return idade != null && idade <= 4 ? "kids1" : "kids2"; }
 function posicionarNaCidade(ctx) {
   const casas = ctx.casas?.() ?? [];
   const naCasa = (o, lado = 1.6) => { const c = casas.find((k) => k.lote.numero === o.casa); if (!c) return; o.x = c.porta[0] + lado; o.z = c.porta[1] - 0.6 * c.lote.dir[1]; o.rot = c.lote.rot; };
   const esc = lugar(escolaDaIdade(ctx.idade?.() ?? null));
+  const escDe = (d) => (d.unidade ? lugar(d.unidade) : esc); // unidade: "kids2" fixa a escola do npc, sem olhar a idade
   for (const M of MISSOES) {
     for (const d of Object.values(M.npcs)) {
       if (d.casa != null) naCasa(d, d.lado ?? 1.6);
-      if (d.escola && esc) { d.x = esc.x + d.escola[0]; d.z = esc.z + d.escola[1]; d.rot = esc.rot; }
+      const e = d.escola && escDe(d);
+      if (e) { d.x = e.x + d.escola[0]; d.z = e.z + d.escola[1]; d.rot = e.rot; }
     }
     for (const E of M.etapas) for (const it of E.itens ?? []) if (it.casa != null) { naCasa(it, 0); it.z += casas.find((k) => k.lote.numero === it.casa)?.lote.dir[1] * 1.2 || 0; }
   }
