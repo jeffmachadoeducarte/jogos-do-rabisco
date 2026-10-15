@@ -989,7 +989,7 @@ const PESSOAS = {
     objeto: null,
   },
   "riseup-dono": {
-    nome: "Dono da Rise Up", empresa: "Rise Up", escala: 1.1,
+    nome: "Robert", empresa: "Rise Up", escala: 1.1,
     pele: 0xf1c3a8, ouro: 0xe2b245, brinco: null, pulseira: false,
     sapato: 0x18181c, sapatoFechado: true, tenis: { sola: 0xf2f2f2, detalhe: 0xff5a36 },
     corpo: { ombros: 1.18, quadril: 1.05, gordo: 1.05, barriga: 0, z: 0.8, braco: 1.38, perna: 1.12, pescoco: 0.082, cabeca: [0.93, 1.02, 0.97], queixo: 0.06 },
