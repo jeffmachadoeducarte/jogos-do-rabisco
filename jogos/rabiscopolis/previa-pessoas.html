@@ -32,6 +32,8 @@
   <button data-p="elaine">Elaine</button>
   <button data-p="carina">Carina</button>
   <button data-p="aurelio">Aurélio</button>
+  <button data-p="camila">Camila</button>
+  <button data-p="riseup-dono">Dono da Rise Up</button>
   <button data-p="juntas">Todas</button>
 </div>
 <script type="module">
@@ -57,9 +59,9 @@ const g = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshToonMate
 const calc = TEX.calcada.clone(); calc.needsUpdate = true; calc.repeat.set(3, 3);
 const c = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), new THREE.MeshToonMaterial({ map: calc })); c.rotation.x = -Math.PI / 2; c.position.y = 0.01; cena.add(c);
 
-const pessoas = { sabrina: criarPessoa("sabrina"), elaine: criarPessoa("elaine"), carina: criarPessoa("carina"), aurelio: criarPessoa("aurelio") };
-const TITULOS = { sabrina: "Diretora Sabrina · Kids II", elaine: "Contadora Elaine · Crescente Contabilidade", carina: "Diretora Carina · Kids I", aurelio: "Aurélio · Crescente Contabilidade", juntas: "Sabrina, Elaine, Aurélio e Carina" };
-const LUGAR = { sabrina: -1.8, elaine: -0.6, aurelio: 0.6, carina: 1.8 };
+const pessoas = { sabrina: criarPessoa("sabrina"), elaine: criarPessoa("elaine"), carina: criarPessoa("carina"), aurelio: criarPessoa("aurelio"), camila: criarPessoa("camila"), "riseup-dono": criarPessoa("riseup-dono") };
+const TITULOS = { sabrina: "Diretora Sabrina · Kids II", elaine: "Contadora Elaine · Crescente Contabilidade", carina: "Diretora Carina · Kids I", aurelio: "Aurélio · Crescente Contabilidade", camila: "Camila · Rise Up", "riseup-dono": "Dono da Rise Up", juntas: "Todas as pessoas" };
+const LUGAR = { sabrina: -2.75, elaine: -1.65, aurelio: -0.55, carina: 0.55, camila: 1.65, "riseup-dono": 2.75 };
 for (const p of Object.values(pessoas)) cena.add(p.grupo);
 let sabrina = pessoas.sabrina, quem = "sabrina";
 function mostrar(q) {

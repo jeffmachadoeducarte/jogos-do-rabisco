@@ -7,7 +7,11 @@
 //  - "carina": Diretora Carina (Educarte Kids I) — cabelo preto cacheado e volumoso, sorriso largo com dentes,
 //    olhos apertadinhos, vestido-camisa bege com gola, botões e cinto, colar de contas e brincos pendentes;
 //  - "aurelio": Aurélio, assistente da Elaine (Crescente Contabilidade) — um pouco mais alto e gordinho, cabelo curto
-//    loiro-grisalho com entradas, óculos retangulares pretos, barba e cavanhaque grisalhos, camiseta preta, jeans.
+//    loiro-grisalho com entradas, óculos retangulares pretos, barba e cavanhaque grisalhos, camiseta preta, jeans;
+//  - "camila": Camila, dona da academia Rise Up — loira com raiz castanha e ondas, argolas grandes, regata e legging
+//    pretas com "RISE UP" no peito, tênis branco com faixa laranja;
+//  - "riseup-dono": o marido dela, também dono da Rise Up (nome a confirmar) — boné preto "RISE UP", careca, barba
+//    cheia castanho-escura com fios grisalhos, corpo forte, camiseta dryfit grafite, calça de treino e tênis.
 //
 // Custo baixo: o corpo inteiro é UMA malha com esqueleto (cada peça presa ao seu osso) e UM material (cores por
 // vértice + um atlas desenhado em canvas com rosto, tecido, logo e capa do objeto da mão). O contorno preto é uma
@@ -170,7 +174,7 @@ function desenharRosto(c, p, fechado) {
   };
   // olhos grandes (no traço do Rabisco: branco com contorno, íris, pupila e brilho) com delineado e cílios
   for (const s of [-1, 1]) {
-    const ox = X(s * 22), oy = Y(96), rx = 12 * kx, ry = 13 * ky * 0.84;
+    const oe = f.olhoEsc ?? 1, ox = X(s * 22), oy = Y(96), rx = 12 * kx * oe, ry = 13 * ky * 0.84 * oe;
     if (fechado) {
       c.save(); c.translate(ox, oy + 8);
       c.strokeStyle = "#151515"; c.lineWidth = 12;
@@ -240,8 +244,16 @@ function desenharRosto(c, p, fechado) {
   if (f.barba) {
     const rnd = aleatorio(11), mxB = X(0), myB = Y(116.5);
     c.fillStyle = f.barba.sombra;
+    if (f.barba.cheia) {
+      // barba cheia: bochechas, queixo e bigode pintados por inteiro (a casca 3D continua a mesma cor nas laterais)
+      c.save(); c.filter = "blur(3px)";
+      c.beginPath(); c.moveTo(X(-60), Y(96)); c.lineTo(X(-60), Y(150)); c.lineTo(X(60), Y(150)); c.lineTo(X(60), Y(96));
+      c.quadraticCurveTo(X(44), Y(104), X(30), Y(108)); c.quadraticCurveTo(X(12), Y(106), X(0), Y(109)); c.quadraticCurveTo(X(-12), Y(106), X(-30), Y(108)); c.quadraticCurveTo(X(-44), Y(104), X(-60), Y(96));
+      c.closePath(); c.fill(); c.restore();
+    } else {
     c.beginPath(); c.moveTo(X(-42), Y(108)); c.quadraticCurveTo(X(-36), Y(140), X(0), Y(150)); c.quadraticCurveTo(X(36), Y(140), X(42), Y(108));
     c.quadraticCurveTo(X(22), Y(118), X(0), Y(111)); c.quadraticCurveTo(X(-22), Y(118), X(-42), Y(108)); c.closePath(); c.fill();
+    }
     c.fillStyle = f.barba.ponto;
     for (let i = 0; i < 1600; i++) {
       const az = (rnd() - 0.5) * 92, pol = 106 + rnd() * 44;
@@ -327,13 +339,30 @@ function linho(c, w, h, r) {
 function desenharTecido(c, p) {
   const r = p.roupa;
   if (r.tipo === "blazer") { c.fillStyle = r.terno; c.fillRect(0, 0, 512, 512); listras(c, 512, 512, r.listra); }
-  else if (r.tipo === "vestido" || r.tipo === "camiseta") linho(c, 512, 512, r);
+  else if (r.tipo === "vestido" || r.tipo === "camiseta" || r.tipo === "regata") linho(c, 512, 512, r);
   else ondas(c, 512, 512, r, 2);
 }
 function desenharTorso(c, p) {
   // u em volta (frente = 256, lado esquerdo dela à direita), v de cima (gola) para baixo (barra)
   const r = p.roupa;
   const Y = (y) => ((TORSO_Y1 - y) / (TORSO_Y1 - TORSO_Y0)) * 512;
+  if (r.tipo === "regata") {
+    // regata/top fitness: ombros e costas de fora, alças largas, decote redondo na frente e nas costas
+    linho(c, 512, 512, r);
+    const pele = hex(p.pele), yo = Y(1.43);
+    c.fillStyle = pele; c.fillRect(0, 0, 512, yo);
+    c.fillStyle = r.fundo;
+    for (const xc of [256 - 58, 256 + 58, 58, 512 - 58]) c.fillRect(xc - 14, 0, 28, yo + 2);
+    c.fillStyle = pele;
+    c.beginPath(); c.moveTo(256 - 44, yo - 1); c.quadraticCurveTo(256, Y(1.33), 256 + 44, yo - 1); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(-1, yo - 1); c.quadraticCurveTo(0, Y(1.36), 44, yo - 1); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(513, yo - 1); c.quadraticCurveTo(512, Y(1.36), 512 - 44, yo - 1); c.closePath(); c.fill();
+    // vivo colorido na barra e no decote
+    c.strokeStyle = r.vivo; c.lineWidth = 5;
+    c.beginPath(); c.moveTo(256 - 44, yo - 1); c.quadraticCurveTo(256, Y(1.33), 256 + 44, yo - 1); c.stroke();
+    c.lineWidth = 7; c.beginPath(); c.moveTo(0, 500); c.lineTo(512, 500); c.stroke();
+    return;
+  }
   if (r.tipo === "camiseta") {
     // camiseta lisa: malha, sem estampa; barra embaixo e costuras laterais bem discretas
     linho(c, 512, 512, r);
@@ -421,6 +450,15 @@ function desenharCapa(c, tipo) {
   }
 }
 
+// selo de texto (ex.: "RISE UP" branco na roupa ou no boné): fundo transparente, só as letras
+function desenharSelo(c, selo) {
+  c.clearRect(0, 0, 512, 256);
+  let tam = 150; c.font = `900 ${tam}px 'Baloo 2', system-ui, sans-serif`;
+  while (c.measureText(selo.texto).width > 470) { tam -= 6; c.font = `900 ${tam}px 'Baloo 2', system-ui, sans-serif`; }
+  c.textAlign = "center"; c.textBaseline = "middle"; c.lineJoin = "round";
+  if (selo.borda) { c.strokeStyle = selo.borda; c.lineWidth = 14; c.strokeText(selo.texto, 256, 136); }
+  c.fillStyle = selo.cor; c.fillText(selo.texto, 256, 136);
+}
 function desenharLogo(c, im, borda = "#c51b72", fio = "#f3a3c9") {
   // selo branco bordado: a logo azul precisa de fundo claro para aparecer no rosa
   c.clearRect(0, 0, 512, 256);
@@ -440,7 +478,7 @@ function texturasDe(id, p) {
     em(c, "tecido", () => desenharTecido(c, p));
     em(c, "torso", () => desenharTorso(c, p));
     em(c, "capa", () => desenharCapa(c, p.objeto?.tipo));
-    em(c, "logo", () => desenharLogo(c, null));
+    em(c, "logo", () => (p.selo ? desenharSelo(c, p.selo) : desenharLogo(c, null)));
     em(c, "rosto", () => desenharRosto(c, p, fechado));
   });
   const t = { aberto: fazer(false), fechado: fazer(true) };
@@ -449,6 +487,9 @@ function texturasDe(id, p) {
   // a logo chega depois: desenha por cima nas duas texturas
   if (p.logo) carregarLogo(p.logo.url, (im) => {
     for (const tx of [t.aberto, t.fechado]) { em(tx.image.getContext("2d"), "logo", () => desenharLogo(tx.image.getContext("2d"), im)); tx.needsUpdate = true; }
+  });
+  if (p.selo) document.fonts?.ready?.then(() => {
+    for (const tx of [t.aberto, t.fechado]) { const c = tx.image.getContext("2d"); em(c, "logo", () => desenharSelo(c, p.selo)); tx.needsUpdate = true; }
   });
   // a fonte da capa pode chegar depois também
   if (p.objeto) document.fonts?.ready?.then(() => {
@@ -585,6 +626,28 @@ const CABELOS = {
       m.add(mecha(pts, { w0: 0.042, w1: 0.03, d0: 0.036, d1: 0.026, lados: 4, passos: 18, fora: (P) => new V3(P.x - base.x, 0.001, P.z - base.z) }), { cor: cb.cor, osso: peso, contorno: 0.007 });
     }
   },
+  // careca (o boné, quando tem, vem por cima)
+  careca() {},
+  // Camila: loira com raiz castanho-clara, comprida, ondas largas nas pontas, repartida de lado e com o volume caindo
+  // na frente do ombro direito dela; do lado esquerdo fica atrás da orelha (aparece a argola grande)
+  camilaOndas(h) {
+    const { cabelo, naCabeca: nc, pesoFrente, pesoTras } = h;
+    const onda = (pts, amp = 0.028, fase = 0) => pts.map((q) => (q.y < 1.6 ? q.clone().add(new V3(Math.sin(q.y * 26 + fase) * amp * sstep(1.6 - q.y, 0, 0.15) * Math.sign(q.x || 1), 0, Math.cos(q.y * 26 + fase) * amp * 0.4)) : q));
+    h.calota((az) => 0.52 - 0.1 * THREE.MathUtils.clamp(az, -1, 1), { volume: 0.06 });
+    cabelo([nc(-0.45, 1.12, 1.05), nc(-0.1, 0.88, 1.11), nc(0.35, 0.64, 1.12), nc(0.75, 0.46, 1.11), nc(1.02, 0.2, 1.09), nc(1.12, -0.12, 1.06)], { w0: 0.17, w1: 0.11, d0: 0.065, d1: 0.045 });
+    cabelo([nc(-0.45, 1.12, 1.05), nc(-0.75, 0.8, 1.11), nc(-1.0, 0.42, 1.11), nc(-1.12, 0.06, 1.08), nc(-1.16, -0.2, 1.05)], { w0: 0.13, w1: 0.09, d0: 0.055, d1: 0.04 });
+    // volume da frente, do lado direito dela, em ondas
+    cabelo(onda([nc(-1.5, 0.35, 1.03), nc(-1.6, -0.1, 1.1), new V3(-0.24, 1.6, 0.07), new V3(-0.24, 1.47, 0.16), new V3(-0.22, 1.33, 0.2), new V3(-0.21, 1.2, 0.22), new V3(-0.24, 1.11, 0.22)]), { w0: 0.17, w1: 0.13, d0: 0.075, d1: 0.05, passos: 14 }, pesoFrente);
+    cabelo(onda([nc(-1.82, 0.3, 1.03), nc(-1.9, -0.1, 1.09), new V3(-0.29, 1.6, 0.0), new V3(-0.3, 1.46, 0.08), new V3(-0.29, 1.32, 0.12), new V3(-0.31, 1.2, 0.13)], 0.03, 1.5), { w0: 0.14, w1: 0.1, d0: 0.065, d1: 0.04, passos: 12 }, pesoFrente);
+    cabelo(onda([nc(-1.2, 0.2, 1.06), nc(-1.3, -0.3, 1.1), new V3(-0.19, 1.58, 0.1), new V3(-0.17, 1.45, 0.19), new V3(-0.15, 1.32, 0.215), new V3(-0.16, 1.24, 0.22)], 0.022, 2.6), { w0: 0.1, w1: 0.07, d0: 0.05, d1: 0.03, passos: 12 }, pesoFrente);
+    // lado esquerdo dela: atrás da orelha, caindo pelas costas em ondas
+    cabelo(onda([nc(1.6, 0.35, 1.02), nc(1.72, -0.05, 1.08), new V3(0.25, 1.6, -0.05), new V3(0.27, 1.48, -0.12), new V3(0.25, 1.33, -0.15), new V3(0.27, 1.22, -0.15)]), { w0: 0.15, w1: 0.1, d0: 0.07, d1: 0.04, passos: 12 }, pesoTras);
+    for (const [i, aDeg] of [130, 155, 180, 205, 230].entries()) {
+      const a = THREE.MathUtils.degToRad(aDeg), sa = Math.sin(a), ca = Math.cos(a), comp = [0, 0.03, -0.02, 0.025, 0][i];
+      cabelo(onda([nc(a, 0.5, 1.0), nc(a, -0.15, 1.1), new V3(sa * 0.27, 1.55, ca * 0.26 - 0.04), new V3(sa * 0.27, 1.4, ca * 0.25 - 0.03), new V3(sa * 0.27, 1.24 - comp, ca * 0.25 - 0.02), new V3(sa * 0.3, 1.15 - comp, ca * 0.29 - 0.02)], 0.026, i), { w0: 0.2, w1: 0.13, d0: 0.08, d1: 0.045, passos: 12 }, pesoTras);
+    }
+    h.brilho(0.92);
+  },
   // Aurélio: curto, loiro-grisalho, penteado para o lado, com entradas na testa
   aurelioCurto(h) {
     const { cabelo, naCabeca: nc } = h;
@@ -652,6 +715,7 @@ function montarPessoa(p) {
   // quadril da calça
   const calca = r.calcaTecido ? { regiao: "tecido", cor: r.calca } : { cor: r.calca };
   m.add(esf(12, 8), { osso: O.quadril, ...calca, pos: [0, 0.86, 0], esc: [0.205 * G.gordo * G.quadril, 0.11, 0.155 * G.gordo], contorno: 0.014 });
+  if (p.selo?.onde === "peito") m.add(seloNaRoupa(0, p.selo.y ?? 1.3, p.selo.w ?? 0.17, (p.selo.w ?? 0.17) / 2, 0.006), { osso: O.tronco, regiao: "logo", contorno: 0 });
   // logo no peito, lado esquerdo dela: selo curvo acompanhando a roupa, 8 mm para fora (sem piscar)
   if (p.logo) m.add(seloNaRoupa(p.logo.a, p.logo.y, p.logo.w, p.logo.w / 2, 0.008), { osso: O.tronco, regiao: "logo", contorno: 0 });
   // broche redondo (Elaine)
@@ -670,7 +734,7 @@ function montarPessoa(p) {
       m.add(esf(8, 6), { cor: p.ouro, osso: O.cabeca, pos: b0.toArray(), esc: 0.014, contorno: 0.004 });
       m.add(cap(0.006, 0.03, 2, 5), { cor: p.ouro, osso: O.cabeca, pos: [b0.x, b0.y - 0.028, b0.z], contorno: 0.003 });
       m.add(esf(8, 6), { cor: p.ouro, osso: O.cabeca, pos: [b0.x, b0.y - 0.058, b0.z], esc: [0.014, 0.02, 0.014], contorno: 0.004 });
-    } else if (p.brinco === "argola") m.add(new THREE.TorusGeometry(0.022, 0.005, 4, 14), { cor: p.ouro, osso: O.cabeca, pos: naCabeca(s * 1.55, -0.36, 1.02).toArray(), rot: [0, Math.PI / 2, 0], contorno: 0.004 });
+    } else if (p.brinco === "argola") m.add(new THREE.TorusGeometry(0.022 * (p.brincoTam ?? 1), 0.005 * Math.sqrt(p.brincoTam ?? 1), 4, 16), { cor: p.ouro, osso: O.cabeca, pos: naCabeca(s * 1.55, -0.36 - 0.12 * ((p.brincoTam ?? 1) - 1), 1.02).toArray(), rot: [0, Math.PI / 2, 0], contorno: 0.004 });
     else if (p.brinco) m.add(esf(8, 6), { cor: p.ouro, osso: O.cabeca, pos: naCabeca(s * 1.53, -0.32, 1.0).toArray(), esc: 0.018, contorno: 0.006 });
   }
   {
@@ -680,18 +744,23 @@ function montarPessoa(p) {
   }
   // barba e cavanhaque: casca colada no queixo e nas laterais do rosto (o resto da casca fica escondido por dentro)
   if (p.rosto.barba) {
-    const g = new THREE.SphereGeometry(R * 1.022, 22, 14);
+    const g = new THREE.SphereGeometry(R * 1.022, 30, 20);
     const P = g.attributes.position, d = new V3();
     for (let i = 0; i < P.count; i++) {
       d.set(P.getX(i), P.getY(i), P.getZ(i)).normalize();
       const az = Math.abs(Math.atan2(d.x, d.z)), el = Math.asin(THREE.MathUtils.clamp(d.y, -1, 1));
-      const lados = sstep(-0.1 - el, 0, 0.12) * sstep(az, 0.7, 0.85) * sstep(1.7 - az, 0, 0.12);
-      const queixoB = sstep(-0.68 - el, 0, 0.08) * sstep(1.75 - az, 0, 0.12);
-      const k = lerp(0.86, 1, Math.max(lados, queixoB)) * (1 + 0.035 * sstep(-0.8 - el, 0, 0.3) * sstep(0.6 - az, 0, 0.3)); // cavanhaque mais cheio
+      const ch = p.rosto.barba.cheia;
+      const topo = ch ? lerp(-0.12, 0.28, sstep(az, 0.6, 1.45)) : -0.1; // costeleta sobe até a orelha
+      const lados = sstep(topo - el, 0, 0.16) * sstep(az, ch ? 0.4 : 0.7, ch ? 0.62 : 0.85) * sstep(1.66 - az, 0, 0.16);
+      const queixoB = sstep((ch ? -0.64 : -0.68) - el, 0, 0.1) * sstep(1.75 - az, 0, 0.16);
+      const k = lerp(0.86, 1, Math.max(lados, queixoB)) * (1 + (ch ? 0.07 : 0.035) * sstep(-0.75 - el, 0, 0.3) * sstep(0.9 - az, 0, 0.3)); // queixo mais cheio
       P.setXYZ(i, P.getX(i) * k, P.getY(i) * k, P.getZ(i) * k);
     }
     formaCabeca(g);
-    m.add(g, { cor: p.rosto.barba.cor3d, osso: O.cabeca, pos: HC.toArray(), esc: HS.toArray(), contorno: 0.009 });
+    const bb = p.rosto.barba, base = new THREE.Color(bb.cor3d), fio = new THREE.Color(bb.grisalho ?? bb.cor3d);
+    // fios grisalhos espalhados (cor por vértice, sem textura)
+    const corB = bb.grisalho ? (q) => { const h = Math.abs(Math.sin(q.x * 912.7 + q.y * 433.1 + q.z * 271.9) * 43758.5) % 1; return base.clone().lerp(fio, h < 0.22 ? 0.45 : h < 0.4 ? 0.2 : 0); } : null;
+    m.add(g, { cor: bb.cor3d, corFn: corB, osso: O.cabeca, pos: HC.toArray(), esc: HS.toArray(), contorno: 0.009 });
   }
   // óculos de armação grossa, formato gatinho (pontas de fora levantadas)
   if (p.oculos) {
@@ -722,7 +791,8 @@ function montarPessoa(p) {
 
   // --- cabelo
   const cb = p.cabelo;
-  const corCabelo = cb.pontas ? (q) => new THREE.Color(cb.cor).lerp(new THREE.Color(cb.pontas), sstep(q.y, 1.72, 1.2)) : null;
+  const [dg0, dg1] = cb.degrade ?? [1.72, 1.2];
+  const corCabelo = cb.pontas ? (q) => new THREE.Color(cb.cor).lerp(new THREE.Color(cb.pontas), sstep(q.y, dg0, dg1)) : null;
   const fora = (P) => { const cy = lerp(P.y, HC.y, sstep(P.y, 1.5, 1.78)); return new V3(P.x, P.y - cy, P.z + 0.04); };
   const h = {
     m, naCabeca, fora, cb,
@@ -756,19 +826,45 @@ function montarPessoa(p) {
     brilho(el = 0.95) { for (const s of [1, -1]) h.cabelo([naCabeca(s * 1.2, el, 1.108), naCabeca(s * 1.65, el - 0.12, 1.112), naCabeca(s * 2.1, el - 0.28, 1.108)], { w0: 0.03, w1: 0.026, d0: 0.012, d1: 0.01, lados: 4, passos: 5 }, O.cabeca, 0, cb.brilho); },
   };
   CABELOS[cb.estilo](h);
+  // boné de aba curva (copa inclinada para trás, aba na frente) com selo opcional na frente
+  if (p.bone) {
+    const M = new THREE.Matrix4().compose(HC.clone().add(new V3(0, 0.04, -0.005)), new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.32, 0, 0)), HS.clone().multiplyScalar(1.0));
+    const Rc = R * 1.085;
+    m.add(new THREE.SphereGeometry(Rc, 22, 9, 0, Math.PI * 2, 0, Math.PI * 0.52), { cor: p.bone.cor, osso: O.cabeca, matriz: M, contorno: 0.014 });
+    m.add(esf(6, 4), { cor: p.bone.cor, osso: O.cabeca, matriz: M.clone().multiply(new THREE.Matrix4().compose(new V3(0, Rc, 0), new THREE.Quaternion(), new V3(0.022, 0.012, 0.022))), contorno: 0.004 });
+    // aba: disco achatado e curvado para baixo nas laterais
+    const aba = new THREE.SphereGeometry(1, 18, 6, 0, Math.PI * 2, 0, Math.PI * 0.32);
+    m.add(aba, { cor: p.bone.cor, osso: O.cabeca, matriz: new THREE.Matrix4().compose(HC.clone().add(new V3(0, R * HS.y * 0.27, R * HS.z * 0.74)), new THREE.Quaternion().setFromEuler(new THREE.Euler(0.38, 0, 0)), new V3(0.205, 0.08, 0.23)), contorno: 0.01 });
+    if (p.selo?.onde === "bone") {
+      const pos = [], uv = [], idx = [], nx = 8, ny = 3;
+      for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) {
+        const az = (i / nx - 0.5) * 0.9, el = 0.13 + (j / ny) * 0.28;
+        pos.push(Math.sin(az) * Math.cos(el) * Rc * 1.008, Math.sin(el) * Rc * 1.008, Math.cos(az) * Math.cos(el) * Rc * 1.008); uv.push(i / nx, j / ny);
+      }
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const a = j * (nx + 1) + i, b = a + nx + 1; idx.push(a, a + 1, b + 1, a, b + 1, b); }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+      m.add(g, { osso: O.cabeca, regiao: "logo", matriz: M, contorno: 0 });
+    }
+  }
 
   // --- braços (descanso: caídos ao lado do corpo)
   for (const s of [1, -1]) {
     const E = s > 0, x = s * 0.29 * G.ombros, br = G.braco;
     const ombro = E ? O.ombroE : O.ombroD, cot = E ? O.cotoveloE : O.cotoveloD, mao = E ? O.maoE : O.maoD;
-    if (r.manga === "curta") {
+    if (r.manga === "regata") {
+      // sem manga: braço todo de fora
+      m.add(esf(10, 8), { cor: SKIN, osso: ombro, pos: [x * 0.96, 1.39, 0], esc: [0.058 * br, 0.06, 0.058 * br], contorno: 0.012 });
+      m.add(cap(0.048 * br, 0.26), { cor: SKIN, osso: ombro, pos: [x, 1.25, 0], contorno: 0.012 });
+      m.add(cap(0.043 * br, 0.2), { cor: SKIN, osso: cot, pos: [x, 0.975, 0], contorno: 0.011 });
+    } else if (r.manga === "curta") {
       // manga curta: só o começo do braço no tecido, com a barra; o resto é braço
       m.add(cap(0.064 * br, 0.07), { osso: ombro, regiao: "tecido", pos: [x, 1.335, 0], contorno: 0.013 });
       m.add(new THREE.TorusGeometry(0.062 * br, 0.012, 5, 12), { cor: r.ribana, osso: ombro, pos: [x, 1.245, 0], rot: [Math.PI / 2, 0, 0], contorno: 0.006 });
       m.add(cap(0.05 * br, 0.12), { cor: SKIN, osso: ombro, pos: [x, 1.2, 0], contorno: 0.012 });
       m.add(cap(0.046 * br, 0.16), { cor: SKIN, osso: cot, pos: [x, 0.98, 0], contorno: 0.012 });
-    } else m.add(cap(r.manga === "longa" ? 0.054 : 0.06, 0.18), { osso: ombro, regiao: "tecido", pos: [x, 1.27, 0], contorno: 0.013 });
-    if (r.manga === "curta") { /* já feito */ } else if (r.manga === "dobrada") {
+    } else if (r.manga !== "regata") m.add(cap(r.manga === "longa" ? 0.054 : 0.06, 0.18), { osso: ombro, regiao: "tecido", pos: [x, 1.27, 0], contorno: 0.013 });
+    if (r.manga === "curta" || r.manga === "regata") { /* já feito */ } else if (r.manga === "dobrada") {
       m.add(cap(0.058, 0.06), { osso: cot, regiao: "tecido", pos: [x, 1.05, 0], contorno: 0.013 });
       m.add(new THREE.TorusGeometry(0.06, 0.02, 5, 12), { cor: r.forro, osso: cot, pos: [x, 0.97, 0], rot: [Math.PI / 2, 0, 0], contorno: 0.008 });
       m.add(cap(0.042, 0.06), { cor: SKIN, osso: cot, pos: [x, 0.9, 0], contorno: 0.01 });
@@ -795,7 +891,12 @@ function montarPessoa(p) {
     if (p.sapatoFechado) {
       // calça até o sapato e sapato social/tênis fechado, arredondado
       m.add(cap(0.08 * pr, 0.37, 2, 10), { osso: joelho, ...calca, pos: [x, 0.335, 0], contorno: 0.01 });
-      m.add(esf(12, 8), { cor: p.sapato, osso: joelho, pos: [x, 0.048, 0.04], esc: [0.07, 0.052, 0.14], contorno: 0.012 });
+      m.add(esf(12, 8), { cor: p.sapato, osso: joelho, pos: [x, p.tenis ? 0.056 : 0.048, 0.04], esc: [0.07, 0.052, 0.14], contorno: 0.012 });
+      if (p.tenis) {
+        // tênis: solado claro e grosso e uma faixa colorida do lado de fora
+        m.add(esf(12, 6), { cor: p.tenis.sola, osso: joelho, pos: [x, 0.022, 0.04], esc: [0.074, 0.024, 0.146], contorno: 0.008 });
+        m.add(esf(8, 5), { cor: p.tenis.detalhe, osso: joelho, pos: [x + s * 0.06, 0.06, 0.035], rot: [0, 0, s * 0.35], esc: [0.012, 0.022, 0.07], contorno: 0 });
+      }
       continue;
     }
     m.add(cap(0.076 * pr, 0.33, 2, 10), { osso: joelho, ...calca, pos: [x, 0.355, 0], contorno: 0.01 });
@@ -869,6 +970,38 @@ const PESSOAS = {
     oculos: { forma: "retangulo", cor: 0x141414, esp: 0.0098 },
     cabelo: { estilo: "aurelioCurto", cor: 0x9c8a6a, brilho: 0xd2c4a4 },
     roupa: { tipo: "camiseta", manga: "curta", fundo: "#232328", trama: "rgba(255,255,255,0.05)", prega: "rgba(0,0,0,0)", costura: "#141418", ribana: 0x1b1b1f, calca: 0x2b3b62 },
+    objeto: null,
+  },
+  // Rise Up (academia): Camila e o marido formam um par — mesma paleta fitness (preto + laranja da faixa) e o mesmo
+  // selo "RISE UP" branco (no peito dela, no boné dele). Para trocar o nome dele é só mudar "nome" abaixo.
+  camila: {
+    nome: "Camila", empresa: "Rise Up",
+    pele: 0xf7d3bc, ouro: 0xe7b443, brinco: "argola", brincoTam: 1.8, pulseira: false,
+    sapato: 0xf6f6f8, sapatoFechado: true, tenis: { sola: 0xd6d8de, detalhe: 0xff5a36 },
+    corpo: { ombros: 0.98, quadril: 0.98, gordo: 0.95, z: 0.72, braco: 0.92, perna: 0.92, pescoco: 0.058, cabeca: [0.8, 1.07, 0.92], queixo: 0.24 },
+    rosto: {
+      iris: ["#2a1608", "#6a4420", "#9a7240", "#4a2e14"], sobrancelha: "#6b4a2e", grossura: 0.95, interno: 1.5, boca: "discreta", batom: "#c98078", bochecha: "rgba(250,110,120,0.4)",
+      cilios: [[-0.85, 24, 6], [-0.55, 32, 6.5], [-0.25, 34, 7], [0.0, 28, 6]],
+    },
+    cabelo: { estilo: "camilaOndas", cor: 0x8a6a48, pontas: 0xead39e, degrade: [1.98, 1.66], brilho: 0xf6e6bd },
+    roupa: { tipo: "regata", manga: "regata", aperto: 0.14, barra: 0.84, fundo: "#1b1b20", trama: "rgba(255,255,255,0.05)", prega: "rgba(0,0,0,0)", vivo: "#ff5a36", calca: 0x1b1b20 },
+    selo: { texto: "RISE UP", cor: "#ffffff", onde: "peito", y: 1.25, w: 0.15 },
+    objeto: null,
+  },
+  "riseup-dono": {
+    nome: "Dono da Rise Up", empresa: "Rise Up", escala: 1.1,
+    pele: 0xf1c3a8, ouro: 0xe2b245, brinco: null, pulseira: false,
+    sapato: 0x18181c, sapatoFechado: true, tenis: { sola: 0xf2f2f2, detalhe: 0xff5a36 },
+    corpo: { ombros: 1.18, quadril: 1.05, gordo: 1.05, barriga: 0, z: 0.8, braco: 1.38, perna: 1.12, pescoco: 0.082, cabeca: [0.93, 1.02, 0.97], queixo: 0.06 },
+    rosto: {
+      olhoEsc: 0.8, iris: ["#1e1208", "#4a3018", "#7a5530", "#342010"], sobrancelha: "#3a2a1e", grossura: 1, interno: 1, boca: "dentes", batom: "#b46f63", bochecha: "rgba(240,90,90,0.38)",
+      cilios: [[-0.3, 8, 4]],
+      barba: { cheia: true, sombra: "rgba(75,55,39,0.96)", ponto: "rgba(165,155,145,0.55)", cor: "#3e2d20", cor3d: 0x4b3727, grisalho: 0x9a9088 },
+    },
+    cabelo: { estilo: "careca", cor: 0xf1c3a8 },
+    bone: { cor: 0x17171b },
+    selo: { texto: "RISE UP", cor: "#ffffff", onde: "bone" },
+    roupa: { tipo: "camiseta", manga: "curta", fundo: "#2e3036", trama: "rgba(255,255,255,0.05)", prega: "rgba(0,0,0,0)", costura: "#202226", ribana: 0x26282d, calca: 0x18181c },
     objeto: null,
   },
   carina: {
