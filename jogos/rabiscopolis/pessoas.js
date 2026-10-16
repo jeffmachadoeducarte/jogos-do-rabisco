@@ -38,16 +38,20 @@ const REG = {
   logo: [512, 0, 512, 256],
   capa: [512, 256, 192, 256],
   branco: [704, 256, 320, 256],
+  // quem tem barba.textura: a casca da barba ocupa o lado direito do branco e a cor lisa vem de um miolo à esquerda
+  brancoEstreito: [704, 256, 64, 256],
+  barba: [784, 256, 240, 256],
   torso: [0, 512, 512, 512],
   tecido: [512, 512, 512, 512],
 };
+let regBranco = "branco"; // muda por pessoa (montarPessoa)
 const uvReg = (reg, u, v) => { const [x, y, w, h] = REG[reg]; return [(x + u * w) / ATLAS, 1 - (y + (1 - v) * h) / ATLAS]; };
 
 // ---------------------------------------------------------------- montador da malha com esqueleto
 class Montador {
   constructor() { this.pos = []; this.nrm = []; this.dir = []; this.uv = []; this.cor = []; this.si = []; this.sw = []; this.esp = []; this.tris = 0; }
   // geo: geometria da peça · osso: índice ou função(p) → [[osso, peso], ...] · regiao: parte do atlas (u, v da peça)
-  // uvFn(p, u, v) → [u, v] troca o mapeamento · contorno: espessura da casca preta (0 = sem)
+  // uvFn(p, u, v) → [u, v] troca o mapeamento · contorno: espessura da casca preta (0 = sem; ou função(p) por vértice)
   // caixa: contorno de peça com quinas (casca escalada a partir do centro, sem rachar nas arestas)
   add(geo, { cor = 0xffffff, corFn = null, osso = 0, regiao = "branco", uvFn = null, contorno = 0.014, pos = [0, 0, 0], rot = [0, 0, 0], esc = 1, matriz = null, caixa = false } = {}) {
     const g = geo.index ? geo.toNonIndexed() : geo.clone();
@@ -73,12 +77,12 @@ class Montador {
       if (dirs) this.dir.push(dirs[i].x, dirs[i].y, dirs[i].z); else this.dir.push(N.getX(i), N.getY(i), N.getZ(i));
       let u = U ? U.getX(i) : 0.5, v = U ? U.getY(i) : 0.5;
       if (uvFn) [u, v] = uvFn(p, u, v);
-      const [uu, vv] = regiao === "branco" ? uvReg("branco", 0.5, 0.5) : uvReg(regiao, u, v);
+      const [uu, vv] = regiao === "branco" ? uvReg(regBranco, 0.5, 0.5) : uvReg(regiao, u, v);
       this.uv.push(uu, vv);
       if (corFn) { const cc = corFn(p); this.cor.push(cc.r, cc.g, cc.b); } else this.cor.push(col.r, col.g, col.b);
       const pesos = typeof osso === "function" ? osso(p) : [[osso, 1]];
       for (let k = 0; k < 4; k++) { this.si.push(pesos[k]?.[0] ?? 0); this.sw.push(pesos[k]?.[1] ?? 0); }
-      this.esp.push(contorno);
+      this.esp.push(typeof contorno === "function" ? contorno(p) : contorno);
     }
     this.tris += n / 3;
   }
@@ -143,6 +147,85 @@ function carregarLogo(url, aoCarregar) {
   if (l.im.complete && l.im.naturalWidth) aoCarregar(l.im); else l.fila.push(() => aoCarregar(l.im));
 }
 
+// barba cheia desenhada (barba.textura): contorno em graus (azimute, polar) de UM lado do rosto; o outro é espelho.
+// A mesma forma pinta o retalho do rosto (frente, bigode e bochechas) e a casca 3D (costeletas, mandíbula, queixo).
+const BARBA_LADO = (() => {
+  const k = [[0, 110.6], [9, 109.4], [17, 111.4], [24, 111], [32, 109.4], [42, 105], [52, 100.5], [61, 95.5], [68, 88], [71, 79], [74, 72],
+    [81, 70], [87, 73], [87, 82], [85, 94], [88, 103], [93, 110], [95, 122], [88, 138], [74, 150], [55, 161], [30, 168], [0, 171]];
+  const out = [k[0]];
+  for (let i = 1; i < k.length - 1; i++) {
+    const a = i === 1 ? k[0] : [(k[i - 1][0] + k[i][0]) / 2, (k[i - 1][1] + k[i][1]) / 2];
+    const b = i === k.length - 2 ? k[i + 1] : [(k[i][0] + k[i + 1][0]) / 2, (k[i][1] + k[i + 1][1]) / 2];
+    for (let t = 0.125; t <= 1.0001; t += 0.125) {
+      const u = 1 - t;
+      out.push([u * u * a[0] + 2 * u * t * k[i][0] + t * t * b[0], u * u * a[1] + 2 * u * t * k[i][1] + t * t * b[1]]);
+    }
+  }
+  return out;
+})();
+// distância (graus) até a barba de um lado: negativa dentro (o eixo az = 0 fecha o contorno)
+function distBarba(a, pol) {
+  const L = BARBA_LADO;
+  let dentro = false, d2 = Infinity;
+  for (let i = 0, j = L.length - 1; i < L.length; j = i++) {
+    const [x1, y1] = L[j], [x2, y2] = L[i];
+    if ((y1 > pol) !== (y2 > pol) && a < x1 + ((pol - y1) / (y2 - y1)) * (x2 - x1)) dentro = !dentro;
+    if (i === 0) continue; // o eixo do meio só fecha o contorno: não é borda da barba
+    const dx = x2 - x1, dy = y2 - y1, t = Math.max(0, Math.min(1, ((a - x1) * dx + (pol - y1) * dy) / (dx * dx + dy * dy || 1)));
+    d2 = Math.min(d2, (a - x1 - t * dx) ** 2 + (pol - y1 - t * dy) ** 2);
+  }
+  return dentro ? -Math.sqrt(d2) : Math.sqrt(d2);
+}
+// boca (o sorriso "dentes" do rosto, em graus): distância aproximada, negativa dentro
+const distBoca = (a, pol) => { const t = Math.max(0, 1 - (a / 17) ** 2); return Math.max(a - 17, 116 + 1.6 * t - pol, pol - (116 + 10.8 * Math.pow(t, 0.7))); };
+// a casca é a barba inteira menos um furo em volta da boca (os lábios ficam à mostra)
+const distCascaBarba = (a, pol) => Math.max(distBarba(a, pol), 1.4 - distBoca(a, pol));
+function caminhoBarba(c, X, Y, lados) {
+  c.beginPath();
+  for (const s of lados) for (const [a, pol] of s > 0 ? BARBA_LADO : [...BARBA_LADO].reverse()) c.lineTo(X(s * a), Y(pol));
+  c.closePath();
+}
+// sal e pimenta: fundo castanho e muitos risquinhos curtos (grisalhos, claros e escuros) caindo para baixo
+// esc = pixels por grau (o mesmo número de fios por grau no rosto e na casca)
+function pintarBarba(c, bb, w, h, esc, semente) {
+  const rnd = aleatorio(semente);
+  c.fillStyle = bb.cor; c.fillRect(0, 0, w, h);
+  // na casca (menos pixels por grau) o risco tem 1 px no mínimo: menos riscos para manter o mesmo tom
+  const n = Math.round((w * h) / (esc * esc) * (bb.densidade ?? 1.1) * (esc < 3 ? 0.38 : 1));
+  const cinza = ["rgba(216,210,202,0.7)", "rgba(196,188,178,0.7)", "rgba(235,231,225,0.6)", "rgba(179,170,159,0.7)"], escuro = ["rgba(74,58,45,0.5)", "rgba(90,70,54,0.5)", "rgba(138,110,87,0.5)"];
+  c.lineCap = "round";
+  // mechas: faixas suaves mais claras e mais escuras caindo para baixo (dão o jeito de tufos)
+  const nm = Math.round((w * h) / (esc * esc) / 9);
+  for (let i = 0; i < nm; i++) {
+    const x = rnd() * w, y = rnd() * h, L = esc * (3 + rnd() * 3), ang = Math.PI / 2 + (rnd() - 0.5) * 0.6;
+    c.strokeStyle = rnd() < 0.5 ? "rgba(60,44,32,0.22)" : "rgba(170,150,130,0.18)";
+    c.lineWidth = esc * (0.8 + rnd() * 0.6);
+    c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + Math.cos(ang) * L * 0.5 + esc * 0.4, y + Math.sin(ang) * L * 0.5, x + Math.cos(ang) * L, y + Math.sin(ang) * L); c.stroke();
+  }
+  for (let i = 0; i < n; i++) {
+    const x = rnd() * w, y = rnd() * h, g = rnd() < (bb.fios ?? 0.45);
+    const ang = Math.PI / 2 + (rnd() - 0.5) * 1.1, L = esc * (0.5 + rnd() * 0.6);
+    c.strokeStyle = g ? cinza[Math.floor(rnd() * cinza.length)] : escuro[Math.floor(rnd() * escuro.length)];
+    c.lineWidth = Math.max(1, esc * 0.26);
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(ang) * L, y + Math.sin(ang) * L); c.stroke();
+  }
+}
+// textura da casca (240 × 256): |az| 0–112° na horizontal, polar 50–178° na vertical, fora da barba transparente
+function desenharBarbaCasca(c, bb) {
+  c.clearRect(0, 0, 240, 256);
+  const X = (a) => (Math.abs(a) / 112) * 240, Y = (pol) => ((pol - 50) / 128) * 256;
+  c.save(); caminhoBarba(c, X, Y, [1]); c.clip();
+  pintarBarba(c, bb, 240, 256, 2.07, 23);
+  c.restore();
+  c.strokeStyle = bb.linha ?? "rgba(60,44,32,0.55)"; c.lineWidth = 1.5; caminhoBarba(c, X, Y, [1]); c.stroke();
+  // bigode um pouco mais escuro e o furo da boca
+  c.fillStyle = bb.bigode ?? "rgba(50,36,26,0.22)";
+  c.beginPath(); c.moveTo(X(0), Y(109.4)); c.quadraticCurveTo(X(19), Y(111), X(21), Y(121)); c.quadraticCurveTo(X(15), Y(115.5), X(0), Y(115.2)); c.closePath(); c.fill();
+  const im = c.getImageData(0, 0, 240, 256), px = im.data;
+  for (let y = 0; y < 256; y++) for (let x = 0; x < 240; x++) if (distBoca((x + 0.5) / 240 * 112, 50 + (y + 0.5) / 256 * 128) < 1.4) px[(y * 240 + x) * 4 + 3] = 0;
+  c.putImageData(im, 0, 0);
+}
+
 // rosto: retalho OPACO de esfera (az ±60°, polar 45°–150°) pintado com a cor da pele, então emenda sem marca
 const ROSTO = { az: 60, pol0: 45, pol1: 150 };
 const hex = (n) => `#${new THREE.Color(n).getHexString()}`;
@@ -150,6 +233,8 @@ function desenharRosto(c, p, fechado) {
   const f = p.rosto;
   const kx = 512 / (2 * ROSTO.az), ky = 512 / (ROSTO.pol1 - ROSTO.pol0);
   const X = (az) => 256 + az * kx, Y = (pol) => (pol - ROSTO.pol0) * ky;
+  // olhosY / sobrancelhaY: sobe (negativo) ou desce os olhos e as sobrancelhas, em graus (padrão 0)
+  const Yo = (pol) => Y(pol + (f.olhosY ?? 0)), Ys = (pol) => Y(pol + (f.sobrancelhaY ?? f.olhosY ?? 0));
   c.fillStyle = hex(p.pele); c.fillRect(0, 0, 512, 512);
   c.lineCap = c.lineJoin = "round";
   // bochechas rosadas (degradê suave: o retalho é opaco)
@@ -174,7 +259,7 @@ function desenharRosto(c, p, fechado) {
   };
   // olhos grandes (no traço do Rabisco: branco com contorno, íris, pupila e brilho) com delineado e cílios
   for (const s of [-1, 1]) {
-    const oe = f.olhoEsc ?? 1, ox = X(s * 22), oy = Y(96), rx = 12 * kx * oe, ry = 13 * ky * 0.84 * oe;
+    const oe = f.olhoEsc ?? 1, ox = X(s * 22), oy = Yo(96), rx = 12 * kx * oe, ry = 13 * ky * 0.84 * oe;
     if (fechado) {
       c.save(); c.translate(ox, oy + 8);
       c.strokeStyle = "#151515"; c.lineWidth = 12;
@@ -233,15 +318,25 @@ function desenharRosto(c, p, fechado) {
     const xp = X(s * 24), xo = X(s * 34);
     c.beginPath();
     const ii = f.interno ?? 0;
-    c.moveTo(X(s * 8.5), Y(80.5 - ii));
-    c.quadraticCurveTo(X(s * 15), Y(75.6), xp, Y(73.8));
-    c.quadraticCurveTo(X(s * 30), Y(73.4), xo, Y(78.6));
-    c.quadraticCurveTo(X(s * 29), Y(73.4 + 3.2 * g2), xp, Y(73.8 + 3.1 * g2));
-    c.quadraticCurveTo(X(s * 15), Y(75.6 + 2.4 * g2 - ii * 0.5), X(s * 9), Y(80.5 + 2.7 * g2 - ii));
+    c.moveTo(X(s * 8.5), Ys(80.5 - ii));
+    c.quadraticCurveTo(X(s * 15), Ys(75.6), xp, Ys(73.8));
+    c.quadraticCurveTo(X(s * 30), Ys(73.4), xo, Ys(78.6));
+    c.quadraticCurveTo(X(s * 29), Ys(73.4 + 3.2 * g2), xp, Ys(73.8 + 3.1 * g2));
+    c.quadraticCurveTo(X(s * 15), Ys(75.6 + 2.4 * g2 - ii * 0.5), X(s * 9), Ys(80.5 + 2.7 * g2 - ii));
     c.closePath(); c.fill();
   }
   // barba rala (pontinhos) no rosto e bigode curto, para quem tem barba
-  if (f.barba) {
+  if (f.barba?.textura) {
+    // barba cheia desenhada: cobre bochechas até as maçãs, mandíbula e queixo; bigode cheio ligado à barba
+    c.save(); caminhoBarba(c, X, Y, [1, -1]); c.clip();
+    pintarBarba(c, f.barba, 512, 512, kx, 17);
+    c.fillStyle = f.barba.bigode ?? "rgba(50,36,26,0.22)";
+    c.beginPath(); c.moveTo(X(-21), Y(121)); c.quadraticCurveTo(X(-19), Y(111), X(-9), Y(110.2)); c.quadraticCurveTo(X(0), Y(109.4), X(9), Y(110.2));
+    c.quadraticCurveTo(X(19), Y(111), X(21), Y(121)); c.quadraticCurveTo(X(15), Y(115.5), X(0), Y(115.2)); c.quadraticCurveTo(X(-15), Y(115.5), X(-21), Y(121)); c.closePath(); c.fill();
+    c.restore();
+    // linha da barba (contorno de cima definido)
+    c.strokeStyle = f.barba.linha ?? "rgba(60,44,32,0.55)"; c.lineWidth = 3; caminhoBarba(c, X, Y, [1, -1]); c.stroke();
+  } else if (f.barba) {
     const rnd = aleatorio(11), mxB = X(0), myB = Y(116.5);
     c.fillStyle = f.barba.sombra;
     if (f.barba.cheia) {
@@ -480,6 +575,7 @@ function texturasDe(id, p) {
   const fazer = (fechado) => texturaCanvas(ATLAS, ATLAS, (c) => {
     c.clearRect(0, 0, ATLAS, ATLAS);
     em(c, "branco", () => { c.fillStyle = "#ffffff"; c.fillRect(0, 0, 320, 256); });
+    if (p.rosto.barba?.textura) em(c, "barba", () => desenharBarbaCasca(c, p.rosto.barba));
     em(c, "tecido", () => desenharTecido(c, p));
     em(c, "torso", () => desenharTorso(c, p));
     em(c, "capa", () => desenharCapa(c, p.objeto?.tipo));
@@ -689,7 +785,7 @@ function montarPessoa(p) {
   // --- tronco (lathe) com a textura da roupa
   const G = { ombros: 1, quadril: 1, gordo: 1, barriga: 0, z: TORSO_Z, braco: 1, perna: 1, pescoco: 0.064, cabeca: HS_PADRAO.toArray(), queixo: 0.3, ...(p.corpo ?? {}) };
   corpoAtual = { aperto: r.aperto ?? 0, barra: r.barra ?? TORSO_Y0, gordo: G.gordo, barriga: G.barriga, z: G.z };
-  HS.set(...G.cabeca); queixo = G.queixo;
+  HS.set(...G.cabeca); queixo = G.queixo; regBranco = p.rosto.barba?.textura ? "brancoEstreito" : "branco";
   const y0 = corpoAtual.barra;
   const pts = [new THREE.Vector2(0.0001, y0)];
   const NP = 22;
@@ -731,7 +827,18 @@ function montarPessoa(p) {
   if (p.gargantilha) m.add(new THREE.TorusGeometry(G.pescoco + 0.002, p.corrente ? 0.004 : 0.007, 4, 18), { cor: p.gargantilha, osso: O.tronco, pos: [0, p.corrente ? 1.53 : 1.548, 0.006], rot: [Math.PI / 2 + (p.corrente ? 0.3 : 0.12), 0, 0], contorno: 0 });
   // gola careca da camiseta (ribana)
   if (r.tipo === "camiseta") m.add(new THREE.TorusGeometry(G.pescoco + 0.012, 0.012, 5, 18), { cor: r.ribana, osso: O.tronco, pos: [0, 1.508, 0.004], rot: [Math.PI / 2 + 0.1, 0, 0], esc: [1, 1.15, 1], contorno: 0.006 });
-  m.add(formaCabeca(new THREE.SphereGeometry(R, 28, 18)), { cor: SKIN, osso: O.cabeca, pos: HC.toArray(), esc: HS.toArray(), contorno: 0.016 });
+  if (p.cabelo?.estilo === "careca" && p.cabelo.lustro) {
+    // careca: brilho suave no alto da cabeça e sombra de cabelo raspado nas laterais e na nuca (malha um pouco mais fina)
+    const pele = new THREE.Color(SKIN), luz = new THREE.Color(0xffffff), raspado = new THREE.Color(p.cabelo.raspado ?? 0xc9a48e), q = new V3();
+    const corCab = (pp) => {
+      q.copy(pp).sub(HC).divide(HS).normalize();
+      const az = Math.abs(Math.atan2(q.x, q.z)), el = Math.asin(THREE.MathUtils.clamp(q.y, -1, 1));
+      const brilho = sstep(q.dot(new V3(0, 0.88, 0.47)), 0.9, 0.99);
+      const sombra = sstep(el, -0.4, -0.15) * (1 - sstep(el, 0.5, 0.85)) * sstep(az, 1.2, 1.6);
+      return pele.clone().lerp(raspado, 0.7 * sombra).lerp(luz, 0.3 * brilho);
+    };
+    m.add(formaCabeca(new THREE.SphereGeometry(R, 34, 22)), { cor: SKIN, corFn: corCab, osso: O.cabeca, pos: HC.toArray(), esc: HS.toArray(), contorno: 0.016 });
+  } else m.add(formaCabeca(new THREE.SphereGeometry(R, 28, 18)), { cor: SKIN, osso: O.cabeca, pos: HC.toArray(), esc: HS.toArray(), contorno: 0.016 });
   for (const s of [1, -1]) {
     m.add(esf(8, 6), { cor: SKIN, osso: O.cabeca, pos: naCabeca(s * 1.57, -0.08, 0.97).toArray(), esc: [0.03, 0.054, 0.042], contorno: 0.01 });
     if (p.brinco === "pendente") {
@@ -748,8 +855,43 @@ function montarPessoa(p) {
     m.add(rosto, { osso: O.cabeca, regiao: "rosto", pos: HC.toArray(), esc: HS.toArray(), contorno: 0 });
   }
   // barba e cavanhaque: casca colada no queixo e nas laterais do rosto (o resto da casca fica escondido por dentro)
-  if (p.rosto.barba) {
-    const g = new THREE.SphereGeometry(R * (p.rosto.barba.cheia ? 1.012 : 1.022), 30, 20);
+  if (p.rosto.barba?.textura) {
+    // barba com volume: casca que sai do rosto na linha da barba e engrossa até o queixo (alguns cm), com relevo de
+    // tufos; a cor sal e pimenta vem da textura e o recorte fino (linha da barba, boca) do alfa
+    const vol = p.rosto.barba.volume ?? 1, d2r = THREE.MathUtils.degToRad, r2d = THREE.MathUtils.radToDeg;
+    const g = new THREE.SphereGeometry(R, 74, 40, Math.PI / 2 - d2r(112), d2r(224), d2r(50), d2r(128));
+    const P = g.attributes.position, UV = g.attributes.uv, d = new V3(), D = new Float32Array(P.count);
+    for (let i = 0; i < P.count; i++) {
+      d.set(P.getX(i), P.getY(i), P.getZ(i)).normalize();
+      const az = r2d(Math.atan2(d.x, d.z)), a = Math.abs(az), pol = r2d(Math.acos(THREE.MathUtils.clamp(d.y, -1, 1)));
+      const dist = D[i] = distCascaBarba(a, pol);
+      // espessura (fração do raio): rala na maçã do rosto e na costeleta, cheia na mandíbula e no queixo, bigode médio
+      let esp = lerp(0.03, 0.12, sstep(pol, 116, 160)) * (1 - 0.45 * sstep(a, 55, 100));
+      esp = Math.max(esp, 0.045 * (1 - sstep(a, 18, 26)) * sstep(pol, 108, 111));
+      esp *= lerp(0.45, 1, sstep(pol, 78, 104)); // costeleta fina subindo para o boné
+      const sobe = sstep(-dist, 0, 5); // nasce rente ao rosto na borda
+      // tufos: ondulação que cai para baixo (variação maior de lado a lado que de cima a baixo)
+      const tufo = Math.sin(az * 0.45 + 1.4 * Math.sin(pol * 0.16)) * 0.6 + Math.sin(az * 0.9 - pol * 0.2 + 1.3) * 0.4;
+      const k = dist > 0 ? lerp(1.006, 0.97, sstep(dist, 0, 3)) : 1.006 + sobe * vol * (esp + tufo * (0.005 + esp * 0.07));
+      P.setXYZ(i, P.getX(i) * k, P.getY(i) * k, P.getZ(i) * k);
+      UV.setXY(i, THREE.MathUtils.clamp(a / 112, 0.004, 0.996), THREE.MathUtils.clamp(1 - (pol - 50) / 128, 0.004, 0.996));
+    }
+    // só os triângulos da barba (o resto ficaria escondido dentro da cabeça)
+    const I = g.index.array, so = [];
+    for (let t = 0; t < I.length; t += 3) if (Math.min(D[I[t]], D[I[t + 1]], D[I[t + 2]]) < 3) so.push(I[t], I[t + 1], I[t + 2]);
+    g.setIndex(so);
+    formaCabeca(g);
+    // contorno só onde a barba aparece (na borda que afunda ele riscaria o rosto)
+    const q = new V3();
+    const contornoB = (pp) => {
+      q.copy(pp).sub(HC).divide(HS);
+      const a = Math.abs(r2d(Math.atan2(q.x, q.z))), pol = r2d(Math.acos(THREE.MathUtils.clamp(q.y / q.length(), -1, 1)));
+      return distCascaBarba(a, pol) < -2 ? 0.006 : 0;
+    };
+    m.add(g, { regiao: "barba", osso: O.cabeca, pos: HC.toArray(), esc: HS.toArray(), contorno: contornoB });
+  } else if (p.rosto.barba) {
+    const vol = p.rosto.barba.volume ?? 0; // barba mais comprida: casca um pouco maior e queixo mais cheio
+    const g = new THREE.SphereGeometry(R * (p.rosto.barba.cheia ? 1.012 + vol * 0.4 : 1.022), 30, 20);
     const P = g.attributes.position, d = new V3();
     for (let i = 0; i < P.count; i++) {
       d.set(P.getX(i), P.getY(i), P.getZ(i)).normalize();
@@ -759,13 +901,13 @@ function montarPessoa(p) {
       const lados = sstep(topo - el, 0, 0.2) * sstep(az, ch ? 0.95 : 0.7, ch ? 1.2 : 0.85) * sstep(1.62 - az, 0, 0.2);
       const queixoB = sstep((ch ? -0.72 : -0.68) - el, 0, 0.14) * sstep(1.75 - az, 0, 0.2);
       // barba curta: casca rente ao rosto, só um tiquinho mais cheia no queixo
-      const k = lerp(0.86, 1, Math.max(lados, queixoB)) * (1 + (ch ? 0.012 : 0.035) * sstep(-0.75 - el, 0, 0.3) * sstep(0.9 - az, 0, 0.3));
+      const k = lerp(0.86, 1, Math.max(lados, queixoB)) * (1 + (ch ? 0.012 + vol : 0.035) * sstep(-0.75 - el, 0, 0.3) * sstep(0.9 - az, 0, 0.3));
       P.setXYZ(i, P.getX(i) * k, P.getY(i) * k, P.getZ(i) * k);
     }
     formaCabeca(g);
     const bb = p.rosto.barba, base = new THREE.Color(bb.cor3d), fio = new THREE.Color(bb.grisalho ?? bb.cor3d);
     // fios grisalhos espalhados (cor por vértice, sem textura)
-    const corB = bb.grisalho ? (q) => { const h = Math.abs(Math.sin(q.x * 912.7 + q.y * 433.1 + q.z * 271.9) * 43758.5) % 1; return base.clone().lerp(fio, h < (bb.fios ?? 0.22) ? 0.45 : 0); } : null;
+    const corB = bb.grisalho ? (q) => { const h = Math.abs(Math.sin(q.x * 912.7 + q.y * 433.1 + q.z * 271.9) * 43758.5) % 1; return base.clone().lerp(fio, h < (bb.fios ?? 0.22) ? (bb.mistura ?? 0.45) : 0); } : null;
     m.add(g, { cor: bb.cor3d, corFn: corB, osso: O.cabeca, pos: HC.toArray(), esc: HS.toArray(), contorno: bb.cheia ? 0.005 : 0.009 });
   }
   // óculos de armação grossa, formato gatinho (pontas de fora levantadas)
@@ -998,15 +1140,15 @@ const PESSOAS = {
     nome: "Robert", empresa: "Rise Up", escala: 1.1,
     pele: 0xf1c3a8, ouro: 0xe2b245, brinco: null, pulseira: false,
     sapato: 0x18181c, sapatoFechado: true, tenis: { sola: 0xf2f2f2, detalhe: 0xff5a36 },
-    corpo: { ombros: 1.18, quadril: 1.05, gordo: 1.05, barriga: 0, z: 0.8, braco: 1.38, perna: 1.12, pescoco: 0.082, cabeca: [0.93, 1.02, 0.97], queixo: 0.06 },
+    corpo: { ombros: 1.18, quadril: 1.05, gordo: 1.05, barriga: 0, z: 0.8, braco: 1.38, perna: 1.12, pescoco: 0.082, cabeca: [0.86, 1.12, 0.95], queixo: 0.16 },
     rosto: {
-      olhoEsc: 0.8, iris: ["#1e1208", "#4a3018", "#7a5530", "#342010"], sobrancelha: "#3a2a1e", grossura: 1, interno: 1, boca: "dentes", batom: "#b46f63", bochecha: "rgba(240,90,90,0.38)",
+      olhoEsc: 0.8, olhosY: -3, sobrancelhaY: 0, iris: ["#1e1208", "#4a3018", "#7a5530", "#342010"], sobrancelha: "#3a2a1e", grossura: 1, interno: 1, boca: "dentes", batom: "#b46f63", bochecha: "rgba(240,90,90,0.38)",
       cilios: [[-0.3, 8, 4]],
-      barba: { cheia: true, sombra: "rgba(120,88,60,0.34)", mandibula: "rgba(110,80,55,0.45)", ponto: "rgba(190,180,170,0.5)", pontos: 260, cor: "#6e4f36", cor3d: 0x6e4f36, grisalho: 0xb0a89e, fios: 0.07 },
+      barba: { cheia: true, textura: true, cor: "#735d4b", fios: 0.55, densidade: 1.1, volume: 1 },
     },
-    cabelo: { estilo: "careca", cor: 0xf1c3a8 },
-    bone: { cor: 0x17171b },
-    selo: { texto: "RISE UP", cor: "#ffffff", onde: "bone" },
+    cabelo: { estilo: "careca", cor: 0xf1c3a8, lustro: true, raspado: 0xb89480 },
+    bone: null,
+    selo: { texto: "RISE UP", cor: "#ffffff", onde: "peito", y: 1.25, w: 0.15 },
     roupa: { tipo: "camiseta", manga: "curta", fundo: "#2e3036", trama: "rgba(255,255,255,0.05)", prega: "rgba(0,0,0,0)", costura: "#202226", ribana: 0x26282d, calca: 0x18181c },
     objeto: null,
   },

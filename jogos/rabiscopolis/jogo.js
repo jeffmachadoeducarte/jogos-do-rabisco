@@ -508,6 +508,7 @@ function entrarLugar(id, imediato = false) {
     const quem = id.startsWith("parceiro-") ? "Rabiscolândia" : s.nome;
     if (def.dica && missoes?.ativa === def.dica.missao) { falar(def.dica.fala); dizer(quem, def.dica.texto, 4600); }
     else { falar(def.fala ?? "rp-lugar-entrar"); dizer(quem, def.boasVindas ?? "Bem-vindo! Vista o uniforme no armário 👔 e brinque com os objetos marcados.", 4200); }
+    s.est?.aoEntrar?.(apiLugar()); // a sala reage à chegada (na Crescente o Aurélio recepciona)
   };
   imediato ? fazer() : escurecer(fazer);
 }

@@ -11,7 +11,8 @@
 
 import { THREE, mat, malha, caixaRedonda, texturaCanvas, arvoreReal, mesclar } from "./base3d.js";
 import { criarMorador } from "./personagens.js";
-import { MISSOES } from "./missoes-dados.js";
+import { MISSOES, PESSOAS_PORTA } from "./missoes-dados.js";
+import { criarPessoa } from "./pessoas.js";
 import { lugar } from "./mapa.js";
 import { gatinho, bau, foguinho, portico, placaNumero, caixaFrutas, caixaCorreio, texturaEnvelope, tapeteOracao, alvara } from "./missoes-objetos.js";
 const OBJETOS_MAO = { alvara };
@@ -102,7 +103,11 @@ function posicionarNaCidade(ctx) {
     }
     for (const E of M.etapas) for (const it of E.itens ?? []) if (it.casa != null) { naCasa(it, 0); it.z += casas.find((k) => k.lote.numero === it.casa)?.lote.dir[1] * 1.2 || 0; }
   }
+  for (const d of PESSOAS_PORTA) { const e = lugar(d.unidade); if (e) { d.x = e.x + d.escola[0]; d.z = e.z + d.escola[1]; d.rot = e.rot; } }
 }
+// contorno preto do boneco (a 2ª malha com esqueleto): só de perto, para economizar desenho
+const cascaDe = (p) => p.grupo.children[0].children.filter((o) => o.isSkinnedMesh)[1];
+const PERTO_CONTORNO = 16;
 export function criarMissoes(ctx) {
   const { cena, falar, dizer, sons, salvo, salvar, pos, rabisco, vovo, veiculoAtual, raio } = ctx;
   posicionarNaCidade(ctx);
@@ -150,6 +155,12 @@ export function criarMissoes(ctx) {
         n.amigos.forEach((a, i) => { a.grupo.position.set(-1.3 + i * 1.3, 0.04, -1.7); n.g.add(a.grupo); });
       }
       grupo.add(n.g);
+    } else if (d.pessoa) {
+      // pessoa de verdade (boneco de pessoas.js): a Diretora Sabrina; recebe o alvará com as duas mãos e comemora
+      const m = criarPessoa(d.pessoa);
+      m.grupo.position.set(d.x, 0.03, d.z); m.grupo.rotation.y = d.rot ?? 0;
+      grupo.add(m.grupo);
+      Object.assign(n, { m, g: m.grupo, pessoa: true, casca: cascaDe(m) });
     } else {
       const m = criarMorador(d.tipo, { cor: d.cor ?? 0xec2e8c, nome: d.nome, semente: d.nome.length + 3, escala: d.escala ?? 0.78, acessorio: d.acessorio, corAcessorio: d.corAcessorio, tenis: d.tenis });
       m.grupo.position.set(d.x, d.naArvore ? 2.45 : 0.07, d.z); m.grupo.rotation.y = d.rot ?? 0;
@@ -202,11 +213,20 @@ export function criarMissoes(ctx) {
     if (n.amigos) for (const a of n.amigos) { a.pular(); a.acenar(3.5); }
     n.festa = 3; sons.vitoria?.(); ctx.confete?.();
   }
+  // a pessoa de verdade recebe o que está na mão do Rabisco (o alvará): estica as mãos, segura e depois comemora
+  function entregarNaMao(n) {
+    const obj = naMao;
+    if (obj) { naMao = null; obj.removeFromParent(); obj.scale.setScalar(1 / (n.m.grupo.scale.x || 1)); obj.rotation.set(1.2, 0, 0); obj.position.set(0, -0.12, 0.08); obj.userData.posNaMao = true; n.m.receber(obj); } // de pé, com o "ALVARÁ" para a frente
+    else n.m.acenar(2);
+    n.festa = 3; sons.vitoria?.(); ctx.confete?.();
+    clearTimeout(n.tFesta); n.tFesta = setTimeout(() => n.m.comemorar(2.5), 1300);
+  }
   function voltarAoLugar(n) {
     if (n.fixo) return;
     if (n.g.parent !== grupo) grupo.add(n.g);
     n.g.position.set(n.casa[0], n.dados.naArvore ? 2.45 : n.bicho ? 0.03 : 0.07, n.casa[1]); n.g.rotation.set(0, n.dados.rot ?? (n.bicho ? Math.PI : 0), 0);
     n.seguindo = false; n.andando = false; n.esperou = n.disseVerde = false;
+    if (n.pessoa) { n.m.segurar(null); n.m.calma(); n.m.objeto(true); }
   }
 
   // missões de parceiras (Bella Cat, Rise Up, J.E, Crescente): por enquanto os personagens parceiros não falam; quem
@@ -298,7 +318,7 @@ export function criarMissoes(ctx) {
     if (E.tipo === "falar") { const n = npcDe(ativa, E.com); const [x, z] = npcPos(n); if (Math.hypot(p.x - x, p.z - z) < 3.2) return { rotulo: `💬 Falar com ${nomeDe(E.com)}`, fazer: () => { n.m?.acenar(2); sons.moeda?.(); avancar(); } }; }
     if (E.tipo === "pegar") for (const it of itens) if (!it.pego && it.missao === ativa.id && Math.hypot(p.x - it.x, p.z - it.z) < 2.2) return { rotulo: `${it.emoji} Pegar ${it.nome}`, fazer: () => pegar(it) };
     if (E.tipo === "plantar") for (const pl of plantas) if (!pl.feito && pl.missao === ativa.id && Math.hypot(p.x - pl.x, p.z - pl.z) < 2) return { rotulo: "🌱 Plantar a semente", fazer: () => plantar(pl) };
-    if (E.tipo === "levar") { const n = npcDe(ativa, E.ate); const [x, z] = npcPos(n); if (Math.hypot(p.x - x, p.z - z) < 3.2) return { rotulo: `${E.icone ?? "🎁"} Entregar para ${nomeDe(E.ate)}`, fazer: () => { reagir(n); avancar(); } }; }
+    if (E.tipo === "levar") { const n = npcDe(ativa, E.ate); const [x, z] = npcPos(n); if (Math.hypot(p.x - x, p.z - z) < 3.2) return { rotulo: `${E.icone ?? "🎁"} Entregar para ${nomeDe(E.ate)}`, fazer: () => { if (n.pessoa) entregarNaMao(n); else reagir(n); avancar(); } }; }
     if (E.tipo === "dirigir" && !carona && ctx.chamarCarro) { const n = npcDe(ativa, E.passageiro); const [x, z] = npcPos(n); if (Math.hypot(p.x - x, p.z - z) < 3.2) return { rotulo: "📱 Chamar um carro", fazer: () => ctx.chamarCarro() }; }
     return contextoNovo(E, p);
   }
@@ -330,6 +350,35 @@ export function criarMissoes(ctx) {
     return ctx.luzDe(s, eixo, t) === "vermelho";
   }
 
+  // pessoas de verdade paradas na porta, sem missão ainda (a Diretora Carina na Educarte Kids I): montadas só quando o
+  // Rabisco chega perto, escondidas de longe, contorno só de perto; acenam quando ele chega e a anfitriã apresenta
+  // (uma vez por partida)
+  const porta = PESSOAS_PORTA.map((d) => ({ d, m: null, casca: null, perto: false, oi: false }));
+  function atualizarPorta(dt, p, R) {
+    for (const q of porta) {
+      const dist = Math.hypot(p.x - q.d.x, p.z - q.d.z);
+      if (!q.m) {
+        if (dist > R + 8) continue;
+        q.m = criarPessoa(q.d.pessoa); q.m.grupo.position.set(q.d.x, 0.03, q.d.z); q.m.grupo.rotation.y = q.d.rot ?? 0;
+        q.casca = cascaDe(q.m); grupo.add(q.m.grupo);
+      }
+      const g = q.m.grupo;
+      // bem longe (a praça, o resto da cidade): desmonta de vez; as texturas ficam no cache de pessoas.js
+      if (dist > R + 20) { g.removeFromParent(); g.traverse((o) => { o.geometry?.dispose(); o.material?.dispose?.(); }); q.m = q.casca = null; q.perto = false; continue; }
+      g.visible = dist < R;
+      if (!g.visible) continue;
+      q.casca.visible = dist < PERTO_CONTORNO;
+      // vira para o Rabisco quando ele chega perto; depois volta a olhar para a rua
+      const alvo = dist < 6 ? Math.atan2(p.x - q.d.x, p.z - q.d.z) : q.d.rot ?? 0;
+      let d = alvo - g.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); g.rotation.y += d * Math.min(1, dt * 4);
+      if (dist < 4.5 && !q.perto) {
+        q.perto = true; q.m.acenar(2.5);
+        if (!q.oi && q.d.oi && !ctx.ocupado?.()) { q.oi = true; setTimeout(() => { falar(q.d.oi.fala); dizer("Rabiscolândia", q.d.oi.texto, 3600); }, 600); } // depois da plaquinha do bairro
+      } else if (dist > 7) q.perto = false;
+      q.m.atualizar(dt, { vel: 0 });
+    }
+  }
+
   function atualizar(dt, t) {
     const p = pos(), R = raio();
     // quem pede: monta quando o Rabisco chega perto (de uma vez por segundo)
@@ -351,9 +400,11 @@ export function criarMissoes(ctx) {
         n.m.atualizar(dt, { vel: n.andando ? 4 : 0 });
       }
       if (n.amigos) for (const a of n.amigos) a.atualizar(dt, { vel: 0 });
-      if (n.festa > 0) { n.festa -= dt; if (n.bicho) n.g.position.y = 0.03 + Math.abs(Math.sin(t * 9)) * 0.35; if (n.m && !n.fixo && Math.random() < dt * 2) n.m.pular(); }
+      if (n.casca) n.casca.visible = Math.hypot(p.x - x, p.z - z) < PERTO_CONTORNO;
+      if (n.festa > 0) { n.festa -= dt; if (n.bicho) n.g.position.y = 0.03 + Math.abs(Math.sin(t * 9)) * 0.35; if (n.m && !n.fixo && !n.pessoa && Math.random() < dt * 2) n.m.pular(); }
       else if (n.bicho) n.g.position.y = 0.03 + (n.andando ? Math.abs(Math.sin(t * 12)) * 0.15 : 0);
     }
+    atualizarPorta(dt, p, R);
     animarGotas(dt);
     if (!ativa || ctx.ocupado?.()) return; // dentro de casa ou de um lugar: quem segue espera na porta
     const E = ativa.etapas[etapa];
@@ -723,7 +774,11 @@ export function criarMissoes(ctx) {
     npc: (mid, id) => { const n = npcDe(MISSOES.find((x) => x.id === mid), id); const [x, z] = npcPos(n); return { x, z, y: n.g.position.y, festa: n.festa, seguindo: Boolean(n.seguindo), visivel: n.g.visible, montado: true }; },
     montados: () => [...npcs.keys()],
     // quem está à vista vira obstáculo para os veículos (ninguém é atropelado)
-    obstaculos: () => [...npcs.values()].filter((n) => !n.fixo && n.g.visible && n !== caronaNpc()).map((n) => ({ x: n.g.position.x, z: n.g.position.z, raio: n.bicho ? 0.8 : 0.5 })),
+    obstaculos: () => [...npcs.values()].filter((n) => !n.fixo && n.g.visible && n !== caronaNpc()).map((n) => ({ x: n.g.position.x, z: n.g.position.z, raio: n.bicho ? 0.8 : 0.5 }))
+      .concat(porta.filter((q) => q.m?.grupo.visible).map((q) => ({ x: q.d.x, z: q.d.z, raio: 0.5 }))),
+    // pessoas da porta (testes): onde estão, se já foram montadas, se aparecem e se o contorno está ligado
+    pessoaPorta: (id) => { const q = porta.find((k) => k.d.pessoa === id); return q && { x: q.d.x, z: q.d.z, montada: Boolean(q.m), visivel: Boolean(q.m?.grupo.visible), contorno: Boolean(q.casca?.visible), oi: q.oi }; },
+    pessoaDe: (mid, id) => { const n = npcs.get(`${mid}:${id}`); return n?.pessoa ? { id: n.m.id, contorno: n.casca.visible, segurando: Boolean(n.m.ossos.maoD.children.find((o) => o.userData.item === "alvara" || o.userData.dinamico)) } : null; },
     visiveis: () => { let c = 0; grupo.traverse((o) => { if ((o.isMesh || o.isSprite) && o.visible) { let v = true; for (let q = o; q; q = q.parent) if (!q.visible) v = false; if (v) c++; } }); return c; },
     itensDe: (mid) => itens.filter((x) => x.missao === mid).map((x) => ({ id: x.id, x: x.x, z: x.z, pego: x.pego })),
     plantasDe: (mid) => plantas.filter((x) => x.missao === mid).map((x) => ({ x: x.x, z: x.z, feito: x.feito })),

@@ -271,14 +271,15 @@ export const MISSOES = [
     fim: "Uau, que carro lindo! Parabéns, Rabisco! Vamos agradecer a Deus por esse presente!",
   },
   {
-    // Kids I: Diretora Carina (missão própria a fazer)
+    // Kids I: Diretora Carina (missão própria a fazer; por enquanto ela fica na porta, veja PESSOAS_PORTA)
     // Crescente Contabilidade: a Diretora Sabrina (só da Educarte Kids II) pede na porta da escola, a contadora Elaine entrega o alvará novo
     // (vai na mão do Rabisco) e a diretora recebe. pedidoNome/agradece: falas emendadas com o nome da criança
     // ("Alice" + "o alvará da escola venceu!..."); sem nome no banco, as falas neutras (cid-alvara, cid-alvara-obrigada).
     id: "alvara", titulo: "Alvará da Escola", icone: "📜", tipo: "cidadania", parceiro: "crescente-contabilidade",
     voz: { pedido: "cid-alvara", pedidoNome: "cid-alvara-pos", fim: "cid-alvara-ok" },
     npcs: {
-      diretora: { nome: "Diretora Sabrina", tipo: "lapis", cor: 0xf48fc0, escola: [-4.5, 1.5], unidade: "kids2", acessorio: "laco", corAcessorio: 0x8e5bd8, tenis: 0x8e5bd8 },
+      // boneco da Diretora Sabrina de verdade (pessoas.js): recebe o alvará nas mãos e comemora
+      diretora: { nome: "Diretora Sabrina", tipo: "pessoa", pessoa: "sabrina", escola: [-4.5, 1.5], unidade: "kids2" },
     },
     pedido: "Oi! O alvará da escola venceu! Vá até a Crescente Contabilidade e fale com a contadora Elaine para buscar o alvará novo.",
     pedidoComNome: "{nome}, o alvará da escola venceu! Vá até a Crescente Contabilidade e fale com a contadora Elaine para buscar o alvará novo.",
@@ -314,3 +315,9 @@ export const MISSOES = [
 ];
 // palavras que não podem aparecer em nada que a criança vê ou ouve (teste rabiscopolis-conteudo.mjs)
 export const PROIBIDAS = ["arma", "revólver", "pistola", "tiro", "matar", "morte", "morreu", "sangue", "prisão", "preso", "polícia prende", "ladrão", "roubo", "roubar", "briga", "brigar", "soco", "susto", "monstro", "fantasma", "zumbi", "namor", "beijo", "roblox", "brookhaven", "robux", "dinheiro", "comprar", "pagar"];
+
+// pessoas de verdade (bonecos de pessoas.js) paradas na porta de um lugar, sem missão ainda: acenam quando o Rabisco
+// chega e a anfitriã apresenta uma vez (elas não falam). escola: [dx, dz] a partir da porta da unidade.
+export const PESSOAS_PORTA = [
+  { pessoa: "carina", nome: "Diretora Carina", unidade: "kids1", escola: [-4.5, 1.5], oi: { fala: "cid-carina-oi", texto: "Esta é a Diretora Carina, da Educarte Kids I!" } },
+];

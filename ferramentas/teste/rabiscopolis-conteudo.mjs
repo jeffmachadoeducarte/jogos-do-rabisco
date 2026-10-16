@@ -43,7 +43,9 @@ ok(bib.length >= 9 && cid.length >= 11 && MISSOES.length === bib.length + cid.le
 ok(new Set(MISSOES.map((m) => m.id)).size === MISSOES.length, "ids das missões sem repetir");
 const semVerso = bib.filter((m) => !m.verso || !/^baseado em [1-3]?\s?[A-ZÁ-Ú][a-zá-ú]+ \d+\.\d+(-\d+)?$/.test(m.verso.ref) || m.verso.texto.length < 20);
 ok(semVerso.length === 0, `toda bíblica tem versículo em paráfrase com "baseado em Livro c.v"${semVerso.length ? ": falta em " + semVerso.map((m) => m.id).join(", ") : ""}`);
-const TIPOS = new Set(["lapis", "giz", "borracha", "cola", "regua", "caderno", "clipe", "apontador", "pincel", "vovo", "ovelha", "coelho", "piquenique", "gato"]);
+const TIPOS = new Set(["lapis", "giz", "borracha", "cola", "regua", "caderno", "clipe", "apontador", "pincel", "vovo", "ovelha", "coelho", "piquenique", "gato", "pessoa"]);
+// bonecos de pessoas de verdade (pessoas.js) usados nas missões
+const PESSOAS = new Set(["sabrina", "elaine", "carina", "aurelio", "camila", "riseup-dono"]);
 const ETAPAS = new Set(["falar", "pegar", "levar", "seguir", "plantar", "dirigir", "faixa", "achar", "seguirVarios", "contar", "bandeiras", "levarVeiculo", "apagar", "pistas", "entregar", "voltar", "orar", "evento", "escolherCarro"]);
 const vozesUsadas = new Set();
 for (const m of MISSOES) {
@@ -61,6 +63,7 @@ for (const m of MISSOES) {
   // falas gravadas reaproveitadas (cid-*): a chave precisa existir em assets/voz
   for (const k of [m.voz?.pedido, m.voz?.fim, ...m.etapas.flatMap((e) => [e.voz, e.vozErro, e.vozCarregou, e.vozAPe, e.vozTodos, ...(e.pistas ?? []).map((q) => q.voz)])]) if (k) vozesUsadas.add(k);
   if (!ids.every((i) => TIPOS.has(m.npcs[i].tipo))) erros.push("tipo de personagem desconhecido");
+  for (const i of ids) if (m.npcs[i].tipo === "pessoa" && !PESSOAS.has(m.npcs[i].pessoa)) erros.push(`pessoa desconhecida: ${m.npcs[i].pessoa}`);
   for (const i of ids) if (m.npcs[i].mesmo) { const [mid, nid] = m.npcs[i].mesmo.split(":"); if (!MISSOES.find((x) => x.id === mid)?.npcs[nid]) erros.push(`mesmo=${m.npcs[i].mesmo} não existe`); }
   if (!m.pedido || !m.fim || !m.titulo || !m.icone) erros.push("falta texto");
   const pontos = m.etapas.flatMap((e) => [...(e.itens ?? []).filter((it) => it.x != null), ...(e.pontos ?? []).map((q) => (Array.isArray(q) ? { x: q[0], z: q[1] } : q)), ...(e.pistas ?? []), ...(e.fogos ?? []).map(([x, z]) => ({ x, z }))]).concat(ids.map((i) => m.npcs[i]).filter((n) => n.tipo !== "vovo" && n.casa == null && !n.escola && !n.mesmo));

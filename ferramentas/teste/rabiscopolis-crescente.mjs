@@ -1,6 +1,6 @@
 // Rabiscolândia: Crescente Contabilidade (parceira nova) e a missão Alvará da Escola, de ponta a ponta, com 1 e 2 jogadores.
 //  - o prédio-escritório fica longe das outras parceiras; banner da marca de letreiro;
-//  - a Diretora Sabrina (lápis rosa) pede na porta da escola da criança; a anfitriã chama a criança pelo nome
+//  - a Diretora Sabrina (boneco de pessoa real, pessoas.js) pede na porta da escola da criança; a anfitriã chama a criança pelo nome
 //    ("Alice" + "o alvará da escola venceu!...") e fala "Crescente Contabilidade";
 //  - lá dentro a contadora entrega o alvará, que vai na MÃO do Rabisco; a diretora recebe na porta da escola;
 //  - no fim: "Obrigada, Alice! ..." e a fala exata da anfitriã; sem erro de console;
@@ -78,6 +78,13 @@ async function umJogador() {
     ok(c1?.includes("Entrar") && await ate(t, "teste.emLugar?.id === 'parceiro-crescente-contabilidade'", 8000), `entrou na Crescente ("${c1}")`);
     await espera(600);
     ok(/buscar o alvará/.test(await balao(t)), `lá dentro a contadora chama ("${(await balao(t)).slice(0, 60)}")`);
+    // pessoas de verdade: a Elaine (boneco) no balcão e o Aurélio, que recepciona na porta, anda até o balcão e chama a Elaine
+    ok(JSON.stringify(await ev("teste.emLugar.est.pessoas")) === '["elaine","aurelio"]', "na Crescente estão os bonecos da Elaine e do Aurélio");
+    ok(await ate(t, "teste.emLugar.est.recepcao === 'chamou'", 20000), "o Aurélio recepcionou e foi até o balcão chamar a Elaine");
+    await espera(400);
+    const bA = await balao(t);
+    ok(/^RabiscolândiaO Aurélio, assistente da Crescente, recebeu você e foi chamar a contadora Elaine!/.test(bA), `a anfitriã narra o Aurélio, em 3ª pessoa ("${bA.slice(0, 70)}")`);
+    ok(await ate(t, "performance.getEntriesByType('resource').some((r) => r.name.includes('/assets/voz/cid-crescente-aurelio.mp3'))", 8000), "a narração do Aurélio tem voz gravada");
     const ci = await ev("teste.emLugar.interativos.find((i) => i.id === 'contadora')");
     await ev(`teste.ir(${ci.pos[0] + 1.4}, ${ci.pos[1] + 2.4})`); await espera(600);
     await ev(`teste.vista([${ci.pos[0] + 3.2}, 3.4, ${ci.pos[1] + 4.6}], [${ci.pos[0] - 0.4}, 1.2, ${ci.pos[1] - 1.6}])`); await espera(1500);
@@ -118,6 +125,7 @@ async function umJogador() {
     ok(await ev("teste.missoes.ativa === null && teste.missoes.feitas.includes('alvara')"), "entregou e a missão terminou (selo no Passaporte)");
     ok(/^RabiscolândiaA Diretora Sabrina agradece, Alice! Agora a escola está em dia\./.test(bAg), `a anfitriã narra que a Diretora Sabrina agradece ("${bAg.slice(0, 70)}")`);
     ok((await ev("teste.missoes.naMao")) === null, "o alvará saiu da mão do Rabisco");
+    ok(await ate(t, "teste.missoes.pessoaDe('alvara', 'diretora')?.segurando === true", 5000), "a Diretora Sabrina (boneco) recebeu o alvará nas mãos");
     ok(await ate(t, `document.querySelector('.balao-rp')?.textContent.includes(${JSON.stringify(FIM)})`, 8000), `no fim a anfitriã diz: "${FIM}"`);
     // o MP3 só entra na lista quando termina de baixar: espera um pouco
     ok(await ate(t, "performance.getEntriesByType('resource').some((r) => r.name.includes('/assets/voz/cid-alvara-ok.mp3'))", 10000) && await baixou(t, "cid-alvara-obrigada-pos"), "as falas do fim são as gravadas (cid-alvara-obrigada-pre/pos e cid-alvara-ok)");
@@ -248,7 +256,7 @@ async function andarDeVerdade(modo) {
   const t = await abrir("about:blank", toque ? { mobile: true, largura: 844, altura: 390 } : { largura: 1280, altura: 720 });
   const nomeM = toque ? "toque 844×390" : "teclado";
   try {
-    await t.cmd("Page.addScriptToEvaluateOnNewDocument", { source: FAMILIA + (toque ? "navigator.getGamepads = () => [null, null, null, null];" : "") });
+    await t.cmd("Page.addScriptToEvaluateOnNewDocument", { source: FAMILIA + "performance.setResourceTimingBufferSize(20000);" + (toque ? "navigator.getGamepads = () => [null, null, null, null];" : "") });
     await t.cmd("Page.navigate", { url: `${URL_JOGO}?teste&jogar&fixo` });
     ok(await ate(t, "!!window.teste?.vivo && !!teste.mundo"), `${nomeM}: carregou`);
     await espera(2500);
@@ -277,6 +285,15 @@ async function andarDeVerdade(modo) {
     // Bella Cat: até o balcão de presente; Rise Up: até o halter (e depois do halter anda de novo)
     await entrarEAndar(t, ent, "parceiro-bella-cat", "embrulhar", { rotulo: "Embrulhar", passa: [-1.4, 0], empurra: [1, 0], nome: `${nomeM} · Bella Cat` });
     await t.ev("teste.sairLugar()"); await espera(700);
+    if (!toque) {
+      // Rise Up: os donos, a Camila e o Robert (casados), recebem juntos, lado a lado; a anfitriã apresenta com voz gravada
+      await t.ev("teste.entrarLugar('parceiro-rise-up')"); await espera(500);
+      ok(JSON.stringify(await t.ev("teste.emLugar.est.pessoas")) === '["camila","riseup-dono"]', `${nomeM} · Rise Up: estão os bonecos da Camila e do Robert`);
+      const bR = await balao(t);
+      ok(/^RabiscolândiaBem-vindo à Academia Rise Up! A Camila e o Robert são casados e são os donos da academia\./.test(bR), `${nomeM} · Rise Up: a anfitriã diz que a Camila e o Robert são casados e donos ("${bR.slice(0, 80)}")`);
+      ok(await ate(t, "performance.getEntriesByType('resource').some((r) => r.name.includes('/assets/voz/cid-rise-donos.mp3'))", 8000), `${nomeM} · Rise Up: a fala dos donos tem voz gravada`);
+      await t.ev("teste.sairLugar()"); await espera(700);
+    }
     const r = await entrarEAndar(t, ent, "parceiro-rise-up", "halter", { rotulo: "halter", nome: `${nomeM} · Rise Up` });
     if (r.chegou) {
       await ent.acao(); await espera(300);
@@ -362,6 +379,13 @@ async function idadeBaixa() {
     const k2 = await t.ev("teste.LUGARES.find((l) => l.id === 'kids2')");
     const k1 = await t.ev("teste.LUGARES.find((l) => l.id === 'kids1')");
     ok(Math.hypot(d.x - k2.x, d.z - k2.z) < 8 && Math.hypot(d.x - k1.x, d.z - k1.z) > 8, `idade 3: a Diretora Sabrina fica na Kids II (${d.x.toFixed(1)}, ${d.z.toFixed(1)})`);
+    // a Diretora Carina fica só na porta da Kids I: montada só de perto, acena e a anfitriã apresenta uma vez
+    const c0 = await t.ev("teste.missoes.pessoaPorta('carina')");
+    ok(c0 && Math.hypot(c0.x - k1.x, c0.z - k1.z) < 8 && !c0.montada, `a Diretora Carina espera na porta da Kids I e não é montada de longe (${c0?.x}, ${c0?.z})`);
+    await t.ev(`teste.ir(${c0.x + 1.6}, ${c0.z + 1.8})`);
+    ok(await ate(t, "teste.missoes.pessoaPorta('carina').oi", 8000) && await ate(t, "/^RabiscolândiaEsta é a Diretora Carina, da Educarte Kids I!/.test(document.querySelector('.balao-rp')?.textContent || '')", 5000), `perto dela a anfitriã apresenta a Diretora Carina ("${(await balao(t)).slice(0, 60)}")`);
+    await t.ev("teste.ir(0, 33)"); await espera(900);
+    ok(!(await t.ev("teste.missoes.pessoaPorta('carina').visivel")), "de longe a Carina some");
   } finally { await t.fechar?.(); }
 }
 if (!SO.length || SO.includes("3")) await idadeBaixa();

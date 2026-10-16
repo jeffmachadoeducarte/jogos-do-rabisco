@@ -418,7 +418,11 @@ falas.update({
     # emendadas com o nome da criança (assets/voz/nomes): "Alice" + "o alvará da escola venceu!..."
     "cid-alvara": "Oi! O alvará da escola venceu! Vá até a Crescente Contabilidade e fale com a contadora Elaine para buscar o alvará novo.",
     "cid-alvara-pos": "o alvará da escola venceu! Vá até a Crescente Contabilidade e fale com a contadora Elaine para buscar o alvará novo.",
-    "cid-crescente-entrar": "Bem-vindo à Crescente Contabilidade! Fale com a contadora Elaine no balcão.",
+    "cid-crescente-entrar": "Bem-vindo à Crescente Contabilidade! O Aurélio vai chamar a contadora Elaine. Vá até o balcão!",
+    # 2026-10-15: bonecos das pessoas de verdade (o Aurélio recepciona na porta; a Diretora Carina na porta da Kids I)
+    "cid-crescente-aurelio": "O Aurélio, assistente da Crescente, recebeu você e foi chamar a contadora Elaine!",
+    "cid-carina-oi": "Esta é a Diretora Carina, da Educarte Kids Um!",
+    "cid-rise-donos": "Bem-vindo à Academia Rise Up! A Camila e o Robert são casados e são os donos da academia. Os dois dão as boas-vindas! Aqui a gente cuida do corpo que Deus nos deu. Corra na esteira e levante o halter!",
     "cid-crescente-dica": "Você veio buscar o alvará da escola? A contadora Elaine está esperando no balcão!",
     "cid-crescente-alvara": "A contadora Elaine entregou o alvará novinho da escola, com o selinho! Leve para a Diretora Sabrina, na porta da Educarte Kids II.",
     "cid-crescente-oi": "A contadora Elaine acenou! Na Crescente Contabilidade, ela cuida das contas e dos documentos das empresas.",

@@ -1,13 +1,14 @@
 // Rabiscolândia: as lojas parceiras por dentro (vieram da Rabiscópolis): Bella Cat Make Biju (5 acessórios nos
 // pedestais, balcão de embrulhar presente, espelho de camarim, cerejeira rosa), Academia Rise Up (esteiras, halteres,
 // colchonete, espelho e a faixa "Seu corpo é presente de Deus") e o escritório da Crescente Contabilidade (balcão com a
-// contadora, mesas com computador, arquivos de gaveta e estante de pastas; missão Alvará da Escola). Montadas por montarSala (lugares-dentro.js) na
+// contadora Elaine e o assistente Aurélio, bonecos de pessoas.js; mesas com computador, arquivos de gaveta e estante de pastas; missão Alvará da Escola). Montadas por montarSala (lugares-dentro.js) na
 // primeira visita, no mesmo esquema das outras salas (14 × 9, vista em corte). A J.E Multimarcas vende só carros: não
 // tem sala aqui (o pátio de carros é na rua).
 //   montarBella(ctx) / montarRise(ctx) / montarCrescente(ctx), ctx = { g, ox, oz, inter, npcs, est, solido, I, npc, mesclar }
 
 import { THREE, mat, malha, caixa, caixaRedonda, texturaCanvas, mesclar } from "./base3d.js";
 import { alvara } from "./missoes-objetos.js";
+import { criarPessoa } from "./pessoas.js";
 import { PARCEIROS } from "../../src/parceiros.js";
 
 const W = 14, D = 9;
@@ -160,23 +161,31 @@ export function montarRise({ g, ox, oz, inter, npcs, est, solido, I, npc }) {
   const peso = new THREE.Group(); peso.position.set(ox + 3.4, 0.25, oz - 2.25);
   for (const [dx, c] of [[-0.18, 0xec2e8c], [0.18, 0x1d6fe0]]) { const h = halter(c, 1.2); h.position.x = dx; h.rotation.y = Math.PI / 2; peso.add(h); }
   const soltos = new THREE.Group(); soltos.add(cinta, peso);
-  const trein = npc("lapis", 0xff7a00, 14, 0.8, "bone"); trein.grupo.position.set(ox - 0.6, 0.03, oz - 3.2); npcs.push(trein);
+  // os donos de verdade (bonecos de pessoas.js; não falam, a anfitriã narra): a Camila e o Robert são casados, então
+  // ficam juntinhos, lado a lado no meio da academia (fora do caminho da esteira e do halter), virados para a porta;
+  // acenam quando o Rabisco entra
+  const camila = criarPessoa("camila"), robert = criarPessoa("riseup-dono", { nome: "Robert" });
+  const PORTA_Z = D / 2 - 1.6, CASAL = [[1.0, -1.5], [-0.3, -1.5]]; // 1,3 m entre os dois: o braço do aceno não encosta no outro
+  for (const [p, [x, z]] of [[camila, CASAL[0]], [robert, CASAL[1]]]) { p.grupo.position.set(ox + x, 0.03, oz + z); p.grupo.rotation.y = Math.atan2(-x, PORTA_Z - z); }
+  npcs.push(camila, robert);
+  est.pessoas = ["camila", "riseup-dono"];
+  est.aoEntrar = () => { camila.calma(); robert.calma(); camila.acenar(2.6); robert.acenar(2.6); setTimeout(() => robert.acenar(1.6), 900); };
   npcs.push({ grupo: soltos, atualizar: (dt) => { if (est.correndo > 0) cintaTex.offset.y -= dt * 2.4; } });
   est.correu = false; est.levantou = 0;
-  const fimTreino = (api) => { trein.pular(); trein.acenar(3); api.sons.vitoria?.(); api.confete?.(); api.falar("cid-rise-ok"); api.dizer(NARRA, "Parabéns, Rabisco! Você foi forte e corajoso! Corpo saudável, coração alegre!", 4800); api.evento?.("treinou"); };
+  const fimTreino = (api) => { camila.comemorar(2.5); robert.comemorar(2.5); api.sons.vitoria?.(); api.confete?.(); api.falar("cid-rise-ok"); api.dizer(NARRA, "Parabéns, Rabisco! Você foi forte e corajoso! Corpo saudável, coração alegre!", 4800); api.evento?.("treinou"); };
   I("esteira", "🏃 Correr na esteira", -3.8, -1.2, (api) => {
     if (est.correndo > 0) return;
     api.falar("cid-rise-esteira"); api.dizer(NARRA, "Primeiro, a esteira! Corra bastante: a barrinha vai enchendo!", 3000);
     est.correndo = 4.5;
     api.travar?.({ x: ox - 3.8, z: oz - 2.6, dir: Math.PI, modo: "andar", vel: 6, segundos: 4.5, aoFim: () => {
-      est.correndo = 0; est.correu = true; trein.acenar(2); api.sons.moeda?.();
+      est.correndo = 0; est.correu = true; camila.acenar(2); api.sons.moeda?.();
       api.falar("cid-rise-peso"); api.dizer(NARRA, "Que corrida! Agora vamos levantar o halter. Vá até o colchonete laranja e aperte o botão cinco vezes!", 4200);
     }, progresso: (f) => api.dizer("🏃 Esteira", `${"🟧".repeat(Math.round(f * 10))}${"⬜".repeat(10 - Math.round(f * 10))}`, 900) });
     setTimeout(() => api.falar("cid-rise-corre"), 2000);
   }, 1.4);
   I("halter", "🏋️ Levantar o halter", 3.4, -1.0, (api) => {
     if (est.levantou >= 5) { est.levantou = 0; }
-    est.levantou++; api.sons.pulo?.(); api.falar(`cid-num-${est.levantou}`);
+    est.levantou++; api.sons.pulo?.(); api.falar(`cid-num-${est.levantou}`); robert.acenar(0.8);
     api.travar?.({ x: ox + 3.4, z: oz - 1.4, dir: Math.PI, modo: "parado", segundos: 0.7, pose: "halter", objeto: peso });
     api.dizer(NARRA, `${est.levantou}! ${est.levantou < 5 ? "Mais uma!" : "Cinco! Muito bem!"}`, 1400);
     if (est.levantou === 5) { if (est.correu) setTimeout(() => fimTreino(api), 900); else setTimeout(() => api.dizer(NARRA, "Muito forte! Agora corra na esteira também. 🏃", 3000), 900); }
@@ -184,8 +193,8 @@ export function montarRise({ g, ox, oz, inter, npcs, est, solido, I, npc }) {
 }
 
 // ------------------------------------------------------------------ Crescente Contabilidade
-// marrom e dourado da marca; a contadora Elaine (lápis marrom de laço dourado e tênis dourados) fica atrás do balcão, com o
-// alvará novinho em cima dele. Fora da missão ela só dá as boas-vindas.
+// marrom e dourado da marca; a contadora Elaine (boneco) fica atrás do balcão, com a prancheta do alvará na mão, e o
+// Aurélio recepciona na porta. Fora da missão ela só acena.
 const MARROM = 0x813d18, MARROM_ESC = 0x5a2a10, DOURADO = 0xd4a937;
 function mesaComputador(fixo, x, z, cadeira) {
   const tampo = caixaRedonda(1.9, 0.1, 0.95, mat(0xe9c79a), { raio: 0.04, contorno: 0.03 }); tampo.position.set(x, 0.78, z); fixo.add(tampo);
@@ -248,22 +257,77 @@ export function montarCrescente({ g, ox, oz, inter, npcs, est, solido, I, npc })
   const tb = caixa(3.2, 0.02, 1.9, mat(DOURADO), { sombra: false }); tb.position.set(0, 0.03, 0.6); fixo.add(tb);
   const tm = caixa(2.9, 0.025, 1.6, mat(MARROM), { sombra: false }); tm.position.set(0, 0.035, 0.6); fixo.add(tm);
   mesclar(fixo);
-  // a contadora Elaine (lápis marrom, laço e tênis dourados) e o alvará em cima do balcão
-  const cont = npc("lapis", 0x8a4a22, 9, 0.9, "laco", { nome: "Contadora Elaine", corAcessorio: 0xf2c34e, tenis: DOURADO, iris: "#2bb24c" });
-  cont.grupo.position.set(ox, 0.03, oz + bz - 1.0); npcs.push(cont);
-  const doc = alvara(); doc.rotation.x = -Math.PI / 2 + 0.25; doc.position.set(ox + 1.0, 0.82, oz + bz + 0.1);
-  const soltos = new THREE.Group(); soltos.add(doc); soltos.userData.dinamico = true;
-  npcs.push({ grupo: soltos, atualizar: () => { doc.visible = !est.alvara; } });
+  // as pessoas de verdade (bonecos de pessoas.js; elas não falam, a anfitriã narra): a contadora Elaine atrás do balcão,
+  // com a prancheta do ALVARÁ na mão, e o Aurélio, assistente, perto da porta. Quando o Rabisco entra, o Aurélio acena,
+  // anda até o balcão e chama a Elaine (que acena de volta).
+  const elaine = criarPessoa("elaine"); elaine.grupo.position.set(ox, 0.03, oz + bz - 1.0); npcs.push(elaine);
+  const aurelio = criarPessoa("aurelio");
+  const PORTA_A = [1.9, 2.5], ROT_A = Math.atan2(-1.9, 0.6); // de frente para quem entra
+  const CAMINHO_A = [[2.9, 0.5], [2.9, -2.45], [1.15, -2.6]]; // contorna o balcão pela direita e para do lado da Elaine
+  const ag = aurelio.grupo; ag.position.set(ox + PORTA_A[0], 0.03, oz + PORTA_A[1]); ag.rotation.y = ROT_A;
+  const A = { fase: "porta", t: 0, i: 0, api: null }; // porta → recebe → anda → chamou
+  est.pessoas = ["elaine", "aurelio"]; est.recepcao = "porta";
+  const girar = (g, alvo, k) => { let d = alvo - g.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); g.rotation.y += d * Math.min(1, k); };
+  npcs.push({ grupo: ag, atualizar: (dt) => {
+    let vel = 0;
+    A.t += dt;
+    if (A.fase === "recebe") { girar(ag, ROT_A, dt * 6); if (A.t > 1.6) { A.fase = est.recepcao = "anda"; A.i = 0; } }
+    else if (A.fase === "anda") {
+      const [lx, lz] = CAMINHO_A[A.i], dx = ox + lx - ag.position.x, dz = oz + lz - ag.position.z, d = Math.hypot(dx, dz), passo = 2.2 * dt;
+      girar(ag, Math.atan2(dx, dz), dt * 8); vel = 2.2;
+      if (d <= passo) { ag.position.x = ox + lx; ag.position.z = oz + lz; if (++A.i >= CAMINHO_A.length) { A.fase = est.recepcao = "chamou"; A.t = 0; chamouElaine(); } }
+      else { ag.position.x += (dx / d) * passo; ag.position.z += (dz / d) * passo; }
+    } else if (A.fase === "chamou") girar(ag, A.t < 2.5 ? -Math.PI / 2 : 0.25, dt * 5); // aponta para a Elaine e depois olha o balcão
+    aurelio.atualizar(dt, { vel });
+  } });
+  function chamouElaine() {
+    aurelio.acenar(2.2); elaine.acenar(2.8);
+    const api = A.api; A.api = null;
+    if (!api || est.falou) return; // o Rabisco já está falando com a Elaine: não atrapalha
+    api.falar("cid-crescente-aurelio");
+    api.dizer(NARRA, "O Aurélio, assistente da Crescente, recebeu você e foi chamar a contadora Elaine!", 4200);
+  }
+  // a cada entrada o Aurélio volta para a porta e recepciona de novo
+  est.aoEntrar = (api) => {
+    ag.position.set(ox + PORTA_A[0], 0.03, oz + PORTA_A[1]); ag.rotation.y = ROT_A;
+    Object.assign(A, { fase: "recebe", t: 0, i: 0, api }); est.falou = false; est.recepcao = "recebe";
+    aurelio.calma(); aurelio.acenar(2.2); aurelio.pular();
+  };
+  // a entrega: a Elaine estica os braços, a prancheta some da mão dela e o alvará voa (grandão, girando) até a mão do
+  // Rabisco. O evento (o alvará entra na mão) é na hora; o da mão fica escondido até o voo chegar.
+  const voo = { obj: null, t: 0, de: new THREE.Vector3(), api: null, naMao: null };
+  const alvoMao = new THREE.Vector3();
+  const soltos = new THREE.Group(); soltos.userData.dinamico = true;
+  npcs.push({ grupo: soltos, atualizar: (dt) => {
+    if (!voo.obj) return;
+    voo.t += dt;
+    const cot = voo.api.rabisco?.bracoD?.cotovelo;
+    if (cot) cot.getWorldPosition(alvoMao).y -= 0.45; else alvoMao.set(voo.de.x, 1, voo.de.z + 2);
+    const k = Math.min(1, voo.t / 1.1), e = k * k * (3 - 2 * k);
+    voo.obj.position.lerpVectors(voo.de, alvoMao, e); voo.obj.position.y += Math.sin(k * Math.PI) * 0.9;
+    voo.obj.rotation.y = k * Math.PI * 2; voo.obj.scale.setScalar(1.6 - 0.6 * e);
+    if (k >= 1) {
+      soltos.remove(voo.obj); voo.obj.traverse((o) => o.geometry?.dispose()); voo.obj = null; voo.api = null;
+      if (voo.naMao) voo.naMao.visible = true; voo.naMao = null;
+    }
+  } });
   est.alvara = false;
   I("contadora", "💬 Falar com a contadora Elaine", 0, bz + 1.25, (api) => {
-    cont.acenar(2.5);
-    if (api.missao?.() === "alvara" && !est.alvara) {
-      est.alvara = true; cont.pular(); api.sons.vitoria?.();
+    est.falou = true;
+    if (api.missao?.() === "alvara" && !est.alvara && !voo.obj) {
+      est.alvara = true; elaine.calma(); api.sons.vitoria?.();
+      // de onde sai: a prancheta na mão esquerda dela (receber sem objeto = estica os braços e guarda a prancheta)
+      elaine.ossos.objeto.getWorldPosition(voo.de); elaine.receber(null, 1.1);
+      voo.obj = alvara(); voo.obj.position.copy(voo.de); voo.t = 0; voo.api = api; soltos.add(voo.obj);
+      api.evento?.("alvara");
+      voo.naMao = api.rabisco?.bracoD?.cotovelo?.children.find((o) => o.userData.item === "alvara") ?? null;
+      const mao = voo.naMao; if (mao) { mao.visible = false; setTimeout(() => (mao.visible = true), 1600); } // se sair da sala no meio do voo
+      setTimeout(() => { elaine.pular(); elaine.objeto(true); est.alvara = false; }, 3500); // pega outra prancheta (pode jogar de novo)
       api.falar("cid-crescente-alvara");
       api.dizer(NARRA, "A contadora Elaine entregou o alvará novinho da escola, com o selinho! Leve para a Diretora Sabrina, na porta da Educarte Kids II.", 5200);
-      api.evento?.("alvara");
       return;
     }
+    elaine.acenar(2.5);
     api.sons.moeda?.(); api.falar("cid-crescente-oi");
     api.dizer(NARRA, "A contadora Elaine acenou! Na Crescente Contabilidade, ela cuida das contas e dos documentos das empresas.", 4600);
   }, 1.5);
