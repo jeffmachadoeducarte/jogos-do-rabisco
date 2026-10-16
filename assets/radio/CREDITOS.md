@@ -46,3 +46,24 @@ O arquivo `.sf2` **não** faz parte do repositório nem do site: só as gravaç�
 - **FluidSynth 2.6.1** (LGPL-2.1) — sintetizador de SoundFont usado só para renderizar; não é distribuído.
 - **FFmpeg 7.1** com LAME — reverb do FluidSynth, normalização de loudness EBU R128 (−18 LUFS, pico ≤ −1,5 dBTP)
   e codificação MP3 96 kbps estéreo, 44,1 kHz.
+
+## Rádio Rabisco (gospel dance) — `rabisco/*.m4a`
+
+Estação que toca quando a criança entra no carro da Rabiscolândia (`jogos/rabiscopolis/radio-rabisco.js`).
+**Arranjos instrumentais originais da Educarte** em estilo dance/eletrônico gospel (bumbo 4x4, baixo pulsante,
+supersaw, piano "house", palmas, subida e drop), **100 % sintetizados** por `ferramentas/radio/gerar_dance.mjs`
+(osciladores, filtros e efeitos escritos no próprio script, sem amostras, SoundFont ou gravação de terceiros).
+Nenhuma faixa de DJ ou artista foi usada, baixada ou imitada: só as melodias abaixo, que são de domínio público.
+AAC-LC 48 kbps estéreo, −16 LUFS, pico ≤ −1,5 dBFS.
+
+| Faixa | Melodia | Autor / origem | Ano |
+|---|---|---|---|
+| `rabisco/santos.m4a` | Quando os Santos (When the Saints Go Marching In) | spiritual afro-americano tradicional | séc. XIX |
+| `rabisco/alegria.m4a` | Alegria (Hino à Alegria, 9ª Sinfonia) | Ludwig van Beethoven (1770–1827) | 1824 |
+| `rabisco/jesus-me-ama.m4a` | Jesus Me Ama (Jesus Loves Me) | William B. Bradbury (1816–1868) | 1862 |
+| `rabisco/castelo-forte.m4a` | Castelo Forte (Ein feste Burg) | Martinho Lutero (1483–1546) | 1529 |
+| `rabisco/que-amigo.m4a` | Que Amigo em Cristo Temos | Charles C. Converse (1832–1918) | 1868 |
+| `rabisco/sou-feliz.m4a` | Sou Feliz com Jesus (melodia Ville du Havre) | Philip P. Bliss (1838–1876) | 1876 |
+| `rabisco/doxologia.m4a` | Doxologia (Old Hundredth) | Louis Bourgeois (c.1510–c.1560) | 1551 |
+
+Para gerar de novo (macOS, usa o `afconvert` do sistema): `node ferramentas/radio/gerar_dance.mjs [--so santos,alegria]`.

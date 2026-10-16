@@ -36,7 +36,7 @@ import { recolorirParedes } from "./casas.js";
 import { montarSala, SALAS, tocarNotas, MUSIQUINHA } from "./lugares-dentro.js";
 import { vestirProfissao, tirarProfissao, PROFISSOES } from "./roupas-rp.js";
 import { criarSorveteUI } from "./sorvete-ui.js";
-import { criarRadio } from "../../src/radio/radio.js";
+import { criarRadioRabisco, criarAvisoRadio } from "./radio-rabisco.js";
 import { criarRadioUI } from "../../src/radio/radio-ui.js";
 import { RUAS, segmentos, LOTES, VAGAS, LARGADA, LUGARES, LAGO, PARQUE, PRACA, FAZENDA, BORDA, MORADORES, distRua, PRAIA, LAGO2, HELIPONTO } from "./mapa.js";
 void PARQUE;
@@ -180,8 +180,15 @@ function lerControle({ segura, apertou, eixoX, eixoY }) {
 // ------------------------------------------------------------------ Rádio gospel (src/radio): só no carro e no ônibus
 // (no helicóptero não: LB desce o helicóptero e o painel usaria LB/RB/R3). O painel fica abaixo do minimapa
 // (no celular deitado, à esquerda, longe dos pedais e do 📱). Teclas R, [ e ]; as falas abaixam o volume sozinhas.
-let radio = null, radioUI = null;
-function garantirRadio() { if (!radio) { radio = criarRadio(); radioUI = criarRadioUI({ radio }); } }
+// Ao entrar no carro toca a Rádio Rabisco (radio-rabisco.js: gospel dance, uma faixa diferente a cada vez);
+// ▶ e ◀ passam para as estações de hinos. Cada faixa nova aparece uns 3 s no alto da tela.
+let radio = null, radioUI = null, avisoRadio = null;
+function garantirRadio() {
+  if (radio) return;
+  avisoRadio = criarAvisoRadio();
+  radio = criarRadioRabisco({ aoTocar: (f) => { if (f && dentro) avisoRadio.mostrar(`🎵 Rádio Rabisco: ${f.nome}`); } });
+  radioUI = criarRadioUI({ radio });
+}
 
 // ------------------------------------------------------------------ Estado
 let r3, cena, cam, ceu, mundo, fis, camera, rabisco, relogio, qualidade, vivo = false;
@@ -628,7 +635,7 @@ function sair() {
   if (!livreSaida && v.tipo === "barco") { dizer("Barquinho", "Leve o barquinho até a beirinha do lago para descer.", 2600); return; }
   const [ox, oz] = livreSaida ?? op[0];
   dentro = null; v.vel = 0; v.jatoLigado = false;
-  radioUI?.sairDoCarro();
+  radioUI?.sairDoCarro(); avisoRadio?.esconder();
   toque?.especial(null);
   cena.add(rabisco.grupo); rabisco.grupo.visible = true;
   if (v.g.userData.cima) v.g.userData.cima.visible = true;
@@ -1077,7 +1084,7 @@ if (params.has("teste")) window.teste = {
   geometriasNaCena() { const g = new Set(); cena.traverse((o) => { if (o.geometry) g.add(o.geometry); }); return g.size; },
   corCasa(hex) { trocarCorCasa(hex); },
   get corParedes() { const c = mundo.casas.find((k) => k.lote.numero === salvo.casa); return c?.grupo.userData.paredes.userData.cor; },
-  get radio() { return radio; }, get radioUI() { return radioUI; }, falar: (k) => falar(k),
+  get radio() { return radio; }, get radioUI() { return radioUI; }, get avisoRadio() { return avisoRadio; }, falar: (k) => falar(k),
   get missoes() { return missoes; }, get patioJE() { return patioJE; },
   get trava() { return trava ? { pose: trava.pose ?? null, t: trava.t } : null; },
   get oracao() { return oracao ? { i: oracao.i, total: ORACAO.length, painel: !painelOracao.hidden, texto: painelOracao.textContent } : null; },
