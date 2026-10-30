@@ -24,11 +24,11 @@ const fora = (p) => cantos(p).every(([x, z]) => M.distRua(x, z).d > 0);
 const pegadas = [
   ...M.LUGARES.filter((l) => l.pegada).map((l) => ({ id: l.id, ...M.pegadaDe(l.x, l.z, l.dir, l.pegada[0], l.pegada[1], l.recuo) })),
   ...M.LOTES.map((l) => ({ id: l.id, ...M.pegadaDe(l.x, l.z, l.dir, M.LOTE.w, M.LOTE.d, M.LOTE.recuo) })),
-  ...M.PREDIOS.map((p) => ({ id: p.id, x0: p.x0, x1: p.x1, z0: p.z0, z1: p.z1 })),
+  ...[...M.PREDIOS, ...M.PREDIOS_NOVOS].map((p) => ({ id: p.id, x0: p.x0, x1: p.x1, z0: p.z0, z1: p.z1 })),
   ...M.PEGADAS_FIXAS.filter((p) => p.id.startsWith("vaga-")),
 ];
 const naRua = pegadas.filter((p) => !fora(p)).map((p) => p.id);
-ok(!naRua.length, `${pegadas.length} pegadas (lugares, ${M.LOTES.length} lotes, ${M.PREDIOS.length} prédios, vagas) fora do asfalto ${naRua.join(", ")}`);
+ok(!naRua.length, `${pegadas.length} pegadas (lugares, ${M.LOTES.length} lotes, ${M.PREDIOS.length} + ${M.PREDIOS_NOVOS.length} prédios, vagas) fora do asfalto ${naRua.join(", ")}`);
 const pontos = [...M.LUGARES.map((l) => [l.id, l.x, l.z]), ...M.LOTES.map((l) => [l.id, l.x, l.z]), ...M.VAGAS.map((v, i) => [`vaga-${i}`, v.x, v.z]), ["largada", M.LARGADA.x, M.LARGADA.z]];
 const pontoNaRua = pontos.filter(([, x, z]) => M.distRua(x, z).d <= 0).map(([id]) => id);
 ok(!pontoNaRua.length, `${pontos.length} pontos de porta/vaga com distRua > 0 ${pontoNaRua.join(", ")}`);
@@ -76,7 +76,8 @@ for (const rota of M.ROTAS) {
 }
 
 // ---------- o resto que o jogo usa
-ok(M.LOTES.filter((l) => l.bairro === "Bairro das Casas").length === 8 && M.LOTES.length === 16 && new Set(M.LOTES.map((l) => l.numero)).size === 16, "8 lotes no Bairro das Casas e 8 na Vila das Flores, números únicos");
+ok(M.LOTES.filter((l) => l.bairro === "Bairro das Casas").length === 8 && M.LOTES.filter((l) => l.bairro === "Vila das Flores").length === 8 && M.LOTES.length === 32 && new Set(M.LOTES.map((l) => l.numero)).size === 32, "8 lotes no Bairro das Casas, 8 na Vila das Flores e 16 nos bairros novos (Vila dos Ipês e Bairro das Palmeiras), números únicos");
+ok(M.LOTES.slice(0, 16).every((l, i) => l.numero === i + 1), "os 16 lotes de antes continuam com o mesmo número e na mesma ordem");
 ok(M.MORADORES.length >= 10 && M.MORADORES.every((m) => M.RUAS.some((r) => r.id === m.rua)), `${M.MORADORES.length} moradores do estojo, cada um numa rua que existe`);
 const PLANO = ["praca", "igreja", "kids1", "kids2", "biblioteca", "hospital", "veterinario", "bombeiros", "mercado", "padaria", "sorveteria", "correios", "lavarapido", "estudio", "parque", "praia", "mirante", "heliponto", "fazendinha", "campo"];
 ok(PLANO.every((id) => M.lugar(id)), `todos os lugares do plano existem (${PLANO.filter((id) => !M.lugar(id)).join(", ")})`);
@@ -86,8 +87,22 @@ ok(k1 && k2 && Math.sign(k1.x) !== Math.sign(k2.x) && Math.hypot(k1.x - k2.x, k1
 ok(M.VAGAS.some((v) => v.tipo === "heli" && Math.hypot(v.x - M.HELIPONTO.x, v.z - M.HELIPONTO.z) < 1), "o helicóptero fica no heliponto");
 ok(M.VAGAS.filter((v) => v.tipo === "barco").every((v) => [M.LAGO, M.LAGO2].some((l) => Math.hypot(v.x - l.x, v.z - l.z) < l.r - 2)), "os barquinhos começam dentro dos lagos");
 ok(["je", "ambulancia", "bombeiro", "sorvete", "bici", "patinete", "barco", "trator", "heli", "onibus", "carro"].every((t) => M.VAGAS.some((v) => v.tipo === t)), "cada tipo de veículo tem a sua vaga");
-ok(M.NBLOCOS === 5 && M.BORDA === 250, "cidade de 5 × 5 blocos (500 m)");
-ok(M.blocoDe(0, 0).join() === "2,2" && M.blocoDe(-249, 249).join() === "0,4" && M.blocoDe(160, -60).join() === "4,1", "blocos de 100 m (5 × 5)");
+ok(M.NBLOCOS === 9 && M.GRADE0 === -450 && M.BORDA === 400 && M.BORDA_ANTIGA === 250, "cidade de 800 m em 9 × 9 blocos (o miolo de antes tem 500 m)");
+ok(M.blocoDe(0, 0).join() === "4,4" && M.blocoDe(-249, 249).join() === "2,6" && M.blocoDe(160, -60).join() === "6,3" && M.blocoDe(-399, 399).join() === "0,8", "blocos de 100 m com as divisas do miolo em ±50, ±150 e ±250, como antes");
+// ---------- bairros novos e o mar
+const area = (b) => (2 * b) ** 2;
+const aguaDentro = (2 * M.BORDA) * (M.BORDA - M.MAR.costa) - Math.PI * M.ILHA.r ** 2;
+ok(area(M.BORDA) / area(M.BORDA_ANTIGA) >= 2 && (area(M.BORDA) - aguaDentro) / area(M.BORDA_ANTIGA) >= 2, `área: ${area(M.BORDA_ANTIGA) / 1e3} mil m² → ${area(M.BORDA) / 1e3} mil m² (${(area(M.BORDA) / area(M.BORDA_ANTIGA)).toFixed(2)}×; só terra: ${((area(M.BORDA) - aguaDentro) / area(M.BORDA_ANTIGA)).toFixed(2)}×)`);
+const BAIRROS_NOVOS = ["Vila dos Ipês", "Bairro das Palmeiras", "Jardim das Estrelas", "Orla do Mar Azul", "Ilha da Alegria"];
+ok(BAIRROS_NOVOS.every((b) => M.LUGARES.some((l) => l.novo && l.bairro === b)), `cada bairro novo tem lugares com nome (${BAIRROS_NOVOS.join(", ")})`);
+ok(M.PRACAS_NOVAS.length >= 3 && M.PREDIOS_NOVOS.length >= 60, `bairros novos com ${M.PRACAS_NOVAS.length} praças e ${M.PREDIOS_NOVOS.length} prédios`);
+const naAgua = [...M.LUGARES.filter((l) => l.pegada).map((l) => M.pegadaDe(l.x, l.z, l.dir, l.pegada[0], l.pegada[1], l.recuo)), ...M.LOTES.map((l) => M.pegadaDe(l.x, l.z, l.dir, M.LOTE.w, M.LOTE.d, M.LOTE.recuo)), ...M.PREDIOS_NOVOS].filter((p) => cantos(p).some(([x, z]) => M.naMar(x, z)));
+ok(!naAgua.length, "nenhum prédio, casa ou loja dentro do mar");
+ok(M.LUGARES.filter((l) => l.novo).every((l) => !M.naMar(l.x, l.z)), "todo lugar novo fica em terra (ou no píer, ou na ilha)");
+ok(M.naMar(0, 300) && !M.naMar(0, 360) && !M.naMar(28, 290) && !M.naMar(0, 260) && M.naIlha(M.RODA.x, M.RODA.z), "o mar começa na costa; a ilha e os píeres são chão");
+// toda rua nova encosta em outra rua (a cidade continua ligada)
+const ligada = M.RUAS.filter((r) => r.nova).filter((r) => !r.pts.some(([x, z]) => M.distRua(x, z, r).d < 0)); // a ponta (ou um vértice) fica no asfalto de outra
+ok(!ligada.length, `toda rua nova começa ou passa em cima de outra rua ${ligada.map((r) => r.id).join(", ")}`);
 
 console.log(falhas ? `${falhas} falha(s)` : "tudo certo");
 process.exit(falhas ? 1 : 0);

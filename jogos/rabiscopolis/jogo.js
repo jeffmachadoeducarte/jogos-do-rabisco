@@ -38,7 +38,7 @@ import { vestirProfissao, tirarProfissao, PROFISSOES } from "./roupas-rp.js";
 import { criarSorveteUI } from "./sorvete-ui.js";
 import { criarRadioRabisco, criarAvisoRadio } from "./radio-rabisco.js";
 import { criarRadioUI } from "../../src/radio/radio-ui.js";
-import { RUAS, segmentos, LOTES, VAGAS, LARGADA, LUGARES, LAGO, PARQUE, PRACA, FAZENDA, BORDA, MORADORES, distRua, PRAIA, LAGO2, HELIPONTO } from "./mapa.js";
+import { RUAS, segmentos, LOTES, VAGAS, LARGADA, LUGARES, LAGO, PARQUE, PRACA, FAZENDA, BORDA, MORADORES, distRua, PRAIA, LAGO2, HELIPONTO, MAR, ORLA, ILHA, PIERS, RODA, PRACAS_NOVAS } from "./mapa.js";
 void PARQUE;
 
 const params = new URLSearchParams(location.search);
@@ -633,6 +633,7 @@ function sair() {
   const op = [[lx * lado, lz * lado], [-lx * lado, -lz * lado], [-fx * (v.comp + 1.4), -fz * (v.comp + 1.4)], [fx * (v.comp + 1.4), fz * (v.comp + 1.4)]];
   const livreSaida = op.find(([ox, oz]) => !fis.bate(v.pos.x + ox, v.pos.z + oz, 0.1));
   if (!livreSaida && v.tipo === "barco") { dizer("Barquinho", "Leve o barquinho até a beirinha do lago para descer.", 2600); return; }
+  if (!livreSaida && (v.tipo === "jetski" || v.tipo === "lancha")) { dizer(v.tipo === "jetski" ? "Jet ski" : "Lancha", "Encoste na areia, no píer ou na ilha para descer.", 2600); return; }
   const [ox, oz] = livreSaida ?? op[0];
   dentro = null; v.vel = 0; v.jatoLigado = false;
   radioUI?.sairDoCarro(); avisoRadio?.esconder();
@@ -1015,29 +1016,50 @@ function alternarMapa(abrir = null) {
   mapaGrande.hidden = abrir === null ? !mapaGrande.hidden : !abrir;
   if (!mapaGrande.hidden) desenharMapa(mapaGrande.querySelector("canvas").getContext("2d"), 640, true);
 }
-function desenharMapa(c, S, nomes = false) {
+// o que não muda no mapa (chão, água, prédios, ruas e lugares) é desenhado uma vez só por tamanho, num canvas à parte
+// (a cidade dobrou: redesenhar tudo a cada 0,15 s pesava); por cima vão as casas, os veículos, o alvo e o Rabisco
+const fundosMapa = new Map();
+function fundoDoMapa(S, nomes) {
+  const chave = `${S}|${nomes}`;
+  if (fundosMapa.has(chave)) return fundosMapa.get(chave);
+  const tela = document.createElement("canvas"); tela.width = tela.height = S;
+  const c = tela.getContext("2d");
   const k = S / ((BORDA + 8) * 2);
   const P = (x, z) => [S / 2 + x * k, S / 2 + z * k];
-  c.clearRect(0, 0, S, S);
   c.fillStyle = "#7ccf52"; c.fillRect(0, 0, S, S);
   c.fillStyle = "#5fb83f"; for (const A of [PARQUE, FAZENDA]) { const [x0, z0] = P(A.x0, A.z0); c.fillRect(x0, z0, (A.x1 - A.x0) * k, (A.z1 - A.z0) * k); }
   c.fillStyle = "#f3dca0"; { const [x0, z0] = P(PRAIA.x0, PRAIA.z0); c.fillRect(x0, z0, (PRAIA.x1 - PRAIA.x0) * k, (PRAIA.z1 - PRAIA.z0) * k); }
   c.fillStyle = "#3fb6f5"; for (const L of [LAGO, LAGO2]) { c.beginPath(); c.arc(...P(L.x, L.z), L.r * k, 0, 7); c.fill(); }
+  // orla do Mar Azul: areia, mar, a Ilha da Alegria (com a roda-gigante) e os píeres
+  c.fillStyle = "#f3dca0"; { const [x0, z0] = P(-BORDA - 8, ORLA.z0); c.fillRect(x0, z0, S, (ORLA.z1 - ORLA.z0) * k); }
+  c.fillStyle = "#3fa9ef"; { const [x0, z0] = P(-BORDA - 8, MAR.costa); c.fillRect(x0, z0, S, S); }
+  c.fillStyle = "#f3dca0"; c.beginPath(); c.arc(...P(ILHA.x, ILHA.z), ILHA.r * k, 0, 7); c.fill();
+  c.fillStyle = "#7ccf52"; c.beginPath(); c.arc(...P(ILHA.x, ILHA.z), (ILHA.r - 8) * k, 0, 7); c.fill();
+  c.fillStyle = "#b07a45"; for (const pi of PIERS) { const [x0, z0] = P(pi.x0, pi.z0); c.fillRect(x0, z0, Math.max(1.5, (pi.x1 - pi.x0) * k), (pi.z1 - pi.z0) * k); }
+  c.strokeStyle = "#ec2e8c"; c.lineWidth = Math.max(1.5, S / 260); c.beginPath(); c.arc(...P(RODA.x, RODA.z - 2), Math.max(3, RODA.r * k * 0.8), 0, 7); c.stroke();
   c.fillStyle = "#3a3f4c"; c.beginPath(); c.arc(...P(HELIPONTO.x, HELIPONTO.z), HELIPONTO.r * k, 0, 7); c.fill();
   c.fillStyle = "rgba(255,248,235,0.9)";
-  for (const s of mundo.solidos) if (s.y1 > 8 && s.x1 - s.x0 > 5) { const [x0, z0] = P(s.x0, s.z0); c.fillRect(x0, z0, (s.x1 - s.x0) * k, (s.z1 - s.z0) * k); }
+  for (const s of mundo.solidos) if (s.y1 > 8 && Math.abs(s.z0) < BORDA + 10 && s.x1 - s.x0 > 5) { const [x0, z0] = P(s.x0, s.z0); c.fillRect(x0, z0, (s.x1 - s.x0) * k, (s.z1 - s.z0) * k); }
   c.lineCap = c.lineJoin = "round";
   for (const [extra, cor] of [[6, "#efe4d0"], [0, "#5b6170"]]) for (const r of RUAS) {
     c.beginPath(); r.pts.forEach((p, i) => (i ? c.lineTo(...P(...p)) : c.moveTo(...P(...p)))); if (r.fechada) c.closePath();
     c.lineWidth = (r.w + extra) * k; c.strokeStyle = cor; c.stroke();
   }
-  c.fillStyle = "#e8e2d6"; c.beginPath(); c.arc(...P(PRACA.x, PRACA.z), PRACA.r * k, 0, 7); c.fill();
+  c.fillStyle = "#e8e2d6"; for (const pc of [PRACA, ...PRACAS_NOVAS]) { c.beginPath(); c.arc(...P(pc.x, pc.z), pc.r * k, 0, 7); c.fill(); }
   for (const l of LUGARES) {
     const [x, y] = P(l.x, l.z);
     c.fillStyle = l.parceiro ? "#ffcc1f" : "#ffffff"; c.strokeStyle = "#151515"; c.lineWidth = Math.max(1, S / 200);
     c.beginPath(); c.arc(x, y, S / 70, 0, 7); c.fill(); c.stroke();
     if (nomes) { c.font = `800 ${Math.round(S / 46)}px 'Baloo 2', sans-serif`; c.textAlign = "center"; c.lineWidth = 4; c.strokeStyle = "#fff"; c.strokeText(l.nome, x, y - S / 50); c.fillStyle = "#151515"; c.fillText(l.nome, x, y - S / 50); }
   }
+  if (document.fonts?.status !== "loading") fundosMapa.set(chave, tela); // com a fonte carregada (os nomes)
+  return tela;
+}
+function desenharMapa(c, S, nomes = false) {
+  const k = S / ((BORDA + 8) * 2);
+  const P = (x, z) => [S / 2 + x * k, S / 2 + z * k];
+  c.clearRect(0, 0, S, S);
+  c.drawImage(fundoDoMapa(S, nomes), 0, 0);
   for (const L of LOTES) {
     const [x, y] = P(L.x, L.z); const minha = L.numero === salvo.casa;
     c.font = `${Math.round(S / (minha ? 18 : 30))}px 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`; c.textAlign = "center"; c.textBaseline = "middle";

@@ -1,36 +1,48 @@
 // Rabiscolândia: traçado da cidade em dados puros (sem three.js), usado pela montagem 3D (mundo.js), pelo minimapa,
 // pela física e pelo teste em node (ferramentas/teste/rabiscopolis-mapa.mjs).
 //
-// A cidade tem ~500 × 500 m, dividida em 5 × 5 blocos de 100 m (só o bloco atual e os vizinhos ficam visíveis).
-// O miolo (3 × 3, entre -150 e 150) é a cidade original; o anel de fora tem os bairros novos:
+// A cidade tem ~800 × 800 m, dividida em 9 × 9 blocos de 100 m (de -450 a 450) (só o bloco atual e os vizinhos ficam visíveis).
+// O miolo (±250, dentro da Estrada da Serra) é a cidade de antes, com as MESMAS coordenadas; em volta, os bairros novos
+// até a Avenida do Horizonte (±390) e, no sul, a orla do Mar Azul com a Ilha da Alegria:
 //
-//            x: -250 ····· -150 ····· -50 ······ 50 ······ 150 ····· 250
-//   z -250   ┌─────────┬──────────┬───────────┬──────────┬─────────┐
-//            │ Bosque  │ Bosque   │ Mirante + │ Bosque   │ Bosque  │   Rua do Mirante (x = 0, norte)
-//   -150     ├─────────┼──────────┼ Heliponto ┼──────────┼─────────┤
-//            │Veterin. │ Morro    │ Biblioteca│ Torres   │ Estúdio │   Avenida da Esperança (z = -50)
-//    -50     ├─────────┼──────────┼───────────┼──────────┼─────────┤
-//            │Kids I   │ Bairro   │ Centro    │ Comércio │ Kids II │   Rua das Casas / do Comércio (z = 0)
-//     50     ├─────────┼──────────┼───────────┼──────────┼─────────┤
-//            │Lava-ráp.│Fazendinha│ Parque    │ Esportes │ Correios│   Avenida da Alegria (z = 50)
-//    150     ├─────────┼──────────┼───────────┼──────────┼─────────┤
-//            │ Bosque  │ Bosque   │ Praia     │ Bosque   │ Bosque  │
-//    250     └─────────┴──────────┴───────────┴──────────┴─────────┘
-// Avenida do Contorno (anel de dentro, ±140) e Estrada da Serra (anel de fora, ±240), com cantos arredondados.
-// As duas escolas ficam em lados opostos: Educarte Kids I (bebês de 4 meses a 4 anos) no oeste e Educarte Kids II
-// (5 a 12 anos) no leste, a 390 m uma da outra.
+//            x: -400 ···· -250 ····· -150 ····· -50 ······ 50 ······ 150 ····· 250 ···· 400
+//   z -400   ┌─────────┬─────────────────────────────────────────────────────┬─────────┐
+//            │         │ Jardim das Estrelas: Praça das Estrelas, Museu,       │ Torres  │  Avenida do Horizonte (±390)
+//            │  Vila   │ Observatório (Rua do Arco-Íris, z = -315)             │   do    │
+//   -250     │   dos   ├─────────┬──────────┬───────────┬──────────┬─────────┤Horizonte│
+//            │  Ipês   │ Bosque  │ Bosque   │ Mirante + │ Bosque   │ Bosque  │         │
+//   -150     │ (Rua    ├─────────┼──────────┼ Heliponto ┼──────────┼─────────┤ Bairro  │
+//            │  dos    │Veterin. │ Morro    │ Biblioteca│ Torres   │ Estúdio │  das    │
+//    -50     │  Ipês,  ├─────────┼──────────┼───────────┼──────────┼─────────┤Palmeiras│
+//            │  x =    │Kids I   │ Bairro   │ Centro    │ Comércio │ Kids II │ (Rua das│
+//     50     │  -315)  ├─────────┼──────────┼───────────┼──────────┼─────────┤Palmeiras│
+//            │         │Lava-ráp.│Fazendinha│ Parque    │ Esportes │ Correios│ x = 315)│
+//    150     │         ├─────────┼──────────┼───────────┼──────────┼─────────┤         │
+//            │         │ Bosque  │ Bosque   │ Praia     │ Bosque   │ Bosque  │         │
+//    250     ├─────────┴─────────┴──────────┴───────────┴──────────┴─────────┴─────────┤
+//            │ Orla do Mar Azul: areia, píer, posto salva-vidas, quiosque               │
+//    270     │ ~~~~~~~~~~~~~~~~~~~~~ Mar Azul ~~~~~~ Ilha da Alegria (roda-gigante) ~~~~~ │
+//    400     └──────────────────────────────────────────────────────────────────────────┘
+// Avenida do Contorno (anel de dentro, ±140), Estrada da Serra (±240) e Avenida do Horizonte (±390, aberta no sul:
+// as pontas descem até a orla e encostam na Serra), com cantos arredondados. As avenidas e ruas de antes continuam
+// até o Horizonte. As duas escolas ficam em lados opostos: Educarte Kids I (bebês de 4 meses a 4 anos) no oeste e
+// Educarte Kids II (5 a 12 anos) no leste, a 390 m uma da outra.
 //
 // Unidade: o Rabisco tem 1,8 de altura. x para a direita, z para baixo (vista de cima). dir = para onde a fachada olha.
 
 import { PARCEIROS } from "../../src/parceiros.js";
 
-export const BORDA = 250;
-export const NBLOCOS = 5;
+export const BORDA = 400;
+// a grade dos blocos começa em -450 (9 × 9): assim as divisas do miolo continuam em ±50, ±150 e ±250, como antes
+// (na praça, por exemplo, aparecem os mesmos blocos de antes e o orçamento de desenho não muda)
+export const NBLOCOS = 9;
+export const GRADE0 = -450;
+export const BORDA_ANTIGA = 250; // a cidade de antes (o miolo): o que é dela é montado igual, na mesma ordem
 export const BLOCO = 100;
 export const CALCADA = 3; // largura da calçada dos dois lados de cada rua
 
-// bloco (0..4, 0..4) de um ponto
-export const blocoDe = (x, z) => [Math.max(0, Math.min(NBLOCOS - 1, Math.floor((x + BORDA) / BLOCO))), Math.max(0, Math.min(NBLOCOS - 1, Math.floor((z + BORDA) / BLOCO)))];
+// bloco (0..8, 0..8) de um ponto
+export const blocoDe = (x, z) => [Math.max(0, Math.min(NBLOCOS - 1, Math.floor((x - GRADE0) / BLOCO))), Math.max(0, Math.min(NBLOCOS - 1, Math.floor((z - GRADE0) / BLOCO)))];
 
 const arco = (cx, cz, r, a0, a1, n) => {
   const pts = [];
@@ -50,6 +62,10 @@ function retanguloArredondado(x0, z0, x1, z1, r) {
 // ---------- ruas (w: largura do asfalto · fechada: volta para o começo)
 const CONTORNO = retanguloArredondado(-140, -140, 140, 140, 24);
 const SERRA = retanguloArredondado(-240, -240, 240, 240, 32);
+// Avenida do Horizonte: anel de fora (±390), aberto no sul (lá é o mar): as pontas descem até a orla e encostam na
+// Estrada da Serra, em z = 240
+const HORIZONTE = [[-200, 240], ...arco(-358, 208, 32, Math.PI / 2, Math.PI, 6), ...arco(-358, -358, 32, Math.PI, Math.PI * 1.5, 6),
+  ...arco(358, -358, 32, -Math.PI / 2, 0, 6), ...arco(358, 208, 32, 0, Math.PI / 2, 6), [200, 240]];
 export const RUAS = [
   { id: "contorno", nome: "Avenida do Contorno", w: 12, fechada: true, pts: CONTORNO },
   { id: "serra", nome: "Estrada da Serra", w: 12, fechada: true, pts: SERRA },
@@ -61,6 +77,20 @@ export const RUAS = [
   { id: "comercio", nome: "Rua do Comércio", w: 10, pts: [[50, 0], [240, 0]] },
   { id: "mirante", nome: "Rua do Mirante", w: 10, pts: [[0, -140], [0, -240]] },
   { id: "flores", nome: "Rua das Flores", w: 9, pts: [[-140, -95], [-50, -95]] },
+  // bairros novos (nova: true): as avenidas e ruas de antes continuam até o Horizonte, mais três ruas dos bairros
+  { id: "horizonte", nome: "Avenida do Horizonte", w: 12, pts: HORIZONTE, nova: true },
+  { id: "av-norte-o", nome: "Avenida da Esperança", w: 12, pts: [[-390, -50], [-240, -50]], nova: true },
+  { id: "av-norte-l", nome: "Avenida da Esperança", w: 12, pts: [[240, -50], [390, -50]], nova: true },
+  { id: "av-sul-o", nome: "Avenida da Alegria", w: 12, pts: [[-390, 50], [-240, 50]], nova: true },
+  { id: "av-sul-l", nome: "Avenida da Alegria", w: 12, pts: [[240, 50], [390, 50]], nova: true },
+  { id: "casas-o", nome: "Rua das Casas", w: 9, pts: [[-390, 0], [-240, 0]], nova: true },
+  { id: "comercio-l", nome: "Rua do Comércio", w: 10, pts: [[240, 0], [390, 0]], nova: true },
+  { id: "oeste-n", nome: "Rua do Sol", w: 11, pts: [[-50, -240], [-50, -390]], nova: true },
+  { id: "leste-n", nome: "Rua da Lua", w: 11, pts: [[50, -240], [50, -390]], nova: true },
+  { id: "mirante-n", nome: "Rua do Mirante", w: 10, pts: [[0, -240], [0, -390]], nova: true },
+  { id: "arcoiris", nome: "Rua do Arco-Íris", w: 9, pts: [[-390, -315], [390, -315]], nova: true },
+  { id: "ipes", nome: "Rua dos Ipês", w: 9, pts: [[-315, -390], [-315, 240]], nova: true },
+  { id: "palmeiras", nome: "Rua das Palmeiras", w: 9, pts: [[315, -390], [315, 240]], nova: true },
 ];
 
 // ---------- geometria
@@ -161,7 +191,32 @@ PARCEIROS.slice(0, PONTOS_PARCEIROS.length).forEach((p, i) => {
   const escritorio = p.tipo === "contabilidade";
   LUGARES.push(L(`parceiro-${p.id}`, p.nome, x, z, dx, dz, { parceiro: p, pegada: escritorio ? PEGADA_ESCRITORIO : [LOJA_MAX, 7.5], recuo: 1, bairro: escritorio ? "Oeste" : "Comércio" }));
 });
+// bairros novos (novo: true: montados depois de tudo o que já existia, para a cidade de antes ficar igualzinha)
+const N = (id, nome, x, z, dx, dz, extra) => L(id, nome, x, z, dx, dz, { novo: true, ...extra });
+LUGARES.push(
+  // Vila dos Ipês (oeste, na Rua dos Ipês)
+  N("pracaIpes", "Praça dos Ipês", -352, -150, 0, 1, { raio: 17, recuo: 0, bairro: "Vila dos Ipês" }),
+  N("floricultura", "Floricultura Florzinha", -306, -120, -1, 0, { pegada: [16, 12], bairro: "Vila dos Ipês" }),
+  N("pizzaria", "Pizzaria Forno Feliz", -324, -190, 1, 0, { pegada: [16, 12], bairro: "Vila dos Ipês" }),
+  // Bairro das Palmeiras (leste, na Rua das Palmeiras)
+  N("pracaPalmeiras", "Praça das Palmeiras", 352, 150, 0, 1, { raio: 17, recuo: 0, bairro: "Bairro das Palmeiras" }),
+  N("farmacia", "Farmácia Saúde", 306, 120, 1, 0, { pegada: [16, 12], bairro: "Bairro das Palmeiras" }),
+  N("brinquedos", "Loja de Brinquedos Pião", 324, -120, -1, 0, { pegada: [16, 12], bairro: "Bairro das Palmeiras" }),
+  // Jardim das Estrelas (norte, na Rua do Arco-Íris e na Rua do Mirante)
+  N("pracaEstrelas", "Praça das Estrelas", -150, -352, 0, 1, { raio: 17, recuo: 0, bairro: "Jardim das Estrelas" }),
+  N("museu", "Museu dos Dinossauros", 150, -323.5, 0, 1, { pegada: [24, 16], recuo: 2, raio: 14, bairro: "Jardim das Estrelas" }),
+  N("observatorio", "Observatório Estrelinha", -9, -355, 1, 0, { pegada: [16, 16], bairro: "Jardim das Estrelas" }),
+  // Orla do Mar Azul (sul, na areia entre a Estrada da Serra e o mar) e a Ilha da Alegria
+  N("orla", "Praia do Mar Azul", -70, 258, 0, 1, { raio: 22, recuo: 0, bairro: "Orla do Mar Azul" }),
+  N("salvavidas", "Posto Salva-Vidas", -24, 262, 0, 1, { pegada: [5, 5], recuo: 0, raio: 10, bairro: "Orla do Mar Azul" }),
+  N("pier", "Píer do Mar Azul", 28, 258, 0, 1, { raio: 10, recuo: 0, bairro: "Orla do Mar Azul" }),
+  N("quiosque", "Quiosque Água de Coco", 70, 258, 0, 1, { pegada: [8, 6], recuo: 0, raio: 10, bairro: "Orla do Mar Azul" }),
+  N("ilha", "Ilha da Alegria", 0, 344, 0, -1, { raio: 16, recuo: 0, bairro: "Ilha da Alegria" }),
+  N("roda", "Roda-Gigante Alegria", 0, 370, 0, -1, { raio: 10, recuo: 0, bairro: "Ilha da Alegria" }),
+);
 export const lugar = (id) => LUGARES.find((l) => l.id === id);
+// praças dos bairros novos (iguais à do Centro: chafariz, canteiros, bancos e árvores)
+export const PRACAS_NOVAS = ["pracaIpes", "pracaPalmeiras", "pracaEstrelas"].map((id) => ({ id, x: lugar(id).x, z: lugar(id).z, r: 16 }));
 
 // ---------- Bairro das Casas: 8 lotes na Rua das Casas (4 de cada lado), porta virada para a rua
 const CORES_CASA = [
@@ -181,6 +236,15 @@ export const LOTES = [
     { numero: 9 + i * 2, x, z: -103.5, dir: [0, 1], bairro: "Vila das Flores" },
     { numero: 10 + i * 2, x, z: -86.5, dir: [0, -1], bairro: "Vila das Flores" },
   ]),
+  // bairros novos: Vila dos Ipês (lotes 17 a 24, Rua dos Ipês) e Bairro das Palmeiras (lotes 25 a 32, Rua das Palmeiras)
+  ...[-32, -16.5, 16.5, 32].flatMap((z, i) => [
+    { numero: 17 + i * 2, x: -306, z, dir: [-1, 0], bairro: "Vila dos Ipês" },
+    { numero: 18 + i * 2, x: -324, z, dir: [1, 0], bairro: "Vila dos Ipês" },
+  ]),
+  ...[-32, -16.5, 16.5, 32].flatMap((z, i) => [
+    { numero: 25 + i * 2, x: 306, z, dir: [1, 0], bairro: "Bairro das Palmeiras" },
+    { numero: 26 + i * 2, x: 324, z, dir: [-1, 0], bairro: "Bairro das Palmeiras" },
+  ]),
 ].map((l, i) => ({ ...l, ...CORES_CASA[(i * 3) % CORES_CASA.length], ...(i < 8 ? CORES_CASA[i] : {}), id: `lote-${l.numero}`, rot: Math.atan2(l.dir[0], l.dir[1]) }));
 
 // ---------- parque, praça e fazendinha
@@ -198,6 +262,18 @@ export const PATIO_KIDS2 = { x0: 179, x1: 211, z0: 11, z1: 35 };     // quadra d
 export const HELIPONTO = { x: 30, z: -190, r: 10 };
 export const PRAIA = { x0: -44, x1: 44, z0: 157, z1: 230 };
 export const LAGO2 = { x: 0, z: 202, r: 24 };
+// Mar Azul (sul): a água começa em z = costa e vai até depois da borda (o horizonte); a areia da orla fica entre a
+// calçada da Estrada da Serra e a costa. A Ilha da Alegria é um círculo de areia e grama no meio do mar, com a
+// roda-gigante; os píeres (na orla e na ilha) são de madeira e dá para andar neles.
+export const MAR = { costa: 270, x0: -BORDA - 180, x1: BORDA + 180, z1: BORDA + 170 };
+export const ORLA = { x0: -BORDA, x1: BORDA, z0: 249, z1: MAR.costa };
+export const ILHA = { x: 0, z: 368, r: 30 };
+export const PIERS = [{ id: "pier", x0: 26, x1: 30, z0: 256, z1: 300 }, { id: "pier-ilha", x0: -2, x1: 2, z0: 322, z1: 341 }];
+export const RODA = { x: 0, z: 377, h: 14.8, r: 11, cabines: 8 }; // centro (eixo a h m), raio do aro e cabines
+// água do mar (fora da ilha e dos píeres)? m = folga (o casco de um barco, por exemplo)
+export const dentroPier = (x, z, m = 0) => PIERS.some((p) => x > p.x0 - m && x < p.x1 + m && z > p.z0 - m && z < p.z1 + m);
+export const naIlha = (x, z, m = 0) => Math.hypot(x - ILHA.x, z - ILHA.z) < ILHA.r + m;
+export const naMar = (x, z) => z > MAR.costa && !naIlha(x, z) && !dentroPier(x, z);
 
 // ---------- vagas dos veículos que o Rabisco pode dirigir (fora do asfalto, na beira da rua)
 // tipo: "carro" (conversível) | "onibus" · ang: para onde a frente aponta (0 = +z)
@@ -229,13 +305,14 @@ export const PEGADAS_FIXAS = [
   ...LUGARES.filter((l) => l.pegada).map((l) => ({ id: l.id, ...pegadaDe(l.x, l.z, l.dir, l.pegada[0], l.pegada[1], l.recuo) })),
   ...LOTES.map((l) => ({ id: l.id, ...pegadaDe(l.x, l.z, l.dir, LOTE.w, LOTE.d, LOTE.recuo) })),
   { id: "praca", x0: PRACA.x - PRACA.r - 2, x1: PRACA.x + PRACA.r + 2, z0: PRACA.z - PRACA.r - 2, z1: PRACA.z + PRACA.r + 2 },
+  ...PRACAS_NOVAS.map((p) => ({ id: p.id, x0: p.x - p.r - 2, x1: p.x + p.r + 2, z0: p.z - p.r - 2, z1: p.z + p.r + 2 })),
   { id: "parque", ...PARQUE }, { id: "fazenda", ...FAZENDA },
   { id: "esportes", ...ESPORTES }, { id: "quadra-area", ...QUADRA }, { id: "horta-area", ...HORTA },
   { id: "parquinho-bebe", ...PARQUINHO_BEBE }, { id: "patio-je", x0: PATIO_JE.x0, x1: PATIO_JE.x1, z0: PATIO_JE.z0, z1: PATIO_JE.z1 }, { id: "patio-kids2", ...PATIO_KIDS2 }, { id: "praia-area", ...PRAIA },
   { id: "heliponto-area", x0: HELIPONTO.x - HELIPONTO.r, x1: HELIPONTO.x + HELIPONTO.r, z0: HELIPONTO.z - HELIPONTO.r, z1: HELIPONTO.z + HELIPONTO.r },
   // pontos de parceira ainda livres ficam reservados (a próxima parceira já tem lugar)
   ...PONTOS_PARCEIROS.slice(PARCEIROS.length).map(([x, z, dx, dz], i) => ({ id: `reserva-parceira-${i}`, ...pegadaDe(x, z, [dx, dz], LOJA_MAX, 7.5, 1) })),
-  ...VAGAS.map((v, i) => [v, i]).filter(([v]) => !["heli", "barco", "trator"].includes(v.tipo)).map(([v, i]) => { const [meioC, meioL] = { onibus: [7.5, 3], bombeiro: [3.8, 1.4], ambulancia: [2.9, 1.4], sorvete: [2.9, 1.4], bici: [1.0, 0.5], patinete: [0.8, 0.4], moto: [1.1, 0.45] }[v.tipo] ?? [2.6, 1.4]; const deitado = Math.abs(Math.sin(v.ang)) > 0.5; return { id: `vaga-${i}`, x0: v.x - (deitado ? meioC : meioL), x1: v.x + (deitado ? meioC : meioL), z0: v.z - (deitado ? meioL : meioC), z1: v.z + (deitado ? meioL : meioC) }; }),
+  ...VAGAS.map((v, i) => [v, i]).filter(([v]) => !["heli", "barco", "trator", "jetski", "lancha"].includes(v.tipo)).map(([v, i]) => { const [meioC, meioL] = { onibus: [7.5, 3], bombeiro: [3.8, 1.4], ambulancia: [2.9, 1.4], sorvete: [2.9, 1.4], bici: [1.0, 0.5], patinete: [0.8, 0.4], moto: [1.1, 0.45] }[v.tipo] ?? [2.6, 1.4]; const deitado = Math.abs(Math.sin(v.ang)) > 0.5; return { id: `vaga-${i}`, x0: v.x - (deitado ? meioC : meioL), x1: v.x + (deitado ? meioC : meioL), z0: v.z - (deitado ? meioL : meioC), z1: v.z + (deitado ? meioL : meioC) }; }),
   { id: "largada", x0: LARGADA.x - 3, x1: LARGADA.x + 3, z0: LARGADA.z - 3, z1: LARGADA.z + 3 },
 ];
 export const PREDIOS = [];
@@ -261,6 +338,31 @@ export const PREDIOS = [];
     PREDIOS.push({ id: `predio-${PREDIOS.length}`, ...p, cx: x, cz: z, w, d, dir, rot: Math.atan2(dir[0], dir[1]), andares, cor: cores[Math.floor(r() * cores.length)], tipo: r() < (fora ? 0.7 : 0.3) ? "sobrado" : "predio" });
   }
 }
+// prédios dos bairros novos (outra semente, depois dos de antes: os de antes não mudam). Cada bairro com o seu jeito:
+// Vila dos Ipês (oeste) e Bairro das Palmeiras (leste) com mais sobrados; Jardim das Estrelas (norte) misturado; as
+// Torres do Horizonte (nordeste) com prédios altos. Nada no sul (areia e mar).
+export const PREDIOS_NOVOS = [];
+{
+  const r = semente(4049);
+  const cores = ["#f6d2a8", "#bfe0f2", "#f5c4c4", "#c9eabf", "#fbe3a6", "#d8cdf2", "#ffd9b8", "#c4ece6"];
+  const ocupado = (p) => [...PEGADAS_FIXAS, ...PREDIOS, ...PREDIOS_NOVOS].some((o) => sobrepoe(p, o, 3));
+  for (let gx = -382; gx <= 382; gx += 17) for (let gz = -382; gz <= 230; gz += 17) {
+    if (Math.max(Math.abs(gx), Math.abs(gz)) < 256) continue; // dentro da Serra: a cidade de antes
+    const x = gx + (r() - 0.5) * 3, z = gz + (r() - 0.5) * 3;
+    const torres = x > 240 && z < -240, norte = z < -249 && !torres;
+    if (r() < (torres ? 0.25 : norte ? 0.4 : 0.45)) continue;
+    const w = 12 + r() * 5, d = 11 + r() * 4;
+    const gxR = distRua(x + 1, z).d - distRua(x - 1, z).d, gzR = distRua(x, z + 1).d - distRua(x, z - 1).d;
+    const dir = Math.abs(gxR) > Math.abs(gzR) ? [-Math.sign(gxR), 0] : [0, -Math.sign(gzR)];
+    const deitado = Math.abs(dir[0]) > 0.5;
+    const p = { x0: x - (deitado ? d : w) / 2, x1: x + (deitado ? d : w) / 2, z0: z - (deitado ? w : d) / 2, z1: z + (deitado ? w : d) / 2 };
+    const cantos = [[p.x0, p.z0], [p.x1, p.z0], [p.x1, p.z1], [p.x0, p.z1]];
+    if (cantos.some(([cx, cz]) => distRua(cx, cz).d < CALCADA + 1.5 || Math.abs(cx) > 378 || cz < -378 || cz > 236)) continue;
+    if (ocupado(p)) continue;
+    const andares = torres ? 6 + Math.floor(r() * 5) : norte ? 3 + Math.floor(r() * 4) : 2 + Math.floor(r() * 3);
+    PREDIOS_NOVOS.push({ id: `predio-novo-${PREDIOS_NOVOS.length}`, ...p, cx: x, cz: z, w, d, dir, rot: Math.atan2(dir[0], dir[1]), andares, cor: cores[Math.floor(r() * cores.length)], tipo: r() < (torres ? 0 : norte ? 0.45 : 0.7) ? "sobrado" : "predio" });
+  }
+}
 
 // ---------- semáforos nos cruzamentos das avenidas com as ruas do Sol e da Lua
 export const SEMAFOROS = [[-50, -50], [50, -50], [-50, 50], [50, 50]].map(([x, z]) => ({ x, z, wX: 12, wZ: 11 }));
@@ -276,6 +378,12 @@ export const ROTAS = [
   { id: "serra", pts: SERRA, carros: 5 },
   { id: "leste-fora", pts: [[140, -50], [240, -50], [240, 50], [140, 50]], carros: 1 },
   { id: "oeste-fora", pts: [[-240, -50], [-140, -50], [-140, 50], [-240, 50]], carros: 1 },
+  // bairros novos (a volta do Horizonte fecha pela Estrada da Serra, na orla)
+  { id: "horizonte", pts: HORIZONTE, carros: 4 },
+  { id: "norte-fora", pts: [[-50, -240], [-50, -390], [50, -390], [50, -240]], carros: 1 },
+  { id: "arcoiris", pts: [[-315, -390], [315, -390], [315, -315], [-315, -315]], carros: 2 },
+  { id: "ipes", pts: [[-390, -50], [-315, -50], [-315, 50], [-390, 50]], carros: 1 },
+  { id: "palmeiras", pts: [[390, -50], [315, -50], [315, 50], [390, 50]], carros: 1 },
 ];
 
 // ---------- moradores do estojo: em que rua caminham (calçada) e de que tipo são
@@ -294,4 +402,9 @@ export const MORADORES = [
   { tipo: "borracha", nome: "Borrachão", rua: "serra", lado: -1 },
   { tipo: "caderno", cor: 0xff7a00, nome: "Caderno Laranja", rua: "av-sul", lado: 1 },
   { tipo: "pincel", cor: 0x1fc08e, nome: "Pincel Verde", rua: "comercio", lado: 1 },
+  // bairros novos
+  { tipo: "clipe", cor: 0xffcc1f, nome: "Clipe Amarelo", rua: "ipes", lado: 1 },
+  { tipo: "apontador", cor: 0xec2e8c, nome: "Apontador Rosa", rua: "palmeiras", lado: -1 },
+  { tipo: "regua", nome: "Reguinha", rua: "arcoiris", lado: 1 },
+  { tipo: "lapis", cor: 0x8e6cff, nome: "Lápis Roxo", rua: "horizonte", lado: 1 },
 ];

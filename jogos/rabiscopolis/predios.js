@@ -844,4 +844,85 @@ export function praia(P, L2) {
   S.solidos.push({ x0: qx - 3, x1: qx + 3, z0: qz - 1.5, z1: qz + 2.5, y1: 20 });
   return S;
 }
-export { onibus3D };
+export { onibus3D, coqueiro, guardaSol };
+
+// ---------- bairros novos: lojinhas com enfeite no telhado (mesmo molde do veterinário e dos correios)
+function florGrande(cor) {
+  const g = new THREE.Group();
+  const caule = malha(new THREE.CylinderGeometry(0.15, 0.15, 2.2, 8), mat(0x3c9a4a), { contorno: 0.03 }); caule.position.y = 1.1; g.add(caule);
+  for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; const p = malha(new THREE.SphereGeometry(0.6, 12, 8), mat(cor), { contorno: 0.04 }); p.scale.set(1, 1, 0.4); p.position.set(Math.cos(a) * 0.75, 2.6 + Math.sin(a) * 0.75, 0); g.add(p); }
+  const miolo = malha(new THREE.SphereGeometry(0.5, 12, 8), mat(0xffcc1f), { contorno: 0.04 }); miolo.scale.z = 0.5; miolo.position.set(0, 2.6, 0.1); g.add(miolo);
+  return g;
+}
+export function floricultura(l) {
+  const S = lojinha(l, { cor: 0xffe4f0, beiral: 0xec2e8c, rodape: 0x58c43a, texto: "Floricultura", corTexto: "#ec2e8c", enfeite: florGrande(0xff5fa2), toldoCores: ["#ec2e8c", "#ffffff"] });
+  // vasos de flores na calçada, na frente da vitrine
+  [[-6, 0xff5fa2], [-4.6, 0xffcc1f], [-3.2, 0x8e6cff]].forEach(([x, c]) => {
+    const v = malha(new THREE.CylinderGeometry(0.4, 0.3, 0.6, 12), mat(0xc96a3a), { contorno: 0.03 }); v.position.set(x, 0.3, 1.2); S.grupo.add(v);
+    const f = malha(new THREE.IcosahedronGeometry(0.45, 1), mat(c), { contorno: 0.03 }); f.position.set(x, 0.9, 1.2); f.userData.detalhe = true; S.grupo.add(f);
+  });
+  S.solidos.push({ x0: -6.5, x1: -2.8, z0: 0.8, z1: 1.6, y1: 0.7 });
+  return S;
+}
+function fatiaPizza() {
+  const g = new THREE.Group();
+  const forma = new THREE.Shape([new THREE.Vector2(-1.6, 1.4), new THREE.Vector2(1.6, 1.4), new THREE.Vector2(0, -1.8)]);
+  const f = malha(new THREE.ExtrudeGeometry(forma, { depth: 0.3, bevelEnabled: false }), mat(0xffcc4d), { contorno: 0.05 }); f.position.y = 2; g.add(f);
+  const borda = caixaRedonda(3.4, 0.5, 0.45, mat(0xd99a4e), { raio: 0.2, contorno: 0.04 }); borda.position.set(0, 3.45, 0.15); g.add(borda);
+  for (const [x, y] of [[-0.6, 2.9], [0.5, 2.6], [0, 1.7]]) { const t = malha(new THREE.CylinderGeometry(0.28, 0.28, 0.1, 12), mat(0xe8413c)); t.rotation.x = Math.PI / 2; t.position.set(x, y, 0.36); g.add(t); }
+  return g;
+}
+export function pizzaria(l) { return lojinha(l, { cor: 0xfff1d6, beiral: 0xe8413c, rodape: 0x3c9a4a, texto: "Pizzaria", corTexto: "#e8413c", enfeite: fatiaPizza(), toldoCores: ["#e8413c", "#ffffff"] }); }
+function cruzVerde() {
+  const g = new THREE.Group();
+  for (const [w, h] of [[1, 3], [3, 1]]) { const c = caixaRedonda(w, h, 0.4, mat(0x2bb24c), { raio: 0.15, contorno: 0.05 }); c.position.y = 2; g.add(c); }
+  return g;
+}
+export function farmacia(l) { return lojinha(l, { cor: 0xeafaf0, beiral: 0x2bb24c, rodape: 0xb8ead0, texto: "Farmácia", corTexto: "#2bb24c", enfeite: cruzVerde() }); }
+function piao() {
+  const g = new THREE.Group();
+  const corpo = malha(new THREE.ConeGeometry(1.2, 1.8, 16), mat(0xff7a00), { contorno: 0.05 }); corpo.rotation.x = Math.PI; corpo.position.y = 1.4; g.add(corpo);
+  const faixa = malha(new THREE.CylinderGeometry(1.25, 1.25, 0.35, 16), mat(0x00b5f0), { contorno: 0.04 }); faixa.position.y = 2.4; g.add(faixa);
+  const pino = malha(new THREE.CylinderGeometry(0.12, 0.12, 0.8, 8), mat(0xec2e8c)); pino.position.y = 2.9; g.add(pino);
+  return g;
+}
+export function brinquedos(l) { return lojinha(l, { cor: 0xe8f4ff, beiral: 0x00b5f0, rodape: 0xffcc1f, texto: "Brinquedos", corTexto: "#00b5f0", enfeite: piao(), toldoCores: ["#ffcc1f", "#00b5f0"] }); }
+// Museu dos Dinossauros: prédio de colunas com um dinossauro verde e bonzinho (pescoço comprido) na frente
+export function museu(l) {
+  const S = novo(), g = S.grupo; const [W, D] = l.pegada;
+  const casa = new THREE.Group(); casa.position.z = -3; g.add(casa); // o prédio fica 3 m para trás; na frente, as colunas
+  corpo(casa, W, 8, D - 3, 0xf3ead8, { beiral: 0x3c9a4a, rodape: 0xd8c7a6 });
+  porta(casa, { z: 0.1, w: 3, h: 3.6, cor: 0x3c9a4a, vidro: false });
+  for (const x of [-8, -4, 4, 8]) { const c = malha(new THREE.CylinderGeometry(0.5, 0.55, 7, 14), mat(0xffffff), { contorno: 0.05 }); c.position.set(x, 3.5, -0.8); g.add(c); }
+  const viga = caixaRedonda(W - 2, 1.3, 3.4, mat(0xffffff), { raio: 0.15, contorno: 0.06 }); viga.position.set(0, 7.6, -1.5); g.add(viga);
+  const front = new THREE.Shape([new THREE.Vector2(-W / 2 + 1, 0), new THREE.Vector2(W / 2 - 1, 0), new THREE.Vector2(0, 2.6)]);
+  const fr = malha(new THREE.ExtrudeGeometry(front, { depth: 3.4, bevelEnabled: false }), mat(0x3c9a4a), { contorno: 0.06 }); fr.position.set(0, 8.25, -3.2); g.add(fr);
+  nome(g, "Museu dos Dinossauros", { y: 7.6, largura: 12, cor: "#3c9a4a", z: 0.22 });
+  S.solidos.push({ x0: -W / 2, x1: W / 2, z0: -D, z1: -3, y1: 20 });
+  for (const x of [-8, -4, 4, 8]) S.solidos.push({ x0: x - 0.55, x1: x + 0.55, z0: -1.35, z1: -0.25, y1: 20 });
+  // o dino: corpo, pescoço comprido, cabeça sorrindo e cauda (só enfeite, no gramado ao lado)
+  const dino = new THREE.Group(); dino.position.set(W / 2 - 2.2, 0, -1.4); dino.rotation.y = 0.3; dino.scale.setScalar(0.65); g.add(dino);
+  const verde = mat(0x6fd15a);
+  const barriga = malha(new THREE.SphereGeometry(1.4, 16, 12), verde, { contorno: 0.06 }); barriga.scale.set(1, 0.8, 1.5); barriga.position.y = 1.9; dino.add(barriga);
+  const pescoco = malha(new THREE.CapsuleGeometry(0.4, 2.6, 4, 10), verde, { contorno: 0.05 }); pescoco.position.set(0, 3.6, 1.4); pescoco.rotation.x = 0.5; dino.add(pescoco);
+  const cab = malha(new THREE.SphereGeometry(0.6, 14, 10), verde, { contorno: 0.05 }); cab.scale.set(1, 0.85, 1.3); cab.position.set(0, 5, 2.2); dino.add(cab);
+  for (const s of [-1, 1]) { const o = malha(new THREE.SphereGeometry(0.1, 8, 6), mat(0x151515)); o.position.set(s * 0.3, 5.2, 2.75); dino.add(o); }
+  const cauda = malha(new THREE.ConeGeometry(0.6, 3, 10), verde, { contorno: 0.05 }); cauda.rotation.x = -Math.PI / 2 - 0.3; cauda.position.set(0, 1.6, -2.6); dino.add(cauda);
+  for (const [x, z] of [[-0.7, 0.7], [0.7, 0.7], [-0.7, -0.7], [0.7, -0.7]]) { const p = malha(new THREE.CylinderGeometry(0.35, 0.4, 1.3, 10), verde, { contorno: 0.04 }); p.position.set(x, 0.65, z); dino.add(p); }
+  const [dx, dz] = [W / 2 - 2.2, -1.4];
+  S.solidos.push({ x0: dx - 1.1, x1: dx + 1.1, z0: dz - 1.3, z1: dz + 1.3, y1: 3 });
+  return S;
+}
+// Observatório Estrelinha: torre redonda com cúpula branca e a luneta apontando para o céu
+export function observatorio(l) {
+  const S = novo(), g = S.grupo; const [W, D] = l.pegada;
+  const torre = malha(new THREE.CylinderGeometry(W / 2 - 1, W / 2 - 0.6, 7, 28), mat(0xd8cdf2), { contorno: 0.1 }); torre.position.set(0, 3.5, -D / 2); g.add(torre);
+  const cupula = malha(new THREE.SphereGeometry(W / 2 - 0.8, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), mat(0xffffff), { contorno: 0.1 }); cupula.position.set(0, 7, -D / 2); g.add(cupula);
+  const fenda = caixa(1.4, 0.4, W / 2, mat(0x2f3d5c), { sombra: false }); fenda.position.set(0, 7 + W / 2 - 1.6, -D / 2 + 0.6); fenda.rotation.x = -0.9; g.add(fenda);
+  const lun = malha(new THREE.CylinderGeometry(0.35, 0.5, 4, 14), mat(0xffcc1f), { contorno: 0.04 }); lun.position.set(0, 11.5, -D / 2 + 2.2); lun.rotation.x = -0.7; g.add(lun);
+  for (let i = 0; i < 5; i++) { const e = malha(new THREE.OctahedronGeometry(0.45, 0), MAT.lampada, { sombra: false }); const a = (i / 5) * Math.PI * 2; e.position.set(Math.cos(a) * (W / 2 - 0.4), 6.6, -D / 2 + Math.sin(a) * (W / 2 - 0.4)); g.add(e); }
+  porta(g, { z: 0.1 - 1.2, w: 2.4, h: 3, cor: 0x7a52c9, vidro: false });
+  const pl = new THREE.Group(); pl.position.set(0, 0, 0.3); g.add(pl); nome(pl, "Observatório", { y: 4.6, largura: 7, cor: "#7a52c9", z: -0.6 });
+  S.solidos.push({ x0: -W / 2 + 0.6, x1: W / 2 - 0.6, z0: -D + 0.6, z1: -1.1, y1: 20 });
+  return S;
+}

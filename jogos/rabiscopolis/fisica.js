@@ -2,7 +2,11 @@
 // dos sólidos baixos) e do veículo (acelera, freia, ré, vira proporcional à velocidade, bate e volta).
 // Copiado e adaptado de jogos/cidade-do-rabisco/jogo.js (chaoEm, bate, livre, moverJogador, carroBate, dirigirCarro).
 
-import { BORDA, LAGO, LAGO2 } from "./mapa.js";
+import { BORDA, LAGO, LAGO2, MAR, naMar, naIlha, dentroPier } from "./mapa.js";
+
+// barcos: o barquinho de pedal só anda nos lagos; o jet ski e a lancha, só no mar (fora da ilha e dos píeres)
+export const AQUATICOS = ["barco", "jetski", "lancha"];
+const naAguaDoMar = (x, z, m) => z - m > MAR.costa && z + m < MAR.z1 - 20 && x - m > MAR.x0 + 20 && x + m < MAR.x1 - 20 && !naIlha(x, z, m) && !dentroPier(x, z, m);
 
 export const VEL = 6.5, PULO = 9.6, GRAV = 25, LARG = 0.35;
 
@@ -13,7 +17,8 @@ export function criarFisica(mundo) {
     for (const s of solidos) if (s.y1 <= y + 0.4 && x > s.x0 - LARG && x < s.x1 + LARG && z > s.z0 - LARG && z < s.z1 + LARG && s.y1 > h) h = s.y1;
     return h;
   };
-  const bate = (x, z, y, larg = LARG) => solidos.some((s) => y < s.y1 - 0.05 && x > s.x0 - larg && x < s.x1 + larg && z > s.z0 - larg && z < s.z1 + larg)
+  // o mar também é parede para quem está a pé (ninguém entra na água nadando: vai de jet ski ou de lancha)
+  const bate = (x, z, y, larg = LARG) => (y < 0.5 && naMar(x, z)) || solidos.some((s) => y < s.y1 - 0.05 && x > s.x0 - larg && x < s.x1 + larg && z > s.z0 - larg && z < s.z1 + larg)
     || circulos.some((c) => Math.hypot(x - c.x, z - c.z) < c.r + larg);
   // ponto livre perto do pedido (para nascer/sair do carro sem ficar dentro de nada)
   const livre = (x, z, folga = 0.9) => {
@@ -70,6 +75,8 @@ export function criarFisica(mundo) {
         if (d > pen) pen = d;
       }
       for (const c of circulos) { const d = c.r + L - Math.hypot(px - c.x, pz - c.z); if (d > pen) pen = d; }
+      // o mar: carro não entra na água (a profundidade conta da costa, para o anti-preso saber para onde sair)
+      if (pz + L > MAR.costa && !naIlha(px, pz, -L) && !dentroPier(px, pz, -L)) { const d = pz + L - MAR.costa; if (d > pen) pen = d; }
     }
     for (const o of outros) {
       if (o === v || o.fantasma) continue;
@@ -81,10 +88,10 @@ export function criarFisica(mundo) {
   }
   function veiculoBate(v, x, z, ang, outros = []) {
     // barquinho: só na água (todo o casco dentro de um dos lagos)
-    if (v.tipo === "barco") {
+    if (AQUATICOS.includes(v.tipo)) {
       const fx = Math.sin(ang), fz = Math.cos(ang), L = v.larg + 0.05;
-      const passos = [-1.5, 0, 1.5];
-      const naAgua = (px, pz) => [LAGO, LAGO2].some((l) => Math.hypot(px - l.x, pz - l.z) < l.r - 0.5 - L);
+      const passos = v.tipo === "lancha" ? [-v.comp + 1, -v.comp / 2, 0, v.comp / 2, v.comp - 0.8] : v.tipo === "jetski" ? [-v.comp + 0.5, 0, v.comp - 0.5] : [-1.5, 0, 1.5];
+      const naAgua = v.tipo === "barco" ? (px, pz) => [LAGO, LAGO2].some((l) => Math.hypot(px - l.x, pz - l.z) < l.r - 0.5 - L) : (px, pz) => naAguaDoMar(px, pz, L);
       return passos.some((k) => !naAgua(x + fx * k, z + fz * k)) || outros.some((o) => o !== v && !o.fantasma && Math.hypot(o.x - x, o.z - z) < (o.raio ?? 2.4) + v.larg + 0.6);
     }
     return veiculoPen(v, x, z, ang, outros) > FOLGA;
@@ -120,7 +127,7 @@ export function criarFisica(mundo) {
     const nx = v.pos.x + Math.sin(v.ang) * v.vel * dt, nz = v.pos.z + Math.cos(v.ang) * v.vel * dt;
     v.batida -= dt;
     let forte = false;
-    const barco = v.tipo === "barco";
+    const barco = AQUATICOS.includes(v.tipo);
     // anti-deadlock: se já está sobreposto a algo, vale todo movimento que reduz a sobreposição
     const pen0 = barco ? 0 : veiculoPen(v, v.pos.x, v.pos.z, v.ang, outros);
     const pen1 = barco ? (veiculoBate(v, nx, nz, v.ang, outros) ? 1 : 0) : veiculoPen(v, nx, nz, v.ang, outros);
@@ -176,5 +183,5 @@ export function criarFisica(mundo) {
   }
   // motor desligando quando ninguém pilota
   function pararHeli(v, dt) { v.rotor = Math.max(0, v.rotor - dt * 0.5); v.vel = 0; v.vs = 0; }
-  return { chaoEm, bate, livre, andar, dirigir, veiculoBate, veiculoPen, voar, pararHeli, chaoHeli };
+  return { chaoEm, bate, livre, andar, dirigir, veiculoBate, veiculoPen, voar, pararHeli, chaoHeli, naAguaDoMar };
 }
