@@ -76,7 +76,7 @@ export function criarFisica(mundo) {
       }
       for (const c of circulos) { const d = c.r + L - Math.hypot(px - c.x, pz - c.z); if (d > pen) pen = d; }
       // o mar: carro não entra na água (a profundidade conta da costa, para o anti-preso saber para onde sair)
-      if (pz + L > MAR.costa && !naIlha(px, pz, -L) && !dentroPier(px, pz, -L)) { const d = pz + L - MAR.costa; if (d > pen) pen = d; }
+      if (pz + L > MAR.costa && pz < MAR.z1 && !naIlha(px, pz, -L) && !dentroPier(px, pz, -L)) { const d = pz + L - MAR.costa; if (d > pen) pen = d; }
     }
     for (const o of outros) {
       if (o === v || o.fantasma) continue;

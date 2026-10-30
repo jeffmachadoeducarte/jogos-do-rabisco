@@ -273,7 +273,8 @@ export const RODA = { x: 0, z: 377, h: 14.8, r: 11, cabines: 8 }; // centro (eix
 // água do mar (fora da ilha e dos píeres)? m = folga (o casco de um barco, por exemplo)
 export const dentroPier = (x, z, m = 0) => PIERS.some((p) => x > p.x0 - m && x < p.x1 + m && z > p.z0 - m && z < p.z1 + m);
 export const naIlha = (x, z, m = 0) => Math.hypot(x - ILHA.x, z - ILHA.z) < ILHA.r + m;
-export const naMar = (x, z) => z > MAR.costa && !naIlha(x, z) && !dentroPier(x, z);
+// (só na faixa do mar: as casas e os lugares por dentro ficam bem mais longe, em z = 1000/1200, e lá não é mar)
+export const naMar = (x, z) => z > MAR.costa && z < MAR.z1 && x > MAR.x0 && x < MAR.x1 && !naIlha(x, z) && !dentroPier(x, z);
 
 // ---------- vagas dos veículos que o Rabisco pode dirigir (fora do asfalto, na beira da rua)
 // tipo: "carro" (conversível) | "onibus" · ang: para onde a frente aponta (0 = +z)
