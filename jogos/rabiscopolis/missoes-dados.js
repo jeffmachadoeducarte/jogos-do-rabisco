@@ -37,8 +37,11 @@
 // escola: na porta da Educarte da idade da criança (Kids I até 4 anos, senão Kids II), deslocado [dx, dz];
 // caixa: caixinha de correio dessa cor ao lado. O primeiro da lista é quem pede (com um "!" em cima).
 // Só aparecem perto do Rabisco (orçamento de desenho). voz: { pedido?, fim? } reaproveita falas gravadas (cid-*).
-// Com o nome da criança (banco assets/voz/nomes): voz.pedidoNome (trecho depois do nome) + pedidoComNome ("{nome}, ...")
-// e agradece: { pre, pos, neutra, texto, textoSem, ms } (quem recebe agradece pelo nome antes do "fim" da anfitriã).
+// Nome da criança x "Rabisco" (regra do dono): a anfitriã/narradora fala o NOME DA CRIANÇA só na oração e no parabéns por
+// missão concluída; ao mandar ir a algum lugar, fazer algo ou mexer no boneco, chama de "Rabisco". Nunca um pelo outro.
+// Com o nome da criança (banco assets/voz/nomes): fimNome ("Parabéns, {nome}! ...": falas rp-m-<id>-fim-pre/-pos emendadas
+// com o nome; sem nome no banco vale o `fim`, que então NÃO tem nome nem "Rabisco") e
+// agradece: { pre, pos, neutra, texto, textoSem, ms } (quem recebe agradece pelo nome antes do "fim" da anfitriã).
 // item.objeto (evento): vai na MÃO do Rabisco como objeto 3D (missoes-objetos.js), não na cabeça. levar.icone: do botão.
 // corAcessorio (cor do laço) e tenis (cor do tênis): cada personagem com as suas cores.
 
@@ -258,7 +261,7 @@ export const MISSOES = [
     fim: "Que treino bonito! Agora, água fresquinha e um descanso. Corpo saudável, coração alegre!",
   },
   {
-    id: "carroNovo", titulo: "Carro novo da J.E", icone: "🔑", tipo: "cidadania", voz: { pedido: "cid-je", fim: "cid-je-ok" }, parceiro: "je-multimarcas",
+    id: "carroNovo", titulo: "Carro novo da J.E", icone: "🔑", tipo: "cidadania", voz: { pedido: "cid-je" }, parceiro: "je-multimarcas",
     npcs: {
       vendedor: { nome: "Seu Lápis Cinza, da J.E", tipo: "lapis", cor: 0x6b6b6b, x: 149.5, z: -77, rot: -Math.PI / 2, acessorio: "gravata" },
       verde: { nome: "Seu Lápis Verde", tipo: "lapis", cor: 0x4cae5a, casa: 4, acessorio: "chapeu" },
@@ -268,21 +271,21 @@ export const MISSOES = [
       { tipo: "escolherCarro", de: "vendedor", fala: "O Seu Lápis Cinza entregou a chave: o carro é seu! Cuide bem dele. Entre no carro e saia pelo portão!", voz: "cid-je-chave" },
       { tipo: "levarVeiculo", veiculos: "escolhido", carga: { nome: "carro novo", emoji: "🔑" }, ate: "verde", portao: [150, -82.5], falaPortao: "Boa viagem! Leve o carro novo até a casa verde: o Seu Lápis Verde quer ver!", vozPortao: "cid-je-portao" },
     ],
-    fim: "Uau, que carro lindo! Parabéns, Rabisco! Vamos agradecer a Deus por esse presente!",
+    fim: "Uau, que carro lindo! Parabéns! Vamos agradecer a Deus por esse presente!",
+    fimNome: "Uau, que carro lindo! Parabéns, {nome}! Vamos agradecer a Deus por esse presente!",
   },
   {
     // Kids I: Diretora Carina (missão própria a fazer; por enquanto ela fica na porta, veja PESSOAS_PORTA)
     // Crescente Contabilidade: a Diretora Sabrina (só da Educarte Kids II) pede na porta da escola, a contadora Elaine entrega o alvará novo
-    // (vai na mão do Rabisco) e a diretora recebe. pedidoNome/agradece: falas emendadas com o nome da criança
-    // ("Alice" + "o alvará da escola venceu!..."); sem nome no banco, as falas neutras (cid-alvara, cid-alvara-obrigada).
+    // (vai na mão do Rabisco) e a diretora recebe. O pedido é para o Rabisco ir (nada de nome); agradece: fala emendada
+    // com o nome da criança no fim ("Alice"); sem nome no banco, a fala neutra (cid-alvara-obrigada).
     id: "alvara", titulo: "Alvará da Escola", icone: "📜", tipo: "cidadania", parceiro: "crescente-contabilidade",
-    voz: { pedido: "cid-alvara", pedidoNome: "cid-alvara-pos", fim: "cid-alvara-ok" },
+    voz: { fim: "cid-alvara-ok" },
     npcs: {
       // boneco da Diretora Sabrina de verdade (pessoas.js): recebe o alvará nas mãos e comemora
       diretora: { nome: "Diretora Sabrina", tipo: "pessoa", pessoa: "sabrina", escola: [-4.5, 1.5], unidade: "kids2" },
     },
-    pedido: "Oi! O alvará da escola venceu! Vá até a Crescente Contabilidade e fale com a contadora Elaine para buscar o alvará novo.",
-    pedidoComNome: "{nome}, o alvará da escola venceu! Vá até a Crescente Contabilidade e fale com a contadora Elaine para buscar o alvará novo.",
+    pedido: "Oi, Rabisco! O alvará da escola venceu! Vá até a Crescente Contabilidade e fale com a contadora Elaine para buscar o alvará novo.",
     etapas: [
       { tipo: "evento", evento: "alvara", lugar: "parceiro-crescente-contabilidade", texto: "Vá até a Crescente Contabilidade e fale com a contadora Elaine", item: { id: "alvara", emoji: "📜", nome: "alvará", objeto: "alvara" } },
       { tipo: "levar", ate: "diretora", icone: "📜" },
@@ -310,6 +313,7 @@ export const MISSOES = [
     pedido: "Oi, Rabisco! Vamos orar juntos o Pai Nosso? Venha para o tapete azul na porta da igreja. Eu falo uma frase e você repete comigo, bem devagarinho.",
     etapas: [{ tipo: "orar", tapete: [0, -19.2], olhar: Math.PI, ate: "tio" }],
     fim: "Amém! Deus ouve a nossa oração, a de cada criança.",
+    fimNome: "Amém, {nome}! Deus ouve a nossa oração, a de cada criança.",
     verso: { texto: "Jesus ensinou os amigos a conversar com Deus, chamando Deus de Pai.", ref: "baseado em Mateus 6.9-13" },
   },
 ];

@@ -548,6 +548,7 @@ with open(os.path.join(os.path.dirname(__file__), "..", "jogos", "rabiscopolis",
     _rp = json.load(_f)
 falas.update(_rp["pt"])
 falas_en.update(_rp.get("en", {}))
+RITMO_FALA["rp-pai-intro-pos"] = "-15%"  # "Alice" + "vamos orar juntos..." no mesmo ritmo calmo da oração
 # <<< FIM DO BLOCO Rabiscolândia <<<
 
 # >>> BLOCO Rádio (src/radio) — vinhetas do rádio gospel do carro, chaves radio-* >>>
