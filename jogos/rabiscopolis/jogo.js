@@ -606,7 +606,6 @@ function entrar(v) {
   dentro = v;
   j.vel.set(0, 0, 0);
   v.g.add(rabisco.grupo); const a = v.g.userData.motorista; rabisco.grupo.position.set(a.x, a.y - 2.0 * rabisco.escala, a.z); rabisco.grupo.rotation.set(0, 0, 0);
-  if (v.g.userData.cima) v.g.userData.cima.visible = false; // ônibus: janelas e teto somem para ver o Rabisco dirigindo
   v.g.userData.aoEntrar?.(rabisco); // moto: põe o capacete
   v.g.userData.seta.visible = false;
   sons.pisao();
@@ -638,7 +637,6 @@ function sair() {
   radioUI?.sairDoCarro(); avisoRadio?.esconder();
   toque?.especial(null);
   cena.add(rabisco.grupo); rabisco.grupo.visible = true;
-  if (v.g.userData.cima) v.g.userData.cima.visible = true;
   v.g.userData.aoSair?.(rabisco); // moto: tira o capacete
   j.pos.set(v.pos.x + ox, v.tipo === "heli" ? Math.max(0.07, v.alt) : 0.07, v.pos.z + oz); j.vel.set(0, 0, 0); j.dir = v.ang;
   rabisco.grupo.position.copy(j.pos); rabisco.grupo.rotation.set(0, j.dir, 0);
@@ -785,7 +783,7 @@ function posicionarCamera(k, dt, andando = false) {
   }
   const P = dentro?.tipo === "onibus" ? _pOnibus.set(dentro.pos.x + Math.sin(dentro.ang) * 2.6, dentro.pos.y, dentro.pos.z + Math.cos(dentro.ang) * 2.6) : dentro ? dentro.pos : dois ? _pDois.set(dois.x, dois.y, dois.z) : j.pos;
   const afastar = !dentro && dois ? dois.afastar : dentro && j2?.seguindo ? 2.5 : 0;
-  camera.posicionar({ P, ref: dentro ? dentro.ang : j.dir, dirigindo: Boolean(dentro), andando, giro, arrasto, onibus: dentro?.tipo === "onibus", heli: dentro?.tipo === "heli", afastar }, k, dt);
+  camera.posicionar({ P, ref: dentro ? dentro.ang : j.dir, dirigindo: Boolean(dentro), andando, giro, arrasto, onibus: ["onibus", "ambulancia", "sorvete"].includes(dentro?.tipo), comp: dentro?.comp ?? 0, heli: dentro?.tipo === "heli", afastar }, k, dt);
   ceu.seguir(P.x, P.z);
   mundo.visibilidade(P.x, P.z);
 }
