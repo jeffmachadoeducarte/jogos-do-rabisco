@@ -155,7 +155,8 @@ export function rodaGigante() {
     for (const m of [balde, teto, fundo, colunas]) m.instanceMatrix.needsUpdate = true;
   }
   girar(0);
-  Object.assign(S, { aro, girar, pivo, get giro() { return giro; }, piso: -3.14 }); // piso: altura do chão da cabine abaixo do pivô
+  Object.assign(S, { aro, girar, pivo, piso: -3.14 }); // piso: altura do chão da cabine abaixo do pivô
+  Object.defineProperty(S, "giro", { get: () => giro }); // quanto o aro já girou (rad)
   return S;
 }
 

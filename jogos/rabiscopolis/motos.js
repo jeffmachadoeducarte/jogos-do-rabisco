@@ -150,7 +150,7 @@ export function posarPiloto(rb, v) {
   for (const [p, s] of [[rb.pernaE, 1], [rb.pernaD, -1]]) { p.quadril.rotation.set(-0.75, 0, s * 0.22); p.joelho.rotation.x = 1.35; }
   for (const [b, s] of [[rb.bracoE, 1], [rb.bracoD, -1]]) { b.ombro.rotation.set(-1.78, 0, s * 0.36); b.cotovelo.rotation.x = -0.05; }
 }
-function soltarPose(rb) {
+export function soltarPose(rb) {
   rb.tronco.rotation.z = 0;
   for (const p of [rb.pernaE, rb.pernaD]) p.quadril.rotation.z = 0;
 }

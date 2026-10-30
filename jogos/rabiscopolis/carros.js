@@ -314,6 +314,65 @@ export function barquinho() {
   Object.assign(g.userData, { rodas: [], seta, volante: null, motorista: new THREE.Vector3(0.4, 0.68, -0.25), carona: new THREE.Vector3(-0.4, 0.68, -0.25), especial: "buzina", barco: true });
   return g;
 }
+// esteira de espuma atrás dos barcos do mar (aparece com a velocidade: veiculos.js estica pela velocidade)
+function esteira(largura, z) {
+  const forma = new THREE.Shape([new THREE.Vector2(-largura / 2, 0), new THREE.Vector2(largura / 2, 0), new THREE.Vector2(largura * 1.3, -4), new THREE.Vector2(-largura * 1.3, -4)]);
+  const geo = new THREE.ShapeGeometry(forma); geo.rotateX(Math.PI / 2); // o V vai para trás (z negativo)
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }));
+  m.position.set(0, 0.08, z); m.userData.dinamico = true; m.renderOrder = 2;
+  return m;
+}
+// jet ski (só no mar): casco rosa e branco, banco comprido (o Rabisco senta de pernas abertas, como na moto, e um amigo
+// cabe atrás), guidão e um bico pontudo na frente
+export function jetSki(cor = 0xec2e8c) {
+  const g = new THREE.Group();
+  const casco = new THREE.Shape([new THREE.Vector2(-1.35, 0.1), new THREE.Vector2(1.0, 0.1), new THREE.Vector2(1.55, 0.45), new THREE.Vector2(1.2, 0.7), new THREE.Vector2(-1.3, 0.7)]);
+  const geo = new THREE.ExtrudeGeometry(casco, { depth: 0.8, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 3, curveSegments: 6 });
+  geo.translate(0, 0, -0.4); geo.rotateY(-Math.PI / 2);
+  g.add(malha(geo, mat(0xffffff), { contorno: 0.05 }));
+  const faixa = caixaRedonda(1.14, 0.18, 2.5, mat(cor), { raio: 0.08, contorno: 0.03 }); faixa.position.set(0, 0.55, -0.05); g.add(faixa);
+  const capo = malha(new THREE.SphereGeometry(0.55, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(cor), { contorno: 0.04 }); capo.scale.set(1, 0.6, 1.4); capo.position.set(0, 0.82, 0.75); g.add(capo);
+  const banco = caixaRedonda(0.5, 0.22, 1.35, mat(0x2f3440), { raio: 0.1, contorno: 0.03 }); banco.position.set(0, 0.9, -0.5); g.add(banco);
+  const coluna = malha(new THREE.CylinderGeometry(0.06, 0.08, 0.45, 8), mat(0x2f3440), { contorno: 0.02 }); coluna.position.set(0, 1.02, 0.42); coluna.rotation.x = -0.4; g.add(coluna);
+  const guidao = malha(new THREE.CylinderGeometry(0.035, 0.035, 0.8, 8), mat(0x262626), { contorno: 0.02 }); guidao.rotation.z = Math.PI / 2; guidao.position.set(0, 1.18, 0.5); g.add(guidao);
+  for (const s of [-1, 1]) { const m = malha(new THREE.CylinderGeometry(0.05, 0.05, 0.16, 8), mat(cor)); m.rotation.z = Math.PI / 2; m.position.set(s * 0.42, 1.18, 0.5); g.add(m); }
+  const parabrisa = malha(new THREE.PlaneGeometry(0.6, 0.3), vidro); parabrisa.position.set(0, 1.12, 0.78); parabrisa.rotation.x = -0.6; g.add(parabrisa);
+  for (const s of [-1, 1]) { const p = caixaRedonda(0.18, 0.08, 0.7, mat(0x2f3440), { raio: 0.03 }); p.position.set(s * 0.52, 0.62, -0.45); g.add(p); } // apoio dos pés
+  const seta = seta3D(2.6); g.add(seta);
+  const espuma = esteira(0.9, -1.4); g.add(espuma);
+  mesclar(g);
+  Object.assign(g.userData, { rodas: [], seta, volante: null, motorista: new THREE.Vector3(0, 0.98, -0.3), carona: new THREE.Vector3(0, 0.98, -0.95), especial: "buzina", barco: true, esteira: espuma, jetski: true });
+  return g;
+}
+// lancha (só no mar): casco branco com faixa azul, para-brisa, banco do piloto com volante (o Rabisco senta lá dentro,
+// do mesmo tamanho de sempre) e banco de trás para os amigos
+export function lancha(cor = 0x2f6fc0) {
+  const g = new THREE.Group();
+  const casco = new THREE.Shape([new THREE.Vector2(-3.0, 0.15), new THREE.Vector2(2.0, 0.15), new THREE.Vector2(3.25, 0.7), new THREE.Vector2(3.1, 1.0), new THREE.Vector2(-3.0, 1.0)]);
+  const geo = new THREE.ExtrudeGeometry(casco, { depth: 2.2, bevelEnabled: true, bevelThickness: 0.18, bevelSize: 0.18, bevelSegments: 3, curveSegments: 6 });
+  geo.translate(0, 0, -1.1); geo.rotateY(-Math.PI / 2);
+  g.add(malha(geo, mat(0xffffff), { contorno: 0.06 }));
+  for (const s of [-1, 1]) { const f = caixa(0.06, 0.22, 5.6, mat(cor), { sombra: false }); f.position.set(s * 1.29, 0.62, 0.05); g.add(f); }
+  // convés (assoalho) mais baixo que a borda: o Rabisco fica DENTRO
+  const piso = caixa(2.0, 0.08, 4.2, mat(0xc98a4b), { sombra: false }); piso.position.set(0, 0.62, -0.6); g.add(piso);
+  const proa = malha(new THREE.ConeGeometry(1.15, 1.6, 4), mat(cor), { contorno: 0.05 }); proa.rotation.set(Math.PI / 2, Math.PI / 4, 0); proa.scale.set(1, 1, 0.35); proa.position.set(0, 1.08, 2.4); g.add(proa);
+  // painel, para-brisa e bancos
+  const painel = caixaRedonda(2.0, 0.55, 0.5, mat(0xf4f4f4), { raio: 0.12, contorno: 0.04 }); painel.position.set(0, 1.15, 1.15); g.add(painel);
+  const parabrisa = malha(new THREE.PlaneGeometry(2.0, 0.6), vidro); parabrisa.position.set(0, 1.62, 1.32); parabrisa.rotation.x = -0.45; g.add(parabrisa);
+  for (const x of [0.48, -0.48]) {
+    const assento = caixaRedonda(0.7, 0.3, 0.65, mat(0xffffff), { raio: 0.12, contorno: 0.03 }); assento.position.set(x, 0.86, 0.15); g.add(assento);
+    const encosto = caixaRedonda(0.7, 0.6, 0.2, mat(cor), { raio: 0.1, contorno: 0.03 }); encosto.position.set(x, 1.25, -0.2); g.add(encosto);
+  }
+  const atras = caixaRedonda(2.0, 0.35, 0.8, mat(0xffffff), { raio: 0.12, contorno: 0.03 }); atras.position.set(0, 0.85, -2.2); g.add(atras);
+  const motor = caixaRedonda(0.6, 0.8, 0.5, mat(0x2f3440), { raio: 0.12, contorno: 0.04 }); motor.position.set(0, 0.85, -3.25); g.add(motor);
+  const boia = malha(new THREE.TorusGeometry(0.32, 0.11, 8, 16), mat(0xff5a3c), { contorno: 0.03 }); boia.position.set(-1.25, 1.15, -1.3); boia.rotation.y = Math.PI / 2; g.add(boia);
+  const volante = malha(new THREE.TorusGeometry(0.22, 0.045, 8, 18), mat(0x262626)); volante.position.set(0.48, 1.45, 0.82); volante.rotation.x = -1.0; volante.userData.dinamico = true; g.add(volante);
+  const seta = seta3D(3.4); g.add(seta);
+  const espuma = esteira(2.0, -3.3); g.add(espuma);
+  mesclar(g);
+  Object.assign(g.userData, { rodas: [], seta, volante, motorista: new THREE.Vector3(0.48, 1.12, 0.1), carona: new THREE.Vector3(-0.48, 1.12, 0.1), especial: "buzina", barco: true, esteira: espuma });
+  return g;
+}
 // trator da Fazendinha: rodas grandes atrás, capô verde e a buzina de "mu"
 export function trator() {
   const g = new THREE.Group();

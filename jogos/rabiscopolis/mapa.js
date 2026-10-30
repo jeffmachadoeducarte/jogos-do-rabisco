@@ -293,6 +293,9 @@ export const VAGAS = [
   { x: LAGO2.x, z: LAGO2.z - LAGO2.r + 3, ang: 0, tipo: "barco" },
   { x: -75, z: 108, ang: Math.PI, tipo: "trator" },                  // trator da Fazendinha
   { x: 202.5, z: 57.3, ang: Math.PI / 2, tipo: "moto", cor: 0xc8141c }, // moto esportiva na calçada dos Correios
+  // Mar Azul: jet ski e lancha encostados no píer da orla (só andam no mar)
+  { x: 33.6, z: 284, ang: 0, tipo: "jetski", cor: 0xec2e8c },
+  { x: 21.5, z: 289, ang: 0, tipo: "lancha", cor: 0x2f6fc0 },
 ];
 export const LARGADA = { x: 0, z: 33, dir: Math.PI }; // na frente da praça, olhando para a igreja
 

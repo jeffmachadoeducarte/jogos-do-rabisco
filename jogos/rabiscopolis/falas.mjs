@@ -57,6 +57,10 @@ export const FALAS_PT = {
   "rp-rise-entrar": "Bem-vindo à Academia Rise Up! Aqui a gente cuida do corpo que Deus nos deu.",
   "rp-corrida-pe": "A corrida é de carro! Chame um carro no Rabifone e passe por baixo da bandeira.",
   "rp-remedio-heli": "Que bom que você veio! Mas a doutora pediu para vir de helicóptero: pouse aqui pertinho.",
+  // Mar Azul e Ilha da Alegria: jet ski, lancha e roda-gigante
+  "rp-mar": "Partiu, Rabisco! Para a frente acelera, para trás freia. Encoste na areia, no píer ou na ilha para descer.",
+  "rp-roda": "Segure firme, Rabisco! Lá de cima dá para ver a cidade inteira.",
+  "rp-roda-fim": "Que passeio lindo! Deus fez um mundo muito bonito.",
   "rp-livro-2": "Os bichos da arca. O leão, a girafa, o elefante e o macaquinho entraram na arca de dois em dois. Noé cuidou de todos até a chuva passar.",
 };
 // quadros de versículo da casa (paráfrases para crianças, com a referência em que se baseiam)
@@ -71,6 +75,12 @@ for (const m of MISSOES) {
   if (!m.voz?.pedido) FALAS_PT[`rp-m-${m.id}-pedido`] = m.pedido;
   if (!m.voz?.fim) FALAS_PT[`rp-m-${m.id}-fim`] = m.fim;
   if (m.verso) FALAS_PT[`rp-m-${m.id}-verso`] = `${m.verso.texto} ${m.verso.ref.replace(/^baseado/, "Baseado")}.`;
+  // falas das etapas com voz própria (rp-*): o texto que aparece no balão é o mesmo que a voz fala
+  const PARES = [["fala", "voz"], ["falaTodos", "vozTodos"], ["carregou", "vozCarregou"], ["aPe", "vozAPe"], ["errado", "vozErrado"], ["falaCarona", "vozCarona"], ["achou", "vozAchou"], ["falaPortao", "vozPortao"], ["erro", "vozErro"]];
+  for (const E of m.etapas) {
+    for (const [txt, voz] of PARES) if (E[txt] && E[voz]?.startsWith("rp-")) FALAS_PT[E[voz]] = E[txt];
+    for (const q of E.pistas ?? []) if (q.texto && q.voz?.startsWith("rp-")) FALAS_PT[q.voz] = q.texto;
+  }
 }
 writeFileSync(new URL("./falas.json", import.meta.url), JSON.stringify({ pt: FALAS_PT }, null, 1) + "\n");
 console.log(`${Object.keys(FALAS_PT).length} falas em português`);

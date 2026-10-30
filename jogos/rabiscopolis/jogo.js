@@ -404,6 +404,7 @@ function atualizarMoradores(dt) {
   }
   if (vovo) {
     const d = Math.hypot(vovo.grupo.position.x - j.pos.x, vovo.grupo.position.z - j.pos.z);
+    vovo.grupo.visible = d < mundo.alcance + 10; // longe (na neblina) nem desenha: com a cidade maior isso pesava
     if (d < 4 && !vovo.acenou) { vovo.acenou = true; vovo.acenar(2.5); }
     if (d > 8) vovo.acenou = false;
     vovo.atualizar(dt, { vel: 0 });
@@ -613,7 +614,7 @@ function entrar(v) {
   camera.st.manual = 0;
   toque?.modo(v.tipo === "heli" ? "heli" : "carro");
   // rádio: carros, vans, caminhão e ônibus (não na bicicleta, patinete, barquinho nem helicóptero)
-  if (!["heli", "bici", "patinete", "barco"].includes(v.tipo)) { garantirRadio(); radioUI.entrarNoCarro(); } // dentro do gesto da criança (ação/toque)
+  if (!["heli", "bici", "patinete", "barco", "jetski", "lancha"].includes(v.tipo)) { garantirRadio(); radioUI.entrarNoCarro(); } // dentro do gesto da criança (ação/toque)
   toque?.especial(ESPECIAL[v.g.userData.especial] ?? null);
   j2?.entrar(v); // o jogador 2 vai de carona (ou correndo atrás, se não tem banco)
   if (v.tipo === "heli") {
@@ -622,6 +623,7 @@ function entrar(v) {
     dizer("Rabiscolândia", toqueTela ? "Hélices girando! ▲ sobe, ▼ desce, ➤ voa para a frente. Para sair, pouse no chão." : comControle ? "Hélices girando! A sobe, LB desce, alavanca para a frente voa. Para sair, pouse no chão." : "Hélices girando! Espaço sobe, Shift desce, W voa para a frente. Para sair, pouse no chão.", 4600);
     return;
   }
+  if ((v.tipo === "jetski" || v.tipo === "lancha") && !entrar.falouMar) { entrar.falouMar = true; falar("rp-mar"); dizer(v.tipo === "jetski" ? "Jet ski" : "Lancha", "Partiu, Rabisco! Para a frente acelera, para trás freia. Encoste na areia, no píer ou na ilha para descer.", 4200); return; }
   if (!entrar.falou) { entrar.falou = true; falar(v.tipo === "onibus" ? "rp-onibus" : "rp-carro"); dizer("Rabiscolândia", "Cinto afivelado! Para a frente acelera, para trás freia. Aperte a ação de novo para sair.", 4200); }
 }
 function sair() {
@@ -648,6 +650,41 @@ function sair() {
   sons.pisao();
   toque?.modo("pe");
 }
+// ------------------------------------------------------------------ Roda-gigante (Ilha da Alegria)
+// O Rabisco senta na cabine que está embaixo (do tamanho de sempre) e dá uma volta inteira; a câmera mostra a cabine
+// subindo e a cidade lá de baixo. Perto do chão dá para descer antes; no fim ele desce sozinho na plataforma.
+let roda = null; // { i, ultimo, feito, podeDescer }
+function subirRoda() {
+  const S = mundo.anima.roda; if (!S || dentro || roda) return;
+  let i = 0; for (let k = 1; k < RODA.cabines; k++) if (S.pivo(k).y < S.pivo(i).y) i = k;
+  roda = { i, ultimo: S.giro, feito: 0, podeDescer: false };
+  j.vel.set(0, 0, 0); teclas.clear(); toque?.zerar();
+  sons.pisao(); falar("rp-roda");
+  dizer("Roda-Gigante", "Segure firme, Rabisco! Lá de cima dá para ver a cidade inteira.", 3800);
+}
+function descerRoda(fim = false) {
+  if (!roda) return;
+  roda = null;
+  camera.st.vista = null;
+  j.pos.set(RODA.x, 0.07, RODA.z - 6.5); j.vel.set(0, 0, 0); j.dir = Math.PI;
+  rabisco.grupo.position.copy(j.pos); rabisco.grupo.rotation.set(0, j.dir, 0);
+  sons.pisao();
+  if (fim) { jogo.confete?.(); sons.vitoria?.(); falar("rp-roda-fim"); dizer("Roda-Gigante", "Que passeio lindo! Deus fez um mundo muito bonito.", 3600); }
+  missoes?.evento?.("roda");
+}
+function seguirRoda(dt) {
+  const S = mundo.anima.roda, p = S.pivo(roda.i);
+  roda.feito += Math.max(0, S.giro - roda.ultimo); roda.ultimo = S.giro;
+  const x = RODA.x + p.x, chao = p.y + S.piso, z = RODA.z + p.z;
+  j.pos.set(x, chao + 0.07, z); j.dir = Math.PI;
+  rabisco.grupo.position.set(x, chao + 0.49 - 2.0 * rabisco.escala, z); rabisco.grupo.rotation.set(0, Math.PI, 0);
+  const alto = p.y > RODA.h + RODA.r * 0.55;
+  rabisco.atualizar(dt, { modo: alto ? "comemorarSentado" : "dirigir", virar: 0 });
+  roda.podeDescer = roda.feito > 1 && p.y < RODA.h - RODA.r * 0.85;
+  // câmera: um pouco ao lado e acima da cabine, olhando para o Rabisco (com a cidade atrás)
+  camera.st.vista = { pos: [x + 5.5, chao + 3.6, z - 7], alvo: [x, chao + 1.1, z] };
+  if (roda.feito >= Math.PI * 2) descerRoda(true);
+}
 // botão especial de cada veículo (pulo/A/Espaço no teclado e controle; botão próprio no toque)
 const ESPECIAL = { buzina: "📯", sirene: "🚨", musica: "🎵", agua: "💧" };
 function acionarEspecial(v) {
@@ -673,6 +710,20 @@ function chamarVeiculo(tipo, cor) {
     animarVeiculo(vb, 0, 0); cena.add(vb.g, vb.parado); veiculos.push(vb); garagem = vb;
     dizer("Rabifone", "O barquinho chegou na beira do lago! Chegue perto e aperte a ação.", 3000);
     return vb;
+  }
+  if (tipo === "jetski" || tipo === "lancha") {
+    // jet ski e lancha: aparecem na água mais perto (perto da areia, do píer ou da ilha)
+    let ponto = null;
+    for (let r = 4; r < 30 && !ponto; r += 1) for (let a = 0; a < 6.28 && !ponto; a += 0.26) {
+      const x = j.pos.x + Math.sin(a) * r, z = j.pos.z + Math.cos(a) * r;
+      if (!fis.veiculoBate(v, x, z, 0, veiculos.map((o) => ({ x: o.pos.x, z: o.pos.z, raio: o.comp })))) ponto = [x, z];
+    }
+    if (!ponto) { dizer("Rabifone", "O jet ski e a lancha andam no mar: vá até a Praia do Mar Azul, o píer ou a ilha!"); return null; }
+    v.pos.set(ponto[0], 0.03, ponto[1]); v.ang = 0;
+    animarVeiculo(v, 0, 0); cena.add(v.g, v.parado); veiculos.push(v); garagem = v;
+    sons.moeda?.(); falar("rp-garagem");
+    dizer("Rabifone", `${tipo === "jetski" ? "O jet ski" : "A lancha"} chegou na beira da água! Chegue perto e aperte a ação.`, 3200);
+    return v;
   }
   const R = tipo === "onibus" ? 4.6 : tipo === "heli" ? 5 : tipo === "bombeiro" ? 5 : 3.4, RMAX = tipo === "heli" ? 9.5 : tipo === "bombeiro" ? 8 : 5.9;
   let ponto = null;
@@ -736,11 +787,13 @@ function regras() {
     if (Math.hypot(emCasa.int.porta[0] - j.pos.x, emCasa.int.porta[1] - j.pos.z) < 1.6) contexto = { rotulo: "🚪 Sair de casa", fazer: () => sairCasa() };
     else if (p) contexto = { rotulo: p.escolha ? "🛋️ Trocar" : "🛋️ Decorar", fazer: () => abrirDeco(p) };
   } else if (dentro) contexto = { rotulo: "🚪 Sair", fazer: sair };
+  else if (roda) contexto = roda.podeDescer ? { rotulo: "🎡 Descer", fazer: () => descerRoda() } : { rotulo: "🎡 Passeando…", fazer: () => {} };
   else if ((contexto = missoes?.contexto() ?? null)) { /* missão: pedir, pegar, entregar, plantar */ }
+  else if (Math.hypot(RODA.x - j.pos.x, RODA.z - 6.5 - j.pos.z) < 3.4) contexto = { rotulo: "🎡 Andar na roda-gigante", fazer: () => subirRoda() };
   else {
     const v = pertoDeVeiculo();
     const lp = mundo.lugares.find((l) => SALAS[l.id] && Math.hypot(l.x - j.pos.x, l.z - j.pos.z) < 3.2);
-    const ROT = { onibus: "🚌 Dirigir", heli: "🚁 Pilotar", bici: "🚲 Pedalar", moto: "🏍️ Pilotar", patinete: "🛴 Andar", barco: "🚣 Remar", trator: "🚜 Dirigir", bombeiro: "🚒 Dirigir", ambulancia: "🚑 Dirigir", sorvete: "🍦 Dirigir" };
+    const ROT = { onibus: "🚌 Dirigir", heli: "🚁 Pilotar", bici: "🚲 Pedalar", moto: "🏍️ Pilotar", patinete: "🛴 Andar", barco: "🚣 Remar", jetski: "🌊 Pilotar", lancha: "🚤 Pilotar", trator: "🚜 Dirigir", bombeiro: "🚒 Dirigir", ambulancia: "🚑 Dirigir", sorvete: "🍦 Dirigir" };
     if (v) contexto = { rotulo: ROT[v.tipo] ?? "🚗 Entrar", fazer: () => entrar(v) };
     else if (lp) contexto = { rotulo: `🚪 Entrar: ${SALAS[lp.id].nome}`, fazer: () => entrarLugar(lp.id) };
     else {
@@ -846,6 +899,9 @@ function passo(dt, ultimo) {
         dentro.g.userData.posar?.(rabisco, dentro); // moto: inclinado para a frente, mãos no guidão, pés nas pedaleiras
       }
       andando = Math.abs(dentro.vel) > 1;
+    } else if (roda) {
+      pad.puloNovo = false; if (toque) toque.puloNovo = false;
+      seguirRoda(dt);
     } else if (trava) {
       pad.puloNovo = false; if (toque) toque.puloNovo = false;
       j.pos.set(trava.x, 0.07, trava.z); j.vel.set(0, 0, 0); j.dir = trava.dir;
@@ -1108,6 +1164,7 @@ if (params.has("teste")) window.teste = {
   get corParedes() { const c = mundo.casas.find((k) => k.lote.numero === salvo.casa); return c?.grupo.userData.paredes.userData.cor; },
   get radio() { return radio; }, get radioUI() { return radioUI; }, get avisoRadio() { return avisoRadio; }, falar: (k) => falar(k),
   get missoes() { return missoes; }, get patioJE() { return patioJE; },
+  get roda() { return roda ? { ...roda, y: j.pos.y } : null; }, subirRoda: () => subirRoda(), descerRoda: () => descerRoda(),
   get trava() { return trava ? { pose: trava.pose ?? null, t: trava.t } : null; },
   get oracao() { return oracao ? { i: oracao.i, total: ORACAO.length, painel: !painelOracao.hidden, texto: painelOracao.textContent } : null; },
   proximaFrase: () => proximaFrase(),

@@ -1,5 +1,6 @@
 // Rabiscolândia: as missões (dados puros, sem three.js: o teste de conteúdo lê este arquivo no node).
-// 8 bíblicas (com versículo em paráfrase para crianças e "baseado em ...") e 4 de cidadania. Em TODAS tem alguém
+// Bíblicas (com versículo em paráfrase para crianças e "baseado em ...") e de cidadania, espalhadas pela cidade de
+// antes, pelos bairros novos e pelo Mar Azul (essas só se fazem de jet ski ou de lancha). Em TODAS tem alguém
 // esperando no destino, visível, que reage quando a criança chega. Sem tempo, sem perder: dá para largar e voltar.
 //
 // Etapas (em ordem):
@@ -311,6 +312,68 @@ export const MISSOES = [
     etapas: [{ tipo: "orar", tapete: [0, -19.2], olhar: Math.PI, ate: "tio" }],
     fim: "Amém! Deus ouve a nossa oração, a de cada criança.",
     verso: { texto: "Jesus ensinou os amigos a conversar com Deus, chamando Deus de Pai.", ref: "baseado em Mateus 6.9-13" },
+  },
+  // ---- Mar Azul e Ilha da Alegria (só se chega de jet ski ou de lancha; quem fica na água espera abraçado na boia)
+  {
+    id: "resgateBoia", titulo: "Resgate na água", icone: "🛟", tipo: "cidadania",
+    npcs: {
+      salvavidas: { nome: "Salva-Vidas Lápis Vermelho", tipo: "lapis", cor: 0xe63946, x: -18, z: 265, rot: Math.PI, acessorio: "bone" },
+      nadador: { nome: "Clipe Azul", tipo: "clipe", cor: 0x3d9af0, x: -62, z: 304, naAgua: true },
+    },
+    pedido: "Rabisco, o Clipe Azul nadou para longe, cansou e agora está boiando abraçado na boia! Pegue a lancha ou o jet ski no píer e traga ele de volta para a areia.",
+    etapas: [{ tipo: "dirigir", passageiro: "nadador", ate: "salvavidas", comoIr: "de lancha ou jet ski", falaCarona: "Ufa! Obrigado, Rabisco! Já estou sentadinho. Vamos para a areia!", vozCarona: "rp-m-resgateBoia-carona", semBanco: "Aqui não tem lugar para mim! Venha de lancha ou de jet ski." }],
+    fim: "Todo mundo a salvo! No mar, a gente nada sempre pertinho de um adulto e com a boia.",
+  },
+  {
+    id: "piqueniqueIlha", titulo: "Piquenique na ilha", icone: "🧺", tipo: "biblica",
+    npcs: { vovo: { nome: "Vovó Clipe", tipo: "clipe", cor: 0xff9fc8, x: 28, z: 292, rot: -Math.PI / 2, acessorio: "oculos" }, turma: { nome: "Turma da ilha", tipo: "piquenique", x: -5.5, z: 344 } },
+    pedido: "Rabisco, a turma está esperando na Ilha da Alegria para um piquenique! A cesta é grande: leve de lancha, que ela está aqui do lado do píer.",
+    etapas: [{ tipo: "levarVeiculo", de: "vovo", carga: { nome: "cesta de piquenique", emoji: "🧺" }, veiculos: ["lancha"], ate: "turma", comoIr: "de lancha",
+      carregou: "A cesta está na lancha! Agora, para a ilha.", vozCarregou: "rp-m-piqueniqueIlha-carregou", aPe: "A cesta é grande! Venha de lancha: ela fica aqui do lado do píer.", vozAPe: "rp-m-piqueniqueIlha-ape",
+      errado: "Aqui a cesta não cabe! Venha de lancha.", vozErrado: "rp-m-piqueniqueIlha-errado" }],
+    fim: "Que piquenique gostoso! Sentar juntinhos e repartir deixa todo mundo feliz.",
+    verso: { texto: "Os amigos de Jesus comiam juntos, com alegria e com o coração simples.", ref: "baseado em Atos 2.46" },
+  },
+  {
+    id: "farol", titulo: "A luz do farol", icone: "💡", tipo: "biblica",
+    npcs: { giz: { nome: "Seu Giz Azul", tipo: "giz", cor: 0x2f8fe8, x: 61, z: 259.5, rot: Math.PI, acessorio: "chapeu" }, faroleira: { nome: "Faroleira Lápis Amarela", tipo: "lapis", cor: 0xffcc1f, x: 14, z: 389, rot: 0.6, acessorio: "bone" } },
+    pedido: "Rabisco, a luz do farol da ilha queimou! Pegue a lâmpada nova aqui no quiosque e leve de jet ski para a Faroleira Lápis Amarela, lá na ilha.",
+    etapas: [
+      { tipo: "pegar", itens: [{ id: "lampada", nome: "lâmpada nova", emoji: "💡", x: 74, z: 260.5 }] },
+      { tipo: "levarVeiculo", carga: { nome: "lâmpada nova", emoji: "💡" }, veiculos: ["jetski"], ate: "faroleira", comoIr: "de jet ski", aPe: "Oi, Rabisco! A lâmpada chega mais rapidinho de jet ski: volte e venha com ele.", vozAPe: "rp-m-farol-ape" },
+    ],
+    fim: "A luz do farol acendeu! Agora os barquinhos encontram o caminho, até de noite.",
+    verso: { texto: "Jesus disse: vocês são a luz do mundo. Deixe a sua luz brilhar fazendo o bem.", ref: "baseado em Mateus 5.14-16" },
+  },
+  {
+    id: "regata", titulo: "Regata das boias", icone: "🏁", tipo: "cidadania",
+    npcs: { capita: { nome: "Capitã Régua", tipo: "regua", x: 22.5, z: 262.5, rot: Math.PI, acessorio: "chapeu" } },
+    pedido: "Oi, Rabisco! Vamos fazer uma regata no mar? Pegue o jet ski no píer e passe pelas boias na ordem: 1, 2, 3, 4 e 5!",
+    etapas: [{ tipo: "bandeiras", pontos: [[46, 292, 0], [72, 338, 1], [42, 400, 0], [-46, 390, 0], [-44, 300, 1]], ate: "capita", veiculos: ["jetski"], titulo: "Regata das boias",
+      textoPe: "Pegue o jet ski no píer e vá até a boia 1", aPe: "A regata é de jet ski! Ele está encostado no píer.", vozAPe: "rp-m-regata-ape" }],
+    fim: "Que regata! Você passou por todas as boias do Mar Azul.",
+  },
+  {
+    id: "rodaGigante", titulo: "Passeio na roda-gigante", icone: "🎡", tipo: "biblica",
+    npcs: { turquesa: { nome: "Lápis Turquesa", tipo: "lapis", cor: 0x2ec4b6, x: -45, z: 257, rot: Math.PI, acessorio: "laco" }, bilheteiro: { nome: "Seu Pincel Roxo", tipo: "pincel", cor: 0x8e6cff, x: 0, z: 343.5, rot: Math.PI, acessorio: "bone" } },
+    pedido: "Rabisco, vamos passear na roda-gigante da Ilha da Alegria? Vá de lancha ou de jet ski até a ilha e fale com o Seu Pincel Roxo no píer!",
+    etapas: [
+      { tipo: "levarVeiculo", carga: { nome: "ingresso da roda-gigante", emoji: "🎟️" }, veiculos: ["lancha", "jetski"], ate: "bilheteiro", comoIr: "de lancha ou jet ski", aPe: "Oi, Rabisco! Para chegar na ilha, venha de lancha ou de jet ski.", vozAPe: "rp-m-rodaGigante-ape" },
+      { tipo: "evento", evento: "roda", lugar: "roda", texto: "Dê uma volta inteira na roda-gigante" },
+      { tipo: "voltar", ate: "bilheteiro" },
+    ],
+    fim: "Lá de cima a cidade parece um desenho! Deus fez um mundo muito bonito para a gente cuidar.",
+    verso: { texto: "Deus olhou para tudo o que tinha feito, e era muito bom!", ref: "baseado em Gênesis 1.31" },
+  },
+  {
+    id: "pesca", titulo: "A rede cheia", icone: "🎣", tipo: "biblica",
+    npcs: { pedro: { nome: "Pescador Pedro", tipo: "lapis", cor: 0x9a6232, x: 28, z: 280, rot: -Math.PI / 2, acessorio: "chapeu" }, andre: { nome: "Pescador André", tipo: "giz", cor: 0x5b8fd9, x: 4.5, z: 341.5, rot: Math.PI, acessorio: "chapeu" } },
+    pedido: "Rabisco, ficamos a noite toda no mar e não pescamos nada! Leve a rede de lancha até o meu irmão André, na ilha. Vamos jogar a rede do outro lado do barco!",
+    etapas: [{ tipo: "levarVeiculo", de: "pedro", carga: { nome: "rede de pesca", emoji: "🎣" }, veiculos: ["lancha"], ate: "andre", comoIr: "de lancha",
+      carregou: "A rede está na lancha! Agora, para a ilha.", vozCarregou: "rp-m-pesca-carregou", aPe: "A rede é grande e pesada! Venha de lancha: ela fica do lado do píer.", vozAPe: "rp-m-pesca-ape",
+      errado: "A rede não cabe aqui! Venha de lancha.", vozErrado: "rp-m-pesca-errado" }],
+    fim: "Olha quantos peixinhos! A rede encheu do jeitinho que Jesus falou.",
+    verso: { texto: "Jesus disse a Pedro para jogar a rede de novo, e ela ficou cheia de peixes!", ref: "baseado em Lucas 5.4-6" },
   },
 ];
 // palavras que não podem aparecer em nada que a criança vê ou ouve (teste rabiscopolis-conteudo.mjs)

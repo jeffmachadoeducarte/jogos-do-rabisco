@@ -425,8 +425,8 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
     await t.foto(`${FOTOS}${arq}`);
   }
   await t.ev("teste.vista(null)");
-  // ---------- D: cidade maior (5 × 5 blocos), helicóptero e as duas escolas
-  ok(await t.ev("teste.mundo.blocos.length === 25"), "cidade de 5 × 5 blocos");
+  // ---------- D: cidade maior (9 × 9 blocos de 100 m: o miolo de antes mais os bairros novos e o mar), helicóptero e as duas escolas
+  ok(await t.ev("teste.mundo.blocos.length === 81 && teste.mundo.blocosVisiveis() <= 9"), "cidade de 9 × 9 blocos (só o do Rabisco e os vizinhos aparecem)");
   // helicóptero do heliponto: sobe, voa para a frente sem atravessar prédios, desce devagar e pousa
   const hi = await t.ev("teste.veiculos.findIndex((v) => v.tipo === 'heli')");
   ok(hi >= 0, "o helicóptero está no heliponto");

@@ -4,19 +4,21 @@
 // jogos/cidade-do-rabisco/jogo.js (faixaDireita, pontoNaRota, atualizarCarros, luzDe).
 
 import { THREE, mesclar } from "./base3d.js";
-import { carro, carroFofo, onibusFofo, helicoptero, carroJE, ambulancia, vanSorvete, caminhaoBombeiro, bicicleta, patinete, barquinho, trator } from "./carros.js";
+import { carro, carroFofo, onibusFofo, helicoptero, carroJE, ambulancia, vanSorvete, caminhaoBombeiro, bicicleta, patinete, barquinho, trator, jetSki, lancha } from "./carros.js";
+import { posarPiloto, soltarPose } from "./motos.js";
 import { motoEsportiva } from "./motos.js";
 import { ROTAS } from "./mapa.js";
 
 export const CORES_CARRO = [0xec2e8c, 0x00b5f0, 0xff7a00, 0x58c43a, 0x8e6cff, 0xffcc1f];
 // veículo que o Rabisco pode dirigir: { g, tipo, pos, ang, vel, virar, giro, comp (meio comprimento), larg }
 export function criarVeiculo(tipo = "carro", cor = CORES_CARRO[0], enfeite = null) {
-  const fab = { onibus: onibusFofo, heli: helicoptero, je: carroJE, ambulancia, sorvete: vanSorvete, bombeiro: caminhaoBombeiro, bici: () => bicicleta(cor), patinete: () => patinete(cor), barco: barquinho, trator, moto: () => motoEsportiva(cor) }[tipo];
+  const fab = { onibus: onibusFofo, heli: helicoptero, je: carroJE, ambulancia, sorvete: vanSorvete, bombeiro: caminhaoBombeiro, bici: () => bicicleta(cor), patinete: () => patinete(cor), barco: barquinho, trator, moto: () => motoEsportiva(cor), jetski: () => jetSki(cor), lancha: () => lancha(cor) }[tipo];
   const g0 = fab ? fab() : carroFofo(cor);
   const g = enfeite?.(g0) ?? g0; // o enfeite pode trocar o carro (ex.: o carro novo da J.E sai igual ao do pátio)
+  if (tipo === "jetski") Object.assign(g.userData, { posar: posarPiloto, aoSair: soltarPose }); // senta como na moto (sem capacete)
   if (tipo === "heli") g.rotation.order = "YXZ"; // inclina para a frente/lados sem embolar o giro
   // meio comprimento, meia largura e velocidade máxima de cada um
-  const medidas = { onibus: [4.4, 1.5, 11], heli: [3.0, 1.9, 14], carro: [2.4, 1.2, 15], je: [2.3, 1.25, 16], ambulancia: [2.7, 1.3, 13], sorvete: [2.7, 1.3, 11], bombeiro: [3.6, 1.35, 11], bici: [0.85, 0.35, 8], patinete: [0.55, 0.3, 6], barco: [1.9, 1.3, 4.5], trator: [1.8, 1.0, 7], moto: [1.25, 0.45, 17] }[tipo] ?? [2.4, 1.2, 15];
+  const medidas = { onibus: [4.4, 1.5, 11], heli: [3.0, 1.9, 14], carro: [2.4, 1.2, 15], je: [2.3, 1.25, 16], ambulancia: [2.7, 1.3, 13], sorvete: [2.7, 1.3, 11], bombeiro: [3.6, 1.35, 11], bici: [0.85, 0.35, 8], patinete: [0.55, 0.3, 6], barco: [1.9, 1.3, 4.5], trator: [1.8, 1.0, 7], moto: [1.25, 0.45, 17], jetski: [1.45, 0.6, 16], lancha: [3.1, 1.3, 13] }[tipo] ?? [2.4, 1.2, 15];
   let parado = g.userData.fazerParado?.(); // carros da J.E: a versão parada já vem mesclada (com os materiais de verdade)
   if (!parado) {
     const ud = g.userData; g.userData = {}; // (o userData do grupo tem objetos: não entra na cópia)
@@ -52,6 +54,15 @@ export function animarVeiculo(v, dt, t) {
   }
   if (v.g.userData.seta.visible) v.g.userData.seta.position.y = (v.tipo === "onibus" ? 5.2 : v.tipo === "heli" ? 5.6 : v.tipo === "bombeiro" ? 4.0 : ["ambulancia", "sorvete"].includes(v.tipo) ? 4.2 : 3.0) + Math.sin(t * 4) * 0.2;
   if (v.tipo === "barco") { v.g.position.y = 0.05 + Math.sin(t * 2) * 0.05; v.g.rotation.z = Math.sin(t * 1.6) * 0.04; }
+  // jet ski e lancha: balançam nas ondas, levantam o bico com a velocidade, inclinam na curva e deixam espuma atrás
+  if (v.tipo === "jetski" || v.tipo === "lancha") {
+    const rapido = Math.min(1, Math.abs(v.vel) / v.vmax), jet = v.tipo === "jetski";
+    v.g.position.y = 0.02 + Math.sin(t * 2.2 + v.pos.x) * 0.05;
+    v.g.rotation.x = -rapido * (jet ? 0.08 : 0.06) + Math.sin(t * 1.7) * 0.02;
+    v.g.rotation.z = (jet ? v.virar * 0.22 * rapido : v.virar * 0.06 * rapido) + Math.sin(t * 1.3) * 0.03;
+    v.parado.position.y = v.g.position.y;
+    const e = v.g.userData.esteira; e.visible = rapido > 0.08; e.scale.set(1, 1, 0.4 + rapido * 1.6); e.material.opacity = 0.25 + rapido * 0.4;
+  }
   // sirene (ambulância e bombeiro): luzes piscando enquanto liga
   const lz = v.g.userData.luzes;
   if (lz) { const on = v.sirene > 0; if (on) v.sirene -= dt; lz.forEach((m, i) => (m.material.emissiveIntensity = on && Math.floor(t * 6 + i) % 2 ? 2.5 : 0)); }

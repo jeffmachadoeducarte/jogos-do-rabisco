@@ -92,7 +92,13 @@ function bichinho(tipo) {
 export function escolaDaIdade(idade) { return idade != null && idade <= 4 ? "kids1" : "kids2"; }
 function posicionarNaCidade(ctx) {
   const casas = ctx.casas?.() ?? [];
-  const naCasa = (o, lado = 1.6) => { const c = casas.find((k) => k.lote.numero === o.casa); if (!c) return; o.x = c.porta[0] + lado; o.z = c.porta[1] - 0.6 * c.lote.dir[1]; o.rot = c.lote.rot; };
+  // na porta da casa, um pouco para o lado (as casas dos bairros novos olham para x: aí o "lado" é em z)
+  const naCasa = (o, lado = 1.6) => {
+    const c = casas.find((k) => k.lote.numero === o.casa); if (!c) return;
+    const [dx, dz] = c.lote.dir;
+    if (dx) { o.x = c.porta[0] - 0.6 * dx; o.z = c.porta[1] + lado; } else { o.x = c.porta[0] + lado; o.z = c.porta[1] - 0.6 * dz; }
+    o.rot = c.lote.rot;
+  };
   const esc = lugar(escolaDaIdade(ctx.idade?.() ?? null));
   const escDe = (d) => (d.unidade ? lugar(d.unidade) : esc); // unidade: "kids2" fixa a escola do npc, sem olhar a idade
   for (const M of MISSOES) {
@@ -101,7 +107,7 @@ function posicionarNaCidade(ctx) {
       const e = d.escola && escDe(d);
       if (e) { d.x = e.x + d.escola[0]; d.z = e.z + d.escola[1]; d.rot = e.rot; }
     }
-    for (const E of M.etapas) for (const it of E.itens ?? []) if (it.casa != null) { naCasa(it, 0); it.z += casas.find((k) => k.lote.numero === it.casa)?.lote.dir[1] * 1.2 || 0; }
+    for (const E of M.etapas) for (const it of E.itens ?? []) if (it.casa != null) { naCasa(it, 0); const dir = casas.find((k) => k.lote.numero === it.casa)?.lote.dir ?? [0, 0]; it.x += dir[0] * 1.2; it.z += dir[1] * 1.2; }
   }
   for (const d of PESSOAS_PORTA) { const e = lugar(d.unidade); if (e) { d.x = e.x + d.escola[0]; d.z = e.z + d.escola[1]; d.rot = e.rot; } }
 }
@@ -163,9 +169,15 @@ export function criarMissoes(ctx) {
       Object.assign(n, { m, g: m.grupo, pessoa: true, casca: cascaDe(m) });
     } else {
       const m = criarMorador(d.tipo, { cor: d.cor ?? 0xec2e8c, nome: d.nome, semente: d.nome.length + 3, escala: d.escala ?? 0.78, acessorio: d.acessorio, corAcessorio: d.corAcessorio, tenis: d.tenis });
-      m.grupo.position.set(d.x, d.naArvore ? 2.45 : 0.07, d.z); m.grupo.rotation.y = d.rot ?? 0;
+      m.grupo.position.set(d.x, d.naArvore ? 2.45 : d.naAgua ? -0.55 : 0.07, d.z); m.grupo.rotation.y = d.rot ?? 0;
       grupo.add(m.grupo);
       Object.assign(n, { m, g: m.grupo });
+      if (d.naAgua) {
+        // na água (o nadador cansado do resgate): só o peito para fora, abraçado na boia laranja, balançando de leve
+        n.boia = malha(new THREE.TorusGeometry(0.42, 0.14, 8, 20), mat(0xff5a3c), { contorno: 0.03, sombra: false });
+        n.boia.rotation.x = Math.PI / 2; n.boia.position.y = 0.6 / (m.grupo.scale.y || 1); m.grupo.add(n.boia);
+        n.naAgua = true;
+      }
       if (d.acessorio === "cajado") {
         const cj = new THREE.Group(); cj.position.set(-0.62, 0, 0.1); m.grupo.add(cj);
         const haste = malha(new THREE.CylinderGeometry(0.05, 0.05, 2.1, 8), mat(0x9a6232), { contorno: 0.025, sombra: false }); haste.position.y = 1.05; cj.add(haste);
@@ -224,7 +236,8 @@ export function criarMissoes(ctx) {
   function voltarAoLugar(n) {
     if (n.fixo) return;
     if (n.g.parent !== grupo) grupo.add(n.g);
-    n.g.position.set(n.casa[0], n.dados.naArvore ? 2.45 : n.bicho ? 0.03 : 0.07, n.casa[1]); n.g.rotation.set(0, n.dados.rot ?? (n.bicho ? Math.PI : 0), 0);
+    n.g.position.set(n.casa[0], n.dados.naArvore ? 2.45 : n.dados.naAgua ? -0.55 : n.bicho ? 0.03 : 0.07, n.casa[1]); n.g.rotation.set(0, n.dados.rot ?? (n.bicho ? Math.PI : 0), 0);
+    if (n.boia) { n.g.scale.setScalar(n.dados.escala ?? 0.78); n.naAgua = true; n.boia.position.y = 0.6 / n.g.scale.y; }
     n.seguindo = false; n.andando = false; n.esperou = n.disseVerde = false;
     if (n.pessoa) { n.m.segurar(null); n.m.calma(); n.m.objeto(true); }
   }
@@ -403,6 +416,7 @@ export function criarMissoes(ctx) {
       if (n.casca) n.casca.visible = Math.hypot(p.x - x, p.z - z) < PERTO_CONTORNO;
       if (n.festa > 0) { n.festa -= dt; if (n.bicho) n.g.position.y = 0.03 + Math.abs(Math.sin(t * 9)) * 0.35; if (n.m && !n.fixo && !n.pessoa && Math.random() < dt * 2) n.m.pular(); }
       else if (n.bicho) n.g.position.y = 0.03 + (n.andando ? Math.abs(Math.sin(t * 12)) * 0.15 : 0);
+      if (n.naAgua && n !== caronaNpc()) { n.g.position.y = -0.55 + Math.sin(t * 2 + x) * 0.06; if (Math.random() < dt * 0.3) n.m?.acenar(1.5); }
     }
     atualizarPorta(dt, p, R);
     animarGotas(dt);
@@ -449,14 +463,15 @@ export function criarMissoes(ctx) {
       const n = npcDe(ativa, E.passageiro), v = veiculoAtual();
       if (!carona && v && v.g.userData.carona && Math.abs(v.vel) < 1.5 && Math.hypot(v.pos.x - n.g.position.x, v.pos.z - n.g.position.z) < 6) {
         carona = v; v.g.add(n.g); const a = v.g.userData.carona; n.g.position.set(a.x, a.y - 0.3, a.z + 0.05); n.g.rotation.set(0, 0, 0); n.g.scale.setScalar(0.78 / (v.g.scale.x || 1));
-        sons.pisao(); n.m.acenar(2); dizer(nomeDe(E.passageiro), "Obrigado pela carona! Vamos para o hospital. 🏥", 3000);
+        sons.pisao(); n.m.acenar(2); dizer(nomeDe(E.passageiro), E.falaCarona ?? "Obrigado pela carona! Vamos para o hospital. 🏥", 3000); if (E.vozCarona) falar(E.vozCarona);
       } else if (!carona && v && !v.g.userData.carona && Math.hypot(v.pos.x - n.g.position.x, v.pos.z - n.g.position.z) < 6) {
-        aviso -= dt; if (aviso <= 0) { aviso = 5; dizer(nomeDe(E.passageiro), "Aqui não cabe eu! Chame um carro no Rabifone. 📱"); }
+        aviso -= dt; if (aviso <= 0) { aviso = 5; dizer(nomeDe(E.passageiro), E.semBanco ?? "Aqui não cabe eu! Chame um carro no Rabifone. 📱"); }
       }
       if (carona) {
         const dest = npcDe(ativa, E.ate), [dx2, dz2] = npcPos(dest);
         if (Math.abs(carona.vel) < 1.5 && Math.hypot(carona.pos.x - dx2, carona.pos.z - dz2) < 11) {
           grupo.add(n.g); n.g.scale.setScalar(0.78); n.g.position.set(dx2 + 1.3, 0.07, dz2 + 1.2); n.g.rotation.set(0, Math.PI, 0);
+          if (n.boia) { n.naAgua = false; n.boia.position.y = 0.55; } // na areia: a boia fica na cintura, já sem balançar
           carona = null; reagir(dest); reagir(n); avancar();
         }
       }
@@ -480,8 +495,8 @@ export function criarMissoes(ctx) {
     const seguindo = E && (E.quem ?? E.com) && npcs.get(`${ativa.id}:${E.quem ?? E.com}`)?.seguindo;
     const t = {
       falar: `Fale com ${nomeDe(E?.com)}`, pegar: `Pegue: ${faltam}`, levar: `Leve para ${nomeDe(E?.ate)}`,
-      seguir: seguindo ? `Leve até ${nomeDe(E?.ate)}` : `Encontre ${nomeDe(E?.quem)}`, plantar: "Plante nos buraquinhos da horta",
-      dirigir: carona ? `Leve até ${nomeDe(E?.ate)}` : `Busque ${nomeDe(E?.passageiro)} de carro`,
+      seguir: seguindo ? `Leve até ${nomeDe(E?.ate)}` : `Encontre ${nomeDe(E?.quem)}`, plantar: E?.texto ?? "Plante nos buraquinhos da horta",
+      dirigir: carona ? `Leve até ${nomeDe(E?.ate)}` : `Busque ${nomeDe(E?.passageiro)} ${E?.comoIr ?? "de carro"}`,
       faixa: seguindo ? `Atravesse na faixa até ${nomeDe(E?.ate)}` : `Encontre ${nomeDe(E?.com)}`,
     }[E?.tipo] ?? textoNovo(E);
     return { icone: ativa.icone, titulo: ativa.titulo, passo: t };
@@ -599,7 +614,7 @@ export function criarMissoes(ctx) {
     b.aberto = 0.01; sons.porta?.() ?? sons.moeda?.();
     const prox = E.pistas[est.i + 1];
     if (prox) { dizer("Pista do tesouro", prox.texto, 6000); if (prox.voz) falar(prox.voz); }
-    else { b.g.userData.brilho.visible = true; dizer("Tesouro!", E.achou ?? "Você achou o tesouro!", 6000); ctx.confete?.(); sons.vitoria?.(); }
+    else { b.g.userData.brilho.visible = true; dizer("Tesouro!", E.achou ?? "Você achou o tesouro!", 6000); if (E.vozAchou) falar(E.vozAchou); ctx.confete?.(); sons.vitoria?.(); }
     setTimeout(() => { if (ativa && est.baus?.includes(b)) { est.i++; if (prox) b.g.visible = false; else avancar(); } }, prox ? 1600 : 2200);
   }
   function soltarGota(de, para) {
@@ -655,16 +670,17 @@ export function criarMissoes(ctx) {
       est.porticos.forEach((b, i) => { b.g.visible = i >= est.prox && i <= est.prox + 1 && Math.hypot(p.x - b.x, p.z - b.z) < 140; b.g.userData.num.position.y = 4.3 + (i === est.prox ? Math.sin(t * 5) * 0.25 : 0); b.g.userData.num.scale.setScalar(i === est.prox ? 2.4 + Math.sin(t * 8) * 0.15 : 1.8); });
       const b = est.porticos[est.prox];
       if (b) {
-        if (v && Math.hypot(v.pos.x - b.x, v.pos.z - b.z) < 7.5) {
+        if (v && (!E.veiculos || E.veiculos.includes(v.tipo)) && Math.hypot(v.pos.x - b.x, v.pos.z - b.z) < 7.5) {
           est.prox++; sons.moeda?.(); falar(`cid-num-${est.prox}`);
           if (est.prox === 1) est.t0 = est.t;
           if (est.prox === est.porticos.length) {
             const seg = Math.round(est.t - est.t0);
             reagir(npcDe(ativa, E.ate)); avancar();
-            setTimeout(() => dizer("Corrida dos números", `1, 2, 3, 4, 5! Você fez a volta em ${seg} segundos. 🏁`, 3600), 5300);
+            setTimeout(() => dizer(E.titulo ?? "Corrida dos números", `1, 2, 3, 4, 5! Você fez a volta em ${seg} segundos. 🏁`, 3600), 5300);
             return;
           }
-        } else if (!v && est.prox === 0 && Math.hypot(p.x - b.x, p.z - b.z) < 9) avisar(nomeDe(E.ate), "A corrida é de carro! Chame um carro no Rabifone 📱 e passe por baixo da bandeira.", "rp-corrida-pe");
+        } else if (!v && est.prox === 0 && Math.hypot(p.x - b.x, p.z - b.z) < (E.aPe ? 30 : 9)) avisar(nomeDe(E.ate), E.aPe ?? "A corrida é de carro! Chame um carro no Rabifone 📱 e passe por baixo da bandeira.", E.vozAPe ?? "rp-corrida-pe");
+        else if (v && E.veiculos && !E.veiculos.includes(v.tipo) && est.prox === 0) avisar(nomeDe(E.ate), E.aPe, E.vozAPe, 8);
       }
     }
     if (E.tipo === "levarVeiculo") {
@@ -676,7 +692,7 @@ export function criarMissoes(ctx) {
           if (est.carga) { v.g.add(est.carga); est.carga.position.set(0, 1.0, -v.comp * 0.6); est.carga.rotation.set(0, 0, 0); est.carga.scale.setScalar(0.85 / (v.g.scale.x || 1)); }
           sons.moeda?.(); n.m?.acenar(2); dizer(n.dados.nome, E.carregou ?? "Está no carro!", 3200); if (E.vozCarregou) falar(E.vozCarregou);
         } else if (!v && Math.hypot(p.x - n.casa[0], p.z - n.casa[1]) < 3.4) avisar(n.dados.nome, E.aPe ?? "Venha de carro!", E.vozAPe, 7);
-        else if (v && !veiculoServe(E, v) && Math.hypot(v.pos.x - n.casa[0], v.pos.z - n.casa[1]) < 9) avisar(n.dados.nome, "Aqui não cabe a caixa! Venha de carro. 🚗", null, 6);
+        else if (v && !veiculoServe(E, v) && Math.hypot(v.pos.x - n.casa[0], v.pos.z - n.casa[1]) < 9) avisar(n.dados.nome, E.errado ?? "Aqui não cabe a caixa! Venha de carro. 🚗", E.vozErrado ?? null, 6);
       } else {
         if (E.portao && !est.passouPortao && v && v === carroEscolhido && Math.hypot(v.pos.x - E.portao[0], v.pos.z - E.portao[1]) < 6) { est.passouPortao = true; dizer(quemFala(ativa, ativa.npcs[ativa.quem].nome), E.falaPortao, 4200); if (E.vozPortao) falar(E.vozPortao); }
         const certo = E.de ? v === est.veiculo : veiculoServe(E, v);
@@ -731,7 +747,7 @@ export function criarMissoes(ctx) {
       const falta = pendentes(E);
       if (!falta.length) return npcAlvo(E.ate);
       const p = pos(), n = falta.map((id) => npcDe(ativa, id)).sort((a, b) => Math.hypot(a.g.position.x - p.x, a.g.position.z - p.z) - Math.hypot(b.g.position.x - p.x, b.g.position.z - p.z))[0];
-      return { x: n.g.position.x, z: n.g.position.z, emoji: E.tipo === "achar" ? "🐱" : "💌" };
+      return { x: n.g.position.x, z: n.g.position.z, emoji: E.emoji ?? (E.tipo === "achar" ? "🐱" : "💌") };
     }
     if (E.tipo === "contar") return { ...npcAlvo(E.ate), emoji: "🦆" };
     if (E.tipo === "bandeiras") { const b = est.porticos[est.prox]; return b ? { x: b.x, z: b.z, emoji: String(est.prox + 1) } : null; }
@@ -749,11 +765,11 @@ export function criarMissoes(ctx) {
   function textoNovo(E) {
     if (!E) return "";
     const n = (E.bichos ?? E.quem ?? []).length, k = est.juntos?.size ?? 0;
-    if (E.tipo === "achar") return k < n ? `Ache os gatinhos: ${k} de ${n}` : `Leve todos até ${nomeDe(E.ate)}`;
+    if (E.tipo === "achar") return k < n ? `Ache os ${E.oque ?? "gatinhos"}: ${k} de ${n}` : `Leve todos até ${nomeDe(E.ate)}`;
     if (E.tipo === "seguirVarios") return k < n ? `Convide os amigos: ${k} de ${n}` : `Leve todos até ${nomeDe(E.ate)}`;
     if (E.tipo === "contar") return "Conte os patinhos do lago e pise no número certo";
-    if (E.tipo === "bandeiras") return est.prox === 0 ? (veiculoAtual() ? "Passe por baixo da bandeira 1" : "Pegue um carro e vá até a bandeira 1") : `Bandeira ${est.prox + 1} de ${E.pontos.length} · ⏱️ ${Math.floor(est.t - est.t0)} s`;
-    if (E.tipo === "levarVeiculo") return !est.carregado ? `Venha de carro buscar a ${E.carga.nome}` : E.pousar ? `Voe e pouse perto de ${nomeDe(E.ate)}` : `Leve de carro até ${nomeDe(E.ate)}`;
+    if (E.tipo === "bandeiras") return est.prox === 0 ? (veiculoAtual() ? "Passe por baixo da bandeira 1" : E.textoPe ?? "Pegue um carro e vá até a bandeira 1") : `Bandeira ${est.prox + 1} de ${E.pontos.length} · ⏱️ ${Math.floor(est.t - est.t0)} s`;
+    if (E.tipo === "levarVeiculo") return !est.carregado ? `Venha ${E.comoIr ?? "de carro"} buscar a ${E.carga.nome}` : E.pousar ? `Voe e pouse perto de ${nomeDe(E.ate)}` : `Leve ${E.comoIr ?? "de carro"} até ${nomeDe(E.ate)}`;
     if (E.tipo === "apagar") return `Apague os foguinhos: ${est.fogos.filter((f) => f.apagado).length} de ${est.fogos.length}`;
     if (E.tipo === "pistas") return `Pista ${est.i + 1} de ${E.pistas.length}: ache o baú`;
     if (E.tipo === "entregar") return `Entregue as cartas: ${est.feitas.size} de ${E.entregas.length}`;

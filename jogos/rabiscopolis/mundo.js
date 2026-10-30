@@ -99,7 +99,7 @@ export function montarMundo(cena) {
     }
     cena.add(gs);
     mesclar(gs); // só as luzes ficam separadas
-    semaforos.push({ ...s, postes, fase: (s.x + s.z) % 200 ? 0 : 6 });
+    semaforos.push({ ...s, postes, fase: (s.x + s.z) % 200 ? 0 : 6, grupo: gs });
   }
   cena.add(ruas);
   mesclar(ruas);
@@ -287,6 +287,8 @@ export function montarMundo(cena) {
     // mostra só o bloco do jogador e os vizinhos que estão dentro da neblina; contorno só perto
     visibilidade(x, z) {
       const [bi, bj] = blocoDe(x, z);
+      // semáforos (as luzes acendem, não dá para mesclar): longe, na neblina, nem desenham
+      for (const s of semaforos) s.grupo.visible = api.alcance > 1000 || Math.hypot(s.x - x, s.z - z) < api.alcance + 15;
       for (const g of Object.values(regioes)) { const b = g.userData.ret; g.visible = api.alcance > 1000 || Math.hypot(Math.max(b.min.x - x, 0, x - b.max.x), Math.max(b.min.z - z, 0, z - b.max.z)) < api.alcance; }
       for (const g of blocos) {
         const [i, j] = g.userData.bloco, r = g.userData.ret;
