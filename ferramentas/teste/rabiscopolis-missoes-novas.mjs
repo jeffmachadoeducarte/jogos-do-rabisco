@@ -64,10 +64,10 @@ try {
       const s = await ev(`(() => { const v = teste.veiculos[${i}], rb = teste.rabisco.grupo; return { x: v.pos.x, z: v.pos.z, vel: v.vel, dentro: teste.dentro?.tipo, naAgua: teste.fis.naAguaDoMar(v.pos.x, v.pos.z, v.larg), escala: rb.scale.toArray(), noVeiculo: rb.parent === v.g, assento: v.g.userData.motorista.y }; })()`);
       ok(s.dentro === tipo && s.noVeiculo && s.escala.every((k) => Math.abs(k - 1) < 1e-6), `${tipo}: o Rabisco vai dentro (no assento), sem mudar de tamanho (escala ${s.escala.join("/")})`);
       ok(s.naAgua && Math.abs(s.vel) > 3, `${tipo}: andou no mar (${s.x.toFixed(1)}, ${s.z.toFixed(1)}), ${s.vel.toFixed(1)} m/s`);
-      // foto andando: o jogo para um instante (o barco continua com a espuma e a inclinação) e a câmera olha de lado e da frente
-      await ev(`(() => { teste.jogo.pausado = true; const v = teste.veiculos[${i}], a = v.ang, x = v.pos.x, z = v.pos.z; teste.vista([x + Math.cos(a) * 5.2 + Math.sin(a) * 3.2, 2.9, z - Math.sin(a) * 5.2 + Math.cos(a) * 3.2], [x, 0.9, z]); })()`); await espera(900);
-      await t.foto(`${FOTOS}${tipo}-andando-com-o-rabisco.png`);
-      await ev("teste.vista(null); teste.jogo.pausado = false");
+      // foto andando: devagar (com a espuma), a câmera acompanha de lado e da frente
+    await ev(`teste.volante(0.3, 0.15); teste.veiculos[${i}].vel = 3.5; window.__seguir = setInterval(() => { const v = teste.veiculos[${i}], a = v.ang, x = v.pos.x, z = v.pos.z, D = ${tipo === "lancha" ? 8.5 : 5.5}; teste.vista([x + Math.cos(a) * D + Math.sin(a) * D * 0.7, ${tipo === "lancha" ? 4.4 : 2.6}, z - Math.sin(a) * D + Math.cos(a) * D * 0.7], [x, 1, z]); }, 30)`); await espera(2000);
+    await t.foto(`${FOTOS}${tipo}-andando-com-o-rabisco.png`);
+    await ev("clearInterval(window.__seguir); teste.vista(null)");
       // direto contra a areia: para na costa
       await ev(`teste.posVeiculo(${i}, -100, 285, Math.PI); teste.volante(1, 0)`); await espera(3000);
       const zc = await ev(`teste.veiculos[${i}].pos.z`);

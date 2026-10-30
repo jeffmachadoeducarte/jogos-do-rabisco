@@ -623,7 +623,10 @@ function entrar(v) {
     dizer("Rabiscolândia", toqueTela ? "Hélices girando! ▲ sobe, ▼ desce, ➤ voa para a frente. Para sair, pouse no chão." : comControle ? "Hélices girando! A sobe, LB desce, alavanca para a frente voa. Para sair, pouse no chão." : "Hélices girando! Espaço sobe, Shift desce, W voa para a frente. Para sair, pouse no chão.", 4600);
     return;
   }
-  if ((v.tipo === "jetski" || v.tipo === "lancha") && !entrar.falouMar) { entrar.falouMar = true; falar("rp-mar"); dizer(v.tipo === "jetski" ? "Jet ski" : "Lancha", "Partiu, Rabisco! Para a frente acelera, para trás freia. Encoste na areia, no píer ou na ilha para descer.", 4200); return; }
+  if (v.tipo === "jetski" || v.tipo === "lancha") { // no mar não tem cinto: a dica é outra (e só uma vez)
+    if (!entrar.falouMar) { entrar.falouMar = true; falar("rp-mar"); dizer(v.tipo === "jetski" ? "Jet ski" : "Lancha", "Partiu, Rabisco! Para a frente acelera, para trás freia. Encoste na areia, no píer ou na ilha para descer.", 4200); }
+    return;
+  }
   if (!entrar.falou) { entrar.falou = true; falar(v.tipo === "onibus" ? "rp-onibus" : "rp-carro"); dizer("Rabiscolândia", "Cinto afivelado! Para a frente acelera, para trás freia. Aperte a ação de novo para sair.", 4200); }
 }
 function sair() {
