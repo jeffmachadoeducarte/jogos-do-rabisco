@@ -467,9 +467,9 @@ function sairCasa(imediato = false) {
     int.grupo.visible = false;
     emCasa = null;
     const [fx, fz] = c.frente, s = c.lote.dir;
+    camera.st.vista = null; camera.st.yaw = Math.atan2(s[0], s[1]); // antes do irPara: a câmera da rua já nasce no lugar certo
     irPara(fx + s[0] * 2.5, fz + s[1] * 2.5);
-    j.dir = Math.atan2(s[0], s[1]);
-    camera.st.vista = null; camera.st.yaw = j.dir;
+    j.dir = camera.st.yaw;
     minimapa.hidden = false;
   };
   imediato ? fazer() : escurecer(fazer);
@@ -535,12 +535,18 @@ function sairLugar(imediato = false) {
     trocarSolidosCasa([]);
     s.grupo.visible = false;
     emLugar = null;
-    irPara(l.x + l.dir[0] * 1.5, l.z + l.dir[1] * 1.5);
-    j.dir = Math.atan2(l.dir[0], l.dir[1]);
-    camera.st.vista = null; camera.st.yaw = j.dir;
+    camera.st.vista = null; camera.st.yaw = Math.atan2(l.dir[0], l.dir[1]); // antes do irPara: a câmera da rua já nasce no lugar certo
+    irPara(l.x + l.dir[0] * 2.6, l.z + l.dir[1] * 2.6);
+    j.dir = camera.st.yaw;
     minimapa.hidden = false;
   };
   imediato ? fazer() : escurecer(fazer);
+}
+// andar até o vão da porta já leva para a rua (sem botão): a missão continua de onde estava
+function saidaPelaPorta() {
+  if ((!emLugar && !emCasa) || trava || fade.classList.contains("ativo")) return;
+  const porta = emLugar ? emLugar.porta : emCasa.int.porta;
+  if (j.pos.z > porta[1] - 0.35 && Math.abs(j.pos.x - porta[0]) < 0.9) emLugar ? sairLugar() : sairCasa();
 }
 function interativoPerto() {
   if (!emLugar) return null;
@@ -614,7 +620,6 @@ function entrar(v) {
   dentro = v;
   j.vel.set(0, 0, 0);
   v.g.add(rabisco.grupo); const a = v.g.userData.motorista; rabisco.grupo.position.set(a.x, a.y - 2.0 * rabisco.escala, a.z); rabisco.grupo.rotation.set(0, 0, 0);
-  if (v.g.userData.cima) v.g.userData.cima.visible = false; // ônibus: janelas e teto somem para ver o Rabisco dirigindo
   v.g.userData.aoEntrar?.(rabisco); // moto: põe o capacete
   v.g.userData.seta.visible = false;
   sons.pisao();
@@ -646,7 +651,6 @@ function sair() {
   radioUI?.sairDoCarro(); avisoRadio?.esconder();
   toque?.especial(null);
   cena.add(rabisco.grupo); rabisco.grupo.visible = true;
-  if (v.g.userData.cima) v.g.userData.cima.visible = true;
   v.g.userData.aoSair?.(rabisco); // moto: tira o capacete
   j.pos.set(v.pos.x + ox, v.tipo === "heli" ? Math.max(0.07, v.alt) : 0.07, v.pos.z + oz); j.vel.set(0, 0, 0); j.dir = v.ang;
   rabisco.grupo.position.copy(j.pos); rabisco.grupo.rotation.set(0, j.dir, 0);
@@ -783,9 +787,9 @@ function posicionarCamera(k, dt, andando = false) {
     mundo.visibilidade(j.pos.x, j.pos.z);
     return;
   }
-  if (emCasa || emLugar) { // casa de bonecas: de cima e da frente, sem teto
+  if (emCasa || emLugar) { // casa de bonecas: da frente e levemente por cima (3ª pessoa inclinada), sem teto
     const cx = dois ? dois.x : j.pos.x, cz = dois ? dois.z : j.pos.z, af = dois ? Math.min(4, dois.afastar) : 0;
-    camera.st.vista = { pos: [cx, 10.5 + af, cz + 9.2 + af * 0.8], alvo: [cx, 0.6, cz - 0.6] };
+    camera.st.vista = { pos: [cx, 5.6 + af * 0.7, cz + 8.6 + af * 0.8], alvo: [cx, 1.1, cz - 1.2] };
     camera.posicionar({ P: j.pos }, k, dt);
     ceu.seguir(j.pos.x, j.pos.z);
     mundo.visibilidade(j.pos.x, j.pos.z);
@@ -793,7 +797,7 @@ function posicionarCamera(k, dt, andando = false) {
   }
   const P = dentro?.tipo === "onibus" ? _pOnibus.set(dentro.pos.x + Math.sin(dentro.ang) * 2.6, dentro.pos.y, dentro.pos.z + Math.cos(dentro.ang) * 2.6) : dentro ? dentro.pos : dois ? _pDois.set(dois.x, dois.y, dois.z) : j.pos;
   const afastar = !dentro && dois ? dois.afastar : dentro && j2?.seguindo ? 2.5 : 0;
-  camera.posicionar({ P, ref: dentro ? dentro.ang : j.dir, dirigindo: Boolean(dentro), andando, giro, arrasto, onibus: dentro?.tipo === "onibus", heli: dentro?.tipo === "heli", afastar }, k, dt);
+  camera.posicionar({ P, ref: dentro ? dentro.ang : j.dir, dirigindo: Boolean(dentro), andando, giro, arrasto, onibus: ["onibus", "ambulancia", "sorvete"].includes(dentro?.tipo), comp: dentro?.comp ?? 0, heli: dentro?.tipo === "heli", afastar }, k, dt);
   ceu.seguir(P.x, P.z);
   mundo.visibilidade(P.x, P.z);
 }
@@ -903,6 +907,7 @@ function passo(dt, ultimo) {
     patioJE?.atualizar(j.pos.x, j.pos.z);
     mundo.atualizar(dt, t);
     if (emLugar) emLugar.atualizar(dt, t);
+    saidaPelaPorta();
     regras();
     posicionarCamera(Math.min(1, dt * 6), dt, andando);
     tMapa -= dt;
@@ -1074,6 +1079,7 @@ if (params.has("teste")) window.teste = {
   get salvo() { return carregar(); }, get fone() { return fone; }, get transito() { return transito; }, get moradores() { return moradores; },
   get ceu() { return ceu; }, get estat() { return { ...estat, fps: qualidade?.fps ?? 0, blocos: mundo.blocosVisiveis(), malhas: mundo.malhas }; },
   get vivo() { return vivo; }, get tempo() { return estat.tj ?? 0; }, get fis() { return fis; },
+  get modo() { return emCasa ? "casa" : emLugar ? "lugar" : dentro ? "veiculo" : "rua"; },
   get emLugar() { return emLugar ? { id: emLugar.id, est: emLugar.est, interativos: emLugar.interativos.map((i) => ({ id: i.id, rotulo: i.rotulo, pos: i.pos })) } : null; },
   get sorveteUI() { return sorveteUI; },
   entrarLugar(id) { if (dentro) sair(); if (emCasa) sairCasa(true); entrarLugar(id, true); },
