@@ -66,8 +66,8 @@ async function umJogador() {
     await ev("teste.acao()"); await espera(1500);
     ok(await ev("teste.missoes.ativa === 'alvara'"), `missão aceita — ${await ev("JSON.stringify(teste.missoes.texto())")}`);
     const b0 = await balao(t);
-    ok(/^RabiscolândiaAlice, o alvará da escola venceu! Vá até a Crescente Contabilidade e fale com a contadora Elaine para buscar o alvará novo\./.test(b0), `a anfitriã chama a Alice pelo nome e fala "Crescente Contabilidade" e "contadora Elaine" ("${b0.slice(0, 90)}")`);
-    ok(await baixou(t, "cid-alvara-pos") && await baixou(t, "nomes/alice"), "a voz é a gravada (nome Alice + cid-alvara-pos), nada de voz do navegador");
+    ok(/^RabiscolândiaOi, Rabisco! O alvará da escola venceu! Vá até a Crescente Contabilidade e fale com a contadora Elaine para buscar o alvará novo\./.test(b0), `o pedido é para o Rabisco ir (nome da criança só na oração e no parabéns) e fala "Crescente Contabilidade" e "contadora Elaine" ("${b0.slice(0, 90)}")`);
+    ok(await ate(t, "performance.getEntriesByType('resource').some((r) => r.name.includes('/assets/voz/rp-m-alvara-pedido.mp3'))", 8000) && !(await baixou(t, "cid-alvara-pos")), "a voz é a gravada (rp-m-alvara-pedido: \"Oi, Rabisco!\", sem o nome da criança), nada de voz do navegador");
     const a = await ev("teste.missoes.alvo()");
     ok(a && Math.hypot(a.x - L.x, a.z - L.z) < 1, `a seta/bússola aponta para a porta da Crescente (${a?.emoji})`);
 

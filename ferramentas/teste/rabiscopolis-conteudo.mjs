@@ -79,6 +79,10 @@ const semMp3 = [...vozesUsadas].filter((k) => !existsSync(`${RAIZ}assets/voz/${k
 ok(semMp3.length === 0, `${vozesUsadas.size} falas gravadas reaproveitadas (cid-*/rp-*) existem${semMp3.length ? " — faltam: " + semMp3.join(", ") : ""}`);
 const chavesM = MISSOES.flatMap((m) => [m.voz?.pedido ? null : `rp-m-${m.id}-pedido`, m.voz?.fim ? null : `rp-m-${m.id}-fim`, ...(m.verso ? [`rp-m-${m.id}-verso`] : [])]).filter(Boolean);
 ok(chavesM.every((k) => falas.pt[k]), `${chavesM.length} falas das missões no falas.json (pedido, fim e versículo)`);
+// parabéns/oração com o nome da criança: fimNome tem {nome} e as duas partes gravadas (pre + nome + pos); o fim neutro não tem nome nem "Rabisco"
+const comNome = MISSOES.filter((m) => m.fimNome);
+ok(comNome.length >= 2 && comNome.every((m) => m.fimNome.includes("{nome}") && falas.pt[`rp-m-${m.id}-fim-pre`] && falas.pt[`rp-m-${m.id}-fim-pos`] && !/Rabisco|\{nome\}/.test(m.fim)), `${comNome.length} missões com fim no nome da criança (${comNome.map((m) => m.id).join(", ")}) e fim neutro sem nome`);
+ok(!MISSOES.some((m) => /\{nome\}/.test(m.pedido)) && !MISSOES.some((m) => m.pedidoComNome), "pedido de missão (ir/fazer) nunca usa o nome da criança: é sempre \"Rabisco\"");
 
 // ---- missões dos bairros novos e do Mar Azul (cidade 2x maior): o dobro de missões, espalhadas, e as do mar só de barco
 {

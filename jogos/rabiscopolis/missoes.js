@@ -252,15 +252,9 @@ export function criarMissoes(ctx) {
     ativa = M; etapa = 0; levando = []; carona = null; aviso = 0; // missão nova: as dicas podem aparecer na hora
     for (const nid of Object.keys(M.npcs)) voltarAoLugar(npcDe(M, nid));
     clearTimeout(concluir.t2);
-    const nm = ctx.nome?.();
-    if (M.voz?.pedidoNome) {
-      // a anfitriã chama a criança pelo nome: "Alice, o alvará da escola venceu! ..." (sem nome no banco: a fala neutra)
-      Promise.resolve(ctx.falarNome?.(null, M.voz.pedidoNome)).then((ok) => { if (!ok) falar(M.voz.pedido); });
-      dizer(quemFala(M, M.npcs[M.quem].nome), nm && M.pedidoComNome ? M.pedidoComNome.replace("{nome}", nm) : M.pedido, 6500);
-    } else {
-      falar(M.voz?.pedido ?? `rp-m-${M.id}-pedido`);
-      dizer(quemFala(M, M.npcs[M.quem].nome), M.pedido, 6500);
-    }
+    // o pedido é para o Rabisco ir/fazer algo: sempre "Rabisco", nunca o nome da criança
+    falar(M.voz?.pedido ?? `rp-m-${M.id}-pedido`);
+    dizer(quemFala(M, M.npcs[M.quem].nome), M.pedido, 6500);
     prepararEtapa();
     return true;
   }
@@ -284,6 +278,14 @@ export function criarMissoes(ctx) {
     for (const s of sobreCabeca.children.slice()) { sobreCabeca.remove(s); s.material.dispose(); }
     soltarMao();
   }
+  // fim da missão: se tem `fimNome` (parabéns/oração) a anfitriã fala o NOME DA CRIANÇA ("Parabéns, Alice! ...", falas
+  // emendadas rp-m-<id>-fim-pre/-pos); sem nome no banco ou sem cadastro vale o `fim`, sem nome e sem "Rabisco"
+  const textoFim = (M) => { const nm = ctx.nome?.(); return nm && M.fimNome ? M.fimNome.replace("{nome}", nm) : M.fim; };
+  function falarFim(M) {
+    const neutra = () => falar(M.voz?.fim ?? `rp-m-${M.id}-fim`);
+    if (!M.fimNome) return neutra();
+    Promise.resolve(ctx.falarNome?.(`rp-m-${M.id}-fim-pre`, `rp-m-${M.id}-fim-pos`)).then((ok) => { if (!ok) neutra(); });
+  }
   function concluir() {
     const M = ativa;
     limparEst(); fila.length = 0;
@@ -301,10 +303,10 @@ export function criarMissoes(ctx) {
       const A = M.agradece, nm = ctx.nome?.();
       dizer(quemFala(M, M.npcs[destino]?.nome ?? "Rabiscolândia"), nm ? A.texto.replace("{nome}", nm) : A.textoSem, A.ms);
       Promise.resolve(ctx.falarNome?.(A.pre, A.pos)).then((ok) => { if (!ok) falar(A.neutra); });
-      concluir.t2 = setTimeout(() => { falar(M.voz?.fim ?? `rp-m-${M.id}-fim`); dizer("Rabiscolândia", M.fim, 6500); }, A.ms);
+      concluir.t2 = setTimeout(() => { falarFim(M); dizer("Rabiscolândia", textoFim(M), 6500); }, A.ms);
     } else {
-      falar(M.voz?.fim ?? `rp-m-${M.id}-fim`);
-      dizer(quemFala(M, ultimoReceptor ?? M.npcs[destino]?.nome ?? "Rabiscolândia"), M.fim, 5200);
+      falarFim(M);
+      dizer(quemFala(M, ultimoReceptor ?? M.npcs[destino]?.nome ?? "Rabiscolândia"), textoFim(M), 5200);
     }
     ultimoReceptor = null;
     if (M.verso) concluir.t = setTimeout(() => { falar(`rp-m-${M.id}-verso`); dizer(`📖 ${M.titulo}`, `${M.verso.texto} <i>(${M.verso.ref})</i>`, 7500); }, 5400);

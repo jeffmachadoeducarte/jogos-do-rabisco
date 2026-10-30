@@ -1,5 +1,5 @@
 // O cadastro completo da família abre no MÁXIMO UMA VEZ por aparelho (celular/tablet/computador):
-// depois de salvar, de "Agora não" ou de voltar no portão dos pais, não abre sozinho de novo. O botão "Família" continua
+// depois de salvar, de "Agora não" ou de fechar a tela, não abre sozinho de novo. O botão "Família" continua
 // abrindo para editar. Em /tv, ?tv=1 e 2 jogadores o cadastro completo nunca abre.
 // Uso: node --experimental-websocket ferramentas/teste/cadastro-uma-vez.mjs [http://localhost:8080]
 import { abrir, espera } from "./cdp.mjs";
@@ -29,10 +29,11 @@ for (const [nome, opts] of [["celular", { mobile: true, largura: 390, altura: 84
   let t = await nova(opts, `${BASE}/index.html`);
   ok(!(await t.ev(ALGUM)), "ao abrir o portal nada abre sozinho");
   ok(await tocarJogo(t), "tocou num jogo");
-  ok(await ate(t, PORTAO), "1o toque: portão dos pais abre");
-  await t.ev(`document.querySelector(".portao-tela .botao.branco").click()`);
+  ok(await ate(t, FORM), "1o toque: cadastro abre direto");
+  ok(!(await t.ev(PORTAO)), "1o toque: sem portão dos pais");
+  await t.ev(`[...document.querySelectorAll(".familia-tela button")].find((b) => b.textContent === "Agora não").click()`);
   await espera(400);
-  ok(!(await t.ev(ALGUM)), "Voltar no portão fecha tudo");
+  ok(!(await t.ev(ALGUM)), "Agora não fecha tudo");
   for (let i = 0; i < 3; i++) { await t.ev(clicaJogo); await espera(300); }
   ok(!(await t.ev(ALGUM)), "toques seguintes em jogos não abrem o cadastro");
   await t.ev(`location.reload()`); await espera(2500); await ate(t, `document.readyState === "complete" && !!document.getElementById("familia")`);
@@ -54,8 +55,7 @@ for (const [nome, opts] of [["celular", { mobile: true, largura: 390, altura: 84
   // 2) primeira visita: preenche e salva; depois nunca mais abre sozinho
   t = await nova(opts, `${BASE}/index.html`);
   await tocarJogo(t);
-  await ate(t, PORTAO); await t.ev(GOLPE);
-  ok(await ate(t, FORM), "salvar: formulário abre uma vez");
+  ok(await ate(t, FORM), "salvar: formulário abre direto, sem portão, uma vez");
   await t.ev(`(() => { const s = (id, v) => { const e = document.querySelector("#fam-" + id); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); };
     s("resp-nome", "Mae Teste"); s("email", "m@t.com"); s("crianca-nome", "Alice"); s("genero", "menina"); document.querySelector(".familia-form").requestSubmit(); })()`);
   await espera(800);
@@ -68,7 +68,7 @@ for (const [nome, opts] of [["celular", { mobile: true, largura: 390, altura: 84
   // 3) "Agora não" no formulário: não abre de novo
   t = await nova(opts, `${BASE}/index.html`);
   await tocarJogo(t);
-  await ate(t, PORTAO); await t.ev(GOLPE); await ate(t, FORM);
+  await ate(t, FORM);
   await t.ev(`[...document.querySelectorAll(".familia-tela button")].find((b) => b.textContent === "Agora não").click()`);
   await espera(300);
   await t.ev(clicaJogo); await espera(400);
@@ -77,10 +77,10 @@ for (const [nome, opts] of [["celular", { mobile: true, largura: 390, altura: 84
 
   // 4) recarregar com o portão aberto conta como pergunta feita
   t = await nova(opts, `${BASE}/index.html`);
-  await tocarJogo(t); await ate(t, PORTAO);
+  await tocarJogo(t); await ate(t, FORM);
   await t.ev(`location.reload()`); await espera(2500); await ate(t, `document.readyState === "complete" && !!document.getElementById("familia")`);
   await t.ev(clicaJogo); await espera(400);
-  ok(!(await t.ev(ALGUM)), "recarregar com o portão aberto não faz perguntar de novo");
+  ok(!(await t.ev(ALGUM)), "recarregar com o cadastro aberto não faz perguntar de novo");
   await t.fechar();
 }
 
@@ -89,8 +89,8 @@ console.log("\n== localStorage bloqueado (modo privado): no máximo uma vez por 
   const bloqueia = `for (const k of ["localStorage"]) Object.defineProperty(window, k, { get() { throw new DOMException("bloqueado", "SecurityError"); } });`;
   const t = await nova({ mobile: true, largura: 390, altura: 844 }, `${BASE}/index.html`, bloqueia);
   await tocarJogo(t);
-  ok(await ate(t, PORTAO), "bloqueado: abre a 1a vez");
-  await t.ev(`document.querySelector(".portao-tela .botao.branco").click()`); await espera(300);
+  ok(await ate(t, FORM), "bloqueado: abre a 1a vez");
+  await t.ev(`[...document.querySelectorAll(".familia-tela button")].find((b) => b.textContent === "Agora não").click()`); await espera(300);
   for (let i = 0; i < 3; i++) { await t.ev(clicaJogo); await espera(300); }
   ok(!(await t.ev(ALGUM)), "bloqueado: não vira laço");
   await t.fechar();

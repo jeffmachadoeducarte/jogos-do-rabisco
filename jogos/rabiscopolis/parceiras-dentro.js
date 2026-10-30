@@ -172,7 +172,7 @@ export function montarRise({ g, ox, oz, inter, npcs, est, solido, I, npc }) {
   est.aoEntrar = () => { camila.calma(); robert.calma(); camila.acenar(2.6); robert.acenar(2.6); setTimeout(() => robert.acenar(1.6), 900); };
   npcs.push({ grupo: soltos, atualizar: (dt) => { if (est.correndo > 0) cintaTex.offset.y -= dt * 2.4; } });
   est.correu = false; est.levantou = 0;
-  const fimTreino = (api) => { camila.comemorar(2.5); robert.comemorar(2.5); api.sons.vitoria?.(); api.confete?.(); api.falar("cid-rise-ok"); api.dizer(NARRA, "Parabéns, Rabisco! Você foi forte e corajoso! Corpo saudável, coração alegre!", 4800); api.evento?.("treinou"); };
+  const fimTreino = (api) => { camila.comemorar(2.5); robert.comemorar(2.5); api.sons.vitoria?.(); api.confete?.(); api.parabens("rp-rise-ok", "Você foi forte e corajoso! Corpo saudável, coração alegre!", 4800); api.evento?.("treinou"); };
   I("esteira", "🏃 Correr na esteira", -3.8, -1.2, (api) => {
     if (est.correndo > 0) return;
     api.falar("cid-rise-esteira"); api.dizer(NARRA, "Primeiro, a esteira! Corra bastante: a barrinha vai enchendo!", 3000);

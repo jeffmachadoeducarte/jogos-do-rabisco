@@ -4,8 +4,8 @@
 //    redondos, retrovisores, para-brisa com moldura, interior (bancos com friso rosa, painel, volante) e rodas
 //    de pneu redondo com calota colorida.
 //  - helicoptero(): azul e rosa, bolha de vidro, rotor de 4 pás e hélice na cauda (giram), esquis brancos.
-//  - onibusFofo(): o ônibus amarelo da escola com a logo da Educarte; o teto e as janelas somem quando o Rabisco
-//    está dirigindo (dá para ver ele no banco do motorista).
+//  - onibusFofo(): o ônibus amarelo da escola com a logo da Educarte; fica inteiro (teto e janelas de vidro) e o
+//    Rabisco aparece sentado no banco do motorista, por dentro das janelas.
 // Mesma interface do carroAberto de cidade.js: frente = +z; g.userData = { rodas, seta, motorista, carona, volante }.
 // O que não mexe vira poucas malhas (mesclar); rodas, volante e seta ficam soltos.
 
@@ -122,7 +122,7 @@ export function onibusFofo() {
   const bm = caixaRedonda(0.8, 0.28, 0.8, mat(0xfff4e0), { raio: 0.1, contorno: 0.03 }); bm.position.set(0.7, 2.05, 2.9); g.add(bm);
   assentos.push(new THREE.Vector3(0.7, 2.12, 2.95), new THREE.Vector3(-0.7, 2.12, 2.95));
   const painel = caixaRedonda(W - 0.4, 0.5, 0.4, mat(0x2f3440), { raio: 0.12, contorno: 0.03 }); painel.position.set(0, 2.15, L / 2 - 0.35); g.add(painel);
-  // parte de cima (janelas e teto): some quando o Rabisco dirige
+  // parte de cima (janelas e teto): fica sempre no lugar, o Rabisco dirige lá dentro
   const cima = new THREE.Group(); cima.userData.dinamico = true; cima.userData.cima = true; g.add(cima);
   const vid = new THREE.Mesh(new THREE.BoxGeometry(W - 0.15, 1.2, L - 0.4), new THREE.MeshToonMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.55 })); vid.position.y = 2.5; cima.add(vid);
   for (const z of [-L / 2 + 0.25, -1.4, 1.4]) for (const s of [-1, 1]) { const c = caixa(0.2, 1.25, 0.24, mat(AMARELO), { contorno: 0.04 }); c.position.set(s * (W / 2 - 0.12), 2.5, z); g.add(c); }
@@ -208,15 +208,20 @@ export function carroJE() {
   Object.assign(g.userData, { rodas, seta, volante, motorista: assentos[0], carona: assentos[1], especial: "buzina" });
   return g;
 }
-// van (ambulância e van de sorvete): parte de baixo fechada, parte de cima (teto e janelas) some ao dirigir
+// van (ambulância e van de sorvete): inteira, com teto; a cabine tem vidros (o Rabisco aparece sentado) e só a caixa de trás é fechada
 function van({ cor, corTeto = 0xffffff, faixaCor = null }) {
   const g = new THREE.Group();
   const forma = perfil([[2.5, 0.5], [2.6, 0.8, 2.55, 1.2], [2.2, 1.45], [-2.5, 1.45], [-2.6, 1.2, -2.55, 0.5]], [1.6, -1.6], 0.5);
   const corpo = corpoExtrudado(forma, 2.4, mat(cor), 0.16); g.add(corpo);
   if (faixaCor) { const f = caixa(2.44, 0.22, 5.0, mat(faixaCor), { sombra: false }); f.position.y = 1.0; g.add(f); }
   const cima = new THREE.Group(); cima.userData.dinamico = true; cima.userData.cima = true; g.add(cima);
-  const caixaCima = caixaRedonda(2.4, 1.3, 3.6, mat(cor), { raio: 0.3, contorno: 0.06 }); caixaCima.position.set(0, 2.15, -0.7); cima.add(caixaCima);
+  // só a caixa de trás é fechada; a cabine (z > 0) tem vidros dos lados e na frente, com colunas nos cantos
+  const caixaCima = caixaRedonda(2.4, 1.3, 2.4, mat(cor), { raio: 0.3, contorno: 0.06 }); caixaCima.position.set(0, 2.15, -1.3); cima.add(caixaCima);
   const pb = caixaRedonda(2.3, 1.0, 0.12, vidro, { raio: 0.1 }); pb.position.set(0, 2.05, 1.25); pb.rotation.x = -0.35; cima.add(pb);
+  for (const s of [-1, 1]) {
+    const lado = caixa(0.06, 1.0, 1.1, vidro, { sombra: false }); lado.position.set(s * 1.15, 2.1, 0.6); cima.add(lado);
+    for (const z of [0.05, 1.15]) { const c = caixa(0.14, 1.3, 0.14, mat(cor), { contorno: 0.03 }); c.position.set(s * 1.15, 2.15, z); cima.add(c); }
+  }
   const teto = caixaRedonda(2.5, 0.18, 3.8, mat(corTeto), { raio: 0.08, contorno: 0.04 }); teto.position.set(0, 2.85, -0.7); cima.add(teto);
   for (const x of [-0.75, 0.75]) { const f = malha(new THREE.CircleGeometry(0.2, 16), farol, { sombra: false }); f.position.set(x, 0.95, 2.6); g.add(f); const l = malha(new THREE.CircleGeometry(0.16, 14), lanterna, { sombra: false }); l.position.set(x, 1.0, -2.62); l.rotation.y = Math.PI; g.add(l); }
   const assentos = [];

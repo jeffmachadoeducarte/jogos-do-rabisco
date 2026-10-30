@@ -409,17 +409,28 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   await espera(400);
   const dist = await t.ev("(() => { const v = teste.veiculos.at(-1); return Math.hypot(v.pos.x - teste.j.pos.x, v.pos.z - teste.j.pos.z); })()");
   ok(await t.ev("teste.veiculos.length") === nAntes + 1 && dist < 6, `(d) app Garagem criou o veículo a ${dist.toFixed(1)} m do Rabisco`);
-  // carro de perto e ônibus dirigindo (o teto some e o Rabisco aparece no banco do motorista)
+  // carro de perto e ônibus dirigindo (o ônibus fica inteiro, com teto, e o Rabisco dirige lá dentro)
   await t.ev("teste.ir(0, 33); (() => { const v = teste.veiculos[0]; v.pos.set(8, 0.03, 40); v.ang = Math.PI / 2; })(); teste.vista([13.5, 2.2, 43.2], [8.5, 0.9, 40])");
   await espera(1200);
   await t.foto(`${FOTOS}carro-de-perto.png`);
   await t.ev("teste.vista(null); teste.entrar(2); teste.volante(0.5, 0.25)");
   await espera(1500);
   await t.ev("teste.volante(null)");
-  ok(await t.ev("teste.dentro?.tipo === 'onibus' && teste.rabisco.grupo.visible && teste.dentro.g.userData.cima.visible === false"), "ônibus: o Rabisco aparece dirigindo (teto e janelas somem)");
+  ok(await t.ev("teste.dentro?.tipo === 'onibus' && teste.rabisco.grupo.visible && teste.dentro.g.userData.cima.visible === true && teste.rabisco.grupo.parent === teste.dentro.g"), "ônibus: inteiro, com teto, e o Rabisco dirige lá dentro");
   await t.foto(`${FOTOS}onibus-dirigindo.png`);
   await t.ev("teste.sair()");
   ok(await t.ev("teste.veiculos[2].g.userData.cima.visible === true"), "ônibus: o teto volta quando ele desce");
+  // sair pela porta: andar para trás até o vão leva sozinho para a rua (sem botão), em loja e em casa
+  for (const [rotulo, entrar] of [["Educarte Kids I", "teste.entrarLugar('kids1')"], ["Academia Rise Up", "teste.entrarLugar('parceiro-rise-up')"], ["Igreja Reviver", "teste.entrarLugar('igreja')"], ["casa", "teste.entrarCasa(1)"]]) {
+    await t.ev(entrar); await espera(900);
+    const dentroModo = await t.ev("teste.modo");
+    await t.ev("teste.volante(-1, 0)");
+    await ate(t, "teste.modo === 'rua'", 15000);
+    await t.ev("teste.volante(null)");
+    await espera(500);
+    ok((dentroModo === "lugar" || dentroModo === "casa") && await t.ev("teste.modo") === "rua", `${rotulo}: andando até a porta o modo volta para "rua"`);
+    await t.foto(`${FOTOS}saiu-pela-porta-${rotulo.replace(/ /g, "-")}.png`);
+  }
   // blocos novos: campo de futebol, quadra + horta, Vila das Flores
   for (const [arq, pos, alvo] of [["bloco-campo.png", [70, 26, 48], [95, 0, 92]], ["bloco-quadra-horta.png", [92, 22, -52], [114, 0, -100]], ["bloco-vila-das-flores.png", [-60, 16, -78], [-95, 0, -95]]]) {
     await t.ev(`teste.ir(${alvo[0]}, ${alvo[2] + 30}); teste.vista(${JSON.stringify(pos)}, ${JSON.stringify(alvo)})`);

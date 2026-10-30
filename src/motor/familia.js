@@ -7,10 +7,12 @@
 //   Familia.temFoto()        → true/false
 //   Familia.completo()       → cadastro mínimo feito neste aparelho
 //   Familia.aoMudar(cb)      → chama cb(perfil) sempre que o cadastro for salvo
-//   await Familia.abrirCadastro({ obrigatorio: true })  → portão dos pais + tela; resolve true se salvou
+//   await Familia.abrirCadastro({ obrigatorio: true })  → tela direto (sem portão); resolve true (o jogo segue)
+//   await Familia.abrirCadastro()  → portão dos pais + tela (botão Família); resolve true se salvou
 //
 // Privacidade: a foto da criança nunca sai do aparelho (não entra no envio).
-// Segurança: o cadastro e as fotos ficam atrás do "portão dos pais" (uma conta de multiplicar, números sorteados).
+// Segurança: o botão Família (editar cadastro e foto) fica atrás do "portão dos pais" (uma conta de multiplicar, números sorteados).
+// O cadastro automático do primeiro jogo abre direto, sem portão.
 // Foto: até 3 tentativas com orientação; o rosto é achado NO APARELHO (FaceDetector nativa ou o módulo opcional
 // DETECTOR_ROSTO de src/config.js), só vale foto com exatamente 1 rosto de tamanho razoável, e só o rostinho é
 // recortado em círculo (256 px): o resto da imagem é descartado na hora. Sem detector no navegador (ex.: iPhone),
@@ -147,12 +149,12 @@ const h = (tag, props = {}, filhos = []) => {
 };
 
 let telaAberta = null;
-// obrigatorio: cadastro automático do primeiro jogo (no máximo uma vez, ver abaixo). titulo/intro: textos do topo.
-// Antes da tela, o portão dos pais (conta simples): se a criança voltar, resolve false e nada abre.
+// obrigatorio: cadastro automático do primeiro jogo (no máximo uma vez, ver abaixo), abre a tela direto, sem portão.
+// titulo/intro: textos do topo. Sem obrigatorio (botão Família): antes da tela, o portão dos pais; se a pessoa voltar, nada abre.
 let portaoEmCurso = null;
 //
 // Regra do cadastro "obrigatório" (o que o portal abre sozinho ao tocar num jogo): aparece NO MÁXIMO UMA VEZ por
-// aparelho. Marcamos "já perguntamos" ao abrir (salvando, "Agora não", voltar no portão, Esc ou recarregar a página
+// aparelho. Marcamos "já perguntamos" ao abrir (salvando, "Agora não", fechar a tela, Esc ou recarregar a página
 // no meio contam). Depois disso, e na TV / 2 jogadores, ele não abre e resolve true: o jogo segue sem cadastro.
 // Só o botão "Família" (obrigatorio: false) abre sempre, para editar.
 const CHAVE_PERGUNTOU = "rabisco.familia.perguntou";
@@ -184,7 +186,8 @@ export function abrirCadastro(opcoes = {}) {
   const sozinho = Boolean(opcoes.obrigatorio);
   if (sozinho && (completo() || jaPerguntou() || emTvOuDoisJogadores())) return Promise.resolve(true);
   if (sozinho) marcarPerguntou();
-  portaoEmCurso = portaoDosPais({ texto: sozinho ? "Antes do primeiro jogo, um adulto faz um cadastro rapidinho." : "O cadastro e a foto da criança ficam aqui." })
+  // automático: sem portão (a tela abre direto); botão Família: portão dos pais antes da tela
+  portaoEmCurso = (sozinho ? Promise.resolve(true) : portaoDosPais({ texto: "O cadastro e a foto da criança ficam aqui." }))
     .then((ok) => { portaoEmCurso = null; return ok ? montarCadastro(opcoes) : false; })
     // o cadastro automático nunca trava o jogo: salvou, "Agora não" ou voltou, a criança segue para brincar
     .then((salvou) => (sozinho ? true : salvou));
