@@ -467,9 +467,9 @@ function sairCasa(imediato = false) {
     int.grupo.visible = false;
     emCasa = null;
     const [fx, fz] = c.frente, s = c.lote.dir;
+    camera.st.vista = null; camera.st.yaw = Math.atan2(s[0], s[1]); // antes do irPara: a câmera da rua já nasce no lugar certo
     irPara(fx + s[0] * 2.5, fz + s[1] * 2.5);
-    j.dir = Math.atan2(s[0], s[1]);
-    camera.st.vista = null; camera.st.yaw = j.dir;
+    j.dir = camera.st.yaw;
     minimapa.hidden = false;
   };
   imediato ? fazer() : escurecer(fazer);
@@ -527,12 +527,18 @@ function sairLugar(imediato = false) {
     trocarSolidosCasa([]);
     s.grupo.visible = false;
     emLugar = null;
-    irPara(l.x + l.dir[0] * 1.5, l.z + l.dir[1] * 1.5);
-    j.dir = Math.atan2(l.dir[0], l.dir[1]);
-    camera.st.vista = null; camera.st.yaw = j.dir;
+    camera.st.vista = null; camera.st.yaw = Math.atan2(l.dir[0], l.dir[1]); // antes do irPara: a câmera da rua já nasce no lugar certo
+    irPara(l.x + l.dir[0] * 2.6, l.z + l.dir[1] * 2.6);
+    j.dir = camera.st.yaw;
     minimapa.hidden = false;
   };
   imediato ? fazer() : escurecer(fazer);
+}
+// andar até o vão da porta já leva para a rua (sem botão): a missão continua de onde estava
+function saidaPelaPorta() {
+  if ((!emLugar && !emCasa) || trava || fade.classList.contains("ativo")) return;
+  const porta = emLugar ? emLugar.porta : emCasa.int.porta;
+  if (j.pos.z > porta[1] - 0.35 && Math.abs(j.pos.x - porta[0]) < 0.9) emLugar ? sairLugar() : sairCasa();
 }
 function interativoPerto() {
   if (!emLugar) return null;
@@ -773,9 +779,9 @@ function posicionarCamera(k, dt, andando = false) {
     mundo.visibilidade(j.pos.x, j.pos.z);
     return;
   }
-  if (emCasa || emLugar) { // casa de bonecas: de cima e da frente, sem teto
+  if (emCasa || emLugar) { // casa de bonecas: da frente e levemente por cima (3ª pessoa inclinada), sem teto
     const cx = dois ? dois.x : j.pos.x, cz = dois ? dois.z : j.pos.z, af = dois ? Math.min(4, dois.afastar) : 0;
-    camera.st.vista = { pos: [cx, 10.5 + af, cz + 9.2 + af * 0.8], alvo: [cx, 0.6, cz - 0.6] };
+    camera.st.vista = { pos: [cx, 5.6 + af * 0.7, cz + 8.6 + af * 0.8], alvo: [cx, 1.1, cz - 1.2] };
     camera.posicionar({ P: j.pos }, k, dt);
     ceu.seguir(j.pos.x, j.pos.z);
     mundo.visibilidade(j.pos.x, j.pos.z);
@@ -893,6 +899,7 @@ function passo(dt, ultimo) {
     patioJE?.atualizar(j.pos.x, j.pos.z);
     mundo.atualizar(dt, t);
     if (emLugar) emLugar.atualizar(dt, t);
+    saidaPelaPorta();
     regras();
     posicionarCamera(Math.min(1, dt * 6), dt, andando);
     tMapa -= dt;
@@ -1061,6 +1068,7 @@ if (params.has("teste")) window.teste = {
   get salvo() { return carregar(); }, get fone() { return fone; }, get transito() { return transito; }, get moradores() { return moradores; },
   get ceu() { return ceu; }, get estat() { return { ...estat, fps: qualidade?.fps ?? 0, blocos: mundo.blocosVisiveis(), malhas: mundo.malhas }; },
   get vivo() { return vivo; }, get tempo() { return estat.tj ?? 0; }, get fis() { return fis; },
+  get modo() { return emCasa ? "casa" : emLugar ? "lugar" : dentro ? "veiculo" : "rua"; },
   get emLugar() { return emLugar ? { id: emLugar.id, est: emLugar.est, interativos: emLugar.interativos.map((i) => ({ id: i.id, rotulo: i.rotulo, pos: i.pos })) } : null; },
   get sorveteUI() { return sorveteUI; },
   entrarLugar(id) { if (dentro) sair(); if (emCasa) sairCasa(true); entrarLugar(id, true); },
