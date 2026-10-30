@@ -81,7 +81,8 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   const ev = (s) => t.ev(s);
   // SO_MISSOES=gatos,patos: só essas (para conferir rápido; sem a conta final de selos)
   const so = process.env.SO_MISSOES?.split(",");
-  const M = (await ev("teste.missoes.MISSOES.map((m) => ({ id: m.id, quem: m.quem, npcs: m.npcs, etapas: m.etapas, tipo: m.tipo, titulo: m.titulo }))")).filter((m) => !so || so.includes(m.id));
+  // as 26 missões da cidade de antes; as dos bairros novos e do mar (27ª em diante) são jogadas por rabiscopolis-missoes-novas.mjs
+  const M = (await ev("teste.missoes.MISSOES.slice(0, 26).map((m) => ({ id: m.id, quem: m.quem, npcs: m.npcs, etapas: m.etapas, tipo: m.tipo, titulo: m.titulo }))")).filter((m) => !so || so.includes(m.id));
   // longe: ninguém das missões montado nem visível na largada (orçamento)
   await ev("teste.ir(0, 33); teste.olhar(Math.PI)"); await espera(1200);
   const custo = await ev("(() => { const a = teste.medir().semSombra.calls; teste.missoes.grupo.visible = false; const b = teste.medir().semSombra.calls; teste.missoes.grupo.visible = true; return { com: a, sem: b, montados: teste.missoes.montados() }; })()");
@@ -315,7 +316,8 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   await ev("teste.ir(0, 33); teste.fone.abrir()"); await espera(300);
   await ev("[...document.querySelectorAll('.rf-app')].find((b) => b.textContent.includes('Passaporte')).click()"); await espera(400);
   const pas = await ev("({ n: document.querySelectorAll('.rf-item-missao').length, selos: document.querySelectorAll('.rf-selo.feito').length, txt: document.querySelector('.rf-tela p')?.textContent })");
-  ok(pas.n === M.length && pas.selos === M.length, `Passaporte: ${pas.n} missões, ${pas.selos} selos ("${pas.txt}")`);
+  const todas = await ev("teste.missoes.MISSOES.length");
+  ok(pas.n === todas && pas.selos === M.length, `Passaporte: ${pas.n} missões (de ${todas}), ${pas.selos} selos das ${M.length} jogadas ("${pas.txt}")`);
   if (fotos) await t.foto(`${FOTOS}missao-passaporte.png`);
   await ev("teste.fone.fechar()");
   // largar e voltar: de novo a ovelha, larga no meio, ela volta para o parque
