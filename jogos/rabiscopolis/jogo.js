@@ -483,10 +483,18 @@ function vestir(id) {
   salvo.roupas = [id]; salvar(salvo);
 }
 function tirarUniforme() { tirarProfissao(rabisco); salvo.roupas = []; salvar(salvo); }
+// parabéns por missão/aula concluída: a narradora fala o NOME DA CRIANÇA (rp-xxx-pre + nome gravado + rp-xxx-pos); sem
+// cadastro ou sem o nome no banco, a fala neutra rp-xxx, sem nome e sem "Rabisco". `chave` = "rp-xxx" (-pre/-pos/neutra).
+function parabens(chave, depois, ms, quem = "Rabiscolândia") {
+  const n = nomeCrianca();
+  dizer(quem, `Parabéns${n ? `, ${n}` : ""}! ${depois}`, ms);
+  radio?.pausarPorFala(true);
+  falarNome(`${chave}-pre`, `${chave}-pos`).then((ok) => { if (!ok) falar(chave); });
+}
 const apiLugar = () => ({
-  dizer, falar, sons, rabisco,
+  dizer, falar, sons, rabisco, parabens,
   // dentro da Igreja Reviver também dá para orar o Pai Nosso (de frente para a cruz)
-  orar: () => comecarOracao({ x: j.pos.x, z: j.pos.z, olhar: Math.PI }, () => dizer("Igreja Reviver", "Amém! Deus ouve a nossa oração. 🙏", 4200)),
+  orar: () => comecarOracao({ x: j.pos.x, z: j.pos.z, olhar: Math.PI }, () => { const n = nomeCrianca(); dizer("Igreja Reviver", `Amém${n ? `, ${n}` : ""}! Deus ouve a nossa oração. 🙏`, 4200); }),
   profissao: () => rabisco.profissao ?? null,
   vestir, tirar: tirarUniforme,
   confete: () => jogo.confete?.(),
@@ -919,8 +927,11 @@ function comecarOracao(tp, fim) {
   j2?.orar?.({ x: tp.x + lx * 1.3, z: tp.z + lz * 1.3, dir: tp.olhar });
   radio?.pausarPorFala(true);
   painelOracao.hidden = false;
-  painelOracao.innerHTML = `<p class="frase">🙏 Vamos orar juntos.</p><p class="dica">Fique quietinho e repita comigo.</p>`;
-  falar("cid-pai-intro");
+  // a oração é com o NOME DA CRIANÇA ("Alice, vamos orar juntos."); sem nome no banco, a fala neutra gravada
+  const nm = nomeCrianca();
+  if (nm) oracao.dur = 5.6; // com o nome a introdução é mais longa: a 1ª frase só vem depois dela
+  painelOracao.innerHTML = `<p class="frase">🙏 ${nm ? `${nm}, vamos` : "Vamos"} orar juntos.</p><p class="dica">Fique quietinho e repita comigo.</p>`;
+  falarNome(null, "rp-pai-intro-pos").then((ok) => { if (!ok) falar("cid-pai-intro"); });
 }
 function proximaFrase() {
   if (!oracao) return;

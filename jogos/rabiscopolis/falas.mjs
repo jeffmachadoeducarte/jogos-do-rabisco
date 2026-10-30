@@ -57,6 +57,14 @@ export const FALAS_PT = {
   "rp-rise-entrar": "Bem-vindo à Academia Rise Up! Aqui a gente cuida do corpo que Deus nos deu.",
   "rp-corrida-pe": "A corrida é de carro! Chame um carro no Rabifone e passe por baixo da bandeira.",
   "rp-remedio-heli": "Que bom que você veio! Mas a doutora pediu para vir de helicóptero: pouse aqui pertinho.",
+  // narradora com o NOME DA CRIANÇA (parabéns e oração): pre + nome gravado + pos; a sem nome é a reserva (nunca "Rabisco")
+  "rp-rise-ok": "Parabéns! Você foi forte e corajoso! Corpo saudável, coração alegre!",
+  "rp-rise-ok-pre": "Parabéns,",
+  "rp-rise-ok-pos": "Você foi forte e corajoso! Corpo saudável, coração alegre!",
+  "rp-aula-fim": "Parabéns! Você aprendeu muito hoje! O sábio ouve e aprende ainda mais. Baseado em Provérbios um, versículo cinco.",
+  "rp-aula-fim-pre": "Parabéns,",
+  "rp-aula-fim-pos": "Você aprendeu muito hoje! O sábio ouve e aprende ainda mais. Baseado em Provérbios um, versículo cinco.",
+  "rp-pai-intro-pos": "vamos orar juntos. Fique quietinho e repita comigo.",
   "rp-livro-2": "Os bichos da arca. O leão, a girafa, o elefante e o macaquinho entraram na arca de dois em dois. Noé cuidou de todos até a chuva passar.",
 };
 // quadros de versículo da casa (paráfrases para crianças, com a referência em que se baseiam)
@@ -70,6 +78,8 @@ const { MISSOES } = await import(`data:text/javascript,${encodeURIComponent(read
 for (const m of MISSOES) {
   if (!m.voz?.pedido) FALAS_PT[`rp-m-${m.id}-pedido`] = m.pedido;
   if (!m.voz?.fim) FALAS_PT[`rp-m-${m.id}-fim`] = m.fim;
+  // parabéns/oração com o NOME DA CRIANÇA: "Parabéns, {nome}! ..." vira pre ("Parabéns,") + nome gravado + pos (rp-m-<id>-fim-pre/-pos)
+  if (m.fimNome) { const [pre, pos] = m.fimNome.split("{nome}").map((t) => t.replace(/^[!,.\s]+/, "").trim()); FALAS_PT[`rp-m-${m.id}-fim-pre`] = `${m.fimNome.split("{nome}")[0].trim()}`; if (pos) FALAS_PT[`rp-m-${m.id}-fim-pos`] = pos; }
   if (m.verso) FALAS_PT[`rp-m-${m.id}-verso`] = `${m.verso.texto} ${m.verso.ref.replace(/^baseado/, "Baseado")}.`;
 }
 writeFileSync(new URL("./falas.json", import.meta.url), JSON.stringify({ pt: FALAS_PT }, null, 1) + "\n");

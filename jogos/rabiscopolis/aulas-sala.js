@@ -204,8 +204,7 @@ export function montarAulas({ id, g, ox, oz, inter, npcs, est, solido, escrever,
     aula = null; ordem++; est.aulas.feitas.push(M.id); est.aulas.aula = null;
     escrever(["Parabéns!", `★ ${M.nome} ★`]);
     prof.pular(); prof.acenar(3.5); api.sons.vitoria?.(); api.confete?.();
-    fala(["cid-aula-fim"]);
-    dizerProf(api, "Parabéns, Rabisco! Você aprendeu muito hoje! “O sábio ouve e aprende ainda mais.” (baseado em Provérbios 1.5)", 6400);
+    api.parabens("rp-aula-fim", "Você aprendeu muito hoje! “O sábio ouve e aprende ainda mais.” (baseado em Provérbios 1.5)", 6400, "Professora Lápis Turquesa");
     rotuloAula(); inter.push(it);
   }
   // o objeto mais perto do Rabisco ganha o anelzinho amarelo; os que acertou dão pulinho

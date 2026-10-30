@@ -107,7 +107,7 @@ const L = (id, nome, x, z, dx, dz, extra = {}) => ({ id, nome, x, z, dir: [dx, d
 export const LUGARES = [
   // Centro: a praça e a Igreja Reviver (a igreja da escola), de frente para a praça
   L("praca", "Praça da Paz", 0, 12, 0, 1, { raio: 17, recuo: 0, bairro: "Centro" }),
-  L("igreja", "Igreja Reviver", 0, -17, 0, 1, { recuo: 4, pegada: [26, 16], raio: 14, bairro: "Centro", foto: "assets/parceiros/igreja-reviver.webp?v=1", proporcao: 1024 / 550 }),
+  L("igreja", "Igreja Reviver", 0, -17, 0, 1, { recuo: 4, pegada: [26, 16], raio: 14, bairro: "Centro", foto: "assets/parceiros/igreja-reviver.webp?v=2", proporcao: 1024 / 550 }),
   // Escola, Hospital e Bombeiros: de frente para a Avenida da Esperança
   L("hospital", "Hospital Cuidar", -28, -59.5, 0, 1, { pegada: [18, 15], bairro: "Escola" }),
   L("biblioteca", "Biblioteca Ler é Bom", 0, -59.5, 0, 1, { pegada: [26, 16], raio: 14, bairro: "Escola" }),

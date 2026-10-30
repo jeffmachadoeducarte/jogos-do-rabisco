@@ -31,6 +31,6 @@ export const ESTILO_PARCEIRO = {
 // a frente é um desenho provisório na mesma proporção (proporcao): concreto, moldura branca, arco azul-marinho
 // e vidro espelhado. Trocou a foto? Suba o ?v=.
 export const IGREJA = {
-  id: "igreja-reviver", nome: "Igreja Reviver", foto: "assets/parceiros/igreja-reviver.webp?v=1", tipo: "igreja",
+  id: "igreja-reviver", nome: "Igreja Reviver", foto: "assets/parceiros/igreja-reviver.webp?v=2", tipo: "igreja",
   altura: 12, d: 14, larguraMax: 26, proporcao: 1024 / 550,
 };
