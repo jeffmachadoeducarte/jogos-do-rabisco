@@ -181,13 +181,13 @@ function construirMundo(img) {
   grama.repeat.set(120, 120);
   const chao = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400), plasticoMapa(grama, { roughness: 0.6 }));
   chao.rotation.x = -Math.PI / 2;
-  chao.position.set(30, 0, 120);
+  chao.position.set(30, -0.1, 120); // um pouco abaixo da pista: sem briga de profundidade com o asfalto
   chao.receiveShadow = true;
   cena.add(chao);
 
   // Asfalto em placas, zebras de tijolinhos e acostamento de pinos
   const faixa = (de, ate, textura, y, repV) => {
-    const m = new THREE.Mesh(faixaPlana(centro, lado, idx, AMOSTRAS, PASSO, de, ate, y, repV), plasticoMapa(textura));
+    const m = new THREE.Mesh(faixaPlana(centro, lado, idx, AMOSTRAS, PASSO, de, ate, y, repV), plasticoMapa(textura, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
     m.receiveShadow = true;
     cena.add(m);
   };
@@ -218,7 +218,7 @@ function construirMundo(img) {
   });
   malhas.forEach((m, k) => { m.count = usados[k]; cena.add(m); });
 
-  const chegada = new THREE.Mesh(new THREE.PlaneGeometry(MEIA_PISTA * 2, 3), plasticoMapa(texturaXadrez()));
+  const chegada = new THREE.Mesh(new THREE.PlaneGeometry(MEIA_PISTA * 2, 3), plasticoMapa(texturaXadrez(), { polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
   chegada.rotation.x = -Math.PI / 2;
   chegada.rotation.z = anguloDe(tangente[0]) + Math.PI;
   chegada.position.copy(centro[0]).setY(0.09);
@@ -428,7 +428,7 @@ function criarPorticos() {
     });
     // listras no chão mostrando as três faixas
     for (const lat of [MEIA_PISTA * 0.31, -MEIA_PISTA * 0.31]) {
-      const linha = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 26), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 }));
+      const linha = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 26), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
       linha.rotation.x = -Math.PI / 2;
       linha.position.set(lat, 0.1, -13);
       g.add(linha);
