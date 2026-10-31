@@ -171,8 +171,8 @@ body.touch .rp-toque { display: block; }
 .acao-j2-rp { position: absolute; z-index: 8; left: 50%; bottom: 96px; transform: translateX(-50%); padding: 4px 14px 6px; border-radius: 999px; background: #ec2e8c; color: #fff; border: 5px solid var(--tinta); box-shadow: 0 5px 0 var(--tinta); font: 800 19px var(--texto); pointer-events: none; }
 .acao-j2-rp[hidden] { display: none; }
 .acao-j2-rp kbd { display: inline-block; margin-left: 6px; padding: 0 6px; border: 3px solid var(--tinta); border-radius: 8px; background: #fff; color: var(--tinta); font: 800 15px var(--texto); }
-/* Modo TV (src/motor/modotv.js): letras maiores, sem minimapa; o mapa grande continua no M / Select */
-html.modo-tv .minimapa-rp { display: none !important; }
+/* Modo TV (src/motor/modotv.js): letras maiores; o minimapa segue a mesma regra (escondido até pedirem) e fica maior */
+html.modo-tv .minimapa-rp { width: 230px; height: 230px; }
 html.modo-tv .balao-rp { font-size: 24px; }
 html.modo-tv .missao-rp { transform: scale(1.3); transform-origin: top left; }
 html.modo-tv .bussola-rp { transform: translateX(-50%) scale(1.35); transform-origin: top center; }

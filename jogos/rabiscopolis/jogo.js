@@ -14,6 +14,7 @@ import { PARCEIROS } from "../../src/parceiros.js";
 import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
 import { criarCasca, el } from "../../src/motor/casca.js";
 import { sons } from "../../src/motor/sons.js";
+import { Engrenagem } from "../../src/motor/engrenagem.js";
 import { falar, falarNome, preCarregarFalas } from "../../src/motor/voz.js";
 import { montarMundo } from "./mundo.js";
 import { criarFisica, VEL } from "./fisica.js";
@@ -53,7 +54,7 @@ const CONTROLES = [
   { id: "fone", nome: "Rabifone", teclas: ["Tab", "KeyC"], botoes: [8], controle: "select" },
   { id: "girarE", nome: "Girar a câmera ⟲", teclas: ["KeyQ"] },
   { id: "girarD", nome: "Girar a câmera ⟳", teclas: ["KeyE"] },
-  { id: "mapa", nome: "Mapa grande", teclas: ["KeyM"] },
+  { id: "mapa", nome: "Mapa (mostrar / esconder)", teclas: ["KeyM"], botoes: [10], controle: "mapa" },
 ];
 // Pai Nosso (Mateus 6.9-13, texto tradicional): uma frase por vez, cada uma com a sua voz (cid-pai-1..11, da Rabiscópolis)
 const ORACAO = [
@@ -75,9 +76,9 @@ const jogo = criarCasca({
   menuNoJogo: false,
   teclado: false,
   dica: {
-    teclado: "WASD ou setas andam · F faz a ação · Tab abre o Rabifone · M abre o mapa · Q/E giram a câmera · Espaço pula",
-    toque: "Arraste à esquerda para andar · à direita para olhar · ✋ faz a ação · 📱 abre o Rabifone",
-    controle: "Alavanca anda · X faz a ação · Select abre o Rabifone · A pula · Start pausa",
+    teclado: "WASD ou setas andam · F faz a ação · Tab abre o Rabifone · M mostra o mapa · Q/E giram a câmera · Espaço pula",
+    toque: "Arraste à esquerda para andar · à direita para olhar · ✋ faz a ação · 📱 abre o Rabifone · ⚙️ mostra o mapa",
+    controle: "Alavanca anda · X faz a ação · Select abre o Rabifone · L3 mostra o mapa · A pula · Start pausa",
   },
   falas: { titulo: "rp-titulo", vitoria: null },
   controles: CONTROLES,
@@ -138,7 +139,7 @@ addEventListener("keydown", (e) => {
   if (ehAcao("pular", e.code)) { pad.puloNovo = true; e.preventDefault(); }
   if (ehAcao("acao", e.code) && !e.repeat) { pad.acaoNova = true; e.preventDefault(); }
   if (ehAcao("fone", e.code) && !e.repeat) { e.preventDefault(); fone?.abrir(); }
-  if (ehAcao("mapa", e.code) && !e.repeat) alternarMapa();
+  if (ehAcao("mapa", e.code) && !e.repeat) mapaPedido();
   if (e.code.startsWith("Arrow")) e.preventDefault();
 });
 addEventListener("keyup", (e) => teclas.delete(e.code));
@@ -174,6 +175,7 @@ function lerControle({ segura, apertou, eixoX, eixoY }) {
   for (const p of navigator.getGamepads?.() ?? []) if (p && p.index !== J.padJ2 && (p.buttons[4]?.pressed || p.buttons[6]?.pressed)) pad.descer = true;
   if (apertou.acao) pad.acaoNova = true;
   if (apertou.select) fone?.abrir();
+  if (apertou.mapa) mapaPedido();
   if (apertou.voltar && mapaGrande && !mapaGrande.hidden) alternarMapa();
 }
 
@@ -197,6 +199,7 @@ const j = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), noChao: true, co
 const veiculos = []; let garagem = null; // veículo chamado pelo Rabifone (só um por vez)
 let transito = [], moradores = [], vovo = null, missoes = null, j2 = null, patioJE = null;
 let dentro = null, contexto = null, salvo = carregar(), alvoMapa = null;
+let mapaLigado = false; // minimapa do canto: escondido ao começar; M, L3 e a ⚙️ mostram e escondem
 let emCasa = null, deco = null, fade = null; const interiores = {}; // casa por dentro (montada uma vez por planta)
 let emLugar = null, sorveteUI = null; const salas = {}; // lugares por dentro (Fatia 3), montados na primeira visita
 let solidosDentro = []; // colisões da sala/casa em que o Rabisco está
@@ -267,7 +270,8 @@ function iniciar() {
 
   // HUD
   hud = el("div", { class: "hud-rp" });
-  minimapa = el("canvas", { class: "minimapa-rp", width: "200", height: "200", role: "button", "aria-label": "Abrir o mapa" });
+  minimapa = el("canvas", { class: "minimapa-rp", width: "200", height: "200", role: "button", "aria-label": "Abrir o mapa grande", hidden: "" });
+  mapaLigado = false;
   minimapa.addEventListener("click", () => alternarMapa());
   balao = el("div", { class: "balao-rp", "aria-live": "polite" });
   bussola = el("div", { class: "bussola-rp", hidden: "" }, [el("div", { class: "seta", html: "<span>➤</span>" }), el("div", { class: "rotulo" })]);
@@ -453,7 +457,7 @@ function entrarCasa(c, imediato = false) {
     trocarSolidosCasa([...int.solidos, ...solidosDosMoveis(int)]);
     j.pos.set(int.entrada[0], 0.07, int.entrada[1]); j.vel.set(0, 0, 0); j.dir = Math.PI;
     camera.st.yaw = Math.PI;
-    minimapa.hidden = true;
+    aplicarMinimapa();
     posicionarCamera(1, 0);
     if (!entrarCasa.falou) { entrarCasa.falou = true; falar("rp-casa-entrar"); dizer("Minha casa", "Que casa gostosa! Chegue perto de um círculo amarelo e aperte a ação para decorar.", 4200); }
   };
@@ -471,7 +475,7 @@ function sairCasa(imediato = false) {
     camera.st.vista = null; camera.st.yaw = Math.atan2(s[0], s[1]); // antes do irPara: a câmera da rua já nasce no lugar certo
     irPara(fx + s[0] * 2.5, fz + s[1] * 2.5);
     j.dir = camera.st.yaw;
-    minimapa.hidden = false;
+    aplicarMinimapa();
   };
   imediato ? fazer() : escurecer(fazer);
 }
@@ -517,7 +521,7 @@ function entrarLugar(id, imediato = false) {
     trocarSolidosCasa([...s.solidos]);
     j.pos.set(s.entrada[0], 0.07, s.entrada[1]); j.vel.set(0, 0, 0); j.dir = Math.PI;
     camera.st.yaw = Math.PI;
-    minimapa.hidden = true;
+    aplicarMinimapa();
     posicionarCamera(1, 0);
     const def = SALAS[id];
     // nas lojas parceiras quem fala é a anfitriã narrando (os personagens parceiros, por enquanto, não falam)
@@ -539,7 +543,7 @@ function sairLugar(imediato = false) {
     camera.st.vista = null; camera.st.yaw = Math.atan2(l.dir[0], l.dir[1]); // antes do irPara: a câmera da rua já nasce no lugar certo
     irPara(l.x + l.dir[0] * 2.6, l.z + l.dir[1] * 2.6);
     j.dir = camera.st.yaw;
-    minimapa.hidden = false;
+    aplicarMinimapa();
   };
   imediato ? fazer() : escurecer(fazer);
 }
@@ -971,7 +975,7 @@ function passo(dt, ultimo) {
     regras();
     posicionarCamera(Math.min(1, dt * 6), dt, andando);
     tMapa -= dt;
-    if (ultimo && tMapa <= 0) { tMapa = 0.15; desenharMapa(minimapa.getContext("2d"), 200); atualizarBussola(); atualizarBotaoAcao(); atualizarMissaoHud(); atualizarAcaoJ2(); if (!mapaGrande.hidden) desenharMapa(mapaGrande.querySelector("canvas").getContext("2d"), 640, true); }
+    if (ultimo && tMapa <= 0) { tMapa = 0.15; if (!minimapa.hidden) desenharMapa(minimapa.getContext("2d"), 200); atualizarBussola(); atualizarBotaoAcao(); atualizarMissaoHud(); atualizarAcaoJ2(); if (!mapaGrande.hidden) desenharMapa(mapaGrande.querySelector("canvas").getContext("2d"), 640, true); }
     if (ultimo && !params.has("fixo")) qualidade.medir(t);
   }
 }
@@ -1087,6 +1091,19 @@ function atualizarBussola() {
   bussola.querySelector(".seta").style.transform = `rotate(${(-rel * 180) / Math.PI - 90}deg)`;
   bussola.querySelector(".rotulo").textContent = `${a.emoji} ${Math.round(Math.hypot(a.x - j.pos.x, a.z - j.pos.z))} m`;
 }
+// minimapa do canto: só aparece quando a criança pede (M, L3 do controle ou "Mapa" na ⚙️) e nunca dentro de casa ou de lugar;
+// tocar nele abre o mapa grande. Com o mapa grande aberto, o pedido fecha o grande.
+function aplicarMinimapa() { if (minimapa) minimapa.hidden = !mapaLigado || Boolean(emCasa || emLugar); }
+function alternarMinimapa(ligar = null) {
+  mapaLigado = ligar === null ? !mapaLigado : ligar;
+  aplicarMinimapa();
+  if (!minimapa.hidden) desenharMapa(minimapa.getContext("2d"), 200);
+}
+function mapaPedido() {
+  if (!vivo) return;
+  if (!mapaGrande.hidden) alternarMapa(false); else alternarMinimapa();
+}
+Engrenagem.extra({ id: "mapa", ic: "🗺️", texto: "Mapa", sub: "Mostrar ou esconder o mapa", mostrar: () => vivo, acao: () => mapaPedido() });
 function alternarMapa(abrir = null) {
   mapaGrande.hidden = abrir === null ? !mapaGrande.hidden : !abrir;
   if (!mapaGrande.hidden) desenharMapa(mapaGrande.querySelector("canvas").getContext("2d"), 640, true);
@@ -1159,7 +1176,7 @@ if (params.has("teste")) window.teste = {
   get mundo() { return mundo; }, get dentro() { return dentro; }, get contexto() { return contexto?.rotulo ?? null; },
   get salvo() { return carregar(); }, get fone() { return fone; }, get transito() { return transito; }, get moradores() { return moradores; },
   get ceu() { return ceu; }, get estat() { return { ...estat, fps: qualidade?.fps ?? 0, blocos: mundo.blocosVisiveis(), malhas: mundo.malhas }; },
-  get vivo() { return vivo; }, get tempo() { return estat.tj ?? 0; }, get fis() { return fis; },
+  get vivo() { return vivo; }, get mapaLigado() { return mapaLigado; }, mapaPedido, Engrenagem, get tempo() { return estat.tj ?? 0; }, get fis() { return fis; },
   get modo() { return emCasa ? "casa" : emLugar ? "lugar" : dentro ? "veiculo" : "rua"; },
   get emLugar() { return emLugar ? { id: emLugar.id, est: emLugar.est, interativos: emLugar.interativos.map((i) => ({ id: i.id, rotulo: i.rotulo, pos: i.pos })) } : null; },
   get sorveteUI() { return sorveteUI; },
