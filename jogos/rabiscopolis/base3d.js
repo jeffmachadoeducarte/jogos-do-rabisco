@@ -312,6 +312,12 @@ function materialProj(m) {
   }
   return matProj.get(k);
 }
+const semIndices = new WeakMap(), nm = new THREE.Matrix3();
+function semIndice(g) {
+  let n = semIndices.get(g);
+  if (!n) { n = g.index ? g.toNonIndexed() : g; if (!n.attributes.normal) n.computeVertexNormals(); semIndices.set(g, n); }
+  return n;
+}
 export function mesclar(raiz, { juntas = null } = {}) {
   raiz.updateMatrixWorld(true);
   const baldes = new Map();
@@ -331,15 +337,11 @@ export function mesclar(raiz, { juntas = null } = {}) {
     const alvo = alvoDe(o);
     if (!invs.has(alvo)) invs.set(alvo, new THREE.Matrix4().copy(alvo.matrixWorld).invert());
     m4.multiplyMatrices(invs.get(alvo), o.matrixWorld);
-    const base = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
-    base.applyMatrix4(m4);
-    if (m4.determinant() < 0) { // espelhado: desvira os triângulos
-      const p = base.attributes.position;
-      for (let i = 0; i < p.count; i += 3) for (const at of Object.values(base.attributes)) {
-        for (let k = 0; k < at.itemSize; k++) { const a = at.getComponent(i + 1, k); at.setComponent(i + 1, k, at.getComponent(i + 2, k)); at.setComponent(i + 2, k, a); }
-      }
-    }
-    if (!base.attributes.normal) base.computeVertexNormals();
+    // geometria sem índice guardada por peça (o mundo de blocos repete as mesmas caixas milhares de vezes)
+    const base = semIndice(o.geometry);
+    const espelhado = m4.determinant() < 0;
+    nm.getNormalMatrix(m4);
+    const ePos = m4.elements, eN = nm.elements;
     const pedacos = Array.isArray(o.material)
       ? (o.geometry.groups.length ? o.geometry.groups : [{ start: 0, count: base.attributes.position.count, materialIndex: 0 }]).map((gr) => [o.material[gr.materialIndex], gr.start, gr.count])
       : [[o.material, 0, base.attributes.position.count]];
@@ -351,19 +353,20 @@ export function mesclar(raiz, { juntas = null } = {}) {
       const chave = `${alvo.uuid}|${mat.uuid}|${o.castShadow ? 1 : 0}|${det ? 1 : 0}`;
       if (!baldes.has(chave)) baldes.set(chave, { alvo, material: mat, tipo, det, sombra: o.castShadow, pos: [], nrm: [], uv: [], cor: [], pr: [], nr: [], cb: [], pl: [] });
       const b = baldes.get(chave);
-      const A = base.attributes, P = A.position, N = A.normal, U = A.uv;
+      const A = base.attributes, P = A.position.array, N = A.normal.array, U = A.uv?.array;
       if (tipo === "vc") c.copy(material.color);
       if (tipo === "proj") c.copy(material.uniforms.corBase.value);
       const peso = tipo === "proj" ? material.uniforms.pesoLado?.value ?? 1 : 0;
-      for (let i = ini; i < ini + qtd; i++) {
-        b.pos.push(P.getX(i), P.getY(i), P.getZ(i));
-        b.nrm.push(N.getX(i), N.getY(i), N.getZ(i));
+      for (let t = ini; t < ini + qtd; t += 3) for (let k = 0; k < 3; k++) {
+        const i = t + (espelhado && k ? 3 - k : k), x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], u = N[i * 3], v = N[i * 3 + 1], w = N[i * 3 + 2];
+        b.pos.push(ePos[0] * x + ePos[4] * y + ePos[8] * z + ePos[12], ePos[1] * x + ePos[5] * y + ePos[9] * z + ePos[13], ePos[2] * x + ePos[6] * y + ePos[10] * z + ePos[14]);
+        const nx = eN[0] * u + eN[3] * v + eN[6] * w, ny = eN[1] * u + eN[4] * v + eN[7] * w, nz = eN[2] * u + eN[5] * v + eN[8] * w, l = Math.hypot(nx, ny, nz) || 1;
+        b.nrm.push(nx / l, ny / l, nz / l);
         if (tipo === "proj") { b.pr.push(A.posRef.getX(i), A.posRef.getY(i), A.posRef.getZ(i)); b.nr.push(A.nrmRef.getX(i), A.nrmRef.getY(i), A.nrmRef.getZ(i)); b.cb.push(c.r, c.g, c.b); b.pl.push(peso); }
-        else if (U) b.uv.push(U.getX(i), U.getY(i)); else b.uv.push(0, 0);
+        else if (U) b.uv.push(U[i * 2], U[i * 2 + 1]); else b.uv.push(0, 0);
         if (tipo === "vc") b.cor.push(c.r, c.g, c.b);
       }
     }
-    base.dispose();
     remover.push(o);
   });
   for (const o of remover) o.removeFromParent();
