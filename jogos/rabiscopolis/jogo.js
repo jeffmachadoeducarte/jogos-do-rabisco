@@ -27,6 +27,8 @@ import { criarJogador2 } from "./jogador2.js";
 import { CODIGOS_J2, TECLAS_J1_EXTRA } from "../../src/motor/jogadores.js";
 import { criarMorador, criarVovo } from "./personagens.js";
 import { criarRabifone } from "./rabifone.js";
+import { criarMeuRabisco } from "./meu-rabisco-ui.js";
+import { prepararRoupa, vestirPecas, escolhaSalva, ajustarUniforme } from "./meu-rabisco.js";
 import { criarToque } from "./toque.js";
 import { carregar, salvar } from "./salvar.js";
 import { criarQualidade } from "./qualidade.js";
@@ -109,9 +111,10 @@ function teclasDe(acao) {
 const tem = (acao) => teclasDe(acao).some((k) => teclas.has(k));
 const ehAcao = (acao, code) => teclasDe(acao).includes(code);
 const pad = { x: 0, y: 0, gx: 0, pulo: false, puloNovo: false, acaoNova: false };
-let toque = null, fone = null;
+let toque = null, fone = null, meuRb = null;
 addEventListener("keydown", (e) => {
   if (jogo.estado !== "jogando" || jogo.pausado) return;
+  if (e.target?.matches?.("input, textarea")) return; // digitando o nome no Meu Rabisco
   if (J.tv && !ehAcao("mapa", e.code)) return; // TV como tela (página tv/): os dois jogam pelos controles e celulares
   if (sorveteUI?.aberto) {
     const mapa = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
@@ -125,6 +128,13 @@ addEventListener("keydown", (e) => {
     if (mapa[e.code]) { deco.navegar(...mapa[e.code]); e.preventDefault(); return; }
     if (e.code === "Enter" || e.code === "Space" || e.code === "KeyF") { deco.confirmar(); e.preventDefault(); return; }
     if (e.code === "Escape" || e.code === "Backspace") { deco.cancelar(); e.preventDefault(); }
+    return;
+  }
+  if (meuRb?.aberto) {
+    const mapa = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], KeyA: [-1, 0], KeyD: [1, 0], KeyW: [0, -1], KeyS: [0, 1] };
+    if (mapa[e.code]) { meuRb.navegar(...mapa[e.code]); e.preventDefault(); return; }
+    if (e.code === "Enter" || e.code === "Space" || e.code === "KeyF") { meuRb.confirmar(); e.preventDefault(); return; }
+    if (e.code === "Escape" || e.code === "Backspace") { meuRb.voltar(); e.preventDefault(); }
     return;
   }
   if (fone?.aberto) {
@@ -154,6 +164,12 @@ function lerControle({ segura, apertou, eixoX, eixoY }) {
     if (apertou.esq) deco.navegar(-1, 0); if (apertou.dir) deco.navegar(1, 0);
     if (apertou.cima) deco.navegar(0, -1); if (apertou.baixo) deco.navegar(0, 1);
     if (apertou.confirma) deco.confirmar(); else if (apertou.voltar) deco.cancelar();
+    return;
+  }
+  if (meuRb?.aberto) {
+    if (apertou.esq) meuRb.navegar(-1, 0); if (apertou.dir) meuRb.navegar(1, 0);
+    if (apertou.cima) meuRb.navegar(0, -1); if (apertou.baixo) meuRb.navegar(0, 1);
+    if (apertou.confirma) meuRb.confirmar(); else if (apertou.voltar) meuRb.voltar();
     return;
   }
   if (fone?.aberto) {
@@ -267,7 +283,9 @@ function iniciar() {
   camera = criarCamera(cam, mundo.solidos);
   rabisco = new Rabisco3D({ raiz: "../..", altura: 1.8 });
   cena.add(rabisco.grupo);
+  prepararRoupa(rabisco);
   otimizarRabisco(rabisco);
+  vestirPecas(rabisco, escolhaSalva(salvo), { juntar: true }); // depois do 1º mesclar: a mochila original só se esconde
   criarPlaca();
   if (salvo.roupas?.[0] && PROFISSOES[salvo.roupas[0]]) setTimeout(() => vestir(salvo.roupas[0]), 0);
   // celular: neblina mais perto, menos blocos e carros desenhados
@@ -320,7 +338,7 @@ function iniciar() {
     salvo: () => salvo, salvar: (d) => salvar(d), crianca: () => { try { return window.Familia?.crianca?.() || null; } catch { return null; } },
     otimizar: (rb) => otimizarRabisco(rb, () => j2?.modelo?.c?.rabisco === rb),
     veiculo: () => dentro, yaw: () => camera.st.yaw, caronaDaMissao: () => missoes?.carona,
-    travado: () => Boolean(fone?.aberto || deco?.aberto || sorveteUI?.aberto),
+    travado: () => Boolean(fone?.aberto || deco?.aberto || sorveteUI?.aberto || meuRb?.aberto),
   });
   acaoJ2 = el("div", { class: "acao-j2-rp", hidden: "" }); caixa.append(acaoJ2);
   fade = el("div", { class: "fade-rp" }); caixa.append(fade);
@@ -337,6 +355,7 @@ function iniciar() {
     aoGaragem: (tipo, cor) => chamarVeiculo(tipo, cor),
     aoHora: (h) => mudarHora(h),
     aoMapa: () => alternarMapa(true),
+    aoMeuRabisco: () => meuRb.abrir(),
     infoCasa: () => ({ tem: salvo.casa != null, nome: salvo.casa != null ? `Casa ${salvo.casa}` : "" }),
     coresCasa: () => CORES_PAREDE,
     missoes: () => ({ lista: missoes.MISSOES.map((m) => ({ id: m.id, titulo: m.titulo, icone: m.icone, tipo: m.tipo, feita: missoes.feitas.includes(m.id) })), ativa: missoes.ativa }),
@@ -353,6 +372,15 @@ function iniciar() {
       else alvoMapa = { x: c.frente[0], z: c.frente[1], emoji: "🏠" };
     },
   });
+  // Meu Rabisco: mochila, fone, sapatos, calça e óculos (meu-rabisco.js); a escolha vale na hora e fica no aparelho
+  meuRb = criarMeuRabisco(caixa, {
+    escolha: () => escolhaSalva(salvo),
+    nomeCadastro: () => (nomeCrianca() ? nomeDaPlaca() : null),
+    nomeSalvo: () => salvo.nomeRabisco,
+    aoEscolher: (slot, id) => { salvo.meuRabisco = { ...salvo.meuRabisco, [slot]: id }; salvar(salvo); vestirPecas(rabisco, escolhaSalva(salvo), { juntar: true }); },
+    aoNome: (n) => { salvo.nomeRabisco = n; salvar(salvo); atualizarPlaca(); },
+    aoAbrir: () => { teclas.clear(); toque.zerar(); },
+  });
   atualizarHud();
 
   new ResizeObserver(ajustar).observe(caixa);
@@ -365,6 +393,7 @@ function iniciar() {
 }
 function parar() {
   vivo = false;
+  if (meuRb?.aberto) meuRb.fechar();
   emCasa = null; for (const k of Object.keys(interiores)) delete interiores[k];
   emLugar = null; solidosDentro = []; for (const k of Object.keys(salas)) delete salas[k];
   radioUI?.sairDoCarro();
@@ -381,7 +410,8 @@ function parar() {
 // (roupas3d.js mexe neles). O rosto chega depois (rosto3d.json): junta de novo quando ele aparecer.
 function otimizarRabisco(rb, vale = () => rabisco === rb) {
   for (const o of [rb.bone, rb.pivoAba, rb.aba]) if (o) o.userData.dinamico = true;
-  const juntas = new Set([rb.corpo, rb.tronco, rb.pernaE.quadril, rb.pernaE.joelho, rb.pernaD.quadril, rb.pernaD.joelho, rb.bracoE.ombro, rb.bracoE.cotovelo, rb.bracoD.ombro, rb.bracoD.cotovelo].filter(Boolean));
+  // a mochila original fica em malhas à parte (rb.rp.mochila, de meu-rabisco.js): dá para escondê-la ao trocar de mochila
+  const juntas = new Set([rb.rp?.mochila, rb.corpo, rb.tronco, rb.pernaE.quadril, rb.pernaE.joelho, rb.pernaD.quadril, rb.pernaD.joelho, rb.bracoE.ombro, rb.bracoE.cotovelo, rb.bracoD.ombro, rb.bracoD.cotovelo].filter(Boolean));
   const juntar = () => { if (vale()) mesclar(rb.grupo, { juntas }); };
   juntar();
   for (const ms of [1500, 4000, 9000]) setTimeout(juntar, ms);
@@ -516,9 +546,10 @@ function vestir(id) {
   // cada peça vira poucas malhas (por dentro ela não mexe)
   for (const r of Object.values(rabisco.roupas ?? {})) for (const o of r.objs) mesclar(o);
   for (const objs of Object.values(rabisco.roupasRP ?? {})) for (const o of objs) mesclar(o);
+  ajustarUniforme(rabisco); // botas e óculos do uniforme mandam nos sapatos e nos óculos escolhidos
   salvo.roupas = [id]; salvar(salvo);
 }
-function tirarUniforme() { tirarProfissao(rabisco); salvo.roupas = []; salvar(salvo); }
+function tirarUniforme() { tirarProfissao(rabisco); ajustarUniforme(rabisco); salvo.roupas = []; salvar(salvo); }
 // parabéns por missão/aula concluída: a narradora fala o NOME DA CRIANÇA (rp-xxx-pre + nome gravado + rp-xxx-pos); sem
 // cadastro ou sem o nome no banco, a fala neutra rp-xxx, sem nome e sem "Rabisco". `chave` = "rp-xxx" (-pre/-pos/neutra).
 function parabens(chave, depois, ms, quem = "Rabiscolândia") {
@@ -815,7 +846,7 @@ function entrada() {
   if (entradaTeste) { ix = entradaTeste.virar; iy = entradaTeste.acel; }
   const m = Math.hypot(ix, iy);
   if (m > 1) { ix /= m; iy /= m; }
-  if (fone?.aberto || deco?.aberto || sorveteUI?.aberto) ix = iy = 0;
+  if (fone?.aberto || deco?.aberto || sorveteUI?.aberto || meuRb?.aberto) ix = iy = 0;
   return { ix, iy, m };
 }
 function regras() {
@@ -1136,6 +1167,7 @@ function mapaPedido() {
   if (!vivo) return;
   if (!mapaGrande.hidden) alternarMapa(false); else alternarMinimapa();
 }
+Engrenagem.extra({ id: "meurabisco", ic: "✏️", texto: "Meu Rabisco", sub: "Mochila, fone, sapatos, calça e óculos", mostrar: () => vivo, acao: () => meuRb?.abrir() });
 Engrenagem.extra({ id: "mapa", ic: "🗺️", texto: "Mapa", sub: "Mostrar ou esconder o mapa", mostrar: () => vivo, acao: () => mapaPedido() });
 function alternarMapa(abrir = null) {
   mapaGrande.hidden = abrir === null ? !mapaGrande.hidden : !abrir;
@@ -1209,7 +1241,7 @@ if (params.has("teste")) window.teste = {
   get mundo() { return mundo; }, get dentro() { return dentro; }, get contexto() { return contexto?.rotulo ?? null; },
   get salvo() { return carregar(); }, get fone() { return fone; }, get transito() { return transito; }, get moradores() { return moradores; },
   get ceu() { return ceu; }, get estat() { return { ...estat, fps: qualidade?.fps ?? 0, blocos: mundo.blocosVisiveis(), malhas: mundo.malhas }; },
-  get vivo() { return vivo; }, get mapaLigado() { return mapaLigado; }, mapaPedido, Engrenagem, get placa() { return placaNome ? { visivel: placaNome.sprite.visible, nome: placaNome.nome, y: placaNome.sprite.position.y } : null; }, get tempo() { return estat.tj ?? 0; }, get fis() { return fis; },
+  get vivo() { return vivo; }, get mapaLigado() { return mapaLigado; }, mapaPedido, Engrenagem, get meuRb() { return meuRb; }, get pecas() { return rabisco?.rp ? { ...rabisco.rp.atual } : null; }, get placa() { return placaNome ? { visivel: placaNome.sprite.visible, nome: placaNome.nome, y: placaNome.sprite.position.y } : null; }, get tempo() { return estat.tj ?? 0; }, get fis() { return fis; },
   get modo() { return emCasa ? "casa" : emLugar ? "lugar" : dentro ? "veiculo" : "rua"; },
   get emLugar() { return emLugar ? { id: emLugar.id, est: emLugar.est, interativos: emLugar.interativos.map((i) => ({ id: i.id, rotulo: i.rotulo, pos: i.pos })) } : null; },
   get sorveteUI() { return sorveteUI; },
