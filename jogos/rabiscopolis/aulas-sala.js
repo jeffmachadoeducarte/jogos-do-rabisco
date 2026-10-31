@@ -26,7 +26,7 @@ const FRENTE = 0.95;
 const embaralhar = (l) => { const a = [...l]; for (let i = a.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [a[i], a[k]] = [a[k], a[i]]; } return a; };
 const fala = (chaves) => { falarSequencia(chaves).then((ok) => { if (!ok && chaves[0]) falar(chaves[0]); }); };
 
-// objetos das aulas (copiados de jogos/cidade-do-rabisco/interiores.js · objetoAula, no traço toon da cidade)
+// objetos das aulas (copiados de jogos/cidade-do-rabisco/interiores.js · objetoAula, de blocos, como a cidade)
 export function objetoAula({ tipo, valor }) {
   const g = new THREE.Group();
   const bola = (r, cor, x, y, z, c = 0.03) => { const m = malha(new THREE.SphereGeometry(r, 16, 12), mat(cor), { contorno: c, sombra: false }); m.position.set(x, y, z); g.add(m); return m; };

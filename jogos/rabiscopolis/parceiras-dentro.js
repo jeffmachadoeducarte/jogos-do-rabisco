@@ -27,7 +27,7 @@ export const ACESSORIOS_BELLA = [
   { id: "bolsa", nome: "bolsinha roxa", cor: 0x8e5bd8 },
   { id: "tiara", nome: "tiara amarela", cor: 0xffc928 },
 ];
-// (copiado de jogos/cidade-do-rabisco/interiores.js · acessorio, no traço toon com contorno)
+// (copiado de jogos/cidade-do-rabisco/interiores.js · acessorio, de blocos)
 export function acessorio(id) {
   const g = new THREE.Group(), A = ACESSORIOS_BELLA.find((a) => a.id === id), m = mat(A.cor);
   const bola = (r, mm, x, y, z, c = 0.015) => { const b = malha(new THREE.SphereGeometry(r, 12, 10), mm, { contorno: c, sombra: false }); b.position.set(x, y, z); g.add(b); return b; };

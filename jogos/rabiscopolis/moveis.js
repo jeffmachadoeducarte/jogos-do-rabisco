@@ -1,4 +1,4 @@
-// Rabiscolândia: os móveis da casa (catálogo de ~30), no mesmo traço da cidade. Cada móvel é uma função que recebe
+// Rabiscolândia: os móveis da casa (catálogo de ~30), de blocos, como a cidade. Cada móvel é uma função que recebe
 // a cor escolhida e devolve um grupo com a frente para +z, o chão em y = 0, e userData.pegada [largura, fundo].
 // Os quadros de versículo usam paráfrases para crianças com "baseado em ...".
 

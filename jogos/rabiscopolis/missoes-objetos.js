@@ -1,12 +1,11 @@
 // Rabiscolândia: as peças 3D das missões que vieram da Rabiscópolis (gatinhos, baú do tesouro, foguinho na lixeira,
 // pórtico numerado da corrida, placas de número, caixa de frutas, maleta, mochila, caixinha de correio colorida,
-// envelope colorido). Tudo no traço da cidade (toon com contorno) e mesclado em poucas malhas; só o que mexe
+// envelope colorido). Tudo de blocos, como a cidade, e mesclado em poucas malhas; só o que mexe
 // (tampa do baú, chamas, rabinho) fica solto. Nada disso é montado antes de a missão precisar (missoes.js).
 
 import { THREE, matNovo, mat, malha, caixaRedonda, texturaCanvas, mesclar } from "./base3d.js";
 import { emBlocos } from "./blocos.js";
 
-const CONTORNO = 0.035;
 // número grande em canvas (placas e pórticos)
 const texNum = new Map();
 export function texturaNumero(n, cor = "#ec2e8c") {
@@ -36,8 +35,8 @@ export function texturaEnvelope(hex) {
 export function gatinho(cor = 0xff9f43) {
   const g = new THREE.Group();
   const pelo = mat(cor);
-  const corpo = malha(new THREE.SphereGeometry(0.3, 14, 10), pelo, { contorno: CONTORNO, sombra: false }); corpo.scale.set(1, 0.95, 1.25); corpo.position.y = 0.3; g.add(corpo);
-  const cab = malha(new THREE.SphereGeometry(0.25, 16, 12), pelo, { contorno: CONTORNO, sombra: false }); cab.position.set(0, 0.68, 0.18); g.add(cab);
+  const corpo = malha(new THREE.SphereGeometry(0.3, 14, 10), pelo, { sombra: false }); corpo.scale.set(1, 0.95, 1.25); corpo.position.y = 0.3; g.add(corpo);
+  const cab = malha(new THREE.SphereGeometry(0.25, 16, 12), pelo, { sombra: false }); cab.position.set(0, 0.68, 0.18); g.add(cab);
   for (const s of [-1, 1]) {
     const o = malha(new THREE.ConeGeometry(0.09, 0.18, 4), pelo, { sombra: false }); o.position.set(s * 0.14, 0.9, 0.16); o.rotation.z = -s * 0.25; g.add(o);
     const dentroO = malha(new THREE.ConeGeometry(0.05, 0.1, 4), mat(0xff9fc0), { sombra: false }); dentroO.position.set(s * 0.14, 0.88, 0.2); dentroO.rotation.z = -s * 0.25; g.add(dentroO);
@@ -59,11 +58,11 @@ export function gatinho(cor = 0xff9f43) {
 export function bau() {
   const g = new THREE.Group();
   const madeira = mat(0xb9773d), ouro = mat(0xffcc1f, { emissive: 0x332200 });
-  const base = caixaRedonda(1.2, 0.66, 0.8, madeira, { raio: 0.08, contorno: CONTORNO }); base.position.y = 0.35; g.add(base);
+  const base = caixaRedonda(1.2, 0.66, 0.8, madeira); base.position.y = 0.35; g.add(base);
   for (const x of [-0.42, 0.42]) { const f = caixaRedonda(0.14, 0.7, 0.84, ouro); f.position.set(x, 0.36, 0); g.add(f); }
   const fecho = caixaRedonda(0.22, 0.24, 0.08, ouro); fecho.position.set(0, 0.6, 0.42); g.add(fecho);
   const tampa = new THREE.Group(); tampa.position.set(0, 0.68, -0.4); tampa.userData.dinamico = true; g.add(tampa);
-  const t = malha(new THREE.CylinderGeometry(0.42, 0.42, 1.22, 16, 1, false, 0, Math.PI), madeira, { contorno: CONTORNO, sombra: false }); t.rotation.z = Math.PI / 2; t.scale.set(0.6, 1, 1); t.position.set(0, 0, 0.4); tampa.add(t);
+  const t = malha(new THREE.CylinderGeometry(0.42, 0.42, 1.22, 16, 1, false, 0, Math.PI), madeira, { sombra: false }); t.rotation.z = Math.PI / 2; t.scale.set(0.6, 1, 1); t.position.set(0, 0, 0.4); tampa.add(t);
   const brilho = malha(new THREE.SphereGeometry(0.3, 10, 8), mat(0xffe680, { emissive: 0xffd84a, emissiveIntensity: 0.6 }), { sombra: false }); brilho.position.y = 0.62; brilho.scale.set(1.4, 0.4, 0.9); brilho.visible = false; brilho.userData.dinamico = true; g.add(brilho);
   g.scale.setScalar(0.75); // baú de criança: na altura do joelho do Rabisco
   mesclar(g);
@@ -74,7 +73,7 @@ export function bau() {
 // foguinho dentro de uma lixeira de rua (nada assustador: chamas de desenho que encolhem com a água)
 export function foguinho() {
   const g = new THREE.Group();
-  const lixeira = malha(new THREE.CylinderGeometry(0.45, 0.38, 0.85, 14), mat(0x3d8f5a), { contorno: CONTORNO }); lixeira.position.y = 0.43; g.add(lixeira);
+  const lixeira = malha(new THREE.CylinderGeometry(0.45, 0.38, 0.85, 14), mat(0x3d8f5a)); lixeira.position.y = 0.43; g.add(lixeira);
   const aro = malha(new THREE.TorusGeometry(0.45, 0.05, 6, 18), mat(0x2b6a42), { sombra: false }); aro.rotation.x = Math.PI / 2; aro.position.y = 0.86; g.add(aro);
   const chamas = new THREE.Group(); chamas.position.y = 0.82; chamas.userData.dinamico = true; g.add(chamas);
   // chamas de desenho: gotas (bojo redondo embaixo, pontinha curva em cima), três línguas de cada cor
@@ -119,7 +118,7 @@ export function placaNumero(n) {
 // caixa de frutas (encomenda): vai no porta-malas
 export function caixaFrutas() {
   const g = new THREE.Group();
-  const cx = caixaRedonda(1.3, 0.6, 0.9, mat(0xd9a96b), { raio: 0.06, contorno: CONTORNO }); cx.position.y = 0.3; g.add(cx);
+  const cx = caixaRedonda(1.3, 0.6, 0.9, mat(0xd9a96b)); cx.position.y = 0.3; g.add(cx);
   for (const x of [-0.45, 0, 0.45]) { const r = caixaRedonda(0.08, 0.62, 0.92, mat(0xb07a3e)); r.position.set(x, 0.3, 0); g.add(r); }
   [[-0.35, 0.18, 0xff8a1f], [0, 0.1, 0xffd84a], [0.35, 0.2, 0xff8a1f], [-0.15, -0.2, 0xff8a1f], [0.2, -0.15, 0x58c43a]].forEach(([x, z, c]) => { const f = malha(new THREE.SphereGeometry(0.17, 10, 8), mat(c), { sombra: false }); f.position.set(x, 0.66, z); g.add(f); });
   mesclar(g);
@@ -141,7 +140,7 @@ export function tapeteOracao() {
 export function caixaCorreio(cor) {
   const g = new THREE.Group();
   const poste = malha(new THREE.CylinderGeometry(0.06, 0.06, 1.0, 8), mat(0x6b4a2f), { sombra: false }); poste.position.y = 0.5; g.add(poste);
-  const cx = caixaRedonda(0.42, 0.36, 0.62, mat(cor), { raio: 0.14, contorno: CONTORNO }); cx.position.y = 1.15; g.add(cx);
+  const cx = caixaRedonda(0.42, 0.36, 0.62, mat(cor)); cx.position.y = 1.15; g.add(cx);
   const bandeirinha = caixaRedonda(0.04, 0.26, 0.14, mat(0xe8413c)); bandeirinha.position.set(0.24, 1.32, -0.1); g.add(bandeirinha);
   mesclar(g);
   return g;
@@ -161,7 +160,7 @@ const texturaAlvara = () => (texAlvara ??= texturaCanvas(192, 256, (c, w, h) => 
 }));
 export function alvara() {
   const g = new THREE.Group(); g.userData.dinamico = true;
-  // a folha tem o desenho dos dois lados (na mão ela aparece de qualquer ângulo) e contorno preto fininho
+  // a folha tem o desenho dos dois lados (na mão ela aparece de qualquer ângulo) fininho
   const frente = matNovo({ map: texturaAlvara(), emissive: 0xffffff, emissiveMap: texturaAlvara(), emissiveIntensity: 0.25 });
   const folha = malha(new THREE.BoxGeometry(0.36, 0.48, 0.012), [mat(0xfff8e6), mat(0xfff8e6), mat(0xfff8e6), mat(0xfff8e6), frente, frente], { sombra: false });
   g.add(folha);

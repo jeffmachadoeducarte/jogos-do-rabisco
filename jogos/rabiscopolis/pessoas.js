@@ -231,6 +231,7 @@ export function criarPessoa(id = "sabrina", { escala: esc = null, nome = null } 
   const api = {
     grupo, id, tipo: "pessoa", nome: nome ?? p.nome, altura: ALTURA * escala, escola: p.escola, empresa: p.empresa,
     ossos: Object.fromEntries(OSSOS.map(([n], i) => [n, ossos[i]])),
+    custo: { chamadas: 3, triangulos: mont.geo.attributes.position.count / 3, triangulosContorno: 0 },
     pular() { if (py <= 0.001) vy = 3.2; },
     // segura o piscar por s segundos (fotos, cenas)
     olhosAbertos(s = 5) { piscar = s; },
