@@ -9,8 +9,8 @@
 //   const s = montarSala(id);   // { id, nome, grupo, solidos, entrada, porta, interativos, npcs, atualizar(dt, t) }
 //   interativo.fazer(api)       // api = { dizer, falar, sons, rabisco, profissao, vestir(id), tirar(), tocarHino(id), abrirSorvete(pedido, ok) }
 
-import { THREE, matNovo, mat, malha, caixa, caixaRedonda, letreiro, MAT, texturaCanvas, mesclar, r as rnd } from "./base3d.js";
-import { emBlocos } from "./blocos.js";
+import { THREE, matNovo, matPisoBloco, mat, malha, caixa, caixaRedonda, letreiro, MAT, texturaCanvas, mesclar, r as rnd } from "./base3d.js";
+import { emBlocos, claro } from "./blocos.js";
 import { criarMorador } from "./personagens.js";
 import { movel } from "./moveis.js";
 import { PROFISSOES } from "./roupas-rp.js";
@@ -66,6 +66,13 @@ function parede(g, solidos, eixo, fixo, a, b, vaos, cor, altura = ALT) {
     const p = caixaRedonda(eixo === "x" ? comp : 0.25, altura, eixo === "x" ? 0.25 : comp, mat(cor));
     p.position.set(eixo === "x" ? meio : fixo, altura / 2, eixo === "x" ? fixo : meio); g.add(p);
     solidos.push(eixo === "x" ? { x0: t0, x1: t1, z0: fixo - 0.13, z1: fixo + 0.13, y1: altura } : { x0: fixo - 0.13, x1: fixo + 0.13, z0: t0, z1: t1, y1: altura });
+    // parede montada: rodapé, cimalha e pilastras de um tom acima, a cada 2,4 m
+    const c = claro(cor, 0.5), lu = (w, h, d, x, y, z, co = c) => { const q = caixa(w, h, d, mat(co), { sombra: false }); q.position.set(x, y, z); g.add(q); };
+    lu(eixo === "x" ? comp : 0.31, 0.2, eixo === "x" ? 0.31 : comp, p.position.x, 0.1, p.position.z, 0xffffff);
+    if (altura > 1) {
+      lu(eixo === "x" ? comp : 0.34, 0.2, eixo === "x" ? 0.34 : comp, p.position.x, altura + 0.08, p.position.z);
+      for (let q = t0 + 1.2; q < t1 - 0.4; q += 2.4) lu(eixo === "x" ? 0.26 : 0.31, altura, eixo === "x" ? 0.31 : 0.26, eixo === "x" ? q : fixo, altura / 2, eixo === "x" ? fixo : q);
+    }
   }
 }
 function armario(cor) {
@@ -123,8 +130,8 @@ export function montarSala(id, { idade = null } = {}) {
   const solidosL = [], inter = [], npcs = [], anim = [];
   const est = {}; // estado dos objetos (para os testes e para não repetir)
   // chão, paredes, placa e janelas
-  const grama = malha(new THREE.PlaneGeometry(40, 30), mat(0x7ccf52), { sombra: false }); grama.rotation.x = -Math.PI / 2; grama.position.y = -0.02; fixo.add(grama);
-  const piso = malha(new THREE.PlaneGeometry(W, D), mat(def.piso), { sombra: false }); piso.rotation.x = -Math.PI / 2; piso.position.y = 0.02; piso.receiveShadow = true; fixo.add(piso);
+  const grama = malha(new THREE.PlaneGeometry(40, 30), mat(0x59b64c), { sombra: false }); grama.rotation.x = -Math.PI / 2; grama.position.y = -0.02; fixo.add(grama);
+  const piso = malha(new THREE.PlaneGeometry(W, D), matPisoBloco(def.piso, W / 5, D / 5), { sombra: false }); piso.rotation.x = -Math.PI / 2; piso.position.y = 0.02; piso.receiveShadow = true; fixo.add(piso);
   parede(fixo, solidosL, "x", -D / 2, -W / 2, W / 2, [], def.parede);
   parede(fixo, solidosL, "z", -W / 2, -D / 2, D / 2, [], def.parede);
   parede(fixo, solidosL, "z", W / 2, -D / 2, D / 2, [], def.parede);

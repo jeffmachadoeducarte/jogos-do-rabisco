@@ -16,12 +16,18 @@ const veic = (tipo, ang = 0.7, dist = 7.5, alt = 3.2, cor = "0xff7a00") => `
   const v = teste.veiculos.findLast((q) => q.tipo === ${JSON.stringify(tipo)}) ?? teste.veiculos.at(-1);
   const X = v.pos.x, Z = v.pos.z; teste.olhar(0); teste.ir(X + 4, Z + 4);
   teste.vista([X + Math.sin(v.ang + ${ang}) * ${dist}, ${alt}, Z + Math.cos(v.ang + ${ang}) * ${dist}], [X, 1.2, Z]);`;
+// vista de frente de um lugar do mapa
+const lugar = (id, dist = 22, alt = 8) => `const l = teste.LUGARES.find((q) => q.id === ${JSON.stringify(id)}); const X = l.x + l.dir[0] * 8 + 1, Z = l.z + l.dir[1] * 8 + 1; teste.ir(X, Z); teste.vista([l.x + l.dir[0] * ${dist} + l.dir[1] * 7, ${alt}, l.z + l.dir[1] * ${dist} + l.dir[0] * 7], [l.x - l.dir[0] * 6, 4, l.z - l.dir[1] * 6]);`;
 const CENAS = {
   "cena-1-praca": `teste.ir(9, 38); teste.olhar(Math.PI * 0.9); teste.vista([14, 11, 51], [2, 3, 14]);`,
   "cena-2-casas": `teste.ir(-66, 5.2); teste.olhar(Math.PI * 1.5); teste.vista([-52, 8, 1], [-110, 1, 0]);`,
   "cena-3-escola": `teste.ir(201, -4.5); teste.olhar(Math.PI * 0.9); teste.vista([197, 6.5, 4], [196, 5, -12]);`,
   "cena-3b-parceiro": `teste.ir(150, -45); teste.olhar(Math.PI); teste.vista([153, 7.5, -17], [166, 4, -58]);`,
   "cena-3c-igreja": `teste.ir(0, 2); teste.olhar(Math.PI); teste.vista([6, 7, 12], [0, 6, -24]);`,
+  ...Object.fromEntries(["hospital", "bombeiros", "mercado", "padaria", "sorveteria", "biblioteca", "kids1", "veterinario", "correios", "estudio", "lavarapido", "museu", "observatorio", "floricultura", "pizzaria", "farmacia", "brinquedos", "mirante"].map((id) => [`cena-3l-${id}`, lugar(id)])),
+  "cena-3m-torres": `teste.ir(330, -200); teste.olhar(0); teste.vista([330, 14, -150], [330, 10, -240]);`,
+  "cena-3n-fazenda": `const l = teste.LUGARES.find((q) => q.id === "fazendinha"); teste.ir(l.x, l.z); teste.vista([l.x + 18, 12, l.z - 2], [l.x - 8, 2, l.z - 34]);`,
+  "cena-3o-parque": `const l = teste.LUGARES.find((q) => q.id === "parque"); teste.ir(l.x, l.z); teste.vista([l.x + 12, 11, l.z + 16], [l.x, 1, l.z - 24]);`,
   "cena-4-carro": `teste.ir(-20, 56); teste.olhar(Math.PI / 2);
     teste.posVeiculo(0, -12, 52.8, Math.PI / 2); teste.entrar(0); teste.posVeiculo(0, -12, 52.8, Math.PI / 2);
     const T = teste.transito; const pos = [[6, 52.8, 1], [22, 52.8, 1], [10, 47.2, -1], [-6, 47.2, -1], [34, 47.2, -1]];
@@ -37,6 +43,9 @@ const CENAS = {
   "cena-8-interior-casa": `teste.entrarCasa(1);`,
   "cena-8b-interior-escola": `teste.entrarLugar("kids2");`,
   "cena-8c-interior-padaria": `teste.entrarLugar("padaria");`,
+  "cena-8d-interior-rise": `teste.entrarLugar("parceiro-rise-up");`,
+  "cena-8e-interior-crescente": `teste.entrarLugar("parceiro-crescente-contabilidade");`,
+  "cena-8f-interior-igreja": `teste.entrarLugar("igreja");`,
   "cena-9a-onibus": veic("onibus", 0.7, 13, 4.5),
   "cena-9b-heli": veic("heli", 0.7, 11, 4.5),
   "cena-9c-moto": veic("moto", 0.8, 5, 2.2, "0xec2e8c"),
@@ -49,6 +58,11 @@ const CENAS = {
   "cena-9j-lancha": `teste.ir(-30, 300); const q = teste.veiculos.find((v) => v.tipo === "lancha"); teste.vista([q.pos.x + 8, 4, q.pos.z + 8], [q.pos.x, 1, q.pos.z], false);`,
   "cena-9k-jetski": `teste.ir(-30, 300); const q = teste.veiculos.find((v) => v.tipo === "jetski"); teste.vista([q.pos.x + 5, 2.5, q.pos.z + 5], [q.pos.x, 0.8, q.pos.z], false);`,
   "cena-9l-barco": `teste.ir(-30, 300); const q = teste.veiculos.find((v) => v.tipo === "barco"); teste.vista([q.pos.x + 6, 3, q.pos.z + 6], [q.pos.x, 0.8, q.pos.z], false);`,
+  // por último: congela o jogo para os amigos do estojo ficarem em fila (os moradores andam sozinhos a cada quadro)
+  "cena-11-moradores": `teste.ir(-3, 34); teste.olhar(0); teste.vista([1, 1.9, 35], [1, 1.1, 41]); window.requestAnimationFrame = () => 0;
+    setTimeout(() => { const vist = new Set(); let i = 0;
+      for (const q of teste.moradores) { const t = q.p.tipo, g = q.p.grupo; g.visible = false; if (vist.has(t)) continue; vist.add(t); g.visible = true; g.position.set(-5 + i * 1.5, 0.07, 41); g.rotation.y = Math.PI; i++; }
+      teste.r3.render(teste.cena, teste.cam); teste.r3.render(teste.cena, teste.cam); }, 500);`,
 };
 const pedidas = Object.keys(CENAS).filter((c) => !SO.length || SO.some((s) => c.includes(s)));
 

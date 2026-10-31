@@ -181,7 +181,10 @@ export function emBlocos(g) {
   const p = g.parameters, t = g.type;
   if (t === "CylinderGeometry" || t === "ConeGeometry") {
     const cone = t === "ConeGeometry", rt = cone ? 0 : p.radiusTop, rb = cone ? p.radius : p.radiusBottom, h = p.height;
-    if ((p.thetaLength ?? 7) < 6) return g; // pedaço de cilindro (toldo): cada peça resolve o seu
+    if ((p.thetaLength ?? 7) < 6) { // meio cilindro: duas caixas em degrau, no lado que ele ocupava
+      const r = Math.max(rt, rb), giro = (p.thetaStart ?? 0) + (p.thetaLength ?? 0) / 2 - Math.PI / 2;
+      return achar(`mcil|${f3(r, h, giro)}`, () => geoCaixas([[r * 0.55, h, r * 1.9, r * 0.28, 0, 0], [r * 0.45, h, r * 1.2, r * 0.75, 0, 0]]).rotateY(-giro));
+    }
     if (cone || rt < 0.02) {
       const quatro = p.radialSegments === 4, w = rb * (quatro ? Math.SQRT2 : 1.8);
       return achar(`cone|${f3(w, h)}|${quatro}`, () => { const c = degraus(w, w, h, h < 0.6 ? 2 : h < 2 ? 3 : 4); if (quatro) c.rotateY(-Math.PI / 4); return c; });
@@ -192,7 +195,10 @@ export function emBlocos(g) {
   }
   if (t === "SphereGeometry") {
     const r = p.radius;
-    if (p.thetaLength < 2) return achar(`meia|${f3(r)}`, () => { const c = geoCaixas([[r * 1.9, r * 0.5, r * 1.9, 0, r * 0.25, 0], [r * 1.3, r * 0.5, r * 1.3, 0, r * 0.75, 0]]); return c; });
+    if (p.thetaLength < 2.2) { // meia esfera: em degraus (de cabeça para baixo, quando era a metade de baixo)
+      const baixo = p.thetaStart > 1;
+      return achar(`meia|${f3(r)}|${baixo}`, () => { const c = geoCaixas([[r * 2, r * 0.36, r * 2, 0, r * 0.18, 0], [r * 1.6, r * 0.32, r * 1.6, 0, r * 0.52, 0], [r * 1, r * 0.3, r * 1, 0, r * 0.82, 0]]); return baixo ? c.rotateX(Math.PI) : c; });
+    }
     return r < 0.38 ? achar(`cubo|${f3(r)}`, () => new THREE.BoxGeometry(r * 1.65, r * 1.65, r * 1.65)) : achar(`bola|${f3(r)}`, () => bola(r));
   }
   if (t === "IcosahedronGeometry" || t === "DodecahedronGeometry" || t === "OctahedronGeometry") {

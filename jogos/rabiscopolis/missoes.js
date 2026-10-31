@@ -70,16 +70,12 @@ function bichinho(tipo) {
     for (const [x, z, c] of [[-0.6, 0.2, 0xff4f7a], [-0.2, -0.3, 0xffcc1f], [0.2, 0.3, 0x58c43a]]) { const f = malha(new THREE.SphereGeometry(0.13, 10, 8), mat(c), { sombra: false }); f.position.set(x, 0.17, z); g.add(f); }
   } else if (tipo === "arca") {
     const madeira = mat(0xb9773d), escura = mat(0x8a5527);
-    // casco fechado (perfil de barquinho puxado no comprimento): o contorno fica só por fora
-    const perfil = new THREE.Shape([new THREE.Vector2(-1.25, 1.7), new THREE.Vector2(1.25, 1.7), new THREE.Vector2(1.05, 0.7), new THREE.Vector2(0.55, 0.15), new THREE.Vector2(-0.55, 0.15), new THREE.Vector2(-1.05, 0.7)]);
-    const geoC = new THREE.ExtrudeGeometry(perfil, { depth: 6.2, bevelEnabled: true, bevelThickness: 0.25, bevelSize: 0.2, bevelSegments: 3 }); geoC.translate(0, 0, -3.1);
-    const casco = malha(geoC, madeira); casco.rotation.y = Math.PI / 2; g.add(casco);
+    // casco fechado em degraus: mais estreito embaixo, com a proa e a popa recuando
+    for (const [c, l, y, a] of [[4.8, 1.3, 0.3, 0.3], [6, 2.1, 0.72, 0.56], [6.9, 2.8, 1.3, 0.62]]) { const m = caixaRedonda(c, a, l, madeira); m.position.y = y; g.add(m); }
     for (const y of [0.75, 1.25]) { const f = caixaRedonda(6.7, 0.12, 2.6, escura); f.position.y = y; f.scale.z = y < 1 ? 0.82 : 0.98; g.add(f); }
     const conves = caixaRedonda(6.2, 0.2, 2.3, escura); conves.position.y = 1.65; g.add(conves);
     const casinha = caixaRedonda(3, 1.5, 1.8, mat(0xe9c28a)); casinha.position.y = 2.5; g.add(casinha);
-    const tel = new THREE.Shape([new THREE.Vector2(-1.8, 0), new THREE.Vector2(0, 1.1), new THREE.Vector2(1.8, 0)]);
-    const geoT = new THREE.ExtrudeGeometry(tel, { depth: 2.2, bevelEnabled: false }); geoT.translate(0, 0, -1.1);
-    const telhado = malha(geoT, mat(0xd6402f)); telhado.rotation.y = Math.PI / 2; telhado.position.y = 3.25; g.add(telhado);
+    for (let i = 0; i < 4; i++) { const t = caixaRedonda(3.6, 0.28, 2.3 - i * 0.65, mat(i % 2 ? 0xe2533f : 0xd6402f)); t.position.y = 3.39 + i * 0.28; g.add(t); } // telhado em degraus
     for (const x of [-0.8, 0.8]) { const j = caixaRedonda(0.6, 0.6, 0.1, mat(0x3a2a1c)); j.position.set(x, 2.6, 0.92); g.add(j); }
     const rampa = caixaRedonda(1.1, 0.12, 3, escura); rampa.position.set(0, 0.8, 2.2); rampa.rotation.x = 0.5; g.add(rampa);
   }

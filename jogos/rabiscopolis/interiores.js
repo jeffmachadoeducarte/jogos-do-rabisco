@@ -6,7 +6,8 @@
 //   const casa = montarInterior(planta, { corAcento });   // { grupo, solidos, pontos, comodos, porta, entrada }
 //   colocar(casa, pontoId, { id, cor, variante })          // troca o móvel do ponto (libera o anterior)
 
-import { THREE, matNovo, mat, malha, caixa, caixaRedonda, MAT, texturaCanvas, mesclar } from "./base3d.js";
+import { THREE, matNovo, matPisoBloco, mat, malha, caixa, caixaRedonda, MAT, mesclar } from "./base3d.js";
+import { emBlocos, claro } from "./blocos.js";
 import { MOVEIS, movel } from "./moveis.js";
 
 export const ORIGEM_INTERIOR = { A: [0, 0, 1000], B: [120, 0, 1000] };
@@ -67,13 +68,7 @@ export const PLANTAS = {
   },
 };
 
-// piso de tábuas desenhado
-const texPiso = texturaCanvas(256, 256, (c, w, h) => {
-  c.fillStyle = "#ffffff"; c.fillRect(0, 0, w, h);
-  for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)"; c.fillRect(0, i * 32, w, 32); c.fillStyle = "rgba(0,0,0,0.18)"; c.fillRect(0, i * 32 + 31, w, 1.5); c.fillRect(((i * 97) % 200) + 20, i * 32, 1.5, 32); }
-}, { repetir: true });
-const pisoMats = new Map();
-const matPiso = (cor) => { if (!pisoMats.has(cor)) { const t = texPiso.clone(); t.needsUpdate = true; t.repeat.set(2, 2); pisoMats.set(cor, matNovo({ color: cor, map: t })); } return pisoMats.get(cor); };
+const matPiso = (cor) => matPisoBloco(cor, 2, 2);
 
 // parede de um ponto a outro, com vãos (portas) ao longo dela
 function parede(g, solidos, eixo, fixo, a, b, vaos, cor, altura = ALTURA) {
@@ -85,7 +80,12 @@ function parede(g, solidos, eixo, fixo, a, b, vaos, cor, altura = ALTURA) {
     const comp = t1 - t0, meio = (t0 + t1) / 2;
     const p = caixaRedonda(eixo === "x" ? comp : ESP, altura, eixo === "x" ? ESP : comp, mat(cor));
     p.position.set(eixo === "x" ? meio : fixo, altura / 2, eixo === "x" ? fixo : meio); g.add(p);
-    const rod = caixa(eixo === "x" ? comp : ESP + 0.06, 0.18, eixo === "x" ? ESP + 0.06 : comp, mat(0xffffff), { sombra: false }); rod.position.set(p.position.x, 0.09, p.position.z); g.add(rod);
+    const rod = caixa(eixo === "x" ? comp : ESP + 0.06, 0.2, eixo === "x" ? ESP + 0.06 : comp, mat(0xffffff), { sombra: false }); rod.position.set(p.position.x, 0.1, p.position.z); g.add(rod);
+    if (altura > 1) { // parede montada: cimalha e pilastras de um tom acima, a cada 2,4 m
+      const c = claro(cor, 0.5), lu = (w, h, d, x, y, z) => { const q = caixa(w, h, d, mat(c), { sombra: false }); q.position.set(x, y, z); g.add(q); };
+      lu(eixo === "x" ? comp : ESP + 0.1, 0.2, eixo === "x" ? ESP + 0.1 : comp, p.position.x, altura + 0.08, p.position.z);
+      for (let q = t0 + 1.2; q < t1 - 0.4; q += 2.4) lu(eixo === "x" ? 0.26 : ESP + 0.06, altura, eixo === "x" ? ESP + 0.06 : 0.26, eixo === "x" ? q : fixo, altura / 2, eixo === "x" ? fixo : q);
+    }
     if (eixo === "x") solidos.push({ x0: t0, x1: t1, z0: fixo - ESP / 2, z1: fixo + ESP / 2, y1: altura });
     else solidos.push({ x0: fixo - ESP / 2, x1: fixo + ESP / 2, z0: t0, z1: t1, y1: altura });
   }
@@ -104,7 +104,7 @@ export function montarInterior(idPlanta) {
   const solidosL = [];
   const L = P.limites;
   // gramado em volta e o piso de cada cômodo
-  const grama = malha(new THREE.PlaneGeometry(60, 50), mat(0x7ccf52), { sombra: false }); grama.rotation.x = -Math.PI / 2; grama.position.y = -0.02; fixo.add(grama);
+  const grama = malha(new THREE.PlaneGeometry(60, 50), mat(0x59b64c), { sombra: false }); grama.rotation.x = -Math.PI / 2; grama.position.y = -0.02; fixo.add(grama);
   for (const c of P.comodos) {
     const piso = new THREE.Mesh(new THREE.PlaneGeometry(c.x1 - c.x0, c.z1 - c.z0), matPiso(c.piso)); piso.rotation.x = -Math.PI / 2; piso.position.set((c.x0 + c.x1) / 2, 0.02, (c.z0 + c.z1) / 2); piso.receiveShadow = true; fixo.add(piso);
     // parede de fundo e laterais com a cor do cômodo
@@ -126,7 +126,7 @@ export function montarInterior(idPlanta) {
   mesclar(fixo);
   // pontos de decoração: anel no chão (ou moldura tracejada na parede)
   const pontos = P.pontos.map((p) => {
-    const marca = new THREE.Mesh(p.parede ? new THREE.RingGeometry(0.35, 0.45, 24) : new THREE.RingGeometry(0.42, 0.55, 28), new THREE.MeshBasicMaterial({ color: 0xffcc1f, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
+    const marca = new THREE.Mesh(emBlocos(p.parede ? new THREE.RingGeometry(0.35, 0.45, 24) : new THREE.RingGeometry(0.42, 0.55, 28)), new THREE.MeshBasicMaterial({ color: 0xffcc1f, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
     if (p.parede) marca.position.set(p.x, 1.6, p.z + 0.1); else { marca.rotation.x = -Math.PI / 2; marca.position.set(p.x, 0.05, p.z); }
     g.add(marca);
     const lugar = new THREE.Group(); lugar.position.set(p.x, 0, p.z); lugar.rotation.y = p.rot; g.add(lugar);

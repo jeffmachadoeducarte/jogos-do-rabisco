@@ -57,7 +57,7 @@ export function objetoAula({ tipo, valor }) {
     const cor = { circulo: 0xe53935, quadrado: 0x1e6fe0, triangulo: 0xffc928 }[valor];
     let geo;
     if (valor === "triangulo") { const t = new THREE.Shape([new THREE.Vector2(0, 0.46), new THREE.Vector2(-0.48, -0.36), new THREE.Vector2(0.48, -0.36)]); geo = new THREE.ExtrudeGeometry(t, { depth: 0.14, bevelEnabled: false }); geo.translate(0, 0, -0.07); }
-    else if (valor === "circulo") { geo = new THREE.CylinderGeometry(0.42, 0.42, 0.14, 28); geo.rotateX(Math.PI / 2); }
+    else if (valor === "circulo") { geo = new THREE.CylinderGeometry(0.42, 0.42, 0.14, 28); geo.rotateX(Math.PI / 2); geo.userData.compartilhada = true; } // a aula é de formas: o círculo continua redondo
     else geo = new THREE.BoxGeometry(0.72, 0.72, 0.14);
     const f = malha(geo, mat(cor), { sombra: false }); f.position.y = 0.66; g.add(f);
     const pe = caixaRedonda(0.5, 0.1, 0.3, mat(0xffffff), { sombra: false }); pe.position.y = 0.05; g.add(pe);
@@ -72,7 +72,7 @@ export function objetoAula({ tipo, valor }) {
   g.userData.anel = anel;
   return g;
 }
-function macaGeo() { const g = new THREE.SphereGeometry(0.14, 12, 10); g.scale(1, 0.92, 1); return g; }
+function macaGeo() { return new THREE.BoxGeometry(0.24, 0.22, 0.24); }
 function pilhaDeMacas(n) {
   const g = new THREE.Group();
   for (let i = 0; i < n; i++) { const m = malha(macaGeo(), mat(0xe53935), { sombra: false }); m.position.set(((i % 3) - 1) * 0.3, Math.floor(i / 3) * 0.26, 0); g.add(m); }

@@ -3,7 +3,7 @@
 // visíveis (com a neblina em 140 m, o resto nem apareceria). Ruas, calçadas e o chão são de todos os blocos.
 // Devolve as colisões (retângulos e círculos), os lugares, as casas, os semáforos e o que anima (água, patos, bichos).
 
-import { THREE, mat, matNovo, malha, caixa, TEX, MAT_AGUA, fita, densificar, normais, arvoreReal, semaforo, mesclar, r as rnd } from "./base3d.js";
+import { THREE, mat, matNovo, malha, caixa, TEX, fita, densificar, normais, arvoreReal, semaforo, mesclar, r as rnd } from "./base3d.js";
 import { RUAS, CALCADA, distRua, LUGARES, LOTES, LOTE, PREDIOS, PREDIOS_NOVOS, PRACAS_NOVAS, BORDA_ANTIGA, MAR, ORLA, ILHA, PIERS, RODA, naMar, SEMAFOROS, PARQUE, LAGO, PLAYGROUND, PRACA, FAZENDA, CAMPO, ESPORTES, QUADRA, HORTA, PARQUINHO_BEBE, PATIO_KIDS2, HELIPONTO, PRAIA, LAGO2, NBLOCOS, GRADE0, VAGAS, LARGADA, PEGADAS_FIXAS, BORDA, BLOCO, blocoDe, pegadaDe } from "./mapa.js";
 import * as P from "./predios.js";
 import { casa } from "./casas.js";
@@ -46,8 +46,9 @@ export function montarMundo(cena) {
   const morros = new THREE.Group();
   for (let n = 0; n < 22; n++) {
     const a = (n / 22) * Math.PI * 2, d = 490 + rnd() * 40; // depois do Horizonte (e não no mar, ao sul); de longe, menos polígonos
-    const m = malha(new THREE.SphereGeometry(40 + rnd() * 25, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat([0x6fc24a, 0x5cb43f, 0x7fd05a][n % 3]), { sombra: false });
-    m.position.set(Math.cos(a) * d, -4, Math.sin(a) * d); m.scale.y = 0.5; if (Math.sin(a) * d < 300) morros.add(m);
+    const lado = 90 + rnd() * 50; // morrinho em degraus, de longe (poucas caixas)
+    const m = malha(degraus(lado, lado * 0.8, 30, 5, { fim: 0.3 }), mat([0x5fb44f, 0x54a947, 0x69bf58][n % 3]), { sombra: false });
+    m.position.set(Math.cos(a) * d, 8, Math.sin(a) * d); m.rotation.y = a; if (Math.sin(a) * d < 300) morros.add(m);
   }
   cena.add(morros);
   mesclar(morros);

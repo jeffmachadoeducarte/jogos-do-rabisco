@@ -79,6 +79,22 @@ export const TEX = {
   terra: texturaCanvas(128, 128, (c, w, h) => { c.fillStyle = "#c98a52"; c.fillRect(0, 0, w, h); c.strokeStyle = "#b0763f"; c.lineWidth = 3; c.strokeRect(0, 0, w, h); }, { repetir: true }),
 };
 
+// piso dos interiores: placas com juntas e pinos discretos, em branco (a cor vem do material)
+const texPisoBloco = texturaCanvas(256, 256, (c, w, h) => {
+  c.fillStyle = "#ffffff"; c.fillRect(0, 0, w, h);
+  for (let i = 0; i < 2; i++) for (let k = 0; k < 2; k++) {
+    c.fillStyle = (i + k) % 2 ? "#ffffff" : "#f0f0f0"; c.fillRect(i * 128, k * 128, 128, 128);
+    for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) pino(c, i * 128 + 24 + a * 40, k * 128 + 24 + b * 40, 7, "#fbfbfb", "#e2e2e2");
+    c.strokeStyle = "#cfcfcf"; c.lineWidth = 3; c.strokeRect(i * 128, k * 128, 128, 128);
+  }
+}, { repetir: true });
+const pisos = new Map();
+export function matPisoBloco(cor, rx, ry) {
+  const k = `${cor}|${rx}|${ry}`;
+  if (!pisos.has(k)) { const t = texPisoBloco.clone(); t.needsUpdate = true; t.repeat.set(rx, ry); pisos.set(k, plasticoNovo({ color: cor, map: t })); }
+  return pisos.get(k);
+}
+
 // água (mar, lago e chafariz): um material só, de brilho alto, que clareia um pouco de noite para não sumir
 export const MAT_AGUA = plasticoNovo({ map: TEX.agua, emissive: 0x0b3a5a, emissiveIntensity: 0.2, specular: 0x666666, shininess: 70 });
 MAT_AGUA.userData.noite = true;

@@ -6,9 +6,8 @@
 // Cada função devolve { grupo, solidos } com os retângulos de colisão em coordenadas locais.
 
 import { THREE, matNovo, mat, malha, caixa, caixaRedonda, geoCaixaRedonda, MAT, MAT_LAGO, TEX, letreiro, lojaParceira, arvoreReal, texturaCanvas, mesclar, r as rnd } from "./base3d.js";
-import { cx as pc, viga, pinos, degraus, disco, emBlocos, geoCaixas, claro, escuro, comRecorte, plastico, telhadoDegraus, frontaoDegraus } from "./blocos.js";
+import { cx as pc, degraus, disco, emBlocos, claro, escuro, comRecorte, telhadoDegraus, frontaoDegraus } from "./blocos.js";
 import { carregarTextura, aleatorio } from "../../src/motor3d/toon.js";
-import { ESTILO_PARCEIRO } from "../../src/parceiros.js";
 import { cerquinha } from "./casas.js";
 
 const BRANCO = 0xfffdf6;
@@ -55,6 +54,8 @@ function corpo(g, w, h, d, cor, { beiral = 0xffffff, rodape = null } = {}) {
   for (const [ww, dd, x, z] of [[w + 0.7, 0.4, 0, 0.15], [w + 0.7, 0.4, 0, -d - 0.15], [0.4, d + 0.7, -w / 2 - 0.15, -d / 2], [0.4, d + 0.7, w / 2 + 0.15, -d / 2]]) pc(g, ww, 0.4, dd, claro(beiral, 0.14), x, h + 0.62, z, { sombra: false });
   pc(g, w - 0.2, 0.1, d - 0.2, 0xb6bcc6, 0, h + 0.5, -d / 2, { sombra: false });
   if (rodape != null) pc(g, w + 0.16, 0.7, d + 0.16, rodape, 0, 0.35, -d / 2);
+  // cinta em volta entre os andares: nenhuma lateral nem fundo fica lisa (uma caixa só)
+  for (let y = 3.4; y < h - 0.8; y += 3.2) pc(g, w + 0.1, 0.2, d + 0.1, claro(cor, 0.2), 0, y, -d / 2, { sombra: false });
   const ca = claro(cor, 0.26), n = Math.floor((h - 1) / 1.25);
   for (let i = 0; i < n; i++) for (const s of [-1, 1]) pc(g, i % 2 ? 0.6 : 0.95, 0.56, 0.12, ca, s * (w / 2 - (i % 2 ? 0.3 : 0.47)), 1.0 + i * 1.25, 0.03, { sombra: false });
 }
@@ -331,12 +332,15 @@ function caixaDagua(g, x, y, z) {
   pc(g, 2.2, 1.5, 2.2, 0xdfe6ee, x, y + 1.6, z); pc(g, 2.5, 0.2, 2.5, 0x00b5f0, x, y + 2.45, z);
 }
 function ladosJanelas(g, d, w, andares, y0 = 1.0) {
+  const fundo = new THREE.Group(); fundo.position.z = -d - 0.02; fundo.rotation.y = Math.PI; g.add(fundo);
+  janelas(fundo, { w: w - 1, andares, z: 0, y0, alt: 3.2, colunas: Math.max(2, Math.floor(w / 5)) });
   for (const s of [-1, 1]) { const lado = new THREE.Group(); lado.position.set(s * (w / 2 + 0.02), 0, -d / 2); lado.rotation.y = s * Math.PI / 2; g.add(lado); janelas(lado, { w: d - 1, andares, z: 0, y0, alt: 3.2, colunas: Math.max(1, Math.floor(d / 4)) }); }
 }
 function predioSobrado(g, w, d, c, sorte) {
   const h = 6.4, tel = [0xd94a3d, 0x2f6fc0, 0x3c9a4a, 0x7a52c9][Math.floor(sorte * 4)], tipo = Math.floor(sorte * 12) % 3, esc = new THREE.Color(c).multiplyScalar(0.8).getHex();
   corpo(g, w, h, d, c, { beiral: 0xffffff, rodape: esc });
   janelas(g, { w, andares: 2, z: 0.02, y0: 1.1, alt: 3.0, colunas: 3 });
+  ladosJanelas(g, d, w, 2, 1.1);
   porta(g, { z: 0.1, w: 1.8, h: 2.6, cor: 0x8a4b2a, vidro: false });
   if (tipo === 2) { // telhado baixo de quatro águas, em degraus
     const t = malha(degraus(w + 1.2, d + 1.2, 2, 4, { fim: 0.4 }), mat(tel)); t.position.set(0, h + 1.5, -d / 2); g.add(t);

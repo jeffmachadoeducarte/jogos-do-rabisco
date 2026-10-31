@@ -5,7 +5,7 @@
 // Frente do lote em z = 0 (local), olhando para +z; o lote vai até z = -LOTE.d.
 
 import { THREE, matNovo, mat, MAT, placa, arvoreReal } from "./base3d.js";
-import { cx, claro, escuro, degraus, telhadoDegraus, frontaoDegraus } from "./blocos.js";
+import { cx, claro, degraus, telhadoDegraus, frontaoDegraus } from "./blocos.js";
 import { LOTE } from "./mapa.js";
 
 const BRANCO = 0xfffdf6, f = { sombra: false };
