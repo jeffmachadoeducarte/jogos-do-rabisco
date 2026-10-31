@@ -192,13 +192,14 @@ function pintarBarba(c, bb, w, h, esc, semente) {
   c.fillStyle = bb.cor; c.fillRect(0, 0, w, h);
   // na casca (menos pixels por grau) o risco tem 1 px no mínimo: menos riscos para manter o mesmo tom
   const n = Math.round((w * h) / (esc * esc) * (bb.densidade ?? 1.1) * (esc < 3 ? 0.38 : 1));
-  const cinza = ["rgba(216,210,202,0.7)", "rgba(196,188,178,0.7)", "rgba(235,231,225,0.6)", "rgba(179,170,159,0.7)"], escuro = ["rgba(74,58,45,0.5)", "rgba(90,70,54,0.5)", "rgba(138,110,87,0.5)"];
+  const cinza = bb.cinza ?? ["rgba(216,210,202,0.7)", "rgba(196,188,178,0.7)", "rgba(235,231,225,0.6)", "rgba(179,170,159,0.7)"], escuro = bb.escuro ?? ["rgba(74,58,45,0.5)", "rgba(90,70,54,0.5)", "rgba(138,110,87,0.5)"];
+  const mechas = bb.mechas ?? ["rgba(60,44,32,0.22)", "rgba(170,150,130,0.18)"];
   c.lineCap = "round";
   // mechas: faixas suaves mais claras e mais escuras caindo para baixo (dão o jeito de tufos)
   const nm = Math.round((w * h) / (esc * esc) / 9);
   for (let i = 0; i < nm; i++) {
     const x = rnd() * w, y = rnd() * h, L = esc * (3 + rnd() * 3), ang = Math.PI / 2 + (rnd() - 0.5) * 0.6;
-    c.strokeStyle = rnd() < 0.5 ? "rgba(60,44,32,0.22)" : "rgba(170,150,130,0.18)";
+    c.strokeStyle = rnd() < 0.5 ? mechas[0] : mechas[1];
     c.lineWidth = esc * (0.8 + rnd() * 0.6);
     c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + Math.cos(ang) * L * 0.5 + esc * 0.4, y + Math.sin(ang) * L * 0.5, x + Math.cos(ang) * L, y + Math.sin(ang) * L); c.stroke();
   }
@@ -367,6 +368,16 @@ function desenharRosto(c, p, fechado) {
     c.quadraticCurveTo(X(8), Y(113.2), X(0), Y(113.6)); c.quadraticCurveTo(X(-8), Y(113.2), X(-16), Y(115)); c.closePath(); c.fill();
     void mxB; void myB;
   }
+  // pés de galinha (riso) e nariz rosado, para quem tem
+  if (f.rugas) {
+    c.strokeStyle = "rgba(150,84,62,0.5)"; c.lineWidth = 4;
+    for (const s of [-1, 1]) for (const [da, dp] of [[0, -3], [1.5, 0], [0.5, 3.5]]) { c.beginPath(); c.moveTo(X(s * 35), Yo(96 + dp)); c.quadraticCurveTo(X(s * (39 + da)), Yo(96 + dp * 1.3), X(s * (43 + da * 1.5)), Yo(96 + dp * 2 - 1)); c.stroke(); }
+  }
+  if (f.nariz) {
+    c.save(); c.translate(X(0), Y(106.6)); c.scale(1, (ky / kx) * 0.78);
+    const gn = c.createRadialGradient(0, 0, 2, 0, 0, 40); gn.addColorStop(0, f.nariz); gn.addColorStop(1, "rgba(255,120,110,0)");
+    c.fillStyle = gn; c.beginPath(); c.arc(0, 0, 40, 0, Math.PI * 2); c.fill(); c.restore();
+  }
   // nariz: risquinho
   c.strokeStyle = "#b46a52"; c.lineWidth = 6;
   c.beginPath(); c.moveTo(X(-2.8), Y(108.5)); c.quadraticCurveTo(X(0), Y(110.6), X(2.8), Y(108.5)); c.stroke();
@@ -436,8 +447,41 @@ function linho(c, w, h, r) {
   c.fillStyle = r.prega;
   for (let x = 20; x < w; x += 64) c.fillRect(x + rnd() * 10, 0, 3, h);
 }
+// xadrez (camisa): faixas verticais e horizontais que se multiplicam; bandas = [início, largura, cor] em fração do período
+function xadrez(c, w, h, r, px, py) {
+  c.fillStyle = r.fundo; c.fillRect(0, 0, w, h);
+  c.globalCompositeOperation = "multiply";
+  for (const [i0, l, cor] of r.bandas) {
+    c.fillStyle = cor;
+    for (let x = i0 * px; x < w; x += px) c.fillRect(x, 0, l * px, h);
+    for (let y = i0 * py; y < h; y += py) c.fillRect(0, y, w, l * py);
+  }
+  c.globalCompositeOperation = "source-over";
+  // trama leve
+  c.fillStyle = "rgba(255,255,255,0.12)";
+  for (let y = 0; y < h; y += 4) c.fillRect(0, y, w, 1);
+}
+// argyle (suspensório): losangos cinza e preto cruzados por fios claros
+function argyle(c, x0, w, y0, y1) {
+  c.save(); c.beginPath(); c.rect(x0, y0, w, y1 - y0); c.clip();
+  c.fillStyle = "#22242c"; c.fillRect(x0, y0, w, y1 - y0);
+  const dh = w * 1.5;
+  for (let k = 0, y = y0 - dh / 2; y < y1 + dh; y += dh / 2, k++) {
+    c.fillStyle = k % 2 ? "#8d93a3" : "#4a4e5c";
+    const cx = x0 + (k % 2 ? 0 : w / 2);
+    c.beginPath(); c.moveTo(cx, y - dh / 2); c.lineTo(cx + w / 2, y); c.lineTo(cx, y + dh / 2); c.lineTo(cx - w / 2, y); c.closePath(); c.fill();
+    if (k % 2) { c.beginPath(); c.moveTo(x0 + w, y - dh / 2); c.lineTo(x0 + w + w / 2, y); c.lineTo(x0 + w, y + dh / 2); c.lineTo(x0 + w - w / 2, y); c.closePath(); c.fill(); }
+  }
+  c.strokeStyle = "rgba(245,245,248,0.9)"; c.lineWidth = 1.3;
+  for (let y = y0 - dh; y < y1 + dh; y += dh) {
+    c.beginPath(); c.moveTo(x0, y); c.lineTo(x0 + w, y + dh / 2); c.moveTo(x0 + w, y); c.lineTo(x0, y + dh / 2); c.stroke();
+  }
+  c.restore();
+  c.strokeStyle = "#111218"; c.lineWidth = 2.5; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x0, y1); c.moveTo(x0 + w, y0); c.lineTo(x0 + w, y1); c.stroke();
+}
 function desenharTecido(c, p) {
   const r = p.roupa;
+  if (r.tipo === "xadrez") { xadrez(c, 512, 512, r, 128, 128); return; }
   if (r.tipo === "blazer") { c.fillStyle = r.terno; c.fillRect(0, 0, 512, 512); listras(c, 512, 512, r.listra); }
   else if (r.tipo === "vestido" || r.tipo === "camiseta" || r.tipo === "regata") linho(c, 512, 512, r);
   else ondas(c, 512, 512, r, 2);
@@ -461,6 +505,33 @@ function desenharTorso(c, p) {
     c.strokeStyle = r.vivo; c.lineWidth = 5;
     c.beginPath(); c.moveTo(256 - 44, yo - 1); c.quadraticCurveTo(256, Y(1.33), 256 + 44, yo - 1); c.stroke();
     c.lineWidth = 7; c.beginPath(); c.moveTo(0, 500); c.lineTo(512, 500); c.stroke();
+    return;
+  }
+  if (r.tipo === "xadrez") {
+    // camisa xadrez: carcela com botões, bolso no peito esquerdo, suspensório argyle (frente e costas) e cós da calça
+    xadrez(c, 512, 512, r, 32, 64);
+    const au = 512 / (Math.PI * 2), yc = Y(0.99);
+    // bolso com aba (peito do lado esquerdo dele)
+    const bx = 256 + 0.7 * au, by = Y(1.25);
+    c.fillStyle = "rgba(255,255,255,0.18)"; c.fillRect(bx - 20, by, 40, 52);
+    c.strokeStyle = r.costura; c.lineWidth = 3; c.strokeRect(bx - 20, by, 40, 52);
+    c.fillStyle = "rgba(70,48,36,0.38)"; c.fillRect(bx - 20, by, 40, 15); c.strokeRect(bx - 20, by, 40, 15);
+    c.fillStyle = r.botao; c.beginPath(); c.arc(bx, by + 12, 3.5, 0, Math.PI * 2); c.fill();
+    // carcela
+    c.fillStyle = "rgba(255,255,255,0.28)"; c.fillRect(256 - 6, 0, 12, yc);
+    c.strokeStyle = r.costura; c.lineWidth = 2; c.strokeRect(256 - 6, -2, 12, yc + 2);
+    for (const y of [1.36, 1.245, 1.13, 1.02]) { const yy = Y(y); c.fillStyle = r.botao; c.beginPath(); c.arc(256, yy, 5.5, 0, Math.PI * 2); c.fill(); c.strokeStyle = "#000"; c.lineWidth = 1.5; c.stroke(); c.fillStyle = "#3b2a22"; c.fillRect(254, yy - 2, 1.4, 4); c.fillRect(257, yy - 2, 1.4, 4); }
+    // calça (cós) na parte de baixo, com a costura do cós
+    c.fillStyle = hex(r.calca); c.fillRect(0, yc, 512, 512 - yc);
+    c.strokeStyle = "rgba(255,255,255,0.14)"; c.lineWidth = 3; c.beginPath(); c.moveTo(0, yc + 9); c.lineTo(512, yc + 9); c.stroke();
+    c.strokeStyle = "rgba(0,0,0,0.55)"; c.lineWidth = 3; c.beginPath(); c.moveTo(0, yc); c.lineTo(512, yc); c.stroke();
+    // suspensório largo: duas tiras pela frente e duas pelas costas
+    const sa = r.suspensorio ?? 0.62, sw = 28;
+    for (const u of [256 - sa * au, 256 + sa * au, 256 + (Math.PI - sa) * au, 256 - (Math.PI - sa) * au]) {
+      argyle(c, u - sw / 2, sw, 0, yc);
+      c.fillStyle = "#6a4a2e"; c.fillRect(u - sw / 2 - 1, yc - 20, sw + 2, 22); c.strokeStyle = "#2a1a10"; c.lineWidth = 2; c.strokeRect(u - sw / 2 - 1, yc - 20, sw + 2, 22);
+      c.fillStyle = "#d8c27a"; c.beginPath(); c.arc(u, yc - 9, 4.5, 0, Math.PI * 2); c.fill(); c.stroke();
+    }
     return;
   }
   if (r.tipo === "camiseta") {
@@ -538,6 +609,39 @@ function desenharCapa(c, tipo) {
     c.font = "900 38px 'Baloo 2', system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
     c.fillText("BÍBLIA", 101, 176);
     c.font = "700 22px 'Baloo 2', system-ui, sans-serif"; c.fillText("Sagrada", 101, 210);
+  } else if (tipo === "maleta") {
+    // frente da maleta de madeira (320 × 230 em metros → esticada para o 192 × 256 da capa): veios, adesivos de viagem e etiqueta
+    c.save(); c.scale(192 / 320, 256 / 230);
+    c.fillStyle = "#e6c995"; c.fillRect(0, 0, 320, 230);
+    c.strokeStyle = "rgba(160,112,60,0.28)"; c.lineWidth = 2;
+    for (let y = 9; y < 230; y += 14) { c.beginPath(); c.moveTo(0, y); c.bezierCurveTo(90, y - 4, 200, y + 5, 320, y - 2); c.stroke(); }
+    c.strokeStyle = "#b8935d"; c.lineWidth = 6; c.strokeRect(3, 3, 314, 224);
+    // adesivo "Mont Fuji": raios azuis, monte vermelho com neve
+    c.save(); c.translate(22, 18); c.rotate(-0.05);
+    c.fillStyle = "#fff"; c.fillRect(0, 0, 108, 78);
+    c.save(); c.beginPath(); c.rect(5, 5, 98, 54); c.clip(); c.translate(54, 56);
+    for (let i = 0; i < 12; i++) { c.fillStyle = i % 2 ? "#fff" : "#4aa3df"; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, 120, Math.PI + (i / 12) * Math.PI, Math.PI + ((i + 1) / 12) * Math.PI); c.closePath(); c.fill(); }
+    c.fillStyle = "#e8483f"; c.beginPath(); c.moveTo(-42, 4); c.lineTo(0, -40); c.lineTo(42, 4); c.closePath(); c.fill();
+    c.fillStyle = "#fff"; c.beginPath(); c.moveTo(-12, -28); c.lineTo(0, -40); c.lineTo(12, -28); c.lineTo(5, -24); c.lineTo(0, -29); c.lineTo(-6, -24); c.closePath(); c.fill();
+    c.restore();
+    c.fillStyle = "#222"; c.font = "800 12px 'Baloo 2', system-ui, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("MONT FUJI", 54, 69);
+    c.restore();
+    // adesivo cor-de-rosa "adventure waiting"
+    c.save(); c.translate(204, 38); c.rotate(0.38);
+    c.fillStyle = "#f6c4c4"; c.strokeStyle = "#c9565c"; c.lineWidth = 3; c.beginPath(); c.roundRect(0, 0, 96, 40, 10); c.fill(); c.stroke();
+    c.fillStyle = "#c9565c"; c.font = "800 11px 'Baloo 2', system-ui, sans-serif"; c.fillText("ADVENTURE", 48, 14); c.fillText("WAITING", 48, 29);
+    c.restore();
+    // adesivos redondos e uma estrela
+    for (const [x, y, r, cor] of [[40, 128, 22, "#f5c542"], [92, 152, 17, "#34a853"], [150, 118, 15, "#ec2e8c"], [262, 120, 20, "#2f7fd8"]]) { c.fillStyle = cor; c.strokeStyle = "#fff"; c.lineWidth = 4; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); c.stroke(); }
+    c.fillStyle = "#fff"; c.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? 7 : 16; c.lineTo(40 + Math.cos(a) * rr, 128 + Math.sin(a) * rr); } c.closePath(); c.fill();
+    c.fillStyle = "#fff"; c.beginPath(); c.arc(262, 120, 8, 0, Math.PI * 2); c.fill(); c.fillStyle = "#e8483f"; c.beginPath(); c.arc(262, 120, 4, 0, Math.PI * 2); c.fill();
+    // etiqueta marrom "maleta de atividades" pendurada por barbante
+    c.strokeStyle = "#d9c9a3"; c.lineWidth = 3; c.beginPath(); c.moveTo(170, 6); c.quadraticCurveTo(190, 70, 196, 150); c.stroke();
+    c.save(); c.translate(196, 160); c.rotate(-0.06);
+    c.fillStyle = "#4a3224"; c.strokeStyle = "#241810"; c.lineWidth = 3; c.beginPath(); c.moveTo(-26, -4); c.lineTo(-18, -14); c.lineTo(18, -14); c.lineTo(26, -4); c.lineTo(26, 54); c.lineTo(-26, 54); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = "#f6ecd2"; c.font = "800 9px 'Baloo 2', system-ui, sans-serif"; c.fillText("MALETA", 0, 10); c.fillText("DE", 0, 22); c.fillText("ATIVIDADES", 0, 34);
+    c.restore();
+    c.restore();
   } else if (tipo === "prancheta") {
     // folha do alvará presa na prancheta: título, linhas e carimbo
     c.fillStyle = "#fffdf6"; c.fillRect(0, 0, 192, 256);
@@ -568,8 +672,26 @@ function desenharLogo(c, im, borda = "#c51b72", fio = "#f3a3c9") {
   if (im) { const h = 196, w = (im.naturalWidth / im.naturalHeight) * h; c.drawImage(im, 256 - w / 2, 128 - h / 2 + 2, w, h); }
 }
 
+// boina de tecido perfurado (512 × 256): u em volta, v do topo (y = 0) até a borda; gomos, costura e furinhos
+function desenharBoina(c, b) {
+  c.fillStyle = b.fundo; c.fillRect(0, 0, 512, 256);
+  const NG = 8;
+  // furinhos: fileiras com o número de furos proporcional ao perímetro (não amontoa no topo)
+  c.fillStyle = b.furo;
+  for (let y = 8, k = 0; y < 256; y += 7, k++) {
+    const th = (y / 256) * Math.PI * 0.56, n = Math.max(3, Math.round(512 * Math.sin(th) / 7));
+    for (let i = 0; i < n; i++) { c.beginPath(); c.ellipse(((i + (k % 2 ? 0.5 : 0)) / n) * 512, y, 1.9, 1.7, 0, 0, Math.PI * 2); c.fill(); }
+  }
+  // costuras dos gomos e a costura da borda
+  c.strokeStyle = b.costura; c.lineWidth = 3;
+  for (let i = 0; i < NG; i++) { const x = (i / NG) * 512; c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 256); c.stroke(); c.strokeStyle = "rgba(255,255,255,0.55)"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x + 4, 0); c.lineTo(x + 4, 256); c.stroke(); c.strokeStyle = b.costura; c.lineWidth = 3; }
+  c.fillStyle = b.borda; c.fillRect(0, 232, 512, 24);
+  c.strokeStyle = b.costura; c.beginPath(); c.moveTo(0, 232); c.lineTo(512, 232); c.stroke();
+}
+
 const atlas = new Map(); // id → { aberto, fechado }
-function texturasDe(id, p) {
+function texturasDe(id0, p) {
+  const id = id0 + (p.objeto?.tipo ?? "");
   if (atlas.has(id)) return atlas.get(id);
   const em = (c, reg, fn) => { const [x, y, w, h] = REG[reg]; c.save(); c.translate(x, y); c.beginPath(); c.rect(0, 0, w, h); c.clip(); fn(); c.restore(); };
   const fazer = (fechado) => texturaCanvas(ATLAS, ATLAS, (c) => {
@@ -579,7 +701,7 @@ function texturasDe(id, p) {
     em(c, "tecido", () => desenharTecido(c, p));
     em(c, "torso", () => desenharTorso(c, p));
     em(c, "capa", () => desenharCapa(c, p.objeto?.tipo));
-    em(c, "logo", () => (p.selo ? desenharSelo(c, p.selo) : desenharLogo(c, null)));
+    em(c, "logo", () => (p.selo ? desenharSelo(c, p.selo) : p.boina ? desenharBoina(c, p.boina) : desenharLogo(c, null)));
     em(c, "rosto", () => desenharRosto(c, p, fechado));
   });
   const t = { aberto: fazer(false), fechado: fazer(true) };
@@ -758,6 +880,15 @@ const CABELOS = {
     cabelo([nc(-0.5, 1.2, 1.03), nc(0.05, 1.12, 1.07), nc(0.5, 1.02, 1.07), nc(0.85, 0.82, 1.05)], { w0: 0.13, w1: 0.09, d0: 0.04, d1: 0.028, passos: 7 });
     h.brilho(1.0);
   },
+  // Vovô Léo: branco e curtinho, só aparece nas laterais e na nuca (a boina cobre o resto)
+  vovoLeo(h) {
+    const { cabelo, naCabeca: nc } = h;
+    h.calota(() => 0.7, { volume: 0.03, baixo: -0.02 });
+    for (const s of [1, -1]) {
+      cabelo([nc(s * 1.2, 0.55, 1.07), nc(s * 1.4, 0.3, 1.1), nc(s * 1.52, 0.1, 1.09)], { w0: 0.14, w1: 0.09, d0: 0.05, d1: 0.03, passos: 5 });
+    }
+    h.brilho(1.0);
+  },
   // Elaine: liso, abaixo dos ombros, risca quase no meio, caindo dos dois lados do rosto; raiz escura e pontas caramelo
   elaineMeio(h) {
     const { cabelo, naCabeca: nc, pesoFrente } = h;
@@ -912,6 +1043,7 @@ function montarPessoa(p) {
   }
   // óculos de armação grossa, formato gatinho (pontas de fora levantadas)
   if (p.oculos) {
+    const dy = p.oculos.y ?? 0; // desce (negativo) ou sobe os óculos no rosto, em graus
     const aro = (s) => {
       const pts = [];
       for (let i = 0; i < 20; i++) {
@@ -919,21 +1051,21 @@ function montarPessoa(p) {
         // gatinho: topo reto e largo, base arredondada, ponta de fora puxada para cima
         const ret = p.oculos.forma === "retangulo";
         const sc = Math.sign(cx) * Math.pow(Math.abs(cx), ret ? 0.35 : 0.55), ss = Math.sign(sy) * Math.pow(Math.abs(sy), ret ? 0.4 : 0.7); // cantos "quadrados" arredondados
-        let az = 19 * sc, el = sy > 0 ? 8.5 * ss : 9.5 * ss;
+        let az = 19 * (p.oculos.largo ?? 1) * sc, el = (sy > 0 ? 8.5 * ss : 9.5 * ss) * (p.oculos.alto ?? 1);
         const fora = Math.max(0, s * cx);
         if (!ret) { el += 7.5 * Math.pow(fora, 4) * Math.max(0, sy + 0.4); az += s * 4 * Math.pow(fora, 3) * Math.max(0, sy + 0.3); }
-        pts.push(naCabeca(THREE.MathUtils.degToRad(s * 22.5 + az), THREE.MathUtils.degToRad(-5.5 + el), 1.08));
+        pts.push(naCabeca(THREE.MathUtils.degToRad(s * 22.5 + az), THREE.MathUtils.degToRad(-5.5 + dy + el), 1.08));
       }
       return new THREE.CatmullRomCurve3(pts, true, "centripetal");
     };
     const cor = p.oculos.cor, esp = p.oculos.esp;
     for (const s of [1, -1]) {
-      m.add(new THREE.TubeGeometry(aro(s), 40, esp, 5, true), { cor, osso: O.cabeca, contorno: 0.004 });
+      m.add(new THREE.TubeGeometry(aro(s), 40, esp, 5, true), { cor, osso: O.cabeca, contorno: esp < 0.006 ? 0.0022 : 0.004 });
       // haste até a orelha
-      const h0 = naCabeca(THREE.MathUtils.degToRad(s * 42), THREE.MathUtils.degToRad(4), 1.08), h1 = naCabeca(s * 1.2, 0.03, 1.1), h2 = naCabeca(s * 1.55, 0.0, 1.06);
+      const h0 = naCabeca(THREE.MathUtils.degToRad(s * 42), THREE.MathUtils.degToRad(4 + dy * 0.9), 1.08), h1 = naCabeca(s * 1.2, 0.03, 1.1), h2 = naCabeca(s * 1.55, 0.0, 1.06);
       m.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([h0, h1, h2]), 8, esp * 0.75, 4), { cor, osso: O.cabeca, contorno: 0 });
     }
-    const p0 = naCabeca(THREE.MathUtils.degToRad(-6), THREE.MathUtils.degToRad(-2), 1.06), p1 = naCabeca(0, THREE.MathUtils.degToRad(-1), 1.075), p2 = naCabeca(THREE.MathUtils.degToRad(6), THREE.MathUtils.degToRad(-2), 1.06);
+    const p0 = naCabeca(THREE.MathUtils.degToRad(-6), THREE.MathUtils.degToRad(-2 + dy), 1.06), p1 = naCabeca(0, THREE.MathUtils.degToRad(-1 + dy), 1.075), p2 = naCabeca(THREE.MathUtils.degToRad(6), THREE.MathUtils.degToRad(-2 + dy), 1.06);
     m.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([p0, p1, p2]), 6, esp * 0.8, 4), { cor, osso: O.cabeca, contorno: 0 });
   }
 
@@ -948,7 +1080,7 @@ function montarPessoa(p) {
     pesoTras: (q) => { const w = sstep(q.y, 1.76, 1.5); return [[O.cabeca, 1 - w], [O.cabeloTras, w]]; },
     cabelo: (pts, op, peso = O.cabeca, contorno = 0.013, cor = null) => m.add(mecha(pts, { fora, lados: 6, passos: 9, ...op }), { cor: cor ?? cb.cor, corFn: cor ? null : corCabelo, osso: peso, contorno }),
     // calota com a linha do cabelo: H(az) = altura da linha na testa (rad); por baixo da têmpora fica aberto
-    calota(H, { volume = 0.04, k: kc = 1.075 } = {}) {
+    calota(H, { volume = 0.04, k: kc = 1.075, baixo = -0.3 } = {}) {
       const g = new THREE.SphereGeometry(R * kc, 24, 16);
       const P = g.attributes.position, d = new V3();
       for (let i = 0; i < P.count; i++) {
@@ -956,7 +1088,7 @@ function montarPessoa(p) {
         const az = Math.atan2(d.x, d.z), el = Math.asin(THREE.MathUtils.clamp(d.y, -1, 1));
         const W = lerp(1.78, 1.0, sstep(el, 0.04, 0.26));
         const rosto = sstep(H(az) - el, 0, 0.09) * sstep(W - Math.abs(az), 0, 0.12);
-        const queixo = sstep(-0.3 - el, 0, 0.12) * sstep(2.0 - Math.abs(az), 0, 0.2);
+        const queixo = sstep(baixo - el, 0, 0.12) * sstep(2.0 - Math.abs(az), 0, 0.2);
         const k = lerp(1, 0.84, Math.max(rosto, queixo)) * (1 + volume * sstep(el, 0.3, 1.2));
         P.setXYZ(i, P.getX(i) * k, P.getY(i) * k, P.getZ(i) * k);
       }
@@ -994,6 +1126,23 @@ function montarPessoa(p) {
       g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
       m.add(g, { osso: O.cabeca, regiao: "logo", matriz: M, contorno: 0 });
     }
+  }
+
+  // gravata-borboleta: duas pontas de cone achatadas (bico no nó), nó no meio e uma dobra mais escura
+  if (p.gravata) {
+    const g = p.gravata, q = naRoupa(0, g.y ?? 1.47, 0.02);
+    for (const s of [1, -1]) {
+      m.add(new THREE.ConeGeometry(0.04, 0.078, 12, 1), { cor: g.cor, osso: O.tronco, pos: [s * 0.054, q.y, q.z], rot: [0, 0, s * Math.PI / 2], esc: [1.15, 1, 0.5], contorno: 0.007 });
+      m.add(esf(8, 6), { cor: g.dobra, osso: O.tronco, pos: [s * 0.052, q.y, q.z + 0.013], esc: [0.026, 0.006, 0.006], contorno: 0 });
+    }
+    m.add(esf(10, 8), { cor: g.no, osso: O.tronco, pos: [0, q.y, q.z + 0.004], esc: [0.022, 0.026, 0.02], contorno: 0.006 });
+  }
+  // boina (flat cap): copa baixa e larga de tecido perfurado, levemente inclinada para a frente, com aba curtinha e botão
+  if (p.boina) {
+    const b = p.boina, M = new THREE.Matrix4().compose(new V3(0, HC.y + b.y, b.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(b.incl, 0, 0)), new V3(b.sx, b.sy, b.sz));
+    m.add(new THREE.SphereGeometry(1, 30, 10, 0, Math.PI * 2, 0, Math.PI * 0.56), { osso: O.cabeca, regiao: "logo", matriz: M, contorno: 0.014 });
+    m.add(esf(6, 4), { cor: b.botao, osso: O.cabeca, matriz: M.clone().multiply(new THREE.Matrix4().compose(new V3(0, 0.99, 0), new THREE.Quaternion(), new V3(0.07, 0.09, 0.07))), contorno: 0.004 });
+    m.add(new THREE.SphereGeometry(1, 20, 6, 0, Math.PI * 2, 0, Math.PI * 0.34), { cor: b.aba, osso: O.cabeca, matriz: new THREE.Matrix4().compose(new V3(0, HC.y + b.y + b.aby, b.z + b.sz * b.abz), new THREE.Quaternion().setFromEuler(new THREE.Euler(b.abi, 0, 0)), new V3(b.sx * b.abx, 0.08, 0.1)), contorno: 0.012 });
   }
 
   // --- braços (descanso: caídos ao lado do corpo)
@@ -1067,6 +1216,19 @@ const OBJETOS = {
     peca(new THREE.BoxGeometry(0.012, H, D), 0xa8141f, [-W / 2 + 0.006, 0, 0]);
     peca(new THREE.BoxGeometry(W - 0.016, H - 0.014, D - 0.016), 0xfff1d0, [0.004, 0, 0], 0.006);
     m.add(new THREE.PlaneGeometry(W - 0.012, H - 0.01), { osso: O.objeto, regiao: "capa", contorno: 0, matriz: M.clone().multiply(new THREE.Matrix4().makeTranslation(0.003, 0, D / 2 + 0.002)) });
+  },
+  // maleta de madeira clara com adesivos: pendurada pela alça na mão, com a frente virada para o lado de fora
+  maleta(m, M) {
+    const W = 0.38, H = 0.28, D = 0.11;
+    const T = (...pos) => M.clone().multiply(new THREE.Matrix4().makeTranslation(...pos));
+    const peca = (geo, cor, pos, contorno = 0.008) => m.add(geo, { cor, matriz: T(...pos), osso: O.objeto, caixa: true, contorno });
+    peca(new THREE.BoxGeometry(W, H, D), 0xdcba88, [0, 0, 0], 0.011);
+    peca(new THREE.BoxGeometry(W + 0.008, 0.018, D + 0.008), 0xb48d5a, [0, 0.02, 0], 0.005);
+    for (const sx of [1, -1]) { peca(new THREE.BoxGeometry(0.03, 0.03, D + 0.012), 0xb08d4f, [sx * (W / 2 - 0.012), H / 2 - 0.012, 0], 0.004); peca(new THREE.BoxGeometry(0.03, 0.03, D + 0.012), 0xb08d4f, [sx * (W / 2 - 0.012), -H / 2 + 0.012, 0], 0.004); peca(new THREE.BoxGeometry(0.034, 0.03, 0.012), 0xcfae6a, [sx * 0.09, 0.02, D / 2 + 0.008], 0.004); }
+    m.add(new THREE.TorusGeometry(0.06, 0.0085, 4, 12, Math.PI), { cor: 0x3a2c22, osso: O.objeto, matriz: T(0, H / 2, 0), contorno: 0.004 });
+    // adesivos nas duas faces (a de trás gira meia volta para o texto não ficar espelhado)
+    m.add(new THREE.PlaneGeometry(W - 0.012, H - 0.012), { osso: O.objeto, regiao: "capa", contorno: 0, matriz: T(0, 0, D / 2 + 0.0015) });
+    m.add(new THREE.PlaneGeometry(W - 0.012, H - 0.012), { osso: O.objeto, regiao: "capa", contorno: 0, matriz: T(0, 0, -D / 2 - 0.0015).multiply(new THREE.Matrix4().makeRotationY(Math.PI)) });
   },
   prancheta(m, M) {
     const peca = (geo, cor, pos, contorno = 0.008) => m.add(geo, { cor, matriz: M.clone().multiply(new THREE.Matrix4().makeTranslation(...pos)), osso: O.objeto, caixa: true, contorno });
@@ -1152,6 +1314,32 @@ const PESSOAS = {
     roupa: { tipo: "camiseta", manga: "curta", fundo: "#2e3036", trama: "rgba(255,255,255,0.05)", prega: "rgba(0,0,0,0)", costura: "#202226", ribana: 0x26282d, calca: 0x18181c },
     objeto: null,
   },
+  // Vovô Léo, amigo do Rabisco (faz eventos em escolas contando histórias bíblicas): boina clara de tecido perfurado,
+  // óculos retangulares finos caídos no nariz, cabelo e barba brancos, camisa xadrez com bolso, suspensório argyle,
+  // gravata-borboleta azul. As fotos não mostram as pernas: calça grafite e sapato social marrom.
+  // A maleta de atividades é opcional: criarPessoa("vovo-leo", { objeto: true }).
+  "vovo-leo": {
+    nome: "Vovô Léo", escala: 1.04,
+    pele: 0xf0bea2, ouro: 0xd8b24a, brinco: null, pulseira: false,
+    sapato: 0x6b4226, sapatoFechado: true,
+    corpo: { ombros: 1.08, quadril: 1.05, gordo: 1.0, barriga: 0.05, z: 0.82, braco: 1.1, perna: 1.05, pescoco: 0.072, cabeca: [0.88, 1.08, 0.95], queixo: 0.14 },
+    rosto: {
+      olhos: "rindo", olhoEsc: 0.95, rugas: true, nariz: "rgba(238,120,112,0.55)",
+      iris: ["#22140a", "#4a3018", "#7a5530", "#342010"], sobrancelha: "#a8a49b", grossura: 1.8, interno: 1, boca: "dentes", batom: "#b46f63", bochecha: "rgba(240,96,96,0.45)",
+      cilios: [[-0.3, 6, 3]],
+      barba: { cheia: true, textura: true, cor: "#f3f2ef", fios: 0.9, densidade: 1.1, volume: 1.1, bigode: "rgba(120,120,128,0.2)", linha: "rgba(120,118,124,0.5)",
+        cinza: ["rgba(200,200,205,0.75)", "rgba(168,168,176,0.65)", "rgba(255,255,255,0.8)"], escuro: ["rgba(120,118,126,0.55)", "rgba(150,148,156,0.5)"], mechas: ["rgba(120,120,130,0.22)", "rgba(255,255,255,0.3)"] },
+    },
+    oculos: { forma: "retangulo", cor: 0x4c5056, esp: 0.0042, y: -5.5, alto: 0.62, largo: 0.98 },
+    cabelo: { estilo: "vovoLeo", cor: 0xeeece8, brilho: 0xffffff },
+    boina: { fundo: "#e3e3e0", furo: "rgba(140,140,146,0.6)", costura: "rgba(150,150,156,0.65)", borda: "#cfcfcc", botao: 0xd8d8d5, aba: 0xdcdcd9, y: 0.15, z: 0.02, sx: 0.275, sy: 0.17, sz: 0.3, incl: 0.14, aby: -0.07, abz: 0.74, abi: 0.45, abx: 0.7 },
+    gravata: { cor: 0x1f7fe0, dobra: 0x15569e, no: 0x1865b8, y: 1.465 },
+    roupa: {
+      tipo: "xadrez", manga: "curta", fundo: "#f6f0e4", costura: "#5a4538", botao: "#2a1d18", suspensorio: 0.62, barra: 0.9, ribana: 0xcdb48c, calca: 0x3b3d45,
+      bandas: [[0, 0.17, "#876553"], [0.17, 0.2, "#d8bf96"], [0.56, 0.3, "#a8c9e8"]],
+    },
+    objeto: { tipo: "maleta", opcional: true, pos: [0, -0.245, 0], rot: [0, 1.05, 0], pose: { oEx: 0, oEz: 0.2, cE: -0.06, mEx: 0 } },
+  },
   carina: {
     nome: "Diretora Carina", escola: "kids1",
     pele: 0xd9a07a, ouro: 0xe9b84a, sapato: 0x1d1c22, brinco: "pendente", pulseira: false,
@@ -1173,9 +1361,10 @@ const PESSOAS = {
 void PELE_SABRINA;
 
 // ---------------------------------------------------------------- pessoa
-export function criarPessoa(id = "sabrina", { escala: esc = null, nome = null } = {}) {
-  const p = PESSOAS[id];
-  if (!p) throw new Error(`pessoa desconhecida: ${id}`);
+export function criarPessoa(id = "sabrina", { escala: esc = null, nome = null, objeto = false } = {}) {
+  const base = PESSOAS[id];
+  if (!base) throw new Error(`pessoa desconhecida: ${id}`);
+  const p = base.objeto?.opcional && !objeto ? { ...base, objeto: null } : base; // objeto opcional só entra se pedido
   const escala = esc ?? p.escala ?? 1;
   const grupo = new THREE.Group();
   const raiz = new THREE.Group(); // pulo e estica-e-achata
@@ -1191,7 +1380,7 @@ export function criarPessoa(id = "sabrina", { escala: esc = null, nome = null } 
 
   const mont = montarPessoa(p);
   // pose de segurar o objeto: calcula onde ele fica na mão e guarda isso no espaço do osso da mão
-  const POSE_OBJ = { oEx: -0.12, oEz: 0.04, cE: -1.0, mEx: 0.25 };
+  const POSE_OBJ = { oEx: -0.12, oEz: 0.04, cE: -1.0, mEx: 0.25, ...(p.objeto?.pose ?? {}) };
   if (p.objeto) {
     const aplicar = (sim) => {
       ossos[O.ombroE].rotation.set(sim ? POSE_OBJ.oEx : 0, 0, sim ? POSE_OBJ.oEz : 0);
