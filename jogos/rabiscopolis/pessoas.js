@@ -1070,9 +1070,10 @@ function montarPessoa(p) {
     const cor = p.oculos.cor, esp = p.oculos.esp;
     for (const s of [1, -1]) {
       m.add(new THREE.TubeGeometry(aro(s), 40, esp, 5, !p.oculos.meia), { cor, osso: O.cabeca, contorno: esp < 0.006 ? 0.0014 : 0.004 });
-      // haste até a orelha
-      const h0 = naCabeca(THREE.MathUtils.degToRad(s * 42), THREE.MathUtils.degToRad(4 + dy * 0.9), 1.08), h1 = naCabeca(s * 1.2, 0.03, 1.1), h2 = naCabeca(s * 1.55, 0.0, 1.06);
-      m.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([h0, h1, h2]), 8, esp * 0.75, 4), { cor, osso: O.cabeca, contorno: 0 });
+      // haste: nasce na ponta de fora do arco e vai em linha reta até a frente da orelha, um pouco subindo
+      const curva = aro(s), h0 = curva.getPoint(p.oculos.meia ? (s > 0 ? 0 : 1) : (s > 0 ? 0 : 0.5)), h1 = naCabeca(s * 1.5, 0.05, 1.12);
+      const hm = h0.clone().add(h1).multiplyScalar(0.5).sub(HC).multiplyScalar(1.13).add(HC); // ponto do meio levantado: a haste passa por cima da barba, sem afundar
+      m.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([h0, hm, h1], false, "centripetal", 0.1), 8, esp * 0.85, 4), { cor, osso: O.cabeca, contorno: 0 });
     }
     const p0 = naCabeca(THREE.MathUtils.degToRad(-6), THREE.MathUtils.degToRad(-2 + dy), 1.06), p1 = naCabeca(0, THREE.MathUtils.degToRad(-1 + dy), 1.075), p2 = naCabeca(THREE.MathUtils.degToRad(6), THREE.MathUtils.degToRad(-2 + dy), 1.06);
     m.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([p0, p1, p2]), 6, esp * 0.8, 4), { cor, osso: O.cabeca, contorno: 0 });
@@ -1335,7 +1336,7 @@ const PESSOAS = {
   // gravata-borboleta azul. As fotos não mostram as pernas: calça grafite e sapato social marrom.
   // A maleta de atividades é opcional: criarPessoa("vovo-leo", { objeto: true }).
   "vovo-leo": {
-    nome: "Vovô Léo", escala: 1.04,
+    nome: "Vovô Léo", escala: 0.83, // mesma altura do Rabisco: 1,80 m (chão até a ponta do lápis / até o topo da boina)
     pele: 0xf0bea2, ouro: 0xd8b24a, brinco: null, pulseira: false,
     sapato: 0x6b4226, sapatoFechado: true,
     corpo: { ombros: 1.08, quadril: 1.0, gordo: 1.0, barriga: 0.05, afina: 0.2, z: 0.82, braco: 1.1, perna: 1.05, pescoco: 0.072, cabeca: [0.88, 1.08, 0.95], queixo: 0.14 },
