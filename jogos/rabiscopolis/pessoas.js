@@ -1347,7 +1347,7 @@ const PESSOAS = {
       barba: { forma: "curta", cheia: true, textura: true, cor: "#f3f2ef", fios: 0.9, densidade: 1.1, volume: 0.75, bigode: "rgba(100,100,110,0.32)", linha: "rgba(120,118,124,0.5)",
         cinza: ["rgba(200,200,205,0.75)", "rgba(168,168,176,0.65)", "rgba(255,255,255,0.8)"], escuro: ["rgba(120,118,126,0.55)", "rgba(150,148,156,0.5)"], mechas: ["rgba(120,120,130,0.22)", "rgba(255,255,255,0.3)"] },
     },
-    oculos: { forma: "retangulo", meia: true, cor: 0x6c7178, esp: 0.0032, y: -12, alto: 0.4, largo: 0.95 },
+    oculos: { forma: "retangulo", cor: 0x6c7178, esp: 0.0032, y: -9.5, alto: 0.38, largo: 0.95 },
     cabelo: { estilo: "vovoLeo", cor: 0xeeece8, brilho: 0xffffff },
     boina: { fundo: "#e3e3e0", furo: "rgba(140,140,146,0.6)", costura: "rgba(150,150,156,0.65)", borda: "#cfcfcc", botao: 0xd8d8d5, aba: 0xe0e0dd, y: 0.165, z: 0.02, sx: 0.275, sy: 0.17, sz: 0.3, incl: 0.14, aby: -0.06, abz: 0.7, abi: 0.38, abx: 0.6 },
     gravata: { cor: 0x1f7fe0, dobra: 0x15569e, no: 0x1865b8, y: 1.465 },
