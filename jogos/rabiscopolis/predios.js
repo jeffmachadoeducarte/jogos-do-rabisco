@@ -189,8 +189,8 @@ export function bombeiros(l) {
 // ---------- a Educarte em blocos, na mesma composição da escola oficial: corpo creme, alas rosa e azul, telhados em
 // degraus e a torre-lápis com o relógio. Marca só pelos arquivos oficiais de assets/marca/logos.
 export function escola(l) {
-  const S = novo(), g = S.grupo; const [W, D] = l.pegada, k = Math.min(W / 31.2, 1), f = { sombra: false };
-  const e = new THREE.Group(); e.scale.setScalar(k); e.position.z = -3.9 * k; g.add(e);
+  const S = novo(), g = S.grupo, k = 0.9716, f = { sombra: false }; // mesma escala e mesmo lugar da escola oficial no lote
+  const e = new THREE.Group(); e.scale.setScalar(k); e.position.z = -12.87; g.add(e);
   const CIANO = 0x00b5f0, ROSA = 0xec2e8c, LARANJA = 0xff7a00, ROXO = 0x8e6cff, CREME = 0xfff1d6;
   pc(e, 16, 7, 7, CREME, 0, 3.5, 0); pc(e, 7, 5, 6, 0xffe3ef, -11.5, 2.5, 0.5); pc(e, 7, 5, 6, 0xdff6ff, 11.5, 2.5, 0.5);
   pc(e, 16.2, 0.5, 7.2, ROSA, 0, 0.25, 0); pc(e, 16.2, 0.35, 7.2, LARANJA, 0, 3.6, 0);
@@ -211,9 +211,22 @@ export function escola(l) {
   for (const [x, c] of [[-11.5, 0xffb3d4], [11.5, 0x9fe0ff]]) { const a = new THREE.Group(); a.position.x = x; e.add(a); janelas(a, { w: 6, andares: 1, z: 3.52, y0: 1.5, jw: 1.6, jh: 1.8, colunas: 2, cor: c }); }
   // porta grande e logo oficial em cima dela
   porta(e, { z: 3.54, w: 3, h: 3.1, cor: ROSA });
-  pc(e, 6, 1.5, 0.2, 0xffffff, 0, 4.25, 3.62, f);
+  pc(e, 6.4, 2, 0.3, CIANO, 0, 5.35, 3.66); pc(e, 6, 1.7, 0.1, 0xffffff, 0, 5.35, 3.84, f);
   const logo = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 1.35), matNovo({ map: carregarTextura("../../assets/marca/logos/azul-icone-rosa.png"), transparent: true, alphaTest: 0.3 }));
-  logo.position.set(0, 4.25, 3.74); logo.userData.dinamico = true; e.add(logo);
+  logo.position.set(0, 5.35, 3.92); logo.userData.dinamico = true; e.add(logo);
+  // toldo rosa da entrada, sobre duas colunas de lápis
+  pc(e, 5.4, 0.35, 2.4, ROSA, 0, 3.95, 4.6); pc(e, 5.7, 0.14, 2.6, 0xffa8d0, 0, 4.18, 4.6, f);
+  for (const [x, c] of [[-2.4, 0xffcc1f], [2.4, 0x58c43a]]) { pc(e, 0.7, 3.2, 0.7, c, x, 1.9, 5.5); const t = malha(degraus(0.7, 0.7, 0.5, 3), mat(0xf3c99a)); t.rotation.x = Math.PI; t.position.set(x, 0.1, 5.5); e.add(t); pc(e, 0.74, 0.3, 0.74, 0x2a2a2a, x, 3.6, 5.5, f); }
+  // mastro com a bandeira da Educarte
+  pc(e, 0.5, 0.3, 0.5, 0xc8ccd2, 8.4, 0.15, 7); pc(e, 0.16, 8.6, 0.16, 0xf4f6fb, 8.4, 4.4, 7); pc(e, 0.3, 0.3, 0.3, 0x58c43a, 8.4, 8.8, 7);
+  for (let i = 0; i < 4; i++) pc(e, 0.5, 1.2 - i * 0.34, 0.08, ROSA, 7.98 - i * 0.5, 7.9, 7, f);
+  // parquinho: escorregador de blocos à esquerda e balanço à direita
+  pc(e, 1.8, 2.4, 1.8, 0xffcc1f, -12.2, 1.2, 6.2); pc(e, 2.1, 0.2, 2.1, CIANO, -12.2, 2.5, 6.2, f);
+  const rampa = new THREE.Group(); rampa.position.set(-12.2, 1.3, 8.6); rampa.rotation.x = 0.62; e.add(rampa);
+  pc(rampa, 1.3, 0.16, 3.6, ROSA, 0, 0, 0); for (const s of [-1, 1]) pc(rampa, 0.14, 0.32, 3.6, 0xffa8d0, s * 0.62, 0.18, 0, f);
+  for (const x of [10.6, 14]) for (const z of [6.2, 7.8]) pc(e, 0.2, 3.5, 0.2, CIANO, x, 1.75, z);
+  pc(e, 3.8, 0.24, 0.24, CIANO, 12.3, 3.5, 7); pc(e, 3.6, 0.2, 0.2, CIANO, 12.3, 3.3, 6.2, f); pc(e, 3.6, 0.2, 0.2, CIANO, 12.3, 3.3, 7.8, f);
+  for (const x of [11.6, 13]) { for (const s of [-1, 1]) pc(e, 0.05, 2.5, 0.05, 0x9aa3ad, x + s * 0.35, 2.2, 7, f); pc(e, 0.95, 0.12, 0.5, 0xff7a00, x, 0.96, 7); }
   // lápis de cor enfeitando a frente das alas
   [ROSA, LARANJA, 0xffcc1f, 0x58c43a, CIANO, ROXO].forEach((c, i) => { const x = -14 + i * 1.1 + (i > 2 ? 22.3 : 0); pc(e, 0.5, 1.4, 0.3, c, x, 1.2, 3.72, f); const t = malha(degraus(0.5, 0.3, 0.4, 2), mat(0xf3c99a)); t.position.set(x, 2.1, 3.72); e.add(t); });
   const zc = e.position.z, z0 = zc - 3.6 * k, z1 = zc + 3.8 * k;
@@ -708,8 +721,8 @@ export function hortaComunitaria(H) {
 const PASTEL = { menta: 0xbff0dc, rosa: 0xffd3e2, lilas: 0xe2d4ff, azul: 0xcfe9ff, creme: 0xfff7e6, amarelo: 0xfff0a8 };
 function placaEscola(texto, cor, largura) {
   const g = new THREE.Group();
-  const logo = new THREE.Mesh(new THREE.PlaneGeometry(largura * 0.32, largura * 0.16), matNovo({ map: carregarTextura("../../assets/marca/logos/azul-icone-rosa.png"), transparent: true, alphaTest: 0.3 }));
-  logo.position.set(-largura * 0.33, 0, 0.14); logo.userData.dinamico = true; g.add(logo);
+  const logo = new THREE.Mesh(new THREE.PlaneGeometry(largura * 0.27, largura * 0.135), matNovo({ map: carregarTextura("../../assets/marca/logos/azul-icone-rosa.png"), transparent: true, alphaTest: 0.3 }));
+  logo.position.set(-largura * 0.335, 0, 0.14); logo.userData.dinamico = true; g.add(logo);
   const fundo = caixaRedonda(largura, largura * 0.22, 0.25, mat(0xffffff)); g.add(fundo);
   const nomeL = letreiro(texto, largura * 0.62, { cor }); nomeL.position.set(largura * 0.17, 0, 0.1); g.add(nomeL);
   return g;
