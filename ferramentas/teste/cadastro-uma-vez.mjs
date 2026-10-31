@@ -12,7 +12,7 @@ const ALGUM = `!!document.querySelector(".familia-tela")`;
 const GOLPE = `(() => { const t = document.querySelector(".portao-conta")?.textContent.split("×").map(Number); const i = document.querySelector("#portao-resposta"); i.value = String(t[0] * t[1]); i.form.requestSubmit(); })()`;
 // clica no jogo e devolve se o clique foi deixado seguir (nenhum preventDefault = o link abre o jogo)
 const clicaJogo = `(() => { const a = document.querySelector("a.jogo.pronto"); if (!a) return "sem-jogo"; let seguiu = false; a.addEventListener("click", (e) => { seguiu = !e.defaultPrevented; e.preventDefault(); }, { once: true }); a.click(); return seguiu ? "segue" : "barrado"; })()`;
-const tocarJogo = async (t) => { await t.ev(`document.querySelectorAll("[data-faixa]")[0]?.click()`); await espera(300); return t.ev(clicaJogo); };
+const tocarJogo = async (t) => t.ev(clicaJogo); // os jogos já ficam na tela inicial
 
 async function nova(opts, url, antes = "") {
   const t = await abrir("about:blank", opts);
@@ -57,7 +57,6 @@ for (const [nome, opts] of [["celular", { mobile: true, largura: 390, altura: 84
     s("resp-nome", "Mae Teste"); s("email", "m@t.com"); s("crianca-nome", "Alice"); s("genero", "menina"); document.querySelector(".familia-form").requestSubmit(); })()`);
   await espera(800);
   ok(await t.ev(`!!JSON.parse(localStorage.getItem("rabisco.familia"))?.crianca?.nome`), "cadastro foi salvo");
-  await t.ev(`document.querySelectorAll("[data-faixa]")[0]?.click()`); await espera(300);
   ok((await t.ev(clicaJogo)) === "segue", "depois de salvar, o jogo segue");
   ok(!(await t.ev(ALGUM)), "depois de salvar não abre cadastro");
   await t.fechar();

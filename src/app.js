@@ -1,11 +1,11 @@
 // Painel de entrada: a escola Educarte com o Rabisco acenando na frente (cena 3D "ultra realista"
-// em src/portal3d.js). Por cima, os cartões de idade; cada um abre a grade de jogos daquela faixa
-// (src/catalogo.js), com capa, selos e profundidade 3D (inclina ao passar o mouse ou tocar).
+// em src/portal3d.js). Por cima, a vitrine com os jogos que estão no ar (JOGOS_NO_AR em src/catalogo.js):
+// cartões grandes com capa e profundidade 3D (inclinam ao passar o mouse ou tocar).
 //
 // Abertura rápida: a foto pré-renderizada da cena (assets/portal-entrada-*.webp) aparece na hora;
 // a cena viva (three.js) só carrega depois que a página abriu e entra com um esmaecer suave.
 
-import { faixas, estilos } from "./catalogo.js";
+import { jogosNoAr, estilos } from "./catalogo.js";
 import { CAPAS } from "./portal-capas.js";
 import { falar, preCarregarFalas, saudar } from "./motor/voz.js";
 import { Familia } from "./motor/familia.js";
@@ -40,39 +40,22 @@ if (!economia) {
   const ir = () => ("requestIdleCallback" in window ? requestIdleCallback(carregarCena, { timeout: 1200 }) : setTimeout(carregarCena, 150));
   if (document.readyState === "complete") ir(); else addEventListener("load", ir, { once: true });
 }
-const comemorar = () => cena?.comemorar();
-// painel de jogos aberto: no celular ele cobre a cena (pausa); no computador, meio ritmo (rola mais liso)
+// a cena para quando a aba fica em segundo plano
 function ajustarRitmo() {
   if (!cena) return;
-  const cobre = !!faixaAberta && innerWidth <= 560;
-  cena.pausar(cobre || document.hidden);
-  cena.lento(!!faixaAberta);
+  cena.pausar(document.hidden);
 }
 addEventListener("resize", ajustarRitmo);
 document.addEventListener("visibilitychange", ajustarRitmo);
 
-// ------------------------------------------------------------------ Cartões de idade e jogos
-const soIngles = $("so-ingles");
-const filtrar = (jogos) => (soIngles.checked ? jogos.filter((j) => j.ingles) : jogos);
-let faixaAberta = null;
+// ------------------------------------------------------------------ Vitrine de jogos
+const CORES = ["#00B5F0", "#FF5FA2"]; // uma cor por cartão (borda, sombra e selos)
 
-function desenharFaixas() {
-  $("faixas").innerHTML = faixas.map((f) => {
-    const n = filtrar(f.jogos).length;
-    return `<button class="faixa ${faixaAberta === f.id ? "aberta" : ""}" data-faixa="${f.id}" style="--cor:${f.cor}">
-      <span class="emoji" aria-hidden="true">${f.emoji}</span>
-      <strong>${f.nome}</strong>
-      <span class="idade">${f.idade}</span>
-      <span class="contagem">${n} ${n === 1 ? "jogo" : "jogos"}</span>
-    </button>`;
-  }).join("");
-}
-
-// Cartão de jogo: capa (foto do jogo ou arte com o ícone do estilo), selos de estilo/idade/inglês,
+// Cartão de jogo: capa (foto do jogo ou arte com o ícone do estilo), selo de estilo,
 // botão de jogar sobre a capa, nome, descrição curta e a habilidade trabalhada.
 // Qualquer jogo novo do catálogo funciona: sem capa em assets/portal-capas/, entra a arte de reserva.
 const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-function cartaoJogo(j, f, i) {
+function cartaoJogo(j, i) {
   const pronto = j.status === "pronto";
   const est = estilos[j.estilo] || estilos.extra;
   const temCapa = CAPAS.has(j.id);
@@ -87,7 +70,6 @@ function cartaoJogo(j, f, i) {
         <span class="selo estilo">${est.icone} ${esc(est.nome)}</span>
         ${j.ingles ? '<span class="selo ingles">English</span>' : ""}
       </div>
-      <span class="selo idade">${esc(f.idade)}</span>
       <span class="selo ${pronto ? "pronto" : "breve"}">${pronto ? "Jogar ▶" : "Em breve"}</span>
     </div>
     <div class="corpo">
@@ -95,7 +77,7 @@ function cartaoJogo(j, f, i) {
       <p>${esc(j.desc)}</p>
       <span class="habilidade">${esc(j.habilidade)}</span>
     </div>`;
-  const estilo = `style="--i:${Math.min(i, 8)}"`;
+  const estilo = `style="--i:${i};--cor:${CORES[i % CORES.length]}"`;
   return pronto
     ? `<a class="jogo pronto" href="jogos/${j.id}/" ${estilo} aria-label="${esc(j.nome)}: ${esc(j.habilidade)}">${conteudo}</a>`
     : `<div class="jogo breve" ${estilo}>${conteudo}</div>`;
@@ -137,47 +119,9 @@ function ligarInclinacao(lista) {
   for (const fim of ["pointerup", "pointercancel"]) lista.addEventListener(fim, (e) => { if (e.pointerType === "touch") soltar(); });
   lista.addEventListener("scroll", soltar, { passive: true });
 }
-ligarInclinacao($("jogos"));
 
-function abrirFaixa(id) {
-  const f = faixas.find((x) => x.id === id);
-  if (!f) return;
-  faixaAberta = id;
-  $("painel").style.setProperty("--cor", f.cor);
-  $("painel-titulo").textContent = `${f.emoji} ${f.nome}`;
-  $("painel-idade").textContent = f.idade;
-  $("painel-nota").hidden = !f.nota;
-  $("painel-nota").textContent = f.nota || "";
-  const jogos = filtrar(f.jogos);
-  $("painel-contagem").textContent = `${jogos.length} ${jogos.length === 1 ? "jogo" : "jogos"}`;
-  $("jogos").innerHTML = jogos.length ? jogos.map((j, i) => cartaoJogo(j, f, i)).join("") : '<p class="vazio">Ainda não tem jogo de inglês nesta idade.</p>';
-  $("jogos").scrollTop = 0;
-  $("painel").hidden = false;
-  $("boas-vindas").classList.add("recolhida");
-  $("destaque").classList.add("recolhida");
-  desenharFaixas();
-  comemorar();
-  sons.destravar();
-  falar("portal-idade");
-  ajustarRitmo();
-}
-
-function fecharPainel() {
-  faixaAberta = null;
-  $("painel").hidden = true;
-  $("boas-vindas").classList.remove("recolhida");
-  $("destaque").classList.remove("recolhida");
-  desenharFaixas();
-  ajustarRitmo();
-}
-
-$("faixas").addEventListener("click", (e) => {
-  const b = e.target.closest("[data-faixa]");
-  if (b) (faixaAberta === b.dataset.faixa ? fecharPainel() : abrirFaixa(b.dataset.faixa));
-});
-$("fechar").addEventListener("click", fecharPainel);
-addEventListener("keydown", (e) => { if (e.key === "Escape") fecharPainel(); });
-soIngles.addEventListener("change", () => { desenharFaixas(); if (faixaAberta) abrirFaixa(faixaAberta); });
+$("vitrine").innerHTML = jogosNoAr.map(({ jogo }, i) => cartaoJogo(jogo, i)).join("");
+ligarInclinacao($("vitrine"));
 // ⚙️ Configurações (src/motor/engrenagem.js): som liga/desliga (M no teclado) e "📺 Jogar na TV" com os 3 jeitos
 // (aqui mesmo, + celular de controle, só controles). Fica no lugar do antigo 🔊.
 $("som").replaceWith(botaoEngrenagem({ classe: "som", id: "som", atalhoM: true }));
@@ -187,7 +131,7 @@ $("som").replaceWith(botaoEngrenagem({ classe: "som", id: "som", atalhoM: true }
 preCarregarFalas(["portal-oi", "portal-idade"]);
 let cumprimentou = false;
 addEventListener("pointerdown", (e) => {
-  if (cumprimentou || e.target.closest("[data-faixa], .familia-tela, #familia")) return;
+  if (cumprimentou || e.target.closest(".familia-tela, #familia")) return;
   cumprimentou = true;
   sons.destravar();
   if (!saudar({ gravada: false })) falar("portal-oi");
@@ -203,28 +147,16 @@ function desenharFamilia() {
 desenharFamilia();
 Familia.aoMudar(desenharFamilia);
 btnFamilia.addEventListener("click", () => Familia.abrirCadastro({ obrigatorio: false, titulo: "Nossa família" }));
-$("destaque").querySelector("img").src = `assets/portal-capas/rabiscopolis.webp?v=${CAPAS.versao}`;
-// no celular em pé e no tablet o destaque fica logo acima das idades: acompanha a altura delas
-if ("ResizeObserver" in window) {
-  new ResizeObserver(([e]) => document.documentElement.style.setProperty("--faixas-h", `${Math.round(e.target.getBoundingClientRect().height)}px`)).observe($("faixas"));
-}
 if (params.has("cadastro")) Familia.abrirCadastro({ obrigatorio: params.get("cadastro") !== "editar" });
 
-// Controle: direcional escolhe a idade ou o jogo, A abre, B volta para as idades
+// Controle: direcional escolhe o jogo, A abre
 const controle = ligarControle({
-  menu: () => (faixaAberta ? $("painel") : document.body),
-  aoVoltar: () => { if (faixaAberta) { const id = faixaAberta; fecharPainel(); const b = document.querySelector(`[data-faixa="${id}"]`); if (b) controle.controle.focar(b); } },
+  menu: () => document.body,
   aoConectar: () => { sons.destravar(); },
 });
 
 // o controle (gamepad) é lido a cada quadro, com ou sem a cena 3D
 (function lerControle() { controle.atualizar(); requestAnimationFrame(lerControle); })();
-
-desenharFaixas();
-// voltando de um jogo (index.html#/faixa/pequenos), o painel daquela idade já abre
-const faixaDoEndereco = () => location.hash.match(/^#\/faixa\/([\w-]+)/)?.[1];
-if (faixaDoEndereco()) abrirFaixa(faixaDoEndereco());
-addEventListener("hashchange", () => { const f = faixaDoEndereco(); if (f) abrirFaixa(f); });
 
 // App: instala na tela inicial (o pedido aparece assim que a pessoa entra)
 registrarApp();

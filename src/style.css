@@ -1,8 +1,7 @@
-/* Painel de entrada: a cena 3D da escola ocupa a tela (com a foto pré-renderizada por baixo, que aparece
-   na hora); título à esquerda (o Rabisco acena logo abaixo), cartões de idade numa fileira embaixo e a
-   grade de jogos abre como painel à direita (no celular, por cima de tudo, abaixo do cabeçalho).
-   Desempenho: nada de blur/backdrop-filter na lista; sombras em camadas só com box-shadow; a inclinação
-   3D liga will-change apenas no cartão ativo; content-visibility nos cartões fora da tela. */
+/* Portal de entrada: a cena 3D da escola ocupa a tela (com a foto pré-renderizada por baixo, que aparece
+   na hora); título à esquerda e, embaixo, a vitrine com os jogos que estão no ar (hoje dois cartões grandes).
+   Desempenho: nada de blur/backdrop-filter; sombras em camadas só com box-shadow; a inclinação 3D liga
+   will-change apenas no cartão ativo. */
 @font-face {
   font-family: "Neulis Cursive";
   src: url("../assets/fontes/NeulisCursive-Black.otf") format("opentype");
@@ -46,7 +45,7 @@ body {
     linear-gradient(to top, rgba(8, 30, 52, 0.38), transparent 30%);
 }
 [hidden] { display: none !important; }
-.foto-cena .topo, .foto-cena .boas-vindas, .foto-cena .destaque, .foto-cena .faixas, .foto-cena .som, .foto-cena .veu, .foto-cena .instalar-app { display: none !important; }
+.foto-cena .topo, .foto-cena .boas-vindas, .foto-cena .vitrine, .foto-cena .som, .foto-cena .veu, .foto-cena .instalar-app { display: none !important; }
 
 /* ------------------------------------------------------------------ cabeçalho */
 .topo {
@@ -59,25 +58,16 @@ body {
   background: rgba(255, 255, 255, 0.94); border-radius: 18px; padding: 6px 12px;
   box-shadow: 0 1px 1px rgba(10, 40, 70, 0.12), 0 6px 14px -4px rgba(10, 40, 70, 0.35), 0 16px 30px -18px rgba(10, 40, 70, 0.5);
 }
-.filtro-ingles {
-  pointer-events: auto;
-  display: flex; align-items: center; gap: 8px;
-  background: var(--branco); border: 3px solid var(--tinta); border-radius: 999px;
-  padding: 6px 14px; font-weight: 800; cursor: pointer; user-select: none;
-  box-shadow: 0 4px 0 var(--tinta);
-}
 .instalar {
   pointer-events: auto; margin-left: auto; font: 800 16px var(--texto); cursor: pointer; white-space: nowrap;
   background: var(--rosa); color: #fff; border: 3px solid var(--tinta); border-radius: 999px; padding: 6px 14px; box-shadow: 0 4px 0 var(--tinta);
 }
 .instalar[hidden] { display: none; }
-.filtro-ingles input { width: 20px; height: 20px; accent-color: var(--rosa); }
 
 /* ------------------------------------------------------------------ título */
 .boas-vindas {
   position: fixed; top: clamp(90px, 15vh, 140px); left: clamp(16px, 5vw, 70px);
   max-width: min(560px, 90vw);
-  transition: opacity 0.3s, transform 0.3s;
   pointer-events: none;
 }
 .boas-vindas h1 {
@@ -96,151 +86,27 @@ body {
   font-size: clamp(18px, 2.4vw, 26px); font-weight: 700;
   box-shadow: 0 1px 1px rgba(10, 40, 70, 0.12), 0 8px 20px -6px rgba(10, 40, 70, 0.45);
 }
-.boas-vindas.recolhida { opacity: 0; transform: translateY(-16px); }
 
-/* ------------------------------------------------------------------ destaque: Rabiscolândia sempre na tela inicial
-   Computador e TV: cartão grande à direita (a escola e o Rabisco ficam livres no meio).
-   Celular em pé e tablet: faixa larga logo acima das idades (--faixas-h vem do app.js).
-   Celular deitado: cartão compacto à direita, entre o cabeçalho e as idades. */
-.destaque {
-  --borda-d: #c4136c;
-  position: fixed; z-index: 1;
-  right: clamp(16px, 2.4vw, 44px); top: calc(env(safe-area-inset-top, 0px) + clamp(132px, 19vh, 210px));
-  width: clamp(290px, 29vw, 520px);
-  display: flex; flex-direction: column; gap: 0;
-  color: var(--tinta); text-decoration: none; font-family: var(--texto);
-  /* moldura em degradê da marca (amarelo → rosa → ciano) com o miolo branco */
-  border: 4px solid transparent; border-radius: 28px; padding: 6px;
-  background:
-    linear-gradient(var(--branco), var(--branco)) padding-box,
-    linear-gradient(135deg, var(--amarelo), var(--rosa) 45%, var(--ciano)) border-box;
-  box-shadow:
-    0 6px 0 var(--borda-d),
-    0 12px 18px -6px rgba(8, 30, 52, 0.38), 0 30px 50px -24px rgba(8, 30, 52, 0.6);
-  transition: transform 0.3s var(--mola), box-shadow 0.3s var(--mola), opacity 0.3s;
-  animation: destaque-entra 0.6s var(--mola) 0.15s backwards;
-  -webkit-touch-callout: none;
+/* ------------------------------------------------------------------ vitrine: os dois jogos no ar
+   Dois cartões grandes lado a lado (computador, TV e tablet); no celular em pé ficam um sobre o outro,
+   com a capa à esquerda; no celular deitado, lado a lado e compactos. */
+.vitrine {
+  --sombra-cor: #0a2340;
+  position: fixed; z-index: 1; left: 16px; right: 16px; margin: 0 auto;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(16px, 4vh, 40px));
+  max-width: 900px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(16px, 2.6vw, 36px);
 }
-@keyframes destaque-entra { from { opacity: 0; transform: translateY(18px) scale(0.96); } }
-.destaque:hover, .destaque:focus-visible { transform: translateY(-6px) rotate(-0.6deg); outline: none; }
-.destaque:focus-visible, .destaque.controle-foco {
-  outline: 6px solid var(--amarelo) !important; outline-offset: 4px;
-  box-shadow: 0 6px 0 var(--borda-d), 0 0 0 10px rgba(255, 204, 31, 0.28), 0 26px 40px -14px rgba(8, 30, 52, 0.65);
-}
-.destaque:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--borda-d), 0 6px 12px -4px rgba(8, 30, 52, 0.4); transition-duration: 0.08s; }
-.destaque.recolhida { opacity: 0; transform: translateY(-16px); pointer-events: none; visibility: hidden; transition: opacity 0.25s, transform 0.25s, visibility 0s 0.25s; }
-.destaque-capa {
-  position: relative; display: block; aspect-ratio: 16 / 10; overflow: hidden;
-  border-radius: 21px 21px 14px 14px; background: linear-gradient(150deg, #8fdcff, var(--ciano));
-  isolation: isolate;
-}
-.destaque-capa img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; transform: scale(1.02); transition: transform 0.6s var(--mola); }
-.destaque:hover .destaque-capa img, .destaque:focus-visible .destaque-capa img { transform: scale(1.08); }
-/* brilho que passa pela capa de vez em quando (chama a atenção sem piscar) */
-.destaque-capa::after {
-  content: ""; position: absolute; inset: -20% auto -20% -60%; width: 40%; pointer-events: none;
-  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
-  transform: skewX(-18deg); animation: destaque-brilho 5.5s ease-in-out 1.2s infinite;
-}
-@keyframes destaque-brilho { 0%, 70% { left: -60%; } 100% { left: 130%; } }
-.destaque-selo {
-  position: absolute; top: 10px; left: 10px; z-index: 1;
-  font-weight: 800; font-size: 14px; line-height: 1.5; color: #fff; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
-  background: linear-gradient(180deg, #ff4fa3, var(--rosa)); border-radius: 999px; padding: 2px 12px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 3px 0 #b5156a, 0 6px 12px rgba(0, 0, 0, 0.3);
-}
-.destaque-texto {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "nome jogar" "frase jogar";
-  align-items: center; gap: 0 12px; padding: 10px 8px 6px 10px;
-}
-.destaque-texto strong {
-  grid-area: nome; font-family: var(--titulo); font-weight: 900; line-height: 1.05;
-  font-size: clamp(24px, 2.5vw, 38px); color: #0a6fa8; letter-spacing: 0.2px;
-}
-.destaque-frase { grid-area: frase; font-weight: 700; font-size: clamp(14px, 1.2vw, 18px); line-height: 1.25; color: #3c4a57; margin-top: 2px; }
-.destaque-jogar {
-  grid-area: jogar; white-space: nowrap;
-  font-weight: 800; font-size: clamp(17px, 1.5vw, 22px); color: #fff; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
-  background: linear-gradient(180deg, #ff9a2e, var(--laranja)); border-radius: 999px; padding: 6px 18px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 4px 0 #c45800, 0 8px 14px rgba(0, 0, 0, 0.25);
-  animation: destaque-pulso 2.4s ease-in-out infinite;
-}
-@keyframes destaque-pulso { 50% { transform: scale(1.06); } }
-
-/* ------------------------------------------------------------------ cartões de idade */
-.faixas {
-  position: fixed; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
-  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px;
-  max-width: 1180px; margin: 0 auto;
-}
-.faixa {
-  --borda: color-mix(in srgb, var(--cor) 62%, #0a1f33);
-  position: relative; overflow: hidden;
-  font-family: inherit; text-align: left; cursor: pointer;
-  display: flex; flex-direction: column; align-items: flex-start; gap: 0;
-  min-width: 0; padding: 12px 16px 14px;
-  color: var(--branco);
-  background:
-    radial-gradient(130% 90% at 0% 0%, rgba(255, 255, 255, 0.38), transparent 55%),
-    linear-gradient(160deg, color-mix(in srgb, var(--cor) 82%, white), var(--cor) 55%, color-mix(in srgb, var(--cor) 80%, #0a1f33));
-  border: 0; border-radius: var(--raio);
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.45), inset 0 -3px 0 rgba(0, 0, 0, 0.12),
-    0 6px 0 var(--borda),
-    0 10px 14px -4px rgba(8, 30, 52, 0.35), 0 22px 36px -18px rgba(8, 30, 52, 0.55);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
-  transition: transform 0.25s var(--mola), box-shadow 0.25s var(--mola);
-}
-.faixa:hover, .faixa:focus-visible { transform: translateY(-6px); outline: none; }
-.faixa:focus-visible { box-shadow: 0 0 0 4px var(--amarelo), 0 6px 0 var(--borda), 0 18px 30px -10px rgba(8, 30, 52, 0.6); }
-.faixa:active { transform: translateY(3px); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.45), 0 2px 0 var(--borda), 0 6px 10px -4px rgba(8, 30, 52, 0.4); }
-.faixa.aberta {
-  transform: translateY(-10px);
-  box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.95), 0 6px 0 var(--borda), 0 22px 34px -12px rgba(8, 30, 52, 0.65);
-}
-.faixa .emoji { font-size: clamp(26px, 3vw, 38px); line-height: 1.1; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.25)); }
-.faixa strong { font-size: clamp(18px, 2vw, 26px); line-height: 1.05; text-wrap: balance; }
-.faixa .idade { font-size: clamp(13px, 1.3vw, 16px); font-weight: 600; opacity: 0.95; }
-.faixa .contagem {
-  margin-top: 6px; background: rgba(255, 255, 255, 0.26);
-  border-radius: 999px; padding: 0 10px; font-weight: 800; font-size: 14px;
-}
-
-/* ------------------------------------------------------------------ painel de jogos */
-.painel-jogos {
-  --sombra-cor: color-mix(in srgb, var(--cor) 40%, #0a2340);
-  position: fixed; top: calc(env(safe-area-inset-top, 0px) + 96px); right: 16px; z-index: 2;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 170px);
-  width: min(700px, calc(100vw - 32px));
-  display: flex; flex-direction: column; gap: 10px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--cor) 16%, white) 0, var(--papel) 120px);
-  border-radius: 30px;
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.8),
-    0 2px 4px rgba(8, 30, 52, 0.12), 0 18px 40px -12px rgba(8, 30, 52, 0.45), 0 40px 80px -40px rgba(8, 30, 52, 0.6);
-  padding: 14px 10px 0 18px;
-  animation: entra 0.35s var(--mola);
-}
-@keyframes entra { from { transform: translateX(40px); opacity: 0; } }
-.painel-topo { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-right: 8px; }
-.painel-topo h2 { margin: 0; font-size: clamp(26px, 3vw, 34px); line-height: 1.05; color: color-mix(in srgb, var(--cor) 78%, #0a1f33); }
-.painel-topo p { margin: 0; font-weight: 700; color: #36485a; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
-.painel-contagem { background: var(--cor); color: #fff; border-radius: 999px; padding: 0 10px; font-size: 14px; font-weight: 800; }
-.fechar {
-  font: 800 22px var(--texto); width: 46px; height: 46px; flex: none; color: var(--tinta);
-  border: 0; border-radius: 50%; background: var(--branco); cursor: pointer;
-  box-shadow: 0 1px 2px rgba(8, 30, 52, 0.2), 0 6px 14px -4px rgba(8, 30, 52, 0.4);
-}
-.fechar:focus-visible { outline: 4px solid var(--amarelo); outline-offset: 2px; }
-.nota { margin: 0 8px 0 0; background: color-mix(in srgb, var(--cor) 16%, white); border-radius: 14px; padding: 8px 12px; font-weight: 600; }
-
-/* grade de cartões (2 colunas no computador e tablet, 1 no celular em pé) */
-.jogos {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); align-content: start;
-  gap: 18px 16px; overflow-y: auto; overscroll-behavior: contain; min-height: 0;
-  padding: 8px 8px 22px 2px; scroll-padding: 12px;
-  -webkit-overflow-scrolling: touch;
-}
+.vitrine .jogo { content-visibility: visible; border-radius: 28px; }
+.vitrine .capa { aspect-ratio: 2 / 1; border-radius: 22px 22px 16px 16px; margin: 8px 8px 0; }
+.vitrine .selo.pronto { font-size: clamp(16px, 1.6vw, 22px); padding: 5px 18px; animation: jogar-pulso 2.4s ease-in-out infinite; }
+@keyframes jogar-pulso { 50% { transform: scale(1.07); } }
+.vitrine .selo.estilo { font-size: 14px; }
+.vitrine .corpo { padding: 12px 18px 18px; gap: 4px; }
+.vitrine .jogo h3 { font-family: var(--titulo); font-weight: 900; font-size: clamp(26px, 3vw, 42px); line-height: 1.05; color: color-mix(in srgb, var(--cor) 75%, #0a1f33); }
+.vitrine .jogo p { font-size: clamp(15px, 1.3vw, 18px); -webkit-line-clamp: 3; }
+@media (min-width: 701px) and (max-height: 900px) { .vitrine .habilidade { display: none; } }
+.vitrine .habilidade { font-size: clamp(13px, 1.2vw, 16px); }
 
 /* ------------------------------------------------------------------ cartão de jogo com profundidade 3D */
 .jogo {
@@ -341,6 +207,52 @@ body {
 .habilidade::before { content: "✦ "; }
 .vazio { font-weight: 700; grid-column: 1 / -1; }
 
+/* cabeçalho compacto no celular */
+@media (max-width: 560px) {
+  .topo { gap: 6px; left: 10px; right: 10px; }
+  .topo .logo { height: 40px; padding: 4px 8px; border-radius: 12px; }
+  .familia-botao-portal span:not(.roda) { display: none; }
+  .familia-botao-portal { padding: 3px; }
+  .familia-botao-portal .roda { width: 30px; height: 30px; }
+  .instalar { font-size: 13px; padding: 5px 9px; }
+  .boas-vindas { top: 84px; }
+}
+/* celular em pé: cartões empilhados, capa à esquerda e texto à direita */
+@media (max-width: 700px) and (orientation: portrait) {
+  .vitrine { grid-template-columns: 1fr; gap: 14px; left: 12px; right: 12px; max-width: 560px; }
+  .vitrine .jogo { flex-direction: row; align-items: stretch; border-radius: 24px; }
+  .vitrine .capa { width: 46%; flex: none; aspect-ratio: auto; min-height: 132px; margin: 6px 0 6px 6px; border-radius: 18px 10px 10px 18px; }
+  .vitrine .selos { display: none; }
+  .vitrine .selo.pronto { right: 8px; bottom: 8px; font-size: 14px; padding: 2px 12px; }
+  .vitrine .corpo { padding: 10px 12px 10px 12px; justify-content: center; }
+  .vitrine .jogo h3 { font-size: 24px; }
+  .vitrine .jogo p { font-size: 13.5px; -webkit-line-clamp: 3; margin-bottom: 6px; }
+  .vitrine .habilidade { font-size: 12px; }
+}
+/* tablet em pé: cartões maiores, um sobre o outro com capa larga */
+@media (min-width: 701px) and (max-width: 900px) and (orientation: portrait) {
+  .vitrine { max-width: 640px; }
+  .vitrine .corpo { padding: 10px 14px 14px; }
+  .vitrine .jogo p { -webkit-line-clamp: 2; }
+}
+/* celular deitado: título pequeno e cartões lado a lado, baixos */
+@media (max-height: 520px) and (orientation: landscape) {
+  .topo .logo { height: 40px; padding: 4px 10px; }
+  .familia-botao-portal { font-size: 14px; padding: 3px 10px 3px 4px; }
+  .som { top: calc(env(safe-area-inset-top, 0px) + 60px); width: 42px; height: 42px; font-size: 18px; }
+  .boas-vindas { top: 64px; }
+  .boas-vindas h1 { font-size: clamp(34px, 11vh, 56px); }
+  .boas-vindas p { margin-top: 8px; font-size: 16px; }
+  .vitrine { bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); gap: 12px; max-width: 760px; }
+  .vitrine .jogo { flex-direction: row; border-radius: 20px; }
+  .vitrine .capa { width: 44%; flex: none; aspect-ratio: auto; min-height: 96px; margin: 5px 0 5px 5px; border-radius: 15px 8px 8px 15px; }
+  .vitrine .selos { display: none; }
+  .vitrine .selo.pronto { right: 6px; bottom: 6px; font-size: 12px; padding: 1px 10px; }
+  .vitrine .corpo { padding: 6px 10px; justify-content: center; }
+  .vitrine .jogo h3 { font-size: 20px; }
+  .vitrine .jogo p, .vitrine .habilidade { display: none; }
+}
+
 /* botão de som: canto direito, logo abaixo do cabeçalho (nunca no meio da tela) */
 .som {
   position: fixed; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 74px); z-index: 3;
@@ -350,95 +262,7 @@ body {
 }
 .som:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tinta); }
 
-/* ------------------------------------------------------------------ telas menores */
-@media (max-width: 1100px) {
-  .painel-jogos { width: min(560px, calc(100vw - 32px)); }
-}
-@media (max-width: 900px) {
-  .faixas { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .painel-jogos { width: auto; left: 16px; top: calc(env(safe-area-inset-top, 0px) + 134px); bottom: calc(env(safe-area-inset-bottom, 0px) + 300px); }
-}
-@media (max-width: 560px) {
-  .faixas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .faixa { padding: 8px 12px 10px; border-radius: 20px; }
-  .faixa .contagem { display: none; }
-  .painel-jogos {
-    top: calc(env(safe-area-inset-top, 0px) + 68px); left: 8px; right: 8px; bottom: 0; z-index: 2;
-    border-radius: 26px 26px 0 0; padding: 12px 4px 0 12px;
-  }
-  .jogos { grid-template-columns: 1fr; gap: 16px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); }
-  .jogo h3 { font-size: 20px; }
-  .jogo p { -webkit-line-clamp: 2; }
-  .boas-vindas { top: 84px; }
-  /* cabeçalho compacto: logo, Família, Instalar e Só inglês cabem numa linha só */
-  .topo { gap: 6px; left: 10px; right: 10px; }
-  .topo .logo { height: 40px; padding: 4px 8px; border-radius: 12px; }
-  .familia-botao-portal span:not(.roda) { display: none; }
-  .familia-botao-portal { padding: 3px; }
-  .familia-botao-portal .roda { width: 30px; height: 30px; }
-  .instalar { font-size: 13px; padding: 5px 9px; }
-  .filtro-ingles { font-size: 13px; padding: 5px 9px; gap: 5px; white-space: nowrap; }
-  .filtro-ingles input { width: 16px; height: 16px; }
-}
-/* celular deitado: idades numa fileira baixa, título pequeno, painel por cima de tudo */
-@media (max-height: 520px) and (orientation: landscape) {
-  .topo .logo { height: 40px; padding: 4px 10px; }
-  .familia-botao-portal { font-size: 14px; padding: 3px 10px 3px 4px; }
-  .filtro-ingles { padding: 3px 12px; font-size: 14px; }
-  .som { top: calc(env(safe-area-inset-top, 0px) + 60px); width: 42px; height: 42px; font-size: 18px; }
-  .boas-vindas { top: 64px; }
-  .boas-vindas h1 { font-size: clamp(34px, 11vh, 56px); }
-  .boas-vindas p { margin-top: 8px; font-size: 16px; }
-  .faixas { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); }
-  .faixa { padding: 6px 10px 8px; border-radius: 16px; box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.45), 0 4px 0 var(--borda), 0 8px 12px -6px rgba(8, 30, 52, 0.5); }
-  .faixa .emoji { font-size: 22px; }
-  .faixa strong { font-size: 16px; }
-  .faixa .idade { font-size: 12px; line-height: 1.15; }
-  .faixa .contagem { display: none; }
-  .painel-jogos { top: 10px; bottom: 10px; left: auto; right: 10px; width: min(560px, 64vw); z-index: 4; padding: 10px 4px 0 12px; gap: 6px; border-radius: 24px; }
-  .jogos { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-  .painel-topo h2 { font-size: 24px; }
-  .jogo h3 { font-size: 18px; }
-  .jogo p { font-size: 14px; -webkit-line-clamp: 2; }
-}
-/* destaque no celular em pé e no tablet: faixa larga logo acima das idades */
-@media (max-width: 900px) {
-  .destaque {
-    top: auto; left: 16px; right: 16px; width: auto; max-width: 640px; margin: 0 auto;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 16px + var(--faixas-h, 200px) + 16px);
-    flex-direction: row; align-items: center; padding: 5px; border-radius: 26px;
-  }
-  .destaque-capa { width: 44%; flex: none; border-radius: 20px 12px 12px 20px; }
-  .destaque-texto { flex: 1; grid-template-columns: minmax(0, 1fr); grid-template-areas: "nome" "frase" "jogar"; align-content: center; gap: 2px; padding: 4px 6px 4px 12px; }
-  .destaque-texto strong { font-size: clamp(22px, 4.2vw, 32px); }
-  .destaque-frase { font-size: clamp(13px, 2.2vw, 17px); }
-  .destaque-jogar { justify-self: start; margin-top: 6px; font-size: clamp(15px, 2.6vw, 20px); padding: 4px 16px; }
-}
-@media (max-width: 560px) {
-  .destaque { left: 10px; right: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px + var(--faixas-h, 200px) + 12px); border-width: 3px; border-radius: 22px; padding: 4px; }
-  .destaque-capa { width: 42%; border-radius: 17px 10px 10px 17px; }
-  .destaque-selo { top: 6px; left: 6px; font-size: 11px; padding: 1px 8px; }
-  .destaque-texto { padding: 2px 4px 2px 10px; }
-  .destaque-texto strong { font-size: 21px; }
-  .destaque-frase { font-size: 12.5px; line-height: 1.2; }
-  .destaque-jogar { font-size: 15px; padding: 3px 14px; margin-top: 5px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 3px 0 #c45800, 0 6px 10px rgba(0, 0, 0, 0.22); }
-}
-/* destaque no celular deitado: cartão compacto à direita, abaixo da ⚙️ e acima das idades */
-@media (max-height: 520px) and (orientation: landscape) {
-  .destaque {
-    left: auto; bottom: auto; margin: 0; max-width: none;
-    top: calc(env(safe-area-inset-top, 0px) + 112px); right: calc(env(safe-area-inset-right, 0px) + 12px);
-    width: min(380px, 46vw); border-width: 3px; border-radius: 22px; padding: 4px;
-  }
-  .destaque-capa { width: 44%; border-radius: 17px 10px 10px 17px; }
-  .destaque-selo { top: 6px; left: 6px; font-size: 11px; padding: 1px 8px; }
-  .destaque-texto { padding: 2px 4px 2px 10px; }
-  .destaque-texto strong { font-size: 21px; }
-  .destaque-frase { font-size: 12.5px; line-height: 1.2; }
-  .destaque-jogar { font-size: 15px; padding: 3px 14px; margin-top: 4px; }
-}
 @media (prefers-reduced-motion: reduce) {
-  .destaque, .destaque-jogar, .destaque-capa::after, .destaque-capa img { transition: none; animation: none; }
-  .faixa, .painel-jogos, .boas-vindas, .jogo, .capa-foto, #cena { transition: none; animation: none; }
+  .jogo, .capa-foto, #cena { transition: none; animation: none; }
   .jogo.inclinado, .jogo.pronto:focus-visible { transform: translateY(-4px); }
 }

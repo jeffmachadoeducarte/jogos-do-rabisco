@@ -80,7 +80,7 @@ export const faixas = [
       { id: "resgate-no-parquinho", estilo: "extra", nome: "Resgate no Parquinho", desc: "O gatinho subiu lá no alto! Suba os andaimes, desvie das bolas e pegue as letras no caminho para salvá-lo.", habilidade: "Coordenação e letras", status: "pronto" },
       { id: "rabisco-e-a-arca", estilo: "plataforma", nome: "Rabisco e a Arca", desc: "Fliperama clássico na arca de Noé: suba vigas e escadas, pule os barris da Manchinha e pegue o animal, a cor ou o número que a voz pede em inglês. No fim, o arco-íris e um versículo.", habilidade: "Inglês: animais, cores e números", status: "pronto", ingles: true },
       { id: "english-kart-jr", estilo: "corrida", nome: "English Kart Jr.", desc: "Ouça a palavra em inglês e passe pelo portal com a figura certa.", habilidade: "Inglês: vocabulário", status: "pronto", ingles: true },
-      { id: "rabiscopolis", estilo: "extra", nome: "Rabiscolândia", desc: "Cidade em 3D para viver o dia a dia: escolha e decore sua casa, 11 veículos, 10 profissões e 12 missões bíblicas, num mapa enorme com praia e mirante.", habilidade: "Convivência e valores", status: "pronto" },
+      { id: "rabiscopolis", estilo: "extra", nome: "Rabiscolândia", desc: "Cidade livre em 3D para explorar do seu jeito: decore sua casa, dirija pelas ruas, experimente profissões e, se quiser, aceite missões pelo caminho.", habilidade: "Convivência e valores", status: "pronto" },
     ],
   },
   {
@@ -98,7 +98,22 @@ export const faixas = [
       { id: "rabisco-robo", estilo: "extra", nome: "Rabisco Robô", desc: "Programe o caminho do Rabisco com blocos de comando.", habilidade: "Lógica e programação", status: "pronto" },
       { id: "rabisco-e-a-arca", estilo: "plataforma", nome: "Rabisco e a Arca", desc: "Fliperama clássico na arca de Noé: suba vigas e escadas, pule os barris da Manchinha e pegue o animal, a cor ou o número que a voz pede em inglês. No fim, o arco-íris e um versículo.", habilidade: "Inglês: vocabulário e frases", status: "pronto", ingles: true },
       { id: "english-kart", estilo: "corrida", nome: "English Kart", desc: "Leia a frase em inglês (\"It shines at night\") e passe pela figura certa para ganhar turbo.", habilidade: "Inglês: leitura", status: "pronto", ingles: true },
-      { id: "rabiscopolis", estilo: "extra", nome: "Rabiscolândia", desc: "Cidade em 3D para viver o dia a dia: escolha e decore sua casa, 11 veículos, 10 profissões e 12 missões bíblicas, num mapa enorme com praia e mirante.", habilidade: "Convivência e valores", status: "pronto" },
+      { id: "rabiscopolis", estilo: "extra", nome: "Rabiscolândia", desc: "Cidade livre em 3D para explorar do seu jeito: decore sua casa, dirija pelas ruas, experimente profissões e, se quiser, aceite missões pelo caminho.", habilidade: "Convivência e valores", status: "pronto" },
     ],
   },
 ];
+
+// ------------------------------------------------------------------ O que aparece no portal
+// Por enquanto o portal mostra SÓ estes jogos, nesta ordem (cidade livre e corrida de kart).
+// Os demais continuam no catálogo acima e nas pastas jogos/ (abrem por link direto): estão só escondidos.
+// Para voltar com um jogo: acrescente o id aqui. Para voltar com todos, troque por `null`
+// (e restaure as faixas de idade em index.html e src/app.js, que foram retiradas da tela inicial).
+export const JOGOS_NO_AR = ["rabiscopolis", "rabisco-kart"];
+
+// Jogos no ar, sem repetição (alguns estão em mais de uma faixa), na ordem de JOGOS_NO_AR.
+export const jogosNoAr = (() => {
+  const todos = new Map();
+  for (const f of faixas) for (const j of f.jogos) if (!todos.has(j.id)) todos.set(j.id, { jogo: j, faixa: f });
+  const ids = JOGOS_NO_AR || [...todos.keys()];
+  return ids.filter((id) => todos.has(id)).map((id) => todos.get(id));
+})();
