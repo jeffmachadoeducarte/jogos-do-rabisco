@@ -7,7 +7,7 @@
 // mesclarLocal (jogo.js), que grava a cor de cada peça nos vértices (a cor de cada peça vai nos vértices).
 
 import { THREE, COR3D, texturaCanvas } from "../../src/motor3d/toon.js";
-import { juntarGeometrias, mesclarLocal } from "../cidade-do-rabisco/mesclar.js";
+import { juntarGeometrias, chaveMaterial, chaveVC, materialVC } from "../cidade-do-rabisco/mesclar.js";
 
 // ------------------------------------------------------------------ materiais e peças básicas
 // Lambert (liso e barato de desenhar, importa na TV) com um pouco de luz própria (parte da cor): as faces à sombra não ficam apagadas, sem mexer nas luzes da cena
@@ -360,7 +360,7 @@ export function outdoorB(o, estilo, PARC) {
   return g;
 }
 // junta as caixas de um grupo parado por cor (poucas malhas por loja)
-const mesclarCaixas = (grupo) => mesclarLocal(grupo);
+const mesclarCaixas = (grupo) => mesclarBlocos(grupo);
 
 // ------------------------------------------------------------------ karts
 // Kart de blocos. Mesma interface do kart3D: userData.chassi, volante, escapes, rodas (children[0] e [1] giram em x).
@@ -423,3 +423,34 @@ export function pilotoB(cor) {
 
 // uma pedra para a lua da noite (no lugar da esfera)
 export const luaB = () => new THREE.Mesh(new THREE.BoxGeometry(70, 70, 24), new THREE.MeshBasicMaterial({ color: 0xfff6d0, fog: false }));
+
+// ------------------------------------------------------------------ junção de peças
+// Igual ao mesclarLocal da cidade (cidade-do-rabisco/mesclar.js), mas as peças de plástico liso (Plast, de cores diferentes)
+// também viram uma malha só, com a cor de cada peça gravada nos vértices: poucas chamadas de desenho, o que mais pesa na TV.
+export function mesclarBlocos(g, manter = []) {
+  const fora = new Set(manter);
+  g.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(g.matrixWorld).invert();
+  const grupos = new Map();
+  g.traverse((o) => {
+    if (o === g || !o.isMesh || Array.isArray(o.material) || o.isInstancedMesh) return;
+    for (let p = o; p && p !== g; p = p.parent) if (fora.has(p) || p.userData.dinamico) return;
+    const m = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+    if (m.determinant() <= 0) return;
+    const vc = o.material instanceof Plast && !o.material.map && !o.material.vertexColors && !o.material.transparent && o.material.opacity === 1 && !o.material.emissiveMap;
+    const k = `${vc ? chaveVC(o.material) : chaveMaterial(o.material)}#${o.castShadow}${o.receiveShadow}#${Object.keys(o.geometry.attributes).sort().join(",")}#${o.renderOrder}`;
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push({ o, m, cor: vc ? o.material.color : null });
+  });
+  const tirar = [];
+  for (const lista of grupos.values()) {
+    if (lista.length < 2) continue;
+    const geo = juntarGeometrias(lista.map(({ o, m, cor }) => ({ o, ini: 0, n: o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count, m, cor })));
+    const o0 = lista[0].o, nova = new THREE.Mesh(geo, lista[0].cor ? materialVC(o0.material) : o0.material);
+    nova.castShadow = o0.castShadow; nova.receiveShadow = o0.receiveShadow; nova.renderOrder = o0.renderOrder;
+    for (const { o } of lista) tirar.push(o);
+    g.add(nova);
+  }
+  for (const o of tirar) { for (const f of [...o.children]) if (!tirar.includes(f)) g.attach(f); o.removeFromParent(); }
+  return g;
+}

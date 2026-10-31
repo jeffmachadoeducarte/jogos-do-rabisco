@@ -5,7 +5,7 @@
 import { THREE, COR3D, texturaCanvas, aleatorio } from "../../src/motor3d/toon.js";
 // Mundo de blocos (blocos.js): tudo do cenário e dos karts é desenhado lá; o Rabisco oficial continua o de sempre
 import { cx, pinos, plastico, plasticoMapa, texturaChao, texturaAsfalto, texturaAcostamento, texturaXadrez, texturaFaixaLargada, faixaPlana, zebraBlocos, barreiraBlocos,
-  lapisB, arvoreB, nuvemB, morroB, livrosB, escolaB, onibusB, lojaB, outdoorB, kartB, pilotoB } from "./blocos.js";
+  mesclarBlocos, lapisB, arvoreB, nuvemB, morroB, livrosB, escolaB, onibusB, lojaB, outdoorB, kartB, pilotoB } from "./blocos.js";
 import { sons, musica, motor } from "../../src/motor/sons.js";
 import { falar, preCarregarFalas, saudar, parabenizar, falarNome } from "../../src/motor/voz.js";
 import "../../src/motor/familia.js"; // window.Familia: nome e foto da criança
@@ -21,7 +21,6 @@ import { botaoVoltar } from "../../src/motor/voltar.js";
 import { criarRemapear } from "../../src/motor/remapear.js";
 import { Jogadores, CODIGOS_J2, COR_J2 } from "../../src/motor/jogadores.js";
 import { emModoTV } from "../../src/motor/salatv.js";
-import { mesclarLocal } from "../cidade-do-rabisco/mesclar.js";
 import { PARCEIROS, ESTILO_PARCEIRO } from "../../src/parceiros.js";
 
 const RAIZ = "../..";
@@ -433,7 +432,7 @@ function criarPorticos() {
       linha.position.set(lat, 0.1, -13);
       g.add(linha);
     }
-    mesclarLocal(g, placas); // lápis, trave, cordas e listras viram poucas malhas; as placas (que trocam de conta) ficam soltas
+    mesclarBlocos(g, placas); // lápis, trave, cordas e listras viram poucas malhas; as placas (que trocam de conta) ficam soltas
     const p = { i, grupo: g, placas, conta: null };
     trocarConta(p);
     porticos.push(p);
@@ -477,7 +476,7 @@ function criarKart({ nome, corKart, piloto, ehJogador, humano = 0, linhaLargada,
   }
   // peças paradas do kart (carroceria, capô, piloto-lápis) viram poucas malhas; ficam soltos o que se mexe ou é medido:
   // volante, escapamentos (de onde sai o turbo), o Rabisco/a criança e as rodas (que estão fora do chassi)
-  mesclarLocal(chassi, [g.userData.volante, ...(g.userData.escapes || []), rabisco?.grupo, motorista2?.grupo].filter(Boolean));
+  mesclarBlocos(chassi, [g.userData.volante, ...(g.userData.escapes || []), rabisco?.grupo, motorista2?.grupo].filter(Boolean));
   cena.add(g);
   const kart = { nome, g, chassi, rabisco, motorista2, ehJogador, humano: ehJogador ? 1 : humano, cor: piloto ?? corKart, linhaLargada, colunaLargada };
   naLargada(kart);
@@ -1321,7 +1320,7 @@ function juntarCenario(doCenario) {
   g.name = "cenario-junto";
   for (const o of [...cena.children]) if (doCenario.has(o) && o !== ceu && !o.isLight && o !== sol.target && (o.isMesh || o.isGroup) && !o.userData.dinamico) g.attach(o);
   cena.add(g);
-  mesclarLocal(g);
+  mesclarBlocos(g);
 }
 
 // ------------------------------------------------------------------ Início
