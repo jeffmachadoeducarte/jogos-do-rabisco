@@ -307,6 +307,7 @@ export function predioEnchimento(p) {
 
 // ---------- praça: piso, chafariz, coreto, canteiros, bancos, postes e árvores (centro em 0,0 local)
 export function praca(raio) {
+  if (window.__blocos?.praca) return window.__blocos.praca(raio);
   const S = novo(), g = S.grupo;
   const piso = new THREE.Mesh(new THREE.CircleGeometry(raio, 48), MAT_CALCADA); piso.rotation.x = -Math.PI / 2; piso.position.y = 0.06; piso.receiveShadow = true; g.add(piso);
   const grama = new THREE.Mesh(new THREE.RingGeometry(raio - 6.2, raio - 2.2, 48), mat(0x7ccf52)); grama.rotation.x = -Math.PI / 2; grama.position.y = 0.075; grama.receiveShadow = true; g.add(grama);

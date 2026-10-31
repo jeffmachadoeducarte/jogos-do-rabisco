@@ -70,6 +70,7 @@ function placaLote(texto) {
 
 // casa do lote (cor/telhado do mapa). Devolve o grupo e as colisões em coordenadas locais.
 export function casa(lote) {
+  if (window.__blocos?.casa) return window.__blocos.casa(lote);
   const g = new THREE.Group();
   const solidos = [];
   const sol = (x0, x1, z0, z1, y1) => solidos.push({ x0, x1, z0, z1, y1 });

@@ -104,6 +104,7 @@ export function farol() {
 // ---------- roda-gigante: duas pernas em A, o aro com raios e luzinhas (gira) e 8 cabines de pé, abertas dos lados
 // (o Rabisco senta dentro, sem mudar de tamanho). Centro local (0, 0); o aro gira no plano x-y (de frente para o norte).
 export function rodaGigante() {
+  if (window.__blocos?.rodaGigante) return window.__blocos.rodaGigante();
   const S = novo(), g = S.grupo;
   const { h, r, cabines: n } = RODA;
   const branco = mat(0xffffff), azul = mat(0x2f6fc0);

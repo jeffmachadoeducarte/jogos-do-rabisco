@@ -46,6 +46,7 @@ function corpoExtrudado(forma, largura, material, chanfro = 0.22) {
 }
 
 export function carroFofo(cor = 0xec2e8c) {
+  if (window.__blocos?.carroFofo) return window.__blocos.carroFofo(cor);
   const g = new THREE.Group();
   const lata = mat(cor);
   const claro = mat(new THREE.Color(cor).lerp(new THREE.Color(0xffffff), 0.55).getHex());
@@ -400,6 +401,7 @@ void MAT;
 // Carro da rua (trânsito da cidade): COPIADO de jogos/cidade-do-rabisco/cidade.js (carro), para a Rabiscolândia
 // não depender daquele jogo. Mudou: usa o std de base3d.js e não chama mesclarLocal (veiculos.js mescla o grupo).
 export function carro(cor) {
+  if (window.__blocos?.carro) return window.__blocos.carro(cor);
   const g = new THREE.Group();
   const lata = std(cor, { metalness: 0.4, roughness: 0.35 });
   const corpo = caixa(2.2, 0.9, 4.4, lata); corpo.position.y = 0.85;

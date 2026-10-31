@@ -9,6 +9,7 @@
 // · jogador2.js (2 jogadores: com 1 jogador só o Rabisco; o jogador 2 escolhe a criança do cadastro ou um amigo do estojo).
 // ?teste expõe window.teste.
 
+import "./proto-blocos-ligar.js"; // ?estilo=blocos (protótipo visual); sem o parâmetro não faz nada
 import { THREE, MAT, mesclar } from "./base3d.js";
 import { PARCEIROS } from "../../src/parceiros.js";
 import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
@@ -41,6 +42,7 @@ import { criarRadioUI } from "../../src/radio/radio-ui.js";
 import { RUAS, segmentos, LOTES, VAGAS, LARGADA, LUGARES, LAGO, PARQUE, PRACA, FAZENDA, BORDA, MORADORES, distRua, PRAIA, LAGO2, HELIPONTO, MAR, ORLA, ILHA, PIERS, RODA, PRACAS_NOVAS } from "./mapa.js";
 void PARQUE;
 
+if (new URLSearchParams(location.search).get("estilo") === "blocos") await import("./proto-blocos.js");
 const params = new URLSearchParams(location.search);
 const CONTROLES = [
   { id: "frente", nome: "Frente / acelerar", teclas: ["KeyW", "ArrowUp"] },
@@ -244,6 +246,7 @@ function iniciar() {
   patioJE = criarPatioJE(cena, { solidos: mundo.solidos }); // pátio de carros da J.E (montado só de perto)
   criarMoradores();
   aplicarCasa();
+  window.__blocos?.aoMontar?.({ cena, mundo, ceu, r3, cam, rabisco, transito, veiculos, moradores, vovo });
   missoes = criarMissoes({
     cena, rabisco, vovo, salvo, sons, dizer: (...a) => dizer(...a),
     salvar: (d) => { Object.assign(salvo, { missoesFeitas: d.missoesFeitas, selos: d.selos }); salvar(salvo); },
@@ -869,6 +872,7 @@ function quadro() {
   if (doisToque !== quadro.doisToque) { quadro.doisToque = doisToque; if (qualidade.perfil.toque) { mundo.alcance = doisToque ? 78 : 95; mundo.detalheAte = doisToque ? 28 : 35; cena.fog.far = mundo.alcance; } }
   for (let p = 0; p < passos; p++) passo(total / passos, p === passos - 1);
   estat.tj = (estat.tj ?? 0) + total; // tempo de jogo (o que os passos simularam), para os testes
+  window.__blocos?.aoQuadro?.(total);
   r3.render(cena, cam);
   estat.calls = r3.info.render.calls; estat.tris = r3.info.render.triangles;
   estat.n++;

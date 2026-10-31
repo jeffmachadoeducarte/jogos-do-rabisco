@@ -121,6 +121,7 @@ const CORPOS = {
 // ---------- montagem do morador
 // corAcessorio: cor do laço (padrão rosa) · tenis: cor do tênis (padrão: pela semente)
 export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome = "", semente = 0, vovo = false, escala = 0.78, acessorio = null, corAcessorio = null, tenis = null } = {}) {
+  if (window.__blocos?.morador) return window.__blocos.morador(tipo, { cor, nome, semente, vovo, escala, acessorio });
   const grupo = new THREE.Group();
   grupo.scale.setScalar(escala); // um pouco menores que o Rabisco (ele é o herói)
   const raiz = new THREE.Group(); // pulinho, estica e achata

@@ -29,14 +29,15 @@ export const std = (cor, extra = {}) => {
 
 // malha com sombra; contorno opcional (casca invertida preta, igual ao Rabisco)
 export function malha(geo, material, { contorno = 0, sombra = true } = {}) {
-  const m = new THREE.Mesh(geo, material);
+  const m = new THREE.Mesh(window.__blocos?.geo?.(geo) ?? geo, material); // ?estilo=blocos (proto-blocos.js): peças de caixa
   m.castShadow = sombra; m.receiveShadow = true;
-  if (contorno) comContorno(m, contorno);
+  if (contorno && !window.__blocos) comContorno(m, contorno);
   return m;
 }
 // caixa de cantos arredondados (fofinha, sem quina dura): w × h × d com raio r nas bordas
 const geoRedondas = new Map();
 export function geoCaixaRedonda(w, h, d, raio = 0.2, seg = 2) {
+  if (window.__blocos?.caixaReta) return window.__blocos.caixaReta(w, h, d);
   const k = [w, h, d, raio, seg].map((v) => +v.toFixed(3)).join("|");
   if (geoRedondas.has(k)) return geoRedondas.get(k);
   const rr = Math.min(raio, w / 2 - 0.01, h / 2 - 0.01, d / 2 - 0.01);
@@ -84,6 +85,7 @@ export const TEX = {
 
 // ---------- placa de texto (copiada de cidade.js · placa; aqui com cantos redondos e contorno grosso)
 export function placa(texto, { cor = "#00b5f0", fundo = "#ffffff", tinta = "#151515", w = 512, h = 128, fonte = 800 } = {}) {
+  if (window.__blocos?.placa) return window.__blocos.placa(texto, { cor, fundo, tinta, w, h, fonte });
   return texturaCanvas(w, h, (c) => {
     c.fillStyle = "#151515"; c.beginPath(); c.roundRect(0, 0, w, h, h * 0.28); c.fill();
     c.fillStyle = fundo; c.beginPath(); c.roundRect(8, 8, w - 16, h - 16, h * 0.22); c.fill();
@@ -165,6 +167,7 @@ const FOLHAS = [0x5cc443, 0x4cb83f, 0x6fd15a, 0x3fae4a];
 const copas = new Map();
 const geoCopa = (s) => { const k = s.toFixed(2); if (!copas.has(k)) copas.set(k, new THREE.SphereGeometry(s, 7, 5)); return copas.get(k); };
 export function arvoreReal(escala = 1, tipo = 0) {
+  if (window.__blocos?.arvore) return window.__blocos.arvore(escala, tipo);
   const g = new THREE.Group();
   const tronco = malha(new THREE.CylinderGeometry(0.26, 0.4, 2.6, 8), mat(0x9a6232), { contorno: 0.08, sombra: false });
   tronco.position.y = 1.3;
@@ -212,6 +215,7 @@ export function semaforo() {
 // chegar (ou se ela falhar) fica um prédio liso do mesmo tipo. aoMudar(largura) avisa a nova largura (colisão).
 export const LOJA = { altura: 8, d: 7.5, larguraMax: LOJA_MAX };
 export function lojaParceira(p, aoMudar, { foto = p.foto, estilo: est = null, altura = LOJA.altura, d = LOJA.d, larguraMax = LOJA.larguraMax } = {}) {
+  if (window.__blocos?.loja) return window.__blocos.loja(p, aoMudar, { altura, d, larguraMax });
   const g = new THREE.Group();
   const estilo = est ?? ESTILO_PARCEIRO[p.tipo] ?? ESTILO_PARCEIRO.carros;
   const parede = mat(estilo.parede);
