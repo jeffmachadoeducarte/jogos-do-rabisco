@@ -149,9 +149,14 @@ function carregarLogo(url, aoCarregar) {
 
 // barba cheia desenhada (barba.textura): contorno em graus (azimute, polar) de UM lado do rosto; o outro é espelho.
 // A mesma forma pinta o retalho do rosto (frente, bigode e bochechas) e a casca 3D (costeletas, mandíbula, queixo).
-const BARBA_LADO = (() => {
-  const k = [[0, 110.6], [9, 109.4], [17, 111.4], [24, 111], [32, 109.4], [42, 105], [52, 100.5], [61, 95.5], [68, 88], [71, 79], [74, 72],
-    [81, 70], [87, 73], [87, 82], [85, 94], [88, 103], [93, 110], [95, 122], [88, 138], [74, 150], [55, 161], [30, 168], [0, 171]];
+const BARBA_FORMAS = {
+  cheia: [[0, 110.6], [9, 109.4], [17, 111.4], [24, 111], [32, 109.4], [42, 105], [52, 100.5], [61, 95.5], [68, 88], [71, 79], [74, 72],
+    [81, 70], [87, 73], [87, 82], [85, 94], [88, 103], [93, 110], [95, 122], [88, 138], [74, 150], [55, 161], [30, 168], [0, 171]],
+  // curta, rente ao queixo e arredondada, seguindo a mandíbula (Vovô Léo)
+  curta: [[0, 110.6], [9, 109.4], [17, 111.4], [24, 111], [32, 109.4], [42, 105], [52, 100.5], [61, 95.5], [68, 88], [71, 79], [74, 72],
+    [81, 70], [87, 73], [87, 82], [85, 94], [87, 104], [88, 114], [84, 126], [74, 136], [58, 144], [32, 149], [0, 150.5]],
+};
+const montarBarba = (k) => {
   const out = [k[0]];
   for (let i = 1; i < k.length - 1; i++) {
     const a = i === 1 ? k[0] : [(k[i - 1][0] + k[i][0]) / 2, (k[i - 1][1] + k[i][1]) / 2];
@@ -162,7 +167,9 @@ const BARBA_LADO = (() => {
     }
   }
   return out;
-})();
+};
+const BARBAS = Object.fromEntries(Object.entries(BARBA_FORMAS).map(([n, k]) => [n, montarBarba(k)]));
+let BARBA_LADO = BARBAS.cheia; // forma da pessoa que está sendo montada/desenhada (barba.forma)
 // distância (graus) até a barba de um lado: negativa dentro (o eixo az = 0 fecha o contorno)
 function distBarba(a, pol) {
   const L = BARBA_LADO;
@@ -510,7 +517,7 @@ function desenharTorso(c, p) {
   if (r.tipo === "xadrez") {
     // camisa xadrez: carcela com botões, bolso no peito esquerdo, suspensório argyle (frente e costas) e cós da calça
     xadrez(c, 512, 512, r, 32, 64);
-    const au = 512 / (Math.PI * 2), yc = Y(0.99);
+    const au = 512 / (Math.PI * 2), yc = Y(r.cos ?? 0.99);
     // bolso com aba (peito do lado esquerdo dele)
     const bx = 256 + 0.7 * au, by = Y(1.25);
     c.fillStyle = "rgba(255,255,255,0.18)"; c.fillRect(bx - 20, by, 40, 52);
@@ -523,8 +530,8 @@ function desenharTorso(c, p) {
     for (const y of [1.36, 1.245, 1.13, 1.02]) { const yy = Y(y); c.fillStyle = r.botao; c.beginPath(); c.arc(256, yy, 5.5, 0, Math.PI * 2); c.fill(); c.strokeStyle = "#000"; c.lineWidth = 1.5; c.stroke(); c.fillStyle = "#3b2a22"; c.fillRect(254, yy - 2, 1.4, 4); c.fillRect(257, yy - 2, 1.4, 4); }
     // calça (cós) na parte de baixo, com a costura do cós
     c.fillStyle = hex(r.calca); c.fillRect(0, yc, 512, 512 - yc);
-    c.strokeStyle = "rgba(255,255,255,0.14)"; c.lineWidth = 3; c.beginPath(); c.moveTo(0, yc + 9); c.lineTo(512, yc + 9); c.stroke();
-    c.strokeStyle = "rgba(0,0,0,0.55)"; c.lineWidth = 3; c.beginPath(); c.moveTo(0, yc); c.lineTo(512, yc); c.stroke();
+    if (!r.cos) { c.strokeStyle = "rgba(255,255,255,0.14)"; c.lineWidth = 3; c.beginPath(); c.moveTo(0, yc + 9); c.lineTo(512, yc + 9); c.stroke(); }
+    c.strokeStyle = r.cos ? "rgba(70,55,35,0.5)" : "rgba(0,0,0,0.55)"; c.lineWidth = r.cos ? 2 : 3; c.beginPath(); c.moveTo(0, yc); c.lineTo(512, yc); c.stroke();
     // suspensório largo: duas tiras pela frente e duas pelas costas
     const sa = r.suspensorio ?? 0.62, sw = 28;
     for (const u of [256 - sa * au, 256 + sa * au, 256 + (Math.PI - sa) * au, 256 - (Math.PI - sa) * au]) {
@@ -691,6 +698,7 @@ function desenharBoina(c, b) {
 
 const atlas = new Map(); // id → { aberto, fechado }
 function texturasDe(id0, p) {
+  BARBA_LADO = BARBAS[p.rosto.barba?.forma ?? "cheia"];
   const id = id0 + (p.objeto?.tipo ?? "");
   if (atlas.has(id)) return atlas.get(id);
   const em = (c, reg, fn) => { const [x, y, w, h] = REG[reg]; c.save(); c.translate(x, y); c.beginPath(); c.rect(0, 0, w, h); c.clip(); fn(); c.restore(); };
@@ -782,8 +790,8 @@ const rTorso = (() => {
   return (y) => { for (let i = 1; i < am.length; i++) if (am[i].y >= y) { const a = am[i - 1], b = am[i]; return lerp(a.x, b.x, (y - a.y) / Math.max(1e-6, b.y - a.y)); } return 0; };
 })();
 // ajuste do corpo da pessoa que está sendo montada (cintura mais marcada, barra mais alta)
-let corpoAtual = { aperto: 0, barra: TORSO_Y0, gordo: 1, barriga: 0, z: TORSO_Z };
-const raio = (y) => rTorso(y) * corpoAtual.gordo * (1 - corpoAtual.aperto * Math.exp(-(((y - 1.07) / 0.13) ** 2)) + corpoAtual.barriga * Math.exp(-(((y - 1.02) / 0.16) ** 2)));
+let corpoAtual = { aperto: 0, barra: TORSO_Y0, gordo: 1, barriga: 0, z: TORSO_Z, afina: 0 };
+const raio = (y) => rTorso(y) * corpoAtual.gordo * (1 - corpoAtual.afina * sstep(1.0 - y, 0, 0.26)) * (1 - corpoAtual.aperto * Math.exp(-(((y - 1.07) / 0.13) ** 2)) + corpoAtual.barriga * Math.exp(-(((y - 1.02) / 0.16) ** 2)));
 const naRoupa = (a, y, fora = 0) => {
   const r = raio(y);
   const Z = corpoAtual.z, n = new V3(Math.sin(a), 0, Math.cos(a) / Z).normalize();
@@ -915,7 +923,7 @@ function montarPessoa(p) {
 
   // --- tronco (lathe) com a textura da roupa
   const G = { ombros: 1, quadril: 1, gordo: 1, barriga: 0, z: TORSO_Z, braco: 1, perna: 1, pescoco: 0.064, cabeca: HS_PADRAO.toArray(), queixo: 0.3, ...(p.corpo ?? {}) };
-  corpoAtual = { aperto: r.aperto ?? 0, barra: r.barra ?? TORSO_Y0, gordo: G.gordo, barriga: G.barriga, z: G.z };
+  corpoAtual = { aperto: r.aperto ?? 0, barra: r.barra ?? TORSO_Y0, gordo: G.gordo, barriga: G.barriga, z: G.z, afina: G.afina ?? 0 };
   HS.set(...G.cabeca); queixo = G.queixo; regBranco = p.rosto.barba?.textura ? "brancoEstreito" : "branco";
   const y0 = corpoAtual.barra;
   const pts = [new THREE.Vector2(0.0001, y0)];
@@ -1045,9 +1053,10 @@ function montarPessoa(p) {
   if (p.oculos) {
     const dy = p.oculos.y ?? 0; // desce (negativo) ou sobe os óculos no rosto, em graus
     const aro = (s) => {
-      const pts = [];
-      for (let i = 0; i < 20; i++) {
-        const t = (i / 20) * Math.PI * 2, cx = Math.cos(t), sy = Math.sin(t);
+      const pts = [], meia = p.oculos.meia, N = meia ? 12 : 20;
+      for (let i = 0; i < N; i++) {
+        // meia-armação: só o arco de cima (um pouco além do meio), a lente fica solta embaixo
+        const t = meia ? -0.3 + (i / (N - 1)) * (Math.PI + 0.6) : (i / 20) * Math.PI * 2, cx = Math.cos(t), sy = Math.sin(t);
         // gatinho: topo reto e largo, base arredondada, ponta de fora puxada para cima
         const ret = p.oculos.forma === "retangulo";
         const sc = Math.sign(cx) * Math.pow(Math.abs(cx), ret ? 0.35 : 0.55), ss = Math.sign(sy) * Math.pow(Math.abs(sy), ret ? 0.4 : 0.7); // cantos "quadrados" arredondados
@@ -1056,11 +1065,11 @@ function montarPessoa(p) {
         if (!ret) { el += 7.5 * Math.pow(fora, 4) * Math.max(0, sy + 0.4); az += s * 4 * Math.pow(fora, 3) * Math.max(0, sy + 0.3); }
         pts.push(naCabeca(THREE.MathUtils.degToRad(s * 22.5 + az), THREE.MathUtils.degToRad(-5.5 + dy + el), 1.08));
       }
-      return new THREE.CatmullRomCurve3(pts, true, "centripetal");
+      return new THREE.CatmullRomCurve3(pts, !p.oculos.meia, "centripetal");
     };
     const cor = p.oculos.cor, esp = p.oculos.esp;
     for (const s of [1, -1]) {
-      m.add(new THREE.TubeGeometry(aro(s), 40, esp, 5, true), { cor, osso: O.cabeca, contorno: esp < 0.006 ? 0.0022 : 0.004 });
+      m.add(new THREE.TubeGeometry(aro(s), 40, esp, 5, !p.oculos.meia), { cor, osso: O.cabeca, contorno: esp < 0.006 ? 0.0014 : 0.004 });
       // haste até a orelha
       const h0 = naCabeca(THREE.MathUtils.degToRad(s * 42), THREE.MathUtils.degToRad(4 + dy * 0.9), 1.08), h1 = naCabeca(s * 1.2, 0.03, 1.1), h2 = naCabeca(s * 1.55, 0.0, 1.06);
       m.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([h0, h1, h2]), 8, esp * 0.75, 4), { cor, osso: O.cabeca, contorno: 0 });
@@ -1142,7 +1151,7 @@ function montarPessoa(p) {
     const b = p.boina, M = new THREE.Matrix4().compose(new V3(0, HC.y + b.y, b.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(b.incl, 0, 0)), new V3(b.sx, b.sy, b.sz));
     m.add(new THREE.SphereGeometry(1, 30, 10, 0, Math.PI * 2, 0, Math.PI * 0.56), { osso: O.cabeca, regiao: "logo", matriz: M, contorno: 0.014 });
     m.add(esf(6, 4), { cor: b.botao, osso: O.cabeca, matriz: M.clone().multiply(new THREE.Matrix4().compose(new V3(0, 0.99, 0), new THREE.Quaternion(), new V3(0.07, 0.09, 0.07))), contorno: 0.004 });
-    m.add(new THREE.SphereGeometry(1, 20, 6, 0, Math.PI * 2, 0, Math.PI * 0.34), { cor: b.aba, osso: O.cabeca, matriz: new THREE.Matrix4().compose(new V3(0, HC.y + b.y + b.aby, b.z + b.sz * b.abz), new THREE.Quaternion().setFromEuler(new THREE.Euler(b.abi, 0, 0)), new V3(b.sx * b.abx, 0.08, 0.1)), contorno: 0.012 });
+    m.add(new THREE.SphereGeometry(1, 20, 6, 0, Math.PI * 2, 0, Math.PI * 0.34), { cor: b.aba, osso: O.cabeca, matriz: new THREE.Matrix4().compose(new V3(0, HC.y + b.y + b.aby, b.z + b.sz * b.abz), new THREE.Quaternion().setFromEuler(new THREE.Euler(b.abi, 0, 0)), new V3(b.sx * b.abx, 0.1, 0.1)), contorno: 0.012 });
   }
 
   // --- braços (descanso: caídos ao lado do corpo)
@@ -1154,6 +1163,13 @@ function montarPessoa(p) {
       m.add(esf(10, 8), { cor: SKIN, osso: ombro, pos: [x * 0.96, 1.39, 0], esc: [0.058 * br, 0.06, 0.058 * br], contorno: 0.012 });
       m.add(cap(0.048 * br, 0.26), { cor: SKIN, osso: ombro, pos: [x, 1.25, 0], contorno: 0.012 });
       m.add(cap(0.043 * br, 0.2), { cor: SKIN, osso: cot, pos: [x, 0.975, 0], contorno: 0.011 });
+    } else if (r.manga === "curta" && r.mangaReta) {
+      // manga curta reta, só um pouquinho mais larga na barra, com a barra dobrada (cós enrolado)
+      m.add(new THREE.CylinderGeometry(0.057 * br, 0.063 * br, 0.11, 12, 1, true), { osso: ombro, regiao: "tecido", pos: [x, 1.3, 0], contorno: 0.012 });
+      m.add(esf(10, 6), { osso: ombro, regiao: "tecido", pos: [x, 1.355, 0], esc: [0.057 * br, 0.04, 0.057 * br], contorno: 0.012 });
+      m.add(new THREE.TorusGeometry(0.063 * br, 0.011, 5, 12), { cor: r.ribana, osso: ombro, pos: [x, 1.245, 0], rot: [Math.PI / 2, 0, 0], contorno: 0.005 });
+      m.add(cap(0.05 * br, 0.12), { cor: SKIN, osso: ombro, pos: [x, 1.2, 0], contorno: 0.012 });
+      m.add(cap(0.046 * br, 0.16), { cor: SKIN, osso: cot, pos: [x, 0.98, 0], contorno: 0.012 });
     } else if (r.manga === "curta") {
       // manga curta: só o começo do braço no tecido, com a barra; o resto é braço
       m.add(cap(0.064 * br, 0.07), { osso: ombro, regiao: "tecido", pos: [x, 1.335, 0], contorno: 0.013 });
@@ -1322,21 +1338,21 @@ const PESSOAS = {
     nome: "Vovô Léo", escala: 1.04,
     pele: 0xf0bea2, ouro: 0xd8b24a, brinco: null, pulseira: false,
     sapato: 0x6b4226, sapatoFechado: true,
-    corpo: { ombros: 1.08, quadril: 1.05, gordo: 1.0, barriga: 0.05, z: 0.82, braco: 1.1, perna: 1.05, pescoco: 0.072, cabeca: [0.88, 1.08, 0.95], queixo: 0.14 },
+    corpo: { ombros: 1.08, quadril: 1.0, gordo: 1.0, barriga: 0.05, afina: 0.2, z: 0.82, braco: 1.1, perna: 1.05, pescoco: 0.072, cabeca: [0.88, 1.08, 0.95], queixo: 0.14 },
     rosto: {
-      olhos: "rindo", olhoEsc: 0.95, rugas: true, nariz: "rgba(238,120,112,0.55)",
-      iris: ["#22140a", "#4a3018", "#7a5530", "#342010"], sobrancelha: "#a8a49b", grossura: 1.8, interno: 1, boca: "dentes", batom: "#b46f63", bochecha: "rgba(240,96,96,0.45)",
+      olhoEsc: 0.86, olhosY: -4, sobrancelhaY: -1.5, rugas: true, nariz: "rgba(238,120,112,0.55)",
+      iris: ["#22140a", "#4a3018", "#7a5530", "#342010"], sobrancelha: "#8e8a82", grossura: 1.7, interno: 3, boca: "dentes", batom: "#b46f63", bochecha: "rgba(240,96,96,0.45)",
       cilios: [[-0.3, 6, 3]],
-      barba: { cheia: true, textura: true, cor: "#f3f2ef", fios: 0.9, densidade: 1.1, volume: 1.1, bigode: "rgba(120,120,128,0.2)", linha: "rgba(120,118,124,0.5)",
+      barba: { forma: "curta", cheia: true, textura: true, cor: "#f3f2ef", fios: 0.9, densidade: 1.1, volume: 0.75, bigode: "rgba(100,100,110,0.32)", linha: "rgba(120,118,124,0.5)",
         cinza: ["rgba(200,200,205,0.75)", "rgba(168,168,176,0.65)", "rgba(255,255,255,0.8)"], escuro: ["rgba(120,118,126,0.55)", "rgba(150,148,156,0.5)"], mechas: ["rgba(120,120,130,0.22)", "rgba(255,255,255,0.3)"] },
     },
-    oculos: { forma: "retangulo", cor: 0x4c5056, esp: 0.0042, y: -5.5, alto: 0.62, largo: 0.98 },
+    oculos: { forma: "retangulo", meia: true, cor: 0x6c7178, esp: 0.0032, y: -12, alto: 0.4, largo: 0.95 },
     cabelo: { estilo: "vovoLeo", cor: 0xeeece8, brilho: 0xffffff },
-    boina: { fundo: "#e3e3e0", furo: "rgba(140,140,146,0.6)", costura: "rgba(150,150,156,0.65)", borda: "#cfcfcc", botao: 0xd8d8d5, aba: 0xdcdcd9, y: 0.15, z: 0.02, sx: 0.275, sy: 0.17, sz: 0.3, incl: 0.14, aby: -0.07, abz: 0.74, abi: 0.45, abx: 0.7 },
+    boina: { fundo: "#e3e3e0", furo: "rgba(140,140,146,0.6)", costura: "rgba(150,150,156,0.65)", borda: "#cfcfcc", botao: 0xd8d8d5, aba: 0xe0e0dd, y: 0.165, z: 0.02, sx: 0.275, sy: 0.17, sz: 0.3, incl: 0.14, aby: -0.06, abz: 0.7, abi: 0.38, abx: 0.6 },
     gravata: { cor: 0x1f7fe0, dobra: 0x15569e, no: 0x1865b8, y: 1.465 },
     roupa: {
-      tipo: "xadrez", manga: "curta", fundo: "#f6f0e4", costura: "#5a4538", botao: "#2a1d18", suspensorio: 0.62, barra: 0.9, ribana: 0xcdb48c, calca: 0x3b3d45,
-      bandas: [[0, 0.17, "#876553"], [0.17, 0.2, "#d8bf96"], [0.56, 0.3, "#a8c9e8"]],
+      tipo: "xadrez", manga: "curta", fundo: "#f6f0e4", costura: "#5a4538", botao: "#2a1d18", suspensorio: 0.62, mangaReta: true, cos: 0.93, ribana: 0xdcc9a6, calca: 0xb09c72,
+      bandas: [[0, 0.12, "#a07f6b"], [0.12, 0.22, "#e2d0ae"], [0.5, 0.34, "#b4d3ef"]],
     },
     objeto: { tipo: "maleta", opcional: true, pos: [0, -0.245, 0], rot: [0, 1.05, 0], pose: { oEx: 0, oEz: 0.2, cE: -0.06, mEx: 0 } },
   },
@@ -1378,6 +1394,7 @@ export function criarPessoa(id = "sabrina", { escala: esc = null, nome = null, o
   OSSOS.forEach(([, pai], i) => { const b = ossos[i]; if (pai >= 0) { ossos[pai].add(b); b.position.copy(mundoOsso(i)).sub(mundoOsso(pai)); } else b.position.copy(mundoOsso(i)); });
   raiz.add(ossos[0]);
 
+  BARBA_LADO = BARBAS[p.rosto.barba?.forma ?? "cheia"];
   const mont = montarPessoa(p);
   // pose de segurar o objeto: calcula onde ele fica na mão e guarda isso no espaço do osso da mão
   const POSE_OBJ = { oEx: -0.12, oEz: 0.04, cE: -1.0, mEx: 0.25, ...(p.objeto?.pose ?? {}) };
