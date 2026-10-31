@@ -7,7 +7,7 @@
 // refeito sem ele e sai o mesmo carro dirigível (rodas que giram, volante) no lugar.
 //   const P = criarPatioJE(cena, { solidos });  P.atualizar(x, z);  P.escolher(i) → { cor, hex, modelo, x, z, ang }
 
-import { THREE, malha, caixa, caixaRedonda, texturaCanvas, mesclar, mat } from "./base3d.js";
+import { THREE, matNovo, malha, caixa, caixaRedonda, texturaCanvas, mesclar, mat } from "./base3d.js";
 import { carroJE, MODELOS_JE, mesclarPorMaterial } from "./carros-je.js";
 import { PATIO_JE } from "./mapa.js";
 
@@ -40,7 +40,7 @@ function texturaPlacas() {
 function plaquinha(i) {
   const g = new THREE.Group();
   const geo = new THREE.PlaneGeometry(1.5, 1.03); const uv = geo.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setX(k, (i + uv.getX(k)) / 5);
-  matPlaca ??= new THREE.MeshToonMaterial({ map: texturaPlacas(), emissive: 0xffffff, emissiveMap: texturaPlacas(), emissiveIntensity: 0.3, side: THREE.DoubleSide });
+  matPlaca ??= matNovo({ map: texturaPlacas(), emissive: 0xffffff, emissiveMap: texturaPlacas(), emissiveIntensity: 0.3, side: THREE.DoubleSide });
   const placa = new THREE.Mesh(geo, matPlaca); g.add(placa);
   const haste = malha(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6), mat(0x333333), { sombra: false }); haste.position.y = -0.85; g.add(haste);
   return g;
@@ -70,12 +70,12 @@ export function criarPatioJE(cena, { solidos }) {
     // cerca baixinha branca com postes pretos e bandeirinhas coloridas
     for (const m of muros) {
       const w = m.x1 - m.x0, d = m.z1 - m.z0, long = Math.max(w, d);
-      const trilho = caixaRedonda(Math.max(w, 0.12), 0.12, Math.max(d, 0.12), mat(0xffffff), { raio: 0.04, contorno: 0.02 }); trilho.position.set((m.x0 + m.x1) / 2, 0.95, (m.z0 + m.z1) / 2); fixo.add(trilho);
+      const trilho = caixaRedonda(Math.max(w, 0.12), 0.12, Math.max(d, 0.12), mat(0xffffff)); trilho.position.set((m.x0 + m.x1) / 2, 0.95, (m.z0 + m.z1) / 2); fixo.add(trilho);
       const n = Math.max(2, Math.round(long / 2.2));
       for (let i = 0; i <= n; i++) { const t = i / n, x = m.x0 + (m.x1 - m.x0) * t, z = m.z0 + (m.z1 - m.z0) * t; const p = caixa(0.18, 1.2, 0.18, mat(0x1d1d1d), { sombra: false }); p.position.set(w > d ? x : (m.x0 + m.x1) / 2, 0.6, w > d ? (m.z0 + m.z1) / 2 : z); fixo.add(p); }
     }
     const cores = [0xec2e8c, 0x00b5f0, 0xffcc1f, 0x58c43a, 0x8e6cff];
-    for (const [x, z] of [[P.x0, g0], [P.x0, g1]]) { const p = caixaRedonda(0.3, 2.6, 0.3, mat(0x1d1d1d), { raio: 0.08, contorno: 0.03 }); p.position.set(x, 1.3, z); fixo.add(p); }
+    for (const [x, z] of [[P.x0, g0], [P.x0, g1]]) { const p = caixaRedonda(0.3, 2.6, 0.3, mat(0x1d1d1d)); p.position.set(x, 1.3, z); fixo.add(p); }
     for (let i = 0; i < 12; i++) { const t = i / 11, z = g0 + (g1 - g0) * t; const b = malha(new THREE.ConeGeometry(0.2, 0.36, 3), mat(cores[i % 5]), { sombra: false }); b.rotation.x = Math.PI; b.position.set(P.x0, 2.35 - Math.sin(t * Math.PI) * 0.35, z); fixo.add(b); }
     // fita entre os postes do portão (as bandeirinhas penduradas)
     const fita = caixa(0.05, 0.05, g1 - g0, mat(0x1d1d1d), { sombra: false }); fita.position.set(P.x0, 2.5, (g0 + g1) / 2); fixo.add(fita);

@@ -9,7 +9,8 @@
 //   const s = montarSala(id);   // { id, nome, grupo, solidos, entrada, porta, interativos, npcs, atualizar(dt, t) }
 //   interativo.fazer(api)       // api = { dizer, falar, sons, rabisco, profissao, vestir(id), tirar(), tocarHino(id), abrirSorvete(pedido, ok) }
 
-import { THREE, mat, malha, caixa, caixaRedonda, letreiro, MAT, texturaCanvas, mesclar, r as rnd } from "./base3d.js";
+import { THREE, matNovo, mat, malha, caixa, caixaRedonda, letreiro, MAT, texturaCanvas, mesclar, r as rnd } from "./base3d.js";
+import { emBlocos } from "./blocos.js";
 import { criarMorador } from "./personagens.js";
 import { movel } from "./moveis.js";
 import { PROFISSOES } from "./roupas-rp.js";
@@ -62,14 +63,14 @@ function parede(g, solidos, eixo, fixo, a, b, vaos, cor, altura = ALT) {
   if (b > ini) trechos.push([ini, b]);
   for (const [t0, t1] of trechos) {
     const comp = t1 - t0, meio = (t0 + t1) / 2;
-    const p = caixaRedonda(eixo === "x" ? comp : 0.25, altura, eixo === "x" ? 0.25 : comp, mat(cor), { raio: 0.06, contorno: 0.04 });
+    const p = caixaRedonda(eixo === "x" ? comp : 0.25, altura, eixo === "x" ? 0.25 : comp, mat(cor));
     p.position.set(eixo === "x" ? meio : fixo, altura / 2, eixo === "x" ? fixo : meio); g.add(p);
     solidos.push(eixo === "x" ? { x0: t0, x1: t1, z0: fixo - 0.13, z1: fixo + 0.13, y1: altura } : { x0: fixo - 0.13, x1: fixo + 0.13, z0: t0, z1: t1, y1: altura });
   }
 }
 function armario(cor) {
   const g = new THREE.Group();
-  const c = caixaRedonda(1.6, 2.2, 0.7, mat(cor), { raio: 0.1, contorno: 0.05 }); c.position.y = 1.1; g.add(c);
+  const c = caixaRedonda(1.6, 2.2, 0.7, mat(cor)); c.position.y = 1.1; g.add(c);
   const linha = caixa(0.04, 2.0, 0.72, mat(0x151515), { sombra: false }); linha.position.y = 1.1; g.add(linha);
   for (const s of [-1, 1]) { const m = malha(new THREE.SphereGeometry(0.06, 8, 6), mat(0xffcc1f)); m.position.set(s * 0.14, 1.15, 0.37); g.add(m); }
   // cabide desenhado na porta
@@ -78,7 +79,7 @@ function armario(cor) {
   p.position.set(0, 1.7, 0.37); p.userData.dinamico = true; g.add(p);
   return g;
 }
-const mesa = (w, d, cor, h = 0.85) => { const g = new THREE.Group(); const t = caixaRedonda(w, 0.12, d, mat(cor), { raio: 0.05, contorno: 0.03 }); t.position.y = h; g.add(t); for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const p = malha(new THREE.CylinderGeometry(0.05, 0.05, h, 8), mat(0x8a5a32), { contorno: 0.02 }); p.position.set(x * (w / 2 - 0.12), h / 2, z * (d / 2 - 0.12)); g.add(p); } return g; };
+const mesa = (w, d, cor, h = 0.85) => { const g = new THREE.Group(); const t = caixaRedonda(w, 0.12, d, mat(cor)); t.position.y = h; g.add(t); for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const p = malha(new THREE.CylinderGeometry(0.05, 0.05, h, 8), mat(0x8a5a32)); p.position.set(x * (w / 2 - 0.12), h / 2, z * (d / 2 - 0.12)); g.add(p); } return g; };
 const texLousa = (linhas) => texturaCanvas(512, 256, (c, w, h) => {
   c.fillStyle = "#2e5a3f"; c.fillRect(0, 0, w, h);
   c.strokeStyle = "#c98a4b"; c.lineWidth = 16; c.strokeRect(0, 0, w, h);
@@ -131,7 +132,7 @@ export function montarSala(id, { idade = null } = {}) {
   const faixa = caixa(W, 0.3, 0.05, mat(def.acento), { sombra: false }); faixa.position.set(0, 2.6, -D / 2 + 0.16); fixo.add(faixa);
   const placa = letreiro(def.nome, 5, { cor: `#${new THREE.Color(def.acento).getHexString()}` }); placa.position.set(0, 2.1, -D / 2 + 0.14); fixo.add(placa);
   // na igreja o lado direito do fundo é do letreiro (a cruz fica no meio) e nas escolas é da lousa: janela só à esquerda
-  for (const x of ["igreja", "kids1", "kids2"].includes(id) ? [-4.5] : [-4.5, 4.5]) { const j = caixaRedonda(1.6, 1.1, 0.12, MAT.janela, { raio: 0.06, contorno: 0.03 }); j.position.set(x, 1.9, -D / 2 + 0.15); fixo.add(j); }
+  for (const x of ["igreja", "kids1", "kids2"].includes(id) ? [-4.5] : [-4.5, 4.5]) { const j = caixaRedonda(1.6, 1.1, 0.12, MAT.janela); j.position.set(x, 1.9, -D / 2 + 0.15); fixo.add(j); }
   const tap = caixa(1.8, 0.03, 0.9, mat(def.acento), { sombra: false }); tap.position.set(0, 0.03, D / 2 - 0.8); fixo.add(tap);
   const solido = (x, z, w, d, h = 1.2) => solidosL.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, y1: h });
   const add = (o, x, z, rot = 0, dinamico = false) => { o.position.set(x, 0, z); o.rotation.y = rot; if (dinamico) o.userData.dinamico = true; g.add(o); return o; };
@@ -157,14 +158,14 @@ export function montarSala(id, { idade = null } = {}) {
   // ---------- objetos de cada lugar
   if (id === "hospital") {
     const maca = add(new THREE.Group(), 3, -2.2);
-    const base = caixaRedonda(2.2, 0.6, 1.0, mat(0xffffff), { raio: 0.1, contorno: 0.04 }); base.position.y = 0.55; maca.add(base);
-    const trav = caixaRedonda(0.6, 0.18, 0.8, mat(0x9fd8ff), { raio: 0.08 }); trav.position.set(-0.75, 0.94, 0); maca.add(trav);
+    const base = caixaRedonda(2.2, 0.6, 1.0, mat(0xffffff)); base.position.y = 0.55; maca.add(base);
+    const trav = caixaRedonda(0.6, 0.18, 0.8, mat(0x9fd8ff)); trav.position.set(-0.75, 0.94, 0); maca.add(trav);
     solido(3, -2.2, 2.3, 1.1, 0.9);
     const paciente = npc("lapis", 0xe8413c, 1); paciente.grupo.position.set(ox + 3.3, 0.85, oz - 2.2); paciente.grupo.rotation.y = 0.6; npcs.push(paciente);
-    const curativo = caixaRedonda(0.3, 0.18, 0.05, mat(0xffe0c0), { raio: 0.04, contorno: 0.02 }); curativo.position.set(0.05, 1.25, 0.38); curativo.visible = false; paciente.grupo.children[0].add(curativo);
-    const monitor = caixaRedonda(0.9, 0.7, 0.2, mat(0x2f3440), { raio: 0.08, contorno: 0.03 }); monitor.position.set(5.2, 1.7, -4.2); g.add(monitor);
+    const curativo = caixaRedonda(0.3, 0.18, 0.05, mat(0xffe0c0)); curativo.position.set(0.05, 1.25, 0.38); curativo.visible = false; paciente.grupo.children[0].add(curativo);
+    const monitor = caixaRedonda(0.9, 0.7, 0.2, mat(0x2f3440)); monitor.position.set(5.2, 1.7, -4.2); g.add(monitor);
     const tela = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 0.55), new THREE.MeshBasicMaterial({ color: 0x1fc08e })); tela.position.set(5.2, 1.7, -4.09); tela.userData.dinamico = true; g.add(tela);
-    const cx = add(caixaRedonda(0.7, 0.45, 0.5, mat(0xffffff), { raio: 0.08, contorno: 0.03 }), 0.6, -3.8); cx.position.y = 0.95; add(mesa(1.4, 0.8, 0xdfe6ee), 0.6, -3.8); solido(0.6, -3.8, 1.5, 0.9);
+    const cx = add(caixaRedonda(0.7, 0.45, 0.5, mat(0xffffff)), 0.6, -3.8); cx.position.y = 0.95; add(mesa(1.4, 0.8, 0xdfe6ee), 0.6, -3.8); solido(0.6, -3.8, 1.5, 0.9);
     const cruz1 = caixa(0.28, 0.08, 0.02, mat(0xe8413c), { sombra: false }); cruz1.position.set(0.6, 1.0, -3.54); g.add(cruz1); const cruz2 = caixa(0.08, 0.28, 0.02, mat(0xe8413c), { sombra: false }); cruz2.position.set(0.6, 1.0, -3.54); g.add(cruz2);
     I("curativo", "🩹 Fazer curativo", 3, -1.0, (api) => { curativo.visible = true; est.curativo = true; paciente.pular(); paciente.acenar(2.5); api.sons.moeda?.(); api.falar("rp-hosp-curativo"); api.dizer("Lápis Vermelho", "Obrigado! Um curativo e um abraço: já estou melhor!"); });
     I("febre", "🌡️ Medir a febre", 4.5, -1.2, (api) => { est.febre = true; api.sons.bipe(true); api.falar("rp-hosp-febre"); api.dizer("Hospital Cuidar", "36,5 graus: tudo bem, sem febre!"); });
@@ -173,15 +174,15 @@ export function montarSala(id, { idade = null } = {}) {
   if (id === "veterinario") {
     add(mesa(1.8, 1.0, 0xdfe6ee, 0.9), 2.5, -2.5); solido(2.5, -2.5, 1.9, 1.1);
     const cao = new THREE.Group(); cao.position.set(ox + 2.5, 1.0, oz - 2.5); cao.userData.dinamico = true;
-    const corpo = malha(new THREE.CapsuleGeometry(0.32, 0.6, 4, 10), mat(0xd9a066), { contorno: 0.04 }); corpo.rotation.x = Math.PI / 2; corpo.position.y = 0.4; cao.add(corpo);
-    const cab = malha(new THREE.SphereGeometry(0.33, 14, 10), mat(0xd9a066), { contorno: 0.04 }); cab.position.set(0, 0.75, 0.5); cao.add(cab);
+    const corpo = malha(new THREE.CapsuleGeometry(0.32, 0.6, 4, 10), mat(0xd9a066)); corpo.rotation.x = Math.PI / 2; corpo.position.y = 0.4; cao.add(corpo);
+    const cab = malha(new THREE.SphereGeometry(0.33, 14, 10), mat(0xd9a066)); cab.position.set(0, 0.75, 0.5); cao.add(cab);
     for (const s of [-1, 1]) { const o = malha(new THREE.SphereGeometry(0.15, 10, 8), mat(0x8a5a32)); o.scale.set(0.6, 1.3, 0.5); o.position.set(s * 0.27, 0.85, 0.45); cao.add(o); const olho = malha(new THREE.SphereGeometry(0.06, 8, 6), mat(0x151515)); olho.position.set(s * 0.12, 0.82, 0.8); cao.add(olho); }
     const rabo = malha(new THREE.CapsuleGeometry(0.06, 0.3, 4, 6), mat(0xd9a066)); rabo.position.set(0, 0.65, -0.55); rabo.rotation.x = -0.7; cao.add(rabo);
     for (const [x, z] of [[-0.18, 0.3], [0.18, 0.3], [-0.18, -0.3], [0.18, -0.3]]) { const p = malha(new THREE.CylinderGeometry(0.08, 0.08, 0.35, 8), mat(0xd9a066)); p.position.set(x, 0.05, z); cao.add(p); }
     npcs.push({ grupo: cao, atualizar: (dt, t) => { rabo.rotation.z = Math.sin(t * (est.festa > 0 ? 18 : 5)) * 0.5; if (est.festa > 0) { est.festa -= dt; cao.position.y = 1.0 + Math.abs(Math.sin(t * 10)) * 0.3; } else cao.position.y = 1.0; if (est.banhoT > 0) { est.banhoT -= dt; cao.rotation.y = Math.sin(t * 25) * 0.15; bolhas.visible = true; } else bolhas.visible = false; } });
     const bolhas = new THREE.Group(); cao.add(bolhas); bolhas.visible = false;
-    for (let i = 0; i < 12; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.1 + rnd() * 0.12, 10, 8), new THREE.MeshToonMaterial({ color: 0xcff4ff, transparent: true, opacity: 0.7 })); b.position.set((rnd() - 0.5) * 1.1, 0.4 + rnd() * 0.8, (rnd() - 0.5) * 1.2); bolhas.add(b); }
-    const banheira = caixaRedonda(1.4, 0.5, 0.9, mat(0x9fd8ff), { raio: 0.15, contorno: 0.04 }); banheira.position.set(5.3, 0.25, -3.5); g.add(banheira); solido(5.3, -3.5, 1.5, 1.0, 0.5);
+    for (let i = 0; i < 12; i++) { const b = new THREE.Mesh(emBlocos(new THREE.SphereGeometry(0.1 + rnd() * 0.12, 10, 8)), matNovo({ color: 0xcff4ff, transparent: true, opacity: 0.7 })); b.position.set((rnd() - 0.5) * 1.1, 0.4 + rnd() * 0.8, (rnd() - 0.5) * 1.2); bolhas.add(b); }
+    const banheira = caixaRedonda(1.4, 0.5, 0.9, mat(0x9fd8ff)); banheira.position.set(5.3, 0.25, -3.5); g.add(banheira); solido(5.3, -3.5, 1.5, 1.0, 0.5);
     I("banho", "🛁 Dar banho", 2.5, -1.3, (api) => { est.banho = true; est.banhoT = 3; api.sons.estouro?.(); api.falar("rp-vet-banho"); api.dizer("Veterinário", "Banho de espuma! Ele ficou cheirosinho."); });
     I("petisco", "🦴 Dar petisco", 4.0, -1.6, (api) => { est.petisco = true; est.festa = 2.2; api.sons.pulo(); api.falar("rp-vet-petisco"); api.dizer("Veterinário", "Au-au! Ele abanou o rabinho de alegria."); });
     est.cao = cao;
@@ -189,19 +190,19 @@ export function montarSala(id, { idade = null } = {}) {
   if (id === "kids1" || id === "kids2") {
     const bebes = id === "kids1";
     const lousaTex = [bebes ? ["☀️ 🌼 ❤️"] : ["2 + 3 = 5"], bebes ? ["A  B  C"] : ["4 + 4 = 8"], bebes ? ["Deus me ama!"] : ["Deus é amor"]];
-    const lousaMat = new THREE.MeshToonMaterial({ map: texLousa(lousaTex[0]) });
+    const lousaMat = matNovo({ map: texLousa(lousaTex[0]) });
     const lousa = new THREE.Mesh(new THREE.PlaneGeometry(4, 2), lousaMat); lousa.position.set(4.4, 1.55, -D / 2 + 0.16); lousa.userData.dinamico = true; g.add(lousa);
     const sino = add(new THREE.Group(), -2.5, -3.6);
     add(mesa(1.2, 0.8, bebes ? 0xffd3e2 : 0xc98a4b, 0.8), -2.5, -3.6); solido(-2.5, -3.6, 1.3, 0.9);
-    const s1 = malha(new THREE.SphereGeometry(0.22, 14, 10, 0, Math.PI * 2, 0, Math.PI / 1.6), mat(0xffcc1f), { contorno: 0.03 }); s1.position.y = 1.15; sino.add(s1);
+    const s1 = malha(new THREE.SphereGeometry(0.22, 14, 10, 0, Math.PI * 2, 0, Math.PI / 1.6), mat(0xffcc1f)); s1.position.y = 1.15; sino.add(s1);
     const cabo = malha(new THREE.CylinderGeometry(0.04, 0.04, 0.3, 8), mat(0x8a5a32)); cabo.position.y = 1.4; sino.add(cabo);
     sino.userData.dinamico = true;
     // alunos: bebês (pequenininhos) ou crianças do estojo, sentados em almofadas/carteiras
     const tipos = bebes ? [["giz", 0xff9cc0], ["lapis", 0x9fd8ff], ["cola", 0]] : [["lapis", 0x58c43a], ["regua", 0], ["caderno", 0x8e6cff]];
     tipos.forEach(([tp, cor], i) => {
       const a = npc(tp, cor, 4 + i, bebes ? 0.5 : 0.7); a.grupo.position.set(ox - 1 + i * 1.6, 0.03, oz + 0.8); a.grupo.rotation.y = Math.PI; npcs.push(a);
-      if (bebes) { const al = caixaRedonda(0.9, 0.2, 0.9, mat([0xbff0dc, 0xffd3e2, 0xe2d4ff][i]), { raio: 0.1, contorno: 0.03 }); al.position.set(-1 + i * 1.6, 0.1, 0.8); g.add(al); }
-      else { const c = caixaRedonda(0.9, 0.08, 0.6, mat(0xc98a4b), { raio: 0.03, contorno: 0.02 }); c.position.set(-1 + i * 1.6, 0.7, 0.2); g.add(c); }
+      if (bebes) { const al = caixaRedonda(0.9, 0.2, 0.9, mat([0xbff0dc, 0xffd3e2, 0xe2d4ff][i])); al.position.set(-1 + i * 1.6, 0.1, 0.8); g.add(al); }
+      else { const c = caixaRedonda(0.9, 0.08, 0.6, mat(0xc98a4b)); c.position.set(-1 + i * 1.6, 0.7, 0.2); g.add(c); }
     });
     est.alunos = npcs.length;
     let li = 0;
@@ -215,15 +216,15 @@ export function montarSala(id, { idade = null } = {}) {
   }
   if (id === "igreja") {
     // púlpito, cruz e o coral (três amigos de beca) no fundo; banquinhos do culto infantil na frente
-    const cruzV = caixaRedonda(0.3, 2.2, 0.15, mat(0xffd36b), { raio: 0.05, contorno: 0.03 }); cruzV.position.set(0, 1.9, -D / 2 + 0.25); g.add(cruzV);
-    const cruzH = caixaRedonda(1.2, 0.3, 0.15, mat(0xffd36b), { raio: 0.05, contorno: 0.03 }); cruzH.position.set(0, 2.4, -D / 2 + 0.25); g.add(cruzH);
+    const cruzV = caixaRedonda(0.3, 2.2, 0.15, mat(0xffd36b)); cruzV.position.set(0, 1.9, -D / 2 + 0.25); g.add(cruzV);
+    const cruzH = caixaRedonda(1.2, 0.3, 0.15, mat(0xffd36b)); cruzH.position.set(0, 2.4, -D / 2 + 0.25); g.add(cruzH);
     placa.position.x = 4.4; // a cruz fica no meio
-    const palco = caixaRedonda(7, 0.3, 2.6, mat(0xc98a4b), { raio: 0.06, contorno: 0.04 }); palco.position.set(2, 0.15, -3); g.add(palco);
+    const palco = caixaRedonda(7, 0.3, 2.6, mat(0xc98a4b)); palco.position.set(2, 0.15, -3); g.add(palco);
     const coral = [];
     [0xffcc1f, 0xec2e8c, 0x58c43a].forEach((cor, i) => { const c = npc(["lapis", "giz", "pincel"][i], cor, 7 + i, 0.75); c.grupo.position.set(ox + 0.6 + i * 1.4, 0.3, oz - 3.2); npcs.push(c); coral.push(c);
-      const beca = malha(new THREE.CylinderGeometry(0.42, 0.5, 0.9, 16, 1, true), mat(0x2f6fc0, { side: THREE.DoubleSide }), { contorno: 0.03 }); beca.position.y = 0.75; c.grupo.children[0].add(beca); });
+      const beca = malha(new THREE.CylinderGeometry(0.42, 0.5, 0.9, 16, 1, true), mat(0x2f6fc0, { side: THREE.DoubleSide })); beca.position.y = 0.75; c.grupo.children[0].add(beca); });
     solido(2, -3, 7, 2.6, 0.35);
-    for (let i = 0; i < 3; i++) { const b = caixaRedonda(2.4, 0.4, 0.6, mat([0xff9cc0, 0x9fd8ff, 0xfff0a8][i]), { raio: 0.1, contorno: 0.03 }); b.position.set(-3.5, 0.2, -1.2 + i * 1.2); g.add(b); }
+    for (let i = 0; i < 3; i++) { const b = caixaRedonda(2.4, 0.4, 0.6, mat([0xff9cc0, 0x9fd8ff, 0xfff0a8][i])); b.position.set(-3.5, 0.2, -1.2 + i * 1.2); g.add(b); }
     const prof = npc("caderno", 0xffcc1f, 11, 0.8); prof.grupo.position.set(ox - 3.5, 0.03, oz - 2.6); npcs.push(prof);
     let hist = 0;
     I("coral", "🎵 Cantar no coral", 2, -1.2, (api) => {
@@ -243,16 +244,16 @@ export function montarSala(id, { idade = null } = {}) {
     est.coralNpcs = coral;
   }
   if (id === "sorveteria") {
-    const balcao = caixaRedonda(4, 1.0, 1.0, mat(0xffd6e8), { raio: 0.1, contorno: 0.04 }); balcao.position.set(1, 0.5, -2.6); g.add(balcao); solido(1, -2.6, 4.1, 1.1);
-    const vidro = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.5, 0.8), new THREE.MeshToonMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.45 })); vidro.position.set(1, 1.25, -2.6); g.add(vidro);
-    SABORES.forEach((s, i) => { const p = malha(new THREE.CylinderGeometry(0.22, 0.22, 0.2, 14), mat(s.cor), { contorno: 0.02 }); p.position.set(-0.4 + i * 0.55, 1.08, -2.6); g.add(p); });
+    const balcao = caixaRedonda(4, 1.0, 1.0, mat(0xffd6e8)); balcao.position.set(1, 0.5, -2.6); g.add(balcao); solido(1, -2.6, 4.1, 1.1);
+    const vidro = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.5, 0.8), matNovo({ color: 0xbfeaff, transparent: true, opacity: 0.45 })); vidro.position.set(1, 1.25, -2.6); g.add(vidro);
+    SABORES.forEach((s, i) => { const p = malha(new THREE.CylinderGeometry(0.22, 0.22, 0.2, 14), mat(s.cor)); p.position.set(-0.4 + i * 0.55, 1.08, -2.6); g.add(p); });
     const cliente = npc("clipe", 0x8e6cff, 12); cliente.grupo.position.set(ox + 3.6, 0.03, oz - 0.6); cliente.grupo.rotation.y = -2.2; npcs.push(cliente);
     const casquinha = new THREE.Group(); casquinha.position.set(ox + 2.4, 1.05, oz - 2.1); casquinha.userData.dinamico = true;
-    const cone = malha(new THREE.ConeGeometry(0.16, 0.45, 14), mat(0xe8a85a), { contorno: 0.02 }); cone.rotation.x = Math.PI; cone.position.y = 0.22; casquinha.add(cone);
+    const cone = malha(new THREE.ConeGeometry(0.16, 0.45, 14), mat(0xe8a85a)); cone.rotation.x = Math.PI; cone.position.y = 0.22; casquinha.add(cone);
     npcs.push({ grupo: casquinha, atualizar: () => {} });
     const novoPedido = () => { const a = SABORES[Math.floor(rnd() * SABORES.length)]; let b; do b = SABORES[Math.floor(rnd() * SABORES.length)]; while (b === a); return [a, b]; };
     est.pedido = novoPedido(); est.casquinhas = 0;
-    const montar = (sabores) => { while (casquinha.children.length > 1) casquinha.children.at(-1).removeFromParent(); sabores.forEach((s, i) => { const b = malha(new THREE.SphereGeometry(0.2, 14, 10), mat(s.cor), { contorno: 0.02 }); b.position.y = 0.5 + i * 0.3; casquinha.add(b); }); };
+    const montar = (sabores) => { while (casquinha.children.length > 1) casquinha.children.at(-1).removeFromParent(); sabores.forEach((s, i) => { const b = malha(new THREE.SphereGeometry(0.2, 14, 10), mat(s.cor)); b.position.y = 0.5 + i * 0.3; casquinha.add(b); }); };
     I("casquinha", "🍦 Montar casquinha", 1.6, -1.4, (api) => {
       const [a, b] = est.pedido;
       api.falar("rp-sorvete-pedido");
@@ -268,13 +269,13 @@ export function montarSala(id, { idade = null } = {}) {
     est.montar = montar;
   }
   if (id === "padaria") {
-    const forno = caixaRedonda(1.8, 1.6, 1.2, mat(0xb85a3a), { raio: 0.25, contorno: 0.05 }); forno.position.set(-2.5, 0.8, -3.7); g.add(forno); solido(-2.5, -3.7, 1.9, 1.3, 1.7);
-    const boca = new THREE.Mesh(new THREE.CircleGeometry(0.45, 20), MAT.janelaQuente); boca.position.set(-2.5, 0.9, -3.08); g.add(boca);
-    const balcao = caixaRedonda(3.2, 1.0, 0.9, mat(0xfbe6c4), { raio: 0.1, contorno: 0.04 }); balcao.position.set(2.5, 0.5, -2.8); g.add(balcao); solido(2.5, -2.8, 3.3, 1.0);
-    const pao = malha(new THREE.CapsuleGeometry(0.18, 0.5, 6, 12), mat(0xfff0c9), { contorno: 0.02 }); pao.rotation.z = Math.PI / 2; pao.position.set(ox - 2.5, 0.95, oz - 3.0); pao.scale.setScalar(0.6); pao.userData.dinamico = true;
+    const forno = caixaRedonda(1.8, 1.6, 1.2, mat(0xb85a3a)); forno.position.set(-2.5, 0.8, -3.7); g.add(forno); solido(-2.5, -3.7, 1.9, 1.3, 1.7);
+    const boca = new THREE.Mesh(emBlocos(new THREE.CircleGeometry(0.45, 20)), MAT.janelaQuente); boca.position.set(-2.5, 0.9, -3.08); g.add(boca);
+    const balcao = caixaRedonda(3.2, 1.0, 0.9, mat(0xfbe6c4)); balcao.position.set(2.5, 0.5, -2.8); g.add(balcao); solido(2.5, -2.8, 3.3, 1.0);
+    const pao = malha(new THREE.CapsuleGeometry(0.18, 0.5, 6, 12), mat(0xfff0c9)); pao.rotation.z = Math.PI / 2; pao.position.set(ox - 2.5, 0.95, oz - 3.0); pao.scale.setScalar(0.6); pao.userData.dinamico = true;
     const cliente = npc("regua", 0, 13); cliente.grupo.position.set(ox + 4.2, 0.03, oz - 1.2); cliente.grupo.rotation.y = -2.4; npcs.push(cliente);
     npcs.push({ grupo: pao, atualizar: (dt) => { if (est.assando > 0) { est.assando -= dt; const k = 1 - est.assando / 3; pao.scale.setScalar(0.6 + k * 0.5); pao.material.color.lerpColors(new THREE.Color(0xfff0c9), new THREE.Color(0xd99a4e), k); if (est.assando <= 0) { est.paoPronto = true; } } } });
-    pao.material = new THREE.MeshToonMaterial({ color: 0xfff0c9 });
+    pao.material = matNovo({ color: 0xfff0c9 });
     I("forno", "🔥 Assar o pão", -2.5, -2.4, (api) => { if (est.assando > 0) return; est.assando = 3; est.paoPronto = false; pao.visible = true; pao.position.set(ox - 2.5, 0.95, oz - 3.0); api.sons.porta?.(); api.falar("rp-padaria-forno"); api.dizer("Padaria", "O pão está assando... que cheirinho bom!"); });
     I("entregar", "🥖 Entregar o pão", 3.6, -1.6, (api) => {
       if (!est.paoPronto) { api.dizer("Régua Rui", "Ainda não tem pão quentinho. Asse um no forno!"); return; }
@@ -284,10 +285,10 @@ export function montarSala(id, { idade = null } = {}) {
   }
   if (id === "bombeiros") {
     const alvo = new THREE.Group(); alvo.position.set(ox + 3, 0, oz - 2); alvo.userData.dinamico = true;
-    const lixeira = malha(new THREE.CylinderGeometry(0.4, 0.34, 0.8, 14), mat(0x8a8f99), { contorno: 0.03 }); lixeira.position.y = 0.4; alvo.add(lixeira);
-    const chamas = [0xff3d1f, 0xff8a1f, 0xffd84a].map((c, i) => { const m = new THREE.Mesh(new THREE.ConeGeometry(0.45 - i * 0.12, 1.2 - i * 0.25, 10), new THREE.MeshBasicMaterial({ color: c })); m.position.y = 1.2 - i * 0.05; alvo.add(m); return m; });
+    const lixeira = malha(new THREE.CylinderGeometry(0.4, 0.34, 0.8, 14), mat(0x8a8f99)); lixeira.position.y = 0.4; alvo.add(lixeira);
+    const chamas = [0xff3d1f, 0xff8a1f, 0xffd84a].map((c, i) => { const m = new THREE.Mesh(emBlocos(new THREE.ConeGeometry(0.45 - i * 0.12, 1.2 - i * 0.25, 10)), new THREE.MeshBasicMaterial({ color: c })); m.position.y = 1.2 - i * 0.05; alvo.add(m); return m; });
     const agua = new THREE.Group(); agua.visible = false; alvo.add(agua);
-    for (let i = 0; i < 16; i++) { const gt = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), new THREE.MeshToonMaterial({ color: 0x7fd6ff })); agua.add(gt); }
+    for (let i = 0; i < 16; i++) { const gt = new THREE.Mesh(emBlocos(new THREE.SphereGeometry(0.09, 8, 6)), matNovo({ color: 0x7fd6ff })); agua.add(gt); }
     npcs.push({ grupo: alvo, atualizar: (dt, t) => {
       const forca = est.fogo ?? 1;
       chamas.forEach((m, i) => { m.scale.set(forca, forca * (0.9 + Math.sin(t * 12 + i) * 0.12), forca); m.visible = forca > 0.02; });
@@ -295,8 +296,8 @@ export function montarSala(id, { idade = null } = {}) {
     } });
     solido(3, -2, 0.9, 0.9, 1.0);
     const sirene = add(new THREE.Group(), -2.5, -4.0);
-    const cx = caixaRedonda(0.8, 0.6, 0.4, mat(0xe8413c), { raio: 0.1, contorno: 0.03 }); cx.position.y = 2.1; sirene.add(cx);
-    const luz = malha(new THREE.SphereGeometry(0.22, 12, 8), new THREE.MeshToonMaterial({ color: 0xff3030, emissive: 0xff2020, emissiveIntensity: 0 }), { sombra: false }); luz.position.y = 2.55; sirene.add(luz); sirene.userData.dinamico = true;
+    const cx = caixaRedonda(0.8, 0.6, 0.4, mat(0xe8413c)); cx.position.y = 2.1; sirene.add(cx);
+    const luz = malha(new THREE.SphereGeometry(0.22, 12, 8), matNovo({ color: 0xff3030, emissive: 0xff2020, emissiveIntensity: 0 }), { sombra: false }); luz.position.y = 2.55; sirene.add(luz); sirene.userData.dinamico = true;
     const cap = npc("apontador", 0xe8413c, 14); cap.grupo.position.set(ox - 4.5, 0.03, oz - 1); cap.grupo.rotation.y = 1.2; npcs.push(cap);
     I("treino", "💧 Treino: apagar o foguinho", 0.8, -1.4, (api) => {
       if (api.profissao() !== "bombeiro") { api.dizer("Capitão Apontador", "Primeiro vista o uniforme de bombeiro no armário!"); api.falar("rp-bombeiro-uniforme"); return; }
@@ -307,13 +308,13 @@ export function montarSala(id, { idade = null } = {}) {
     I("sirene", "🚨 Tocar a sirene", -2.5, -2.9, (api) => { est.sirene = (est.sirene ?? 0) + 1; luz.material.emissiveIntensity = 2; setTimeout(() => (luz.material.emissiveIntensity = 0), 1600); for (let i = 0; i < 4; i++) setTimeout(() => api.sons.buzina(), i * 350); api.dizer("Bombeiros", "Uóóó-uóóó! Bombeiros a postos!"); });
   }
   if (id === "mercado") {
-    const caixaR = caixaRedonda(2.4, 1.0, 1.0, mat(0x2bb24c), { raio: 0.1, contorno: 0.04 }); caixaR.position.set(2, 0.5, -2.4); g.add(caixaR); solido(2, -2.4, 2.5, 1.1);
+    const caixaR = caixaRedonda(2.4, 1.0, 1.0, mat(0x2bb24c)); caixaR.position.set(2, 0.5, -2.4); g.add(caixaR); solido(2, -2.4, 2.5, 1.1);
     const esteira = caixa(1.8, 0.05, 0.6, mat(0x2f3440), { sombra: false }); esteira.position.set(2, 1.03, -2.4); g.add(esteira);
-    const itens = [0xe8413c, 0xffcc1f, 0x58c43a].map((c, i) => { const it = malha(new THREE.SphereGeometry(0.15, 10, 8), mat(c), { contorno: 0.02 }); it.position.set(ox + 1.3 + i * 0.4, 1.2, oz - 2.4); it.userData.dinamico = true; return it; });
-    const sacola = caixaRedonda(0.5, 0.5, 0.35, mat(0xfff4e0), { raio: 0.06, contorno: 0.03 }); sacola.position.set(3.4, 1.3, -2.4); g.add(sacola);
+    const itens = [0xe8413c, 0xffcc1f, 0x58c43a].map((c, i) => { const it = malha(new THREE.SphereGeometry(0.15, 10, 8), mat(c)); it.position.set(ox + 1.3 + i * 0.4, 1.2, oz - 2.4); it.userData.dinamico = true; return it; });
+    const sacola = caixaRedonda(0.5, 0.5, 0.35, mat(0xfff4e0)); sacola.position.set(3.4, 1.3, -2.4); g.add(sacola);
     npcs.push(...itens.map((it) => ({ grupo: it, atualizar: () => {} })));
     const cliente = npc("borracha", 0, 15); cliente.grupo.position.set(ox + 3.9, 0.03, oz - 1.1); cliente.grupo.rotation.y = -2.3; npcs.push(cliente);
-    for (let i = 0; i < 3; i++) { const pr = caixaRedonda(2.6, 0.12, 0.6, mat(0xc98a4b), { raio: 0.03, contorno: 0.02 }); pr.position.set(-3.5, 0.5 + i * 0.6, -4.0); g.add(pr); }
+    for (let i = 0; i < 3; i++) { const pr = caixaRedonda(2.6, 0.12, 0.6, mat(0xc98a4b)); pr.position.set(-3.5, 0.5 + i * 0.6, -4.0); g.add(pr); }
     solido(-3.5, -4.0, 2.7, 0.7, 2);
     const frutas = new THREE.Group(); frutas.position.set(ox - 3.5, 0, oz - 4.0); frutas.userData.dinamico = true; frutas.visible = false;
     for (let i = 0; i < 12; i++) { const f = malha(new THREE.SphereGeometry(0.13, 8, 6), mat([0xe8413c, 0xffcc1f, 0xff8a1f, 0x58c43a][i % 4])); f.position.set(-1.1 + (i % 6) * 0.42, 0.65 + Math.floor(i / 6) * 0.6, 0); frutas.add(f); }
@@ -331,10 +332,10 @@ export function montarSala(id, { idade = null } = {}) {
     const est1 = movel("estante").fazer(0x8e6cff); add(est1, -4, -4.1); solido(-4, -4.1, 1.5, 0.5, 2);
     const est2 = movel("estante").fazer(0x00b5f0); add(est2, -2.2, -4.1); solido(-2.2, -4.1, 1.5, 0.5, 2);
     add(mesa(2.2, 1.2, 0xc98a4b, 0.8), 2.5, -2.5); solido(2.5, -2.5, 2.3, 1.3);
-    const livroMat = new THREE.MeshToonMaterial({ color: 0xffffff });
+    const livroMat = matNovo({ color: 0xffffff });
     const livro = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.7), livroMat); livro.rotation.x = -Math.PI / 2 + 0.25; livro.position.set(2.5, 0.92, -2.4); livro.userData.dinamico = true; g.add(livro);
     const leitor = npc("caderno", 0x1fc08e, 16); leitor.grupo.position.set(ox + 4.4, 0.03, oz - 2.2); leitor.grupo.rotation.y = -1.6; npcs.push(leitor);
-    const carimbo = add(new THREE.Group(), 5.6, -3.8); const cb = caixaRedonda(0.3, 0.3, 0.3, mat(0xec2e8c), { raio: 0.06, contorno: 0.02 }); cb.position.y = 0.95; carimbo.add(cb); add(mesa(0.9, 0.6, 0xc98a4b, 0.8), 5.6, -3.8); solido(5.6, -3.8, 1.0, 0.7);
+    const carimbo = add(new THREE.Group(), 5.6, -3.8); const cb = caixaRedonda(0.3, 0.3, 0.3, mat(0xec2e8c)); cb.position.y = 0.95; carimbo.add(cb); add(mesa(0.9, 0.6, 0xc98a4b, 0.8), 5.6, -3.8); solido(5.6, -3.8, 1.0, 0.7);
     let li = 0;
     I("ler", "📚 Ler um livro", 2.5, -1.4, (api) => {
       const lv = LIVROS[li % LIVROS.length]; li++; est.livro = lv.titulo;

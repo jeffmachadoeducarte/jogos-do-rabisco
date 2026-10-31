@@ -3,10 +3,11 @@
 // visíveis (com a neblina em 140 m, o resto nem apareceria). Ruas, calçadas e o chão são de todos os blocos.
 // Devolve as colisões (retângulos e círculos), os lugares, as casas, os semáforos e o que anima (água, patos, bichos).
 
-import { THREE, mat, malha, caixa, TEX, fita, densificar, normais, arvoreReal, semaforo, mesclar, r as rnd } from "./base3d.js";
+import { THREE, mat, matNovo, malha, caixa, TEX, MAT_AGUA, fita, densificar, normais, arvoreReal, semaforo, mesclar, r as rnd } from "./base3d.js";
 import { RUAS, CALCADA, distRua, LUGARES, LOTES, LOTE, PREDIOS, PREDIOS_NOVOS, PRACAS_NOVAS, BORDA_ANTIGA, MAR, ORLA, ILHA, PIERS, RODA, naMar, SEMAFOROS, PARQUE, LAGO, PLAYGROUND, PRACA, FAZENDA, CAMPO, ESPORTES, QUADRA, HORTA, PARQUINHO_BEBE, PATIO_KIDS2, HELIPONTO, PRAIA, LAGO2, NBLOCOS, GRADE0, VAGAS, LARGADA, PEGADAS_FIXAS, BORDA, BLOCO, blocoDe, pegadaDe } from "./mapa.js";
 import * as P from "./predios.js";
 import { casa } from "./casas.js";
+import { degraus } from "./blocos.js";
 import { marEAreia, pier, postoSalvaVidas, quiosqueCoco, rodaGigante, enfeitesOrla } from "./orla.js";
 import { aleatorio } from "../../src/motor3d/toon.js";
 
@@ -38,14 +39,14 @@ export function montarMundo(cena) {
   // ---------- chão (grama) e morrinhos em volta
   // o gramado vai até um pouco depois da costa (embaixo do mar não tem chão: senão os dois "brigam" de longe)
   const chaoZ1 = MAR.costa + 4;
-  TEX.grama.repeat.set(280, 280 * (chaoZ1 + 700) / 1400);
+  TEX.grama.repeat.set(140, 140 * (chaoZ1 + 700) / 1400); // placa de 10 m
   const chao = new THREE.Mesh(new THREE.PlaneGeometry(1400, chaoZ1 + 700), mat(0xffffff, { map: TEX.grama }));
   chao.rotation.x = -Math.PI / 2; chao.position.set(0, -0.02, (chaoZ1 - 700) / 2); chao.receiveShadow = true;
   cena.add(chao);
   const morros = new THREE.Group();
   for (let n = 0; n < 22; n++) {
     const a = (n / 22) * Math.PI * 2, d = 490 + rnd() * 40; // depois do Horizonte (e não no mar, ao sul); de longe, menos polígonos
-    const m = malha(new THREE.SphereGeometry(40 + rnd() * 25, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat([0x6fc24a, 0x5cb43f, 0x7fd05a][n % 3]), { sombra: false, contorno: 0 });
+    const m = malha(new THREE.SphereGeometry(40 + rnd() * 25, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat([0x6fc24a, 0x5cb43f, 0x7fd05a][n % 3]), { sombra: false });
     m.position.set(Math.cos(a) * d, -4, Math.sin(a) * d); m.scale.y = 0.5; if (Math.sin(a) * d < 300) morros.add(m);
   }
   cena.add(morros);
@@ -53,9 +54,9 @@ export function montarMundo(cena) {
 
   // ---------- ruas: calçada, asfalto, faixa branca tracejada (fora dos cruzamentos)
   const ruas = new THREE.Group();
-  const matAsfalto = mat(0xffffff, { map: TEX.asfalto, side: THREE.DoubleSide });
-  const matCalcada = mat(0xffffff, { map: TEX.calcada, side: THREE.DoubleSide });
-  const matLinha = new THREE.MeshToonMaterial({ map: TEX.linha, transparent: true, alphaTest: 0.4, side: THREE.DoubleSide });
+  const matAsfalto = mat(0xffffff, { map: TEX.asfalto });
+  const matCalcada = mat(0xffffff, { map: TEX.calcada });
+  const matLinha = matNovo({ map: TEX.linha, transparent: true, alphaTest: 0.4 });
   const dentroDeOutra = (rua, folga) => (x, z) => distRua(x, z, rua).d < folga;
   // as ruas dos bairros novos ficam em 3 grupos (oeste, norte e leste), cada um mesclado e só visível perto: de longe
   // (na praça, por exemplo) não custam nada
@@ -148,9 +149,9 @@ export function montarMundo(cena) {
   for (const [id, cor] of [["fazendinha", "#d6402f"], ["parque", "#3c9a4a"], ["campo", "#2f6fc0"], ["praia", "#ff7a00"], ["heliponto", "#2f3440"]]) {
     const l = LUGARES.find((q) => q.id === id);
     const g = new THREE.Group();
-    for (const s of [-1, 1]) { const p = malha(new THREE.CylinderGeometry(0.1, 0.12, 3.2, 8), mat(0x9a6232), { contorno: 0.03 }); p.position.set(s * 2.6, 1.6, 0); g.add(p); }
-    const placaL = caixa(6, 1.3, 0.2, mat(0xf3c99a), { contorno: 0.05 }); placaL.position.y = 2.9; g.add(placaL);
-    const txt = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 1.1), new THREE.MeshToonMaterial({ map: placaTexto(l.nome, cor), transparent: true, alphaTest: 0.4 }));
+    for (const s of [-1, 1]) { const p = malha(new THREE.CylinderGeometry(0.1, 0.12, 3.2, 8), mat(0x9a6232)); p.position.set(s * 2.6, 1.6, 0); g.add(p); }
+    const placaL = caixa(6, 1.3, 0.2, mat(0xf3c99a)); placaL.position.y = 2.9; g.add(placaL);
+    const txt = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 1.1), matNovo({ map: placaTexto(l.nome, cor), transparent: true, alphaTest: 0.4 }));
     txt.position.set(0, 2.9, 0.12); g.add(txt);
     const [dx, dz] = l.dir, lado = dz ? [1, 0] : [0, 1]; // ao lado da entrada, um pouco para dentro
     g.position.set(l.x + lado[0] * 7 - dx * 1.5, 0.07, l.z + lado[1] * 7 - dz * 1.5); g.rotation.y = l.rot;
@@ -208,7 +209,7 @@ export function montarMundo(cena) {
       const a = arvoreReal(0.9 + rnd() * 0.6, n); a.position.set(x, 0.03, z); a.rotation.y = rnd() * 6; blocoEm(x, z).add(a);
       solidos.push({ x0: x - 0.5, x1: x + 0.5, z0: z - 0.5, z1: z + 0.5, y1: 6 });
     } else {
-      const m = malha(new THREE.IcosahedronGeometry(0.9, 1), mat(0x5cc443), { contorno: 0.06, sombra: false }); m.scale.set(1.3, 0.8, 1.1); m.position.set(x, 0.5, z); m.userData.detalhe = true; blocoEm(x, z).add(m);
+      const m = malha(new THREE.IcosahedronGeometry(0.9, 1), mat(0x5cc443), { sombra: false }); m.scale.set(1.3, 0.8, 1.1); m.position.set(x, 0.5, z); m.userData.detalhe = true; blocoEm(x, z).add(m);
       for (let k = 0; k < 4; k++) { const f = malha(new THREE.IcosahedronGeometry(0.13, 0), mat([0xff5fa2, 0xffcc1f, 0xffffff][k % 3]), { sombra: false }); f.userData.detalhe = true; f.position.set(x + (rnd() - 0.5) * 2, 0.95 + rnd() * 0.2, z + (rnd() - 0.5) * 1.6); blocoEm(x, z).add(f); }
     }
   }
@@ -267,7 +268,7 @@ export function montarMundo(cena) {
       const a = arvoreReal(0.9 + rnd2() * 0.6, n); a.position.set(x, 0.03, z); a.rotation.y = rnd2() * 6; blocoEm(x, z).add(a);
       solidos.push({ x0: x - 0.5, x1: x + 0.5, z0: z - 0.5, z1: z + 0.5, y1: 6 });
     } else {
-      const m = malha(new THREE.IcosahedronGeometry(0.9, 1), mat(0x5cc443), { contorno: 0.06, sombra: false }); m.scale.set(1.3, 0.8, 1.1); m.position.set(x, 0.5, z); m.userData.detalhe = true; blocoEm(x, z).add(m);
+      const m = malha(new THREE.IcosahedronGeometry(0.9, 1), mat(0x5cc443), { sombra: false }); m.scale.set(1.3, 0.8, 1.1); m.position.set(x, 0.5, z); m.userData.detalhe = true; blocoEm(x, z).add(m);
     }
   }
   void naMar; void ILHA;
@@ -282,9 +283,8 @@ export function montarMundo(cena) {
   const api = {
     solidos, circulos, lugares, casas, semaforos, anima, blocos, malhas,
     alcance: 140, // neblina: além disso não se vê nada
-    contornoAte: 24, // contorno preto só nos blocos perto (de longe ele nem aparece e dobra os triângulos)
     detalheAte: 36, // flores, cercas, moitas e bancos só nos blocos perto
-    // mostra só o bloco do jogador e os vizinhos que estão dentro da neblina; contorno só perto
+    // mostra só o bloco do jogador e os vizinhos que estão dentro da neblina; detalhe só perto
     visibilidade(x, z) {
       const [bi, bj] = blocoDe(x, z);
       // semáforos (as luzes acendem, não dá para mesclar): longe, na neblina, nem desenham
@@ -294,10 +294,10 @@ export function montarMundo(cena) {
         const [i, j] = g.userData.bloco, r = g.userData.ret;
         const d = Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1));
         g.visible = (api.alcance > 1000 || (Math.abs(i - bi) <= 1 && Math.abs(j - bj) <= 1)) && d < api.alcance; // alcance enorme = foto de cima (tudo)
-        const perto = d < api.contornoAte, det = d < api.detalheAte;
-        if (g.userData.perto !== perto || g.userData.det !== det) {
-          g.userData.perto = perto; g.userData.det = det;
-          for (const m of g.children) if (m.userData.mesclada) m.visible = (!m.userData.contorno || perto) && (!m.userData.detalhe || det);
+        const det = d < api.detalheAte;
+        if (g.userData.det !== det) {
+          g.userData.det = det;
+          for (const m of g.children) if (m.userData.mesclada && m.userData.detalhe) m.visible = det;
         }
       }
     },
@@ -305,6 +305,7 @@ export function montarMundo(cena) {
     atualizar(dt, t) {
       for (const p of anima.patos) { p.a += p.v * dt; p.p.position.set(LAGO.x + Math.cos(p.a) * p.r, 0.12 + Math.sin(t * 3 + p.r) * 0.03, LAGO.z + Math.sin(p.a) * p.r); p.p.rotation.y = -p.a; }
       for (const j of anima.jatos) j.scale.y = 1 + Math.sin(t * 6) * 0.08;
+      TEX.agua.offset.set(t * 0.012, t * 0.02); // a água corre devagar
       if (anima.roda) anima.roda.girar(t * RODA_VEL); // a roda-gigante não para (uma volta a cada ~30 s)
       if (anima.boias) for (const [i, b] of anima.boias.entries()) b.position.y = 0.2 + Math.sin(t * 1.8 + i) * 0.08;
       if (anima.bola) { anima.bola.rotation.y = t * 0.6; anima.bola.position.y = 0.4 + Math.abs(Math.sin(t * 2.2)) * 0.5; }
@@ -326,9 +327,9 @@ export function montarMundo(cena) {
 // placa de madeira com o nome do lugar (a mesma das placas do parque e da fazendinha), de frente para +z
 function placaDeLugar(nome, cor) {
   const g = new THREE.Group();
-  for (const s of [-1, 1]) { const p = malha(new THREE.CylinderGeometry(0.1, 0.12, 3.2, 8), mat(0x9a6232), { contorno: 0.03 }); p.position.set(s * 2.6, 1.6, 0); g.add(p); }
-  const placaL = caixa(6, 1.3, 0.2, mat(0xf3c99a), { contorno: 0.05 }); placaL.position.y = 2.9; g.add(placaL);
-  const txt = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 1.1), new THREE.MeshToonMaterial({ map: placaTexto(nome, cor), transparent: true, alphaTest: 0.4 }));
+  for (const s of [-1, 1]) { const p = malha(new THREE.CylinderGeometry(0.1, 0.12, 3.2, 8), mat(0x9a6232)); p.position.set(s * 2.6, 1.6, 0); g.add(p); }
+  const placaL = caixa(6, 1.3, 0.2, mat(0xf3c99a)); placaL.position.y = 2.9; g.add(placaL);
+  const txt = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 1.1), matNovo({ map: placaTexto(nome, cor), transparent: true, alphaTest: 0.4 }));
   txt.position.set(0, 2.9, 0.12); g.add(txt);
   return g;
 }
