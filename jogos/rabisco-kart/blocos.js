@@ -4,17 +4,17 @@
 // monta o kart em volta dele.
 //
 // Desempenho: caixas e cilindros curtos compartilham geometria e material por cor; o cenário parado é juntado depois pelo
-// mesclarLocal (jogo.js), que grava a cor de cada peça nos vértices (por isso o material é MeshStandardMaterial).
+// mesclarLocal (jogo.js), que grava a cor de cada peça nos vértices (a cor de cada peça vai nos vértices).
 
 import { THREE, COR3D, texturaCanvas } from "../../src/motor3d/toon.js";
 import { juntarGeometrias, mesclarLocal } from "../cidade-do-rabisco/mesclar.js";
 
 // ------------------------------------------------------------------ materiais e peças básicas
-// Standard com um pouco de luz própria (parte da cor): as faces à sombra não ficam apagadas, sem mexer nas luzes da cena
+// Lambert (liso e barato de desenhar, importa na TV) com um pouco de luz própria (parte da cor): as faces à sombra não ficam apagadas, sem mexer nas luzes da cena
 // (que valem para o Rabisco oficial). Clona junto (o mesclarLocal clona o material ao gravar a cor nos vértices).
 const LUZ_PROPRIA = 0.42;
-class Plast extends THREE.MeshStandardMaterial {
-  constructor(p) { super(p); this.onBeforeCompile = Plast.compilar; }
+class Plast extends THREE.MeshLambertMaterial {
+  constructor(p) { const { roughness, metalness, ...q } = p ?? {}; super(q); this.onBeforeCompile = Plast.compilar; }
   copy(o) { super.copy(o); this.onBeforeCompile = Plast.compilar; return this; }
   customProgramCacheKey() { return "plast"; }
   static compilar(sh) { sh.fragmentShader = sh.fragmentShader.replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>\n totalEmissiveRadiance += diffuseColor.rgb * ${LUZ_PROPRIA.toFixed(2)};`); }
