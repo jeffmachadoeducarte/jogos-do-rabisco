@@ -17,17 +17,14 @@ const tres = (certa, todas) => {
 
 // ---------- Placas
 function fundoPlaca(c, w, h, cor = "#ffffff") {
-  c.fillStyle = "#151515";
-  c.beginPath(); c.roundRect(6, 10, w - 12, h - 12, 40); c.fill();
-  c.fillStyle = cor;
-  c.beginPath(); c.roundRect(10, 4, w - 20, h - 20, 36); c.fill();
+  c.fillStyle = cor; c.fillRect(0, 0, w, h);
+  c.fillStyle = "#e9f4ff"; c.fillRect(14, 14, w - 28, h - 28); // placa de blocos: miolo claro, sem contorno preto
 }
 function textoPlaca(c, w, h, texto, { cor = "#ec2e8c", max = 170 } = {}) {
   let tam = max;
   c.font = `800 ${tam}px 'Baloo 2', sans-serif`;
-  while (c.measureText(texto).width > w - 44 && tam > 30) { tam -= 6; c.font = `800 ${tam}px 'Baloo 2', sans-serif`; }
+  while (c.measureText(texto).width > w - 60 && tam > 30) { tam -= 6; c.font = `800 ${tam}px 'Baloo 2', sans-serif`; }
   c.textAlign = "center"; c.textBaseline = "middle";
-  c.lineWidth = Math.max(6, tam / 12); c.strokeStyle = "#151515"; c.strokeText(texto, w / 2, h / 2 + 4);
   c.fillStyle = cor; c.fillText(texto, w / 2, h / 2 + 4);
 }
 const placaTexto = (texto, opts) => texturaCanvas(256, 256, (c, w, h) => { fundoPlaca(c, w, h); textoPlaca(c, w, h, String(texto), opts); });
@@ -38,9 +35,8 @@ const placaEmoji = (e) => texturaCanvas(256, 256, (c, w, h) => {
 });
 const placaCor = (hex) => texturaCanvas(256, 256, (c, w, h) => {
   fundoPlaca(c, w, h);
-  c.fillStyle = "#151515"; c.beginPath(); c.arc(w / 2, h / 2 - 4, 92, 0, Math.PI * 2); c.fill();
-  c.fillStyle = hex; c.beginPath(); c.arc(w / 2, h / 2 - 4, 82, 0, Math.PI * 2); c.fill();
-  c.fillStyle = "rgba(255,255,255,0.45)"; c.beginPath(); c.ellipse(w / 2 - 30, h / 2 - 38, 26, 14, -0.6, 0, Math.PI * 2); c.fill();
+  c.fillStyle = hex; c.fillRect(46, 46, w - 92, h - 92);
+  c.fillStyle = "rgba(255,255,255,0.4)"; c.fillRect(46, 46, w - 92, 28);
 });
 
 // ---------- Modos

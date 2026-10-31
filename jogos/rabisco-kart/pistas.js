@@ -3,7 +3,8 @@
 // de um centro), que nunca cruza com ele mesmo, e um tema: grama, céu, neblina e a decoração em volta.
 // A pista vem de ?pista=N (1 a 10); o jogo recarrega a página ao trocar de pista.
 
-import { THREE, toon, peca, COR3D } from "../../src/motor3d/toon.js";
+import { THREE } from "../../src/motor3d/toon.js";
+import { luaB } from "./blocos.js";
 
 const ORIGINAL = [
   [0, 0], [60, -10], [115, -42], [160, -18], [178, 34], [146, 84], [92, 92], [64, 132], [86, 182],
@@ -85,102 +86,8 @@ export function pistaAtual() {
   return { numero: n, ...p, cfg: TEMAS[p.tema], pontos: p.pontos.map(([x, z]) => new THREE.Vector3(x, 0, z)) };
 }
 
-// ---------- decorações dos temas (as do circuito da escola vêm de objetos.js)
-export function decoracao(tipo, rnd) {
-  const g = new THREE.Group();
-  if (tipo === "palmeira") {
-    for (let i = 0; i < 6; i++) {
-      const gomo = peca(new THREE.CylinderGeometry(0.9 - i * 0.06, 1 - i * 0.06, 2.4, 8), 0xb07a45, { contorno: 0.15 });
-      gomo.position.set(i * 0.25, 1.2 + i * 2.2, 0);
-      g.add(gomo);
-    }
-    for (let i = 0; i < 7; i++) {
-      const folha = peca(new THREE.ConeGeometry(1.2, 7, 4), COR3D.verde, { contorno: 0.15 });
-      const a = (i / 7) * Math.PI * 2;
-      folha.position.set(1.5 + Math.cos(a) * 3, 13.4, Math.sin(a) * 3);
-      folha.rotation.set(Math.sin(a) * 1.1, 0, -Math.cos(a) * 1.1 - 0.2);
-      g.add(folha);
-    }
-  } else if (tipo === "guarda-sol") {
-    const haste = peca(new THREE.CylinderGeometry(0.2, 0.2, 7, 6), 0xffffff, { contorno: 0.08 });
-    haste.position.y = 3.5;
-    const pano = peca(new THREE.ConeGeometry(5, 2.2, 10), [COR3D.rosa, COR3D.laranja, COR3D.ciano][Math.floor(rnd() * 3)], { contorno: 0.15 });
-    pano.position.y = 7.4;
-    g.add(haste, pano);
-  } else if (tipo === "pinheiro" || tipo === "pinheiro-neve") {
-    const tronco = peca(new THREE.CylinderGeometry(0.7, 0.9, 4, 7), COR3D.marrom, { contorno: 0.15 });
-    tronco.position.y = 2;
-    g.add(tronco);
-    for (let i = 0; i < 3; i++) {
-      const cone = peca(new THREE.ConeGeometry(5 - i * 1.3, 6, 8), tipo === "pinheiro" ? 0x2e8b3a : 0x3f9a55, { contorno: 0.2 });
-      cone.position.y = 5.5 + i * 3.4;
-      g.add(cone);
-      if (tipo === "pinheiro-neve") {
-        const neve = new THREE.Mesh(new THREE.ConeGeometry(3.4 - i * 0.9, 2, 8), toon(0xffffff));
-        neve.position.y = 7.6 + i * 3.4;
-        g.add(neve);
-      }
-    }
-  } else if (tipo === "boneco-neve") {
-    for (const [y, r] of [[2.4, 2.6], [6.2, 1.9], [9.1, 1.3]]) { const b = peca(new THREE.SphereGeometry(r, 16, 12), 0xffffff, { contorno: 0.12 }); b.position.y = y; g.add(b); }
-    const nariz = peca(new THREE.ConeGeometry(0.25, 1.4, 8), COR3D.laranja, { contorno: 0.05 });
-    nariz.rotation.x = Math.PI / 2; nariz.position.set(0, 9.1, 1.6);
-    const chapeu = peca(new THREE.CylinderGeometry(1, 1, 1.4, 12), 0x2b2b2b, { contorno: 0.06 });
-    chapeu.position.y = 10.8;
-    g.add(nariz, chapeu);
-  } else if (tipo === "predio") {
-    const andares = 3 + Math.floor(rnd() * 6);
-    const cor = [0xf3d9a4, 0xcfe3f2, 0xf4c2c2, 0xd6f0c2, 0xe8d7ff][Math.floor(rnd() * 5)];
-    const corpo = peca(new THREE.BoxGeometry(12, andares * 4, 12), cor, { contorno: 0.25 });
-    corpo.position.y = andares * 2;
-    g.add(corpo);
-    for (let a = 0; a < andares; a++) for (const lado of [-1, 1]) for (const x of [-3.5, 0, 3.5]) {
-      const j = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), toon(0x7fc8ff));
-      j.position.set(x, 2 + a * 4, lado * 6.05);
-      if (lado < 0) j.rotation.y = Math.PI;
-      g.add(j);
-    }
-  } else if (tipo === "celeiro") {
-    const corpo = peca(new THREE.BoxGeometry(12, 8, 10), 0xc1121f, { contorno: 0.2 });
-    corpo.position.y = 4;
-    const teto = peca(new THREE.CylinderGeometry(6.4, 6.4, 10.4, 3), 0x7a4a2a, { contorno: 0.2 });
-    teto.rotation.set(Math.PI / 2, 0, Math.PI / 2); teto.position.y = 9.2;
-    const porta = new THREE.Mesh(new THREE.PlaneGeometry(4, 5), toon(0xffffff));
-    porta.position.set(0, 2.5, 5.02);
-    g.add(corpo, teto, porta);
-  } else if (tipo === "feno") {
-    const fardo = peca(new THREE.CylinderGeometry(2, 2, 3, 14), 0xe8c45a, { contorno: 0.1 });
-    fardo.rotation.z = Math.PI / 2; fardo.position.y = 2;
-    g.add(fardo);
-  } else if (tipo === "cacto") {
-    const verde = 0x3f9a4a;
-    const tronco = peca(new THREE.CapsuleGeometry(1.2, 8, 4, 10), verde, { contorno: 0.12 });
-    tronco.position.y = 5;
-    g.add(tronco);
-    for (const s of [-1, 1]) {
-      const braco = peca(new THREE.CapsuleGeometry(0.7, 3, 4, 8), verde, { contorno: 0.1 });
-      braco.position.set(s * 2.2, 6 + rnd() * 2, 0);
-      g.add(braco);
-    }
-  } else if (tipo === "pedra") {
-    const p = peca(new THREE.DodecahedronGeometry(3 + rnd() * 2, 0), 0xc89a6a, { contorno: 0.15 });
-    p.position.y = 1.5; p.scale.y = 0.6;
-    g.add(p);
-  } else if (tipo === "flores") {
-    for (let i = 0; i < 9; i++) {
-      const f = peca(new THREE.SphereGeometry(0.6, 8, 6), [COR3D.rosa, COR3D.amarelo, 0xffffff, COR3D.roxo][i % 4], { contorno: 0.05 });
-      f.position.set((rnd() - 0.5) * 8, 0.6, (rnd() - 0.5) * 8);
-      g.add(f);
-    }
-  } else if (tipo === "poste") {
-    const haste = peca(new THREE.CylinderGeometry(0.3, 0.3, 12, 6), 0x2b2b2b, { contorno: 0.06 });
-    haste.position.y = 6;
-    const luz = new THREE.Mesh(new THREE.SphereGeometry(1.1, 12, 10), new THREE.MeshBasicMaterial({ color: 0xfff1a8 }));
-    luz.position.y = 12.4;
-    g.add(haste, luz);
-  }
-  return g;
-}
+// ---------- decorações dos temas: de blocos (blocos.js); as do circuito da escola (lápis, árvore, livros) também
+export { decoracaoB as decoracao } from "./blocos.js";
 
 // céu de noite: pontinhos de estrela e a lua
 export function estrelas(cena) {
@@ -192,7 +99,7 @@ export function estrelas(cena) {
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
   const pontos = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 3, sizeAttenuation: false, fog: false }));
-  const lua = new THREE.Mesh(new THREE.SphereGeometry(40, 24, 16), new THREE.MeshBasicMaterial({ color: 0xfff6d0, fog: false }));
+  const lua = luaB();
   lua.position.set(-400, 380, 600);
   cena.add(pontos, lua);
 }

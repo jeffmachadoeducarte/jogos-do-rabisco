@@ -2,8 +2,10 @@
 // Corrida 3D no estilo Mario Kart. A matemática fica nos pórticos: passar pelo
 // número certo da conta dá turbo. Errar não tira nada, só não ganha o turbo.
 
-import { THREE, COR3D, toon, peca, texturaCanvas, aleatorio } from "../../src/motor3d/toon.js";
-import { lapis3D, arvore3D, nuvem3D, morro3D, escola3D, onibus3D, livros3D, kart3D, pilotoLapis, texturaNumero, barreiraGiz } from "../../src/motor3d/objetos.js";
+import { THREE, COR3D, texturaCanvas, aleatorio } from "../../src/motor3d/toon.js";
+// Mundo de blocos (blocos.js): tudo do cenário e dos karts é desenhado lá; o Rabisco oficial continua o de sempre
+import { cx, pinos, plastico, plasticoMapa, texturaChao, texturaAsfalto, texturaAcostamento, texturaXadrez, texturaFaixaLargada, faixaPlana, zebraBlocos, barreiraBlocos,
+  lapisB, arvoreB, nuvemB, morroB, livrosB, escolaB, onibusB, lojaB, outdoorB, kartB, pilotoB } from "./blocos.js";
 import { sons, musica, motor } from "../../src/motor/sons.js";
 import { falar, preCarregarFalas, saudar, parabenizar, falarNome } from "../../src/motor/voz.js";
 import "../../src/motor/familia.js"; // window.Familia: nome e foto da criança
@@ -31,6 +33,7 @@ const MODO = modoAtual();      // contas, cores, onibus, ingles-jr, gp ou ingles
 const VOLTAS = MODO.voltas;
 const VMAX = MODO.vmax;
 const TURBO = 1.6;
+const claro = (hex, f) => new THREE.Color(hex).lerp(new THREE.Color(0xffffff), f).getHex();
 const AMOSTRAS = 1400;
 const ALTURA_RABISCO = 4.1;   // Rabisco 3D oficial (altura em pé); sentado no kart ele é o destaque da tela
 const params = new URLSearchParams(location.search);
@@ -173,76 +176,29 @@ const carregarImagem = (url) => new Promise((ok, erro) => {
 
 // ------------------------------------------------------------------ Mundo
 function construirMundo(img) {
-  // Grama listrada (cortada), como nos jogos de kart
-  const grama = texturaCanvas(256, 256, (c, w, h) => {
-    c.fillStyle = TEMA.grama[0]; c.fillRect(0, 0, w, h);
-    c.fillStyle = TEMA.grama[1]; c.fillRect(0, 0, w, h / 2);
-    c.fillStyle = "rgba(255,255,255,0.05)";
-    for (let i = 0; i < 300; i++) c.fillRect(Math.random() * w, Math.random() * h, 2, 3);
-  }, { repetir: true });
-  grama.repeat.set(90, 90);
-  const chao = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400), toon(0xffffff, { map: grama }));
+  // Chão: placa de pinos nas duas cores de grama do tema
+  const grama = texturaChao(TEMA.grama[0], TEMA.grama[1]);
+  grama.repeat.set(120, 120);
+  const chao = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400), plasticoMapa(grama, { roughness: 0.6 }));
   chao.rotation.x = -Math.PI / 2;
   chao.position.set(30, 0, 120);
   chao.receiveShadow = true;
   cena.add(chao);
 
-  // Asfalto, zebras e linha de chegada
-  const asfalto = texturaCanvas(256, 256, (c, w, h) => {
-    c.fillStyle = "#6b7280"; c.fillRect(0, 0, w, h);
-    for (let i = 0; i < 1800; i++) {
-      const v = 90 + Math.random() * 40;
-      c.fillStyle = `rgb(${v},${v + 4},${v + 12})`;
-      c.fillRect(Math.random() * w, Math.random() * h, 2, 2);
-    }
-    c.fillStyle = "#ffffff";
-    c.fillRect(8, 0, 6, h); c.fillRect(w - 14, 0, 6, h);
-    c.fillRect(w / 2 - 3, 0, 6, h * 0.45);
-  }, { repetir: true });
-  const zebra = texturaCanvas(64, 128, (c, w, h) => {
-    c.fillStyle = "#ec2e8c"; c.fillRect(0, 0, w, h / 2);
-    c.fillStyle = "#ffffff"; c.fillRect(0, h / 2, w, h / 2);
-  }, { repetir: true });
-
+  // Asfalto em placas, zebras de tijolinhos e acostamento de pinos
   const faixa = (de, ate, textura, y, repV) => {
-    const pos = [], uv = [], ind = [];
-    for (let i = 0; i <= AMOSTRAS; i++) {
-      const k = idx(i);
-      const a = centro[k].clone().addScaledVector(lado[k], de);
-      const b = centro[k].clone().addScaledVector(lado[k], ate);
-      pos.push(a.x, y, a.z, b.x, y, b.z);
-      const v = (i * PASSO) / repV;
-      uv.push(0, v, 1, v);
-      if (i < AMOSTRAS) {
-        const n = i * 2;
-        ind.push(n, n + 2, n + 1, n + 1, n + 2, n + 3);
-      }
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-    geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
-    geo.setIndex(ind);
-    geo.computeVertexNormals();
-    const m = new THREE.Mesh(geo, toon(0xffffff, { map: textura, side: THREE.DoubleSide }));
+    const m = new THREE.Mesh(faixaPlana(centro, lado, idx, AMOSTRAS, PASSO, de, ate, y, repV), plasticoMapa(textura));
     m.receiveShadow = true;
     cena.add(m);
   };
-  faixa(MEIA_PISTA, -MEIA_PISTA, asfalto, 0.05, 18);
-  faixa(MEIA_PISTA + ZEBRA, MEIA_PISTA, zebra, 0.07, 4);
-  faixa(-MEIA_PISTA, -MEIA_PISTA - ZEBRA, zebra, 0.07, 4);
-
-  // acostamento de grama mais escura com florzinhas, para a pista "saltar" da tela
-  const acostamento = texturaCanvas(128, 128, (c, w, h) => {
-    c.fillStyle = TEMA.acost; c.fillRect(0, 0, w, h);
-    for (let i = 0; i < 14; i++) {
-      c.fillStyle = ["#ffffff", "#ffcc1f", "#ff8fbf"][i % 3];
-      c.beginPath(); c.arc(Math.random() * w, Math.random() * h, 2.5, 0, Math.PI * 2); c.fill();
-    }
-  }, { repetir: true });
+  faixa(MEIA_PISTA, -MEIA_PISTA, texturaAsfalto(), 0.05, 18);
+  cena.add(zebraBlocos(centro, lado, idx, AMOSTRAS, MEIA_PISTA, MEIA_PISTA + ZEBRA, 0.2, 0xec2e8c, 0xffffff));
+  cena.add(zebraBlocos(centro, lado, idx, AMOSTRAS, -MEIA_PISTA - ZEBRA, -MEIA_PISTA, 0.2, 0xec2e8c, 0xffffff));
+  const acostamento = texturaAcostamento(TEMA.acost);
   faixa(MEIA_PISTA + ZEBRA + 6, MEIA_PISTA + ZEBRA, acostamento, 0.04, 8);
   faixa(-MEIA_PISTA - ZEBRA, -MEIA_PISTA - ZEBRA - 6, acostamento, 0.04, 8);
 
-  // barreira de gizes de cera deitados nas duas beiradas (o estojo do Rabisco)
+  // barreira de blocos coloridos nas duas beiradas (o estojo do Rabisco, agora de peças de montar)
   const coresGiz = [COR3D.rosa, COR3D.ciano, COR3D.laranja, COR3D.amarelo];
   const passoGiz = Math.round(4.1 / PASSO);
   const lugares = [];
@@ -250,61 +206,38 @@ function construirMundo(img) {
     if (i < 40 || i > AMOSTRAS - 30) continue; // livre perto da largada
     for (const s of [1, -1]) lugares.push([i, s]);
   }
-  const { malhas, contorno } = barreiraGiz(lugares.length, coresGiz);
+  const malhas = barreiraBlocos(lugares.length, coresGiz);
   const aux = new THREE.Object3D();
   const usados = coresGiz.map(() => 0);
   lugares.forEach(([i, s], n) => {
     aux.position.copy(centro[i]).addScaledVector(lado[i], s * (LIMITE_MURO + 1.2)).setY(0.55);
     aux.rotation.set(0, anguloDe(tangente[i]) - Math.PI / 2, 0);
-    aux.scale.setScalar(1);
     aux.updateMatrix();
     const cor = (n >> 1) % coresGiz.length;
     malhas[cor].setMatrixAt(usados[cor]++, aux.matrix);
-    aux.scale.set(1.05, 1.12, 1.12);
-    aux.updateMatrix();
-    contorno.setMatrixAt(n, aux.matrix);
   });
   malhas.forEach((m, k) => { m.count = usados[k]; cena.add(m); });
-  cena.add(contorno);
 
-  const xadrez = texturaCanvas(256, 64, (c, w, h) => {
-    for (let x = 0; x < 16; x++) for (let y = 0; y < 4; y++) {
-      c.fillStyle = (x + y) % 2 ? "#151515" : "#ffffff";
-      c.fillRect(x * 16, y * 16, 16, 16);
-    }
-  });
-  const chegada = new THREE.Mesh(new THREE.PlaneGeometry(MEIA_PISTA * 2, 3), toon(0xffffff, { map: xadrez }));
+  const chegada = new THREE.Mesh(new THREE.PlaneGeometry(MEIA_PISTA * 2, 3), plasticoMapa(texturaXadrez()));
   chegada.rotation.x = -Math.PI / 2;
   chegada.rotation.z = anguloDe(tangente[0]) + Math.PI;
   chegada.position.copy(centro[0]).setY(0.09);
+  chegada.receiveShadow = true;
   cena.add(chegada);
 
   // Pórtico de largada: dois lápis gigantes com faixa da Educarte
-  const faixaLargada = texturaCanvas(1024, 256, (c, w, h) => {
-    c.fillStyle = "#ffffff"; c.fillRect(0, 0, w, h);
-    for (let x = 0; x < 64; x++) for (let y = 0; y < 2; y++) {
-      c.fillStyle = (x + y) % 2 ? "#151515" : "#ffffff";
-      c.fillRect(x * 16, y * 16, 16, 16);
-      c.fillRect(x * 16, h - 32 + y * 16, 16, 16);
-    }
-    const lh = 150, lw = (img.logo.width / img.logo.height) * lh;
-    c.drawImage(img.logo, 60, 53, lw, lh);
-    c.font = "800 120px 'Baloo 2', sans-serif";
-    c.textBaseline = "middle"; c.textAlign = "center";
-    c.lineWidth = 14; c.strokeStyle = "#151515"; c.strokeText("LARGADA", 660, 134);
-    c.fillStyle = "#ff7a00"; c.fillText("LARGADA", 660, 134);
-  });
+  const faixaLargada = texturaFaixaLargada(img.logo);
   portico(0, faixaLargada, [COR3D.vermelho, COR3D.amarelo]);
 
   // Ônibus da escola estacionado perto da largada
-  const bus = onibus3D(img.texLogo);
+  const bus = onibusB(img.texLogo);
   const kb = idx(AMOSTRAS - 40);
   bus.position.copy(centro[kb]).addScaledVector(lado[kb], -(MEIA_PISTA + 14));
   bus.rotation.y = anguloDe(tangente[kb]);
   cena.add(bus);
 
   // Escola no meio do circuito
-  const escola = escola3D(img.texLogo);
+  const escola = escolaB(img.texLogo);
   const lugarEscola = acharLugar(new THREE.Vector3(30, 0, 125), 34);
   escola.position.copy(lugarEscola);
   const kEsc = amostraGlobal(lugarEscola);
@@ -331,8 +264,6 @@ function construirMundo(img) {
     const o = {
       p, prop: PARC.larguraMax / PARC.altura, ajustes: [],
       frente: new THREE.MeshBasicMaterial({ color: e.parede }),
-      lado: new THREE.MeshLambertMaterial({ color: e.parede }),
-      beiral: new THREE.MeshLambertMaterial({ color: e.beiral }),
     };
     new THREE.TextureLoader().load(`${RAIZ}/${p.foto}`, (t) => {
       t.colorSpace = THREE.SRGBColorSpace;
@@ -343,36 +274,9 @@ function construirMundo(img) {
     }, undefined, () => console.warn(`foto da parceira ${p.nome} não carregou`));
     return o;
   });
-  const CAIXA = new THREE.BoxGeometry(1, 1, 1), POSTE = new THREE.CylinderGeometry(0.35, 0.45, 1, 8);
-  const matPoste = new THREE.MeshLambertMaterial({ color: 0x6b7280 }), matVerso = new THREE.MeshLambertMaterial({ color: 0x4b5563 });
-  function predioParceiro(o) {
-    const g = new THREE.Group(), l = o.lado;
-    g.userData.dinamico = true; // muda de tamanho quando a foto chega: fica fora da junção do cenário
-    const corpo = new THREE.Mesh(CAIXA, [l, l, l, l, o.frente, l]); // face +z = frente
-    const beiral = new THREE.Mesh(CAIXA, o.beiral);
-    g.add(corpo, beiral);
-    const ajustar = (prop) => {
-      const w = Math.min(PARC.larguraMax, PARC.altura * prop), h = w / prop;
-      corpo.scale.set(w, h, PARC.prof); corpo.position.set(0, h / 2, 0);
-      beiral.scale.set(w + 1, 0.9, PARC.prof + 1.2); beiral.position.set(0, h + 0.45, 0.3);
-    };
-    ajustar(o.prop); o.ajustes.push(ajustar);
-    return g;
-  }
-  function outdoorParceiro(o) {
-    const g = new THREE.Group();
-    g.userData.dinamico = true;
-    const painel = new THREE.Mesh(CAIXA, [matVerso, matVerso, matVerso, matVerso, o.frente, matVerso]);
-    const postes = [new THREE.Mesh(POSTE, matPoste), new THREE.Mesh(POSTE, matPoste)];
-    g.add(painel, ...postes);
-    const ajustar = (prop) => {
-      const w = Math.min(PARC.outdoorLarg, PARC.outdoorAlt * prop), h = w / prop;
-      painel.scale.set(w, h, 0.5); painel.position.set(0, PARC.pe + h / 2, 0);
-      postes.forEach((p, k) => { p.scale.set(1, PARC.pe + h / 2, 1); p.position.set((k ? 1 : -1) * (w / 2 - 1.3), (PARC.pe + h / 2) / 2, -0.5); });
-    };
-    ajustar(o.prop); o.ajustes.push(ajustar);
-    return g;
-  }
+  // as lojas e os outdoors são de blocos (blocos.js): o letreiro de cada um é a foto da parceira
+  const predioParceiro = (o) => lojaB(o, ESTILO_PARCEIRO[o.p.tipo] ?? ESTILO_PARCEIRO.carros, PARC);
+  const outdoorParceiro = (o) => outdoorB(o, ESTILO_PARCEIRO[o.p.tipo] ?? ESTILO_PARCEIRO.carros, PARC);
   // acha um lugar perto da amostra i0 (alternando lado e deslocando ao longo da pista), de frente para a pista
   function colocarParceiro(o, criar, w, d, i0, ladoPreferido, recuos) {
     for (const desl of [0, 14, -14, 28, -28, 45, -45, 70, -70, 100, -100, 140, -140]) {
@@ -419,17 +323,17 @@ function construirMundo(img) {
   };
   if (PISTA.tema === "escola") {
     sortear(30, 16, (i) => {
-      const l = lapis3D(coresLapis[i % coresLapis.length], 14 + rnd() * 18, 1.4 + rnd() * 0.8);
+      const l = lapisB(coresLapis[i % coresLapis.length], 14 + rnd() * 18, 1.4 + rnd() * 0.8);
       l.rotation.z = (rnd() - 0.5) * 0.3;
       return l;
     });
-    sortear(42, 14, () => arvore3D(0.8 + rnd() * 0.6));
-    sortear(10, 14, () => livros3D());
+    sortear(42, 14, () => arvoreB(0.8 + rnd() * 0.6, Math.floor(rnd() * 4)));
+    sortear(10, 14, () => livrosB());
   } else {
     // cada tema tem três tipos de enfeite (ver pistas.js)
     TEMA.deco.forEach((tipo, k) => sortear(k === 0 ? 34 : 22, tipo === "predio" || tipo === "celeiro" ? 22 : 14, () => {
-      if (tipo === "arvore") return arvore3D(0.8 + rnd() * 0.6);
-      if (tipo === "lapis") return lapis3D(coresLapis[Math.floor(rnd() * coresLapis.length)], 14 + rnd() * 18, 1.4 + rnd() * 0.8);
+      if (tipo === "arvore") return arvoreB(0.8 + rnd() * 0.6, Math.floor(rnd() * 4));
+      if (tipo === "lapis") return lapisB(coresLapis[Math.floor(rnd() * coresLapis.length)], 14 + rnd() * 18, 1.4 + rnd() * 0.8);
       const d = decoracao(tipo, rnd);
       d.scale.setScalar(0.9 + rnd() * 0.5);
       return d;
@@ -438,12 +342,12 @@ function construirMundo(img) {
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * Math.PI * 2;
     const r = 520 + rnd() * 160;
-    const m = morro3D(90 + rnd() * 80, TEMA.morros[i % 2]);
+    const m = morroB(90 + rnd() * 80, TEMA.morros[i % 2]);
     m.position.set(30 + Math.cos(a) * r, 0, 120 + Math.sin(a) * r);
     cena.add(m);
   }
   for (let i = 0; i < 16; i++) {
-    const n = nuvem3D(1.4 + rnd() * 1.6);
+    const n = nuvemB(1.4 + rnd() * 1.6);
     n.position.set(-300 + rnd() * 660, 70 + rnd() * 60, -200 + rnd() * 640);
     cena.add(n);
   }
@@ -464,16 +368,16 @@ function acharLugar(desejado, folga) {
 function portico(i, textura, cores) {
   const g = new THREE.Group();
   for (const [s, cor] of [[1, cores[0]], [-1, cores[1]]]) {
-    const l = lapis3D(cor, 12, 1.2);
+    const l = lapisB(cor, 12, 1.2);
     l.position.x = s * (MEIA_PISTA + ZEBRA + 1.6);
     g.add(l);
   }
   if (textura) {
-    const faixa = peca(new THREE.BoxGeometry(MEIA_PISTA * 2 + 6, 4.2, 0.5), 0xffffff, { contorno: 0.3 });
-    faixa.material = [toon(0xffffff), toon(0xffffff), toon(0xffffff), toon(0xffffff),
-      toon(0xffffff, { map: textura }), toon(0xffffff, { map: textura })];
-    faixa.position.y = 11;
-    g.add(faixa);
+    // faixa de largada: viga de blocos com a faixa (logo + LARGADA) nas duas faces
+    const larg = MEIA_PISTA * 2 + 6;
+    cx(g, larg, 4.4, 0.4, 0xffffff, 0, 11, 0);
+    const mat = new THREE.MeshBasicMaterial({ map: textura });
+    for (const f of [1, -1]) { const p = new THREE.Mesh(new THREE.PlaneGeometry(larg, 4.2), mat); p.position.set(0, 11, f * 0.21); p.rotation.y = f > 0 ? 0 : Math.PI; g.add(p); }
   }
   g.position.copy(centro[i]);
   g.rotation.y = anguloDe(tangente[i]);
@@ -510,16 +414,16 @@ function criarPorticos() {
   for (const i of POSICOES_PORTICO) {
     const g = portico(i, null, [COR3D.ciano, COR3D.rosa]);
     // trave de livros por cima
-    const trave = peca(new THREE.BoxGeometry(MEIA_PISTA * 2 + 6, 1.2, 2.2), COR3D.laranja, { contorno: 0.25 });
-    trave.position.y = 12.2;
-    g.add(trave);
+    cx(g, MEIA_PISTA * 2 + 6, 1.2, 2.2, COR3D.laranja, 0, 12.2, 0);
+    pinos(g, MEIA_PISTA * 2 + 2, 1.6, 0, 12.8, 0, claro(COR3D.laranja, 0.3), 1.9);
     const placas = FAIXAS.map((lat) => {
       const m = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 4.6), new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide }));
       m.position.set(lat, 8.6, 0);
       m.rotation.y = Math.PI; // de frente para quem chega
-      const corda = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.4, 6), toon(COR3D.tinta));
-      corda.position.set(lat, 11.3, 0);
-      g.add(m, corda);
+      g.add(m);
+      // moldura de blocos em volta da placa e dois ganchos que a seguram na trave
+      for (const [w, h, dx, dy] of [[5.4, 0.4, 0, 2.5], [5.4, 0.4, 0, -2.5], [0.4, 5.4, 2.5, 0], [0.4, 5.4, -2.5, 0]]) cx(g, w, h, 0.5, COR3D.ciano, lat + dx, 8.6 + dy, 0);
+      for (const dx of [-1.6, 1.6]) cx(g, 0.3, 1.3, 0.3, 0xf4f4f4, lat + dx, 11.45, 0);
       return m;
     });
     // listras no chão mostrando as três faixas
@@ -550,7 +454,7 @@ function trocarConta(p) {
 const karts = [];
 
 function criarKart({ nome, corKart, piloto, ehJogador, humano = 0, linhaLargada, colunaLargada, img, cores }) {
-  const g = kart3D(corKart, ehJogador || humano ? img.texIcone : null, cores);
+  const g = kartB(corKart, ehJogador || humano ? img.texIcone : null, cores);
   const chassi = g.userData.chassi;
   let rabisco = null, motorista2 = null;
   if (humano === 2) {
@@ -566,7 +470,7 @@ function criarKart({ nome, corKart, piloto, ehJogador, humano = 0, linhaLargada,
     rabisco.grupo.position.set(0, 1.0 - 2.0 * rabisco.escala, -0.55); // quadril (y 2,0 do modelo) no banco
     chassi.add(rabisco.grupo);
   } else {
-    const p = pilotoLapis(piloto);
+    const p = pilotoB(piloto);
     p.position.set(0, 0.9, -0.7);
     p.scale.setScalar(1.05);
     chassi.add(p);
@@ -606,7 +510,7 @@ const texEstrela = texturaCanvas(64, 64, (c) => {
     const r = i % 2 ? 12 : 28, a = (i / 10) * Math.PI * 2 - Math.PI / 2;
     c.lineTo(32 + Math.cos(a) * r, 32 + Math.sin(a) * r);
   }
-  c.closePath(); c.fillStyle = "#ffcc1f"; c.fill(); c.lineWidth = 4; c.strokeStyle = "#151515"; c.stroke();
+  c.closePath(); c.fillStyle = "#ffcc1f"; c.fill(); c.lineWidth = 4; c.strokeStyle = "#ff9f1c"; c.stroke();
 });
 const particulas = [];
 function soltar(pos, { cor = 0xffffff, tex = texBolinha, vel = new THREE.Vector3(), vida = 0.6, tam = 1, aditivo = false, gravidade = 0 }) {
@@ -1276,7 +1180,7 @@ function desenharMapa() {
   const P = (p) => [220 - (ox + (p.x - minX) * esc), oz + (p.z - minZ) * esc];
   mapa.clearRect(0, 0, 220, 220);
   mapa.lineJoin = "round";
-  for (const [larg, cor] of [[16, "#151515"], [10, "#6b7280"]]) {
+  for (const [larg, cor] of [[16, "#24305f"], [10, "#8b93ad"]]) {
     mapa.beginPath();
     centro.forEach((c, i) => (i ? mapa.lineTo(...P(c)) : mapa.moveTo(...P(c))));
     mapa.closePath();
@@ -1290,7 +1194,7 @@ function desenharMapa() {
     mapa.arc(x, z, k.humano ? 9 : 6.5, 0, Math.PI * 2);
     mapa.fillStyle = `#${new THREE.Color(k.cor).getHexString()}`;
     mapa.fill();
-    mapa.lineWidth = 3; mapa.strokeStyle = "#151515"; mapa.stroke();
+    mapa.lineWidth = 3; mapa.strokeStyle = "#24305f"; mapa.stroke();
   }
 }
 
