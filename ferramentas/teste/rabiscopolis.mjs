@@ -371,6 +371,13 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   await t.ev("teste.entrarCasa(1)"); await espera(300); await t.ev("teste.mapaPedido()"); await espera(200);
   ok(await mm(), "mapa: dentro de casa o minimapa não aparece"); await t.ev("teste.sairCasa(); teste.mapaPedido()"); await espera(300);
   ok(!(await mm()), "mapa: ao sair de casa o minimapa volta se estava pedido"); await t.ev("teste.mapaPedido()"); await espera(200);
+  // nome em cima do Rabisco: o do cadastro da família ("Alice"); some dentro de veículo
+  const pl = await t.ev("teste.placa");
+  ok(pl?.visivel && pl.nome === "Alice", `nome: a plaquinha mostra "${pl?.nome}" em cima do Rabisco`);
+  await t.ev("teste.entrar(0)"); await espera(400);
+  ok(!(await t.ev("teste.placa.visivel")), "nome: dentro do veículo a plaquinha fica escondida");
+  await t.ev("teste.sair()"); await espera(400);
+  ok(await t.ev("teste.placa.visivel"), "nome: ao descer a plaquinha volta");
   await t.foto(`${FOTOS}largada.png`);
   await orcamento(t, 250, "TV/computador");
   // (f)

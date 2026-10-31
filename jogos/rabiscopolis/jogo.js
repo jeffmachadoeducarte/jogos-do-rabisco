@@ -9,7 +9,7 @@
 // · jogador2.js (2 jogadores: com 1 jogador só o Rabisco; o jogador 2 escolhe a criança do cadastro ou um amigo do estojo).
 // ?teste expõe window.teste.
 
-import { THREE, MAT, mesclar } from "./base3d.js";
+import { THREE, MAT, mesclar, placa } from "./base3d.js";
 import { PARCEIROS } from "../../src/parceiros.js";
 import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
 import { criarCasca, el } from "../../src/motor/casca.js";
@@ -213,6 +213,36 @@ function idadeCrianca() {
   try { const i = window.Familia?.crianca?.()?.idade; return Number.isFinite(i) ? i : null; } catch { return null; }
 }
 const nomeCrianca = () => { try { return window.Familia?.crianca?.()?.nome || null; } catch { return null; } };
+// plaquinha com o nome em pé sobre a cabeça do Rabisco: o nome do cadastro da família ou, sem cadastro, o que a criança escreveu
+// no Meu Rabisco (só neste aparelho). Até 12 letras (nome comprido mostra o primeiro nome). Sem nome, sem plaquinha.
+const nomeDaPlaca = () => {
+  const n = (nomeCrianca() || salvo.nomeRabisco || "").trim().replace(/\s+/g, " ");
+  return (n.length > 12 ? n.split(" ")[0] : n).slice(0, 12);
+};
+let placaNome = null; // { sprite, nome }
+function criarPlaca() {
+  placaNome = null;
+  atualizarPlaca();
+  document.fonts?.ready.then(() => { if (placaNome) { placaNome.nome = null; atualizarPlaca(); } });
+}
+function atualizarPlaca() {
+  if (!rabisco) return;
+  const nome = nomeDaPlaca();
+  if (!nome) { if (placaNome) placaNome.sprite.visible = false; return; }
+  if (!placaNome) {
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false }));
+    sprite.scale.set(1.25, 0.37, 1); sprite.position.y = 2.05; sprite.renderOrder = 7;
+    rabisco.grupo.add(sprite);
+    placaNome = { sprite, nome: null };
+  }
+  if (placaNome.nome !== nome) {
+    placaNome.sprite.material.map?.dispose();
+    placaNome.sprite.material.map = placa(nome, { cor: "#ec2e8c", w: 384, h: 112 });
+    placaNome.sprite.material.needsUpdate = true;
+    placaNome.nome = nome;
+  }
+  placaNome.sprite.visible = !dentro; // dentro de um veículo a plaquinha fica escondida (o teto e o vidro a cobririam)
+}
 
 function iniciar() {
   parar();
@@ -238,6 +268,7 @@ function iniciar() {
   rabisco = new Rabisco3D({ raiz: "../..", altura: 1.8 });
   cena.add(rabisco.grupo);
   otimizarRabisco(rabisco);
+  criarPlaca();
   if (salvo.roupas?.[0] && PROFISSOES[salvo.roupas[0]]) setTimeout(() => vestir(salvo.roupas[0]), 0);
   // celular: neblina mais perto, menos blocos e carros desenhados
   if (qualidade.perfil.toque) { mundo.alcance = 95; mundo.contornoAte = 20; mundo.detalheAte = 35; cena.fog.far = 95; cena.fog.near = 40; }
@@ -623,6 +654,7 @@ function pertoDeVeiculo() {
 function entrar(v) {
   if (dentro) return;
   dentro = v;
+  atualizarPlaca();
   j.vel.set(0, 0, 0);
   v.g.add(rabisco.grupo); const a = v.g.userData.motorista; rabisco.grupo.position.set(a.x, a.y - 2.0 * rabisco.escala, a.z); rabisco.grupo.rotation.set(0, 0, 0);
   v.g.userData.aoEntrar?.(rabisco); // moto: põe o capacete
@@ -658,6 +690,7 @@ function sair() {
   if (!livreSaida && (v.tipo === "jetski" || v.tipo === "lancha")) { dizer(v.tipo === "jetski" ? "Jet ski" : "Lancha", "Encoste na areia, no píer ou na ilha para descer.", 2600); return; }
   const [ox, oz] = livreSaida ?? op[0];
   dentro = null; v.vel = 0; v.jatoLigado = false;
+  atualizarPlaca();
   radioUI?.sairDoCarro(); avisoRadio?.esconder();
   toque?.especial(null);
   cena.add(rabisco.grupo); rabisco.grupo.visible = true;
@@ -1176,7 +1209,7 @@ if (params.has("teste")) window.teste = {
   get mundo() { return mundo; }, get dentro() { return dentro; }, get contexto() { return contexto?.rotulo ?? null; },
   get salvo() { return carregar(); }, get fone() { return fone; }, get transito() { return transito; }, get moradores() { return moradores; },
   get ceu() { return ceu; }, get estat() { return { ...estat, fps: qualidade?.fps ?? 0, blocos: mundo.blocosVisiveis(), malhas: mundo.malhas }; },
-  get vivo() { return vivo; }, get mapaLigado() { return mapaLigado; }, mapaPedido, Engrenagem, get tempo() { return estat.tj ?? 0; }, get fis() { return fis; },
+  get vivo() { return vivo; }, get mapaLigado() { return mapaLigado; }, mapaPedido, Engrenagem, get placa() { return placaNome ? { visivel: placaNome.sprite.visible, nome: placaNome.nome, y: placaNome.sprite.position.y } : null; }, get tempo() { return estat.tj ?? 0; }, get fis() { return fis; },
   get modo() { return emCasa ? "casa" : emLugar ? "lugar" : dentro ? "veiculo" : "rua"; },
   get emLugar() { return emLugar ? { id: emLugar.id, est: emLugar.est, interativos: emLugar.interativos.map((i) => ({ id: i.id, rotulo: i.rotulo, pos: i.pos })) } : null; },
   get sorveteUI() { return sorveteUI; },
