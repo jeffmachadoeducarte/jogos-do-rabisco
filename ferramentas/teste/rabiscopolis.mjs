@@ -369,7 +369,7 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   await t.ev("teste.mapaPedido()"); await espera(200);
   ok(await mm(), "mapa: o pedido esconde o minimapa de novo");
   await t.ev("teste.entrarCasa(1)"); await espera(300); await t.ev("teste.mapaPedido()"); await espera(200);
-  ok(await mm(), "mapa: dentro de casa o minimapa não aparece"); await t.ev("teste.sairCasa(); teste.mapaPedido()"); await espera(300);
+  ok(await mm(), "mapa: dentro de casa o minimapa não aparece"); await t.ev("teste.sairCasa()"); await espera(400); // o pedido feito lá dentro já vale: ao sair o minimapa aparece
   ok(!(await mm()), "mapa: ao sair de casa o minimapa volta se estava pedido"); await t.ev("teste.mapaPedido()"); await espera(200);
   // nome em cima do Rabisco: o do cadastro da família ("Alice"); some dentro de veículo
   const pl = await t.ev("teste.placa");
