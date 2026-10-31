@@ -224,7 +224,9 @@ body.touch .oracao-rp { top: 6%; width: min(620px, 60vw); padding: 10px 16px 8px
   .mrb-cartao { grid-template-columns: 1fr; grid-template-rows: minmax(0, 0.8fr) minmax(0, 1.2fr); height: min(760px, 94vh); }
 }
 @media (max-height: 520px) and (orientation: landscape) {
-  .mrb-cartao { width: 98vw; height: 94vh; gap: 8px; padding: 6px; border-width: 5px; grid-template-columns: 0.8fr 1.2fr; }
+  .meu-rb { align-items: end; }
+  .mrb-cartao { width: 98vw; height: calc(100% - 52px); margin-bottom: 4px; gap: 8px; padding: 6px; border-width: 5px; grid-template-columns: 0.8fr 1.2fr; } /* deixa os botões da casca (✕, pausa, ⚙️) livres no alto */
+  .mrb-aba .mrb-rot { display: none; } .mrb-abas { flex-wrap: nowrap; }
   .mrb-titulo { font-size: 18px; }
   .mrb-aba { padding: 0 8px 1px; font-size: 13px; } .mrb-aba .mrb-ic { font-size: 18px; }
   .mrb-opcoes { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; }
