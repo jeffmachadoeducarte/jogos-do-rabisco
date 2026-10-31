@@ -1,6 +1,5 @@
-// O cadastro completo da família abre no MÁXIMO UMA VEZ por aparelho (celular/tablet/computador):
-// depois de salvar, de "Agora não" ou de fechar a tela, não abre sozinho de novo. O botão "Família" continua
-// abrindo para editar. Em /tv, ?tv=1 e 2 jogadores o cadastro completo nunca abre.
+// Cadastro: tocar num jogo nunca abre tela nenhuma e o jogo abre direto. O botão "Família" continua opcional
+// (portão dos pais + formulário) e salva. Em /tv, ?tv=1 e 2 jogadores também não abre nada.
 // Uso: node --experimental-websocket ferramentas/teste/cadastro-uma-vez.mjs [http://localhost:8080]
 import { abrir, espera } from "./cdp.mjs";
 const BASE = process.argv[2] || "http://localhost:8080";
@@ -11,7 +10,8 @@ const PORTAO = `!!document.querySelector(".portao-tela")`;
 const FORM = `!!document.querySelector("#fam-resp-nome")`;
 const ALGUM = `!!document.querySelector(".familia-tela")`;
 const GOLPE = `(() => { const t = document.querySelector(".portao-conta")?.textContent.split("×").map(Number); const i = document.querySelector("#portao-resposta"); i.value = String(t[0] * t[1]); i.form.requestSubmit(); })()`;
-const clicaJogo = `(() => { const a = document.querySelector("a.jogo.pronto"); if (!a) return false; a.addEventListener("click", (e) => e.preventDefault(), { once: true }); a.click(); return true; })()`;
+// clica no jogo e devolve se o clique foi deixado seguir (nenhum preventDefault = o link abre o jogo)
+const clicaJogo = `(() => { const a = document.querySelector("a.jogo.pronto"); if (!a) return "sem-jogo"; let seguiu = false; a.addEventListener("click", (e) => { seguiu = !e.defaultPrevented; e.preventDefault(); }, { once: true }); a.click(); return seguiu ? "segue" : "barrado"; })()`;
 const tocarJogo = async (t) => { await t.ev(`document.querySelectorAll("[data-faixa]")[0]?.click()`); await espera(300); return t.ev(clicaJogo); };
 
 async function nova(opts, url, antes = "") {
@@ -23,76 +23,53 @@ async function nova(opts, url, antes = "") {
   return t;
 }
 
+
 for (const [nome, opts] of [["celular", { mobile: true, largura: 390, altura: 844 }], ["tablet", { mobile: true, largura: 820, altura: 1180 }], ["computador", { largura: 1280, altura: 800 }]]) {
   console.log(`\n== ${nome}`);
-  // 1) primeira visita: abre 1 vez; "Voltar" no portão; depois não abre mais (nem recarregando)
+  // 1) sem cadastro: tocar em jogos não abre tela e o clique segue para o jogo
   let t = await nova(opts, `${BASE}/index.html`);
   ok(!(await t.ev(ALGUM)), "ao abrir o portal nada abre sozinho");
-  ok(await tocarJogo(t), "tocou num jogo");
-  ok(await ate(t, FORM), "1o toque: cadastro abre direto");
-  ok(!(await t.ev(PORTAO)), "1o toque: sem portão dos pais");
-  await t.ev(`[...document.querySelectorAll(".familia-tela button")].find((b) => b.textContent === "Agora não").click()`);
-  await espera(400);
-  ok(!(await t.ev(ALGUM)), "Agora não fecha tudo");
-  for (let i = 0; i < 3; i++) { await t.ev(clicaJogo); await espera(300); }
-  ok(!(await t.ev(ALGUM)), "toques seguintes em jogos não abrem o cadastro");
-  await t.ev(`location.reload()`); await espera(2500); await ate(t, `document.readyState === "complete" && !!document.getElementById("familia")`);
-  await t.ev(clicaJogo); await espera(400);
-  ok(!(await t.ev(ALGUM)), "depois de recarregar também não abre");
-  // (tocar num jogo agora segue para o jogo sem cadastro: volta ao portal)
-  await t.cmd("Page.navigate", { url: `${BASE}/index.html` });
-  await espera(1500);
-  // botão Família continua abrindo para editar
-  await ate(t, `!!document.getElementById("familia")`, 15000); await t.ev(`document.getElementById("familia").click()`);
+  ok((await tocarJogo(t)) === "segue", "1o toque num jogo: o link segue (nada o barra)");
+  await espera(500);
+  ok(!(await t.ev(ALGUM)) && !(await t.ev(PORTAO)), "1o toque: nenhuma tela de cadastro nem portão");
+  for (let i = 0; i < 3; i++) { ok((await t.ev(clicaJogo)) === "segue", `toque ${i + 2}: segue`); await espera(200); }
+  ok(!(await t.ev(ALGUM)), "toques seguintes não abrem cadastro");
+  ok(await t.ev(`localStorage.getItem("rabisco.familia.perguntou") === null && !localStorage.getItem("rabisco.familia")`), "nada foi marcado nem salvo");
+  // abrirCadastro obrigatório: resolve true na hora, sem tela
+  const r = await t.ev(`(async () => { const F = (await import("/src/motor/familia.js")).Familia; const r = await Promise.race([F.abrirCadastro({ obrigatorio: true }), new Promise((x) => setTimeout(() => x("travou"), 1500))]); return r + "|" + !!document.querySelector(".familia-tela"); })()`);
+  ok(r === "true|false", `abrirCadastro obrigatório resolve true sem abrir (${r})`);
+  // botão Família continua abrindo (portão dos pais) e dá para cancelar
+  await t.ev(`document.getElementById("familia").click()`);
   ok(await ate(t, PORTAO), "botão Família abre o portão");
   await t.ev(GOLPE);
-  ok(await ate(t, FORM), "botão Família abre o formulário para editar");
+  ok(await ate(t, FORM), "botão Família abre o formulário");
   await t.ev(`[...document.querySelectorAll(".familia-tela button")].find((b) => b.textContent === "Agora não").click()`);
   await espera(300);
   ok(!(await t.ev(ALGUM)), "Agora não fecha");
   await t.fechar();
 
-  // 2) primeira visita: preenche e salva; depois nunca mais abre sozinho
+  // 2) pelo botão Família: preenche e salva; depois os jogos seguem normalmente
   t = await nova(opts, `${BASE}/index.html`);
-  await tocarJogo(t);
-  ok(await ate(t, FORM), "salvar: formulário abre direto, sem portão, uma vez");
+  await t.ev(`document.getElementById("familia").click()`);
+  await ate(t, PORTAO); await t.ev(GOLPE);
+  ok(await ate(t, FORM), "salvar: formulário abre pelo botão Família");
   await t.ev(`(() => { const s = (id, v) => { const e = document.querySelector("#fam-" + id); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); };
     s("resp-nome", "Mae Teste"); s("email", "m@t.com"); s("crianca-nome", "Alice"); s("genero", "menina"); document.querySelector(".familia-form").requestSubmit(); })()`);
   await espera(800);
   ok(await t.ev(`!!JSON.parse(localStorage.getItem("rabisco.familia"))?.crianca?.nome`), "cadastro foi salvo");
-  await t.ev(`location.href = location.href`); await espera(2500); await ate(t, `document.readyState === "complete" && !!document.getElementById("familia")`);
-  await t.ev(clicaJogo); await espera(400);
-  ok(!(await t.ev(ALGUM)), "depois de salvar não abre mais");
-  await t.fechar();
-
-  // 3) "Agora não" no formulário: não abre de novo
-  t = await nova(opts, `${BASE}/index.html`);
-  await tocarJogo(t);
-  await ate(t, FORM);
-  await t.ev(`[...document.querySelectorAll(".familia-tela button")].find((b) => b.textContent === "Agora não").click()`);
-  await espera(300);
-  await t.ev(clicaJogo); await espera(400);
-  ok(!(await t.ev(ALGUM)), "depois de Agora não, tocar noutro jogo não abre");
-  await t.fechar();
-
-  // 4) recarregar com o portão aberto conta como pergunta feita
-  t = await nova(opts, `${BASE}/index.html`);
-  await tocarJogo(t); await ate(t, FORM);
-  await t.ev(`location.reload()`); await espera(2500); await ate(t, `document.readyState === "complete" && !!document.getElementById("familia")`);
-  await t.ev(clicaJogo); await espera(400);
-  ok(!(await t.ev(ALGUM)), "recarregar com o cadastro aberto não faz perguntar de novo");
+  await t.ev(`document.querySelectorAll("[data-faixa]")[0]?.click()`); await espera(300);
+  ok((await t.ev(clicaJogo)) === "segue", "depois de salvar, o jogo segue");
+  ok(!(await t.ev(ALGUM)), "depois de salvar não abre cadastro");
   await t.fechar();
 }
 
-console.log("\n== localStorage bloqueado (modo privado): no máximo uma vez por sessão, sem laço");
+console.log("\n== localStorage bloqueado (modo privado): o jogo também segue");
 {
   const bloqueia = `for (const k of ["localStorage"]) Object.defineProperty(window, k, { get() { throw new DOMException("bloqueado", "SecurityError"); } });`;
   const t = await nova({ mobile: true, largura: 390, altura: 844 }, `${BASE}/index.html`, bloqueia);
-  await tocarJogo(t);
-  ok(await ate(t, FORM), "bloqueado: abre a 1a vez");
-  await t.ev(`[...document.querySelectorAll(".familia-tela button")].find((b) => b.textContent === "Agora não").click()`); await espera(300);
-  for (let i = 0; i < 3; i++) { await t.ev(clicaJogo); await espera(300); }
-  ok(!(await t.ev(ALGUM)), "bloqueado: não vira laço");
+  ok((await tocarJogo(t)) === "segue", "bloqueado: o toque segue para o jogo");
+  await espera(400);
+  ok(!(await t.ev(ALGUM)), "bloqueado: nenhuma tela");
   await t.fechar();
 }
 
@@ -106,7 +83,6 @@ for (const [nome, url, antes] of [
   const t = await nova({ largura: 1280, altura: 720 }, url, antes);
   if (nome.startsWith("portal")) { await tocarJogo(t); await espera(600); }
   ok(!(await t.ev(ALGUM)), `${nome}: sem portão nem cadastro`);
-  // chamada direta como o portal faria: resolve true na hora, sem tela
   const r = await t.ev(`(async () => { const F = window.Familia || (await import("/src/motor/familia.js")).Familia; const r = await Promise.race([F.abrirCadastro({ obrigatorio: true }), new Promise((x) => setTimeout(() => x("travou"), 1500))]); return r + "|" + !!document.querySelector(".familia-tela"); })()`);
   ok(r === "true|false", `${nome}: abrirCadastro obrigatório resolve sem abrir (${r})`);
   await t.fechar();

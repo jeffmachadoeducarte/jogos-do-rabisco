@@ -7,12 +7,12 @@
 //   Familia.temFoto()        → true/false
 //   Familia.completo()       → cadastro mínimo feito neste aparelho
 //   Familia.aoMudar(cb)      → chama cb(perfil) sempre que o cadastro for salvo
-//   await Familia.abrirCadastro({ obrigatorio: true })  → tela direto (sem portão); resolve true (o jogo segue)
+//   await Familia.abrirCadastro({ obrigatorio: true })  → não abre tela; resolve true na hora (o jogo segue)
 //   await Familia.abrirCadastro()  → portão dos pais + tela (botão Família); resolve true se salvou
 //
 // Privacidade: a foto da criança nunca sai do aparelho (não entra no envio).
 // Segurança: o botão Família (editar cadastro e foto) fica atrás do "portão dos pais" (uma conta de multiplicar, números sorteados).
-// O cadastro automático do primeiro jogo abre direto, sem portão.
+// Tocar num jogo nunca abre cadastro.
 // Foto: até 3 tentativas com orientação; o rosto é achado NO APARELHO (FaceDetector nativa ou o módulo opcional
 // DETECTOR_ROSTO de src/config.js), só vale foto com exatamente 1 rosto de tamanho razoável, e só o rostinho é
 // recortado em círculo (256 px): o resto da imagem é descartado na hora. Sem detector no navegador (ex.: iPhone),
@@ -149,48 +149,22 @@ const h = (tag, props = {}, filhos = []) => {
 };
 
 let telaAberta = null;
-// obrigatorio: cadastro automático do primeiro jogo (no máximo uma vez, ver abaixo), abre a tela direto, sem portão.
+// obrigatorio: true não abre nada e resolve true (ver abaixo).
 // titulo/intro: textos do topo. Sem obrigatorio (botão Família): antes da tela, o portão dos pais; se a pessoa voltar, nada abre.
 let portaoEmCurso = null;
 //
-// Regra do cadastro "obrigatório" (o que o portal abre sozinho ao tocar num jogo): aparece NO MÁXIMO UMA VEZ por
-// aparelho. Marcamos "já perguntamos" ao abrir (salvando, "Agora não", fechar a tela, Esc ou recarregar a página
-// no meio contam). Depois disso, e na TV / 2 jogadores, ele não abre e resolve true: o jogo segue sem cadastro.
-// Só o botão "Família" (obrigatorio: false) abre sempre, para editar.
-const CHAVE_PERGUNTOU = "rabisco.familia.perguntou";
-let perguntouNaMemoria = false; // último recurso quando nem localStorage nem sessionStorage funcionam
-function jaPerguntou() {
-  if (perguntouNaMemoria) return true;
-  try { if (localStorage.getItem(CHAVE_PERGUNTOU)) return true; } catch { /* bloqueado (modo privado) */ }
-  try { if (sessionStorage.getItem(CHAVE_PERGUNTOU)) return true; } catch { /* bloqueado */ }
-  return false;
-}
-function marcarPerguntou() {
-  perguntouNaMemoria = true;
-  const v = new Date().toISOString();
-  try { localStorage.setItem(CHAVE_PERGUNTOU, v); } catch { /* sem localStorage: vale a sessão */ }
-  try { sessionStorage.setItem(CHAVE_PERGUNTOU, v); } catch { /* vale só até recarregar */ }
-}
-// TV (/tv, ?tv=1, vaga de TV na sessão) e partida de 2 jogadores: ali ninguém preenche o cadastro completo
-function emTvOuDoisJogadores() {
-  try {
-    const q = new URLSearchParams(location.search);
-    if (q.get("tv") === "1" || /\/tv(\/|$|index\.html)/.test(location.pathname)) return true;
-    if (sessionStorage.getItem("rabisco.tv") || sessionStorage.getItem("rabisco.jogadores") === "2") return true;
-  } catch { /* sem sessionStorage: segue */ }
-  return false;
-}
+// Regra do cadastro "obrigatório" (o que o portal abria sozinho ao tocar num jogo): não existe mais. Com
+// obrigatorio: true, abrirCadastro resolve true na hora, sem tela e sem marcar nada: o jogo segue direto.
+// Os jogos funcionam sem cadastro (comportamento neutro). Só o botão "Família" (obrigatorio: false) abre,
+// atrás do portão dos pais, para informar o nome da criança (a narradora usa) e a foto.
 export function abrirCadastro(opcoes = {}) {
   if (telaAberta) return telaAberta.promessa;
   if (portaoEmCurso) return portaoEmCurso;
   const sozinho = Boolean(opcoes.obrigatorio);
-  if (sozinho && (completo() || jaPerguntou() || emTvOuDoisJogadores())) return Promise.resolve(true);
-  if (sozinho) marcarPerguntou();
-  // automático: sem portão (a tela abre direto); botão Família: portão dos pais antes da tela
-  portaoEmCurso = (sozinho ? Promise.resolve(true) : portaoDosPais({ texto: "O cadastro e a foto da criança ficam aqui." }))
-    .then((ok) => { portaoEmCurso = null; return ok ? montarCadastro(opcoes) : false; })
-    // o cadastro automático nunca trava o jogo: salvou, "Agora não" ou voltou, a criança segue para brincar
-    .then((salvou) => (sozinho ? true : salvou));
+  if (sozinho) return Promise.resolve(true); // sem tela: o jogo segue direto
+  // botão Família: portão dos pais antes da tela
+  portaoEmCurso = portaoDosPais({ texto: "O cadastro e a foto da criança ficam aqui." })
+    .then((ok) => { portaoEmCurso = null; return ok ? montarCadastro(opcoes) : false; });
   return portaoEmCurso;
 }
 

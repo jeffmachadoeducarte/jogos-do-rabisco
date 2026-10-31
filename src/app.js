@@ -203,17 +203,6 @@ function desenharFamilia() {
 desenharFamilia();
 Familia.aoMudar(desenharFamilia);
 btnFamilia.addEventListener("click", () => Familia.abrirCadastro({ obrigatorio: false, titulo: "Nossa família" }));
-// um jogo só abre depois do cadastro (uma vez por aparelho); o link segue depois de salvar
-const pedirCadastroAntes = (seletor) => async (e) => {
-  const a = e.target.closest(seletor);
-  if (!a || Familia.completo() || params.has("semcadastro")) return;
-  e.preventDefault();
-  const salvou = await Familia.abrirCadastro({ obrigatorio: true });
-  if (salvou) { comemorar(); setTimeout(() => { location.href = a.href; }, 350); }
-};
-$("jogos").addEventListener("click", pedirCadastroAntes("a.jogo.pronto"));
-// destaque da tela inicial (Rabiscolândia): mesma regra do cadastro
-$("destaque").addEventListener("click", pedirCadastroAntes("a.destaque"));
 $("destaque").querySelector("img").src = `assets/portal-capas/rabiscopolis.webp?v=${CAPAS.versao}`;
 // no celular em pé e no tablet o destaque fica logo acima das idades: acompanha a altura delas
 if ("ResizeObserver" in window) {
