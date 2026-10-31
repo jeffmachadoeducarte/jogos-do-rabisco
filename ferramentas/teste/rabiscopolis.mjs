@@ -213,9 +213,9 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
         await inter("halter", 1000);
         await inter("esteira", 1500); await t.foto(`${FOTOS}f4-rise-esteira.png`);
         ok(await ev("teste.trava !== null"), "exercício: na esteira o Rabisco fica correndo no lugar");
-        await espera(3600);
-        for (let k = 0; k < 5; k++) { await inter("halter", k === 2 ? 350 : 900); if (k === 2) await t.foto(`${FOTOS}f4-rise-halter.png`); }
-        await espera(1600);
+        await ate(t, "teste.trava === null", 40000); // a esteira corre em tempo de jogo: em máquina lenta demora mais
+        for (let k = 0; k < 5; k++) { await inter("halter", k === 2 ? 350 : 900); if (k === 2) await t.foto(`${FOTOS}f4-rise-halter.png`); await ate(t, "teste.trava === null", 20000); }
+        await ate(t, `teste.missoes.etapa === ${"$"}{e + 1}`, 20000);
         ok((await ev("teste.missoes.etapa")) === e + 1, "exercício: esteira + halter 5 vezes terminam o treino");
       }
       await ev("teste.sairLugar()"); await espera(500);
