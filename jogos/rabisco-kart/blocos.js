@@ -37,6 +37,8 @@ export function plasticoMapa(mapa, extra = {}) {
   return new Plast({ map: mapa, roughness: 0.5, metalness: 0, ...extra });
 }
 const VIDRO = () => plastico(0x9be7ff, { rugo: 0.2 });
+// cor de moldura: as muito escuras (J.E, Rise Up) clareiam um pouco, para as costas dos prédios e outdoors não virarem um paredão preto
+const moldura = (hex) => { const c = new THREE.Color(hex), l = 0.3 * c.r + 0.59 * c.g + 0.11 * c.b; return l < 0.3 ? c.lerp(new THREE.Color(0x2f7de1), 0.6).getHex() : hex; };
 const claro = (hex, f) => new THREE.Color(hex).lerp(new THREE.Color(0xffffff), f).getHex();
 const escuro = (hex, f) => new THREE.Color(hex).multiplyScalar(f).getHex();
 const AZUL = 0x24305f; // "preto" do plástico: pneu, pupila, fresta (azul-marinho, nunca contorno)
@@ -254,7 +256,7 @@ export function onibusB(texLogo) {
   const logo = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 2.4), new THREE.MeshBasicMaterial({ map: texLogo, transparent: true }));
   logo.position.set(2.53, 3.4, 3.2); logo.rotation.y = Math.PI / 2; g.add(logo);
   for (const [x, z] of [[-2.3, -4.5], [2.3, -4.5], [-2.3, 4.5], [2.3, 4.5]]) {
-    const r = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.8, 14), plastico(AZUL)); r.rotation.z = Math.PI / 2; r.position.set(x, 1.1, z); r.castShadow = true; g.add(r);
+    const r = new THREE.Mesh(geoOitavo(1.1, 0.8), plastico(AZUL)); r.rotation.z = Math.PI / 2; r.position.set(x, 1.1, z); r.castShadow = true; g.add(r);
     const c = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.84, 8), plastico(0xdfe6ee)); c.rotation.z = Math.PI / 2; c.position.set(x, 1.1, z); g.add(c);
   }
   return g;
@@ -315,7 +317,7 @@ export function decoracaoB(tipo, rnd) {
 export function lojaB(o, estilo, PARC) {
   const g = new THREE.Group();
   g.userData.dinamico = true;
-  const parede = new THREE.Color(estilo.parede).getHex(), beiral = new THREE.Color(estilo.beiral).getHex();
+  const parede = new THREE.Color(estilo.parede).getHex(), beiral = moldura(new THREE.Color(estilo.beiral).getHex());
   const montar = (prop) => {
     while (g.children.length) g.remove(g.children[0]);
     const W = Math.min(PARC.larguraMax, PARC.altura * prop), D = PARC.prof, T = 4.2;
@@ -345,7 +347,7 @@ export function lojaB(o, estilo, PARC) {
 export function outdoorB(o, estilo, PARC) {
   const g = new THREE.Group();
   g.userData.dinamico = true;
-  const beiral = new THREE.Color(estilo.beiral).getHex();
+  const beiral = moldura(new THREE.Color(estilo.beiral).getHex());
   const montar = (prop) => {
     while (g.children.length) g.remove(g.children[0]);
     const w = Math.min(PARC.outdoorLarg, PARC.outdoorAlt * prop), h = w / prop, sub = new THREE.Group();
@@ -363,6 +365,9 @@ export function outdoorB(o, estilo, PARC) {
 const mesclarCaixas = (grupo) => mesclarBlocos(grupo);
 
 // ------------------------------------------------------------------ karts
+// roda de 8 lados (prisma, com uma face reta embaixo), do jeito de bloco; compartilhada por tamanho
+const oitavos = new Map();
+const geoOitavo = (r, larg) => { const k = `${r}|${larg}`; if (!oitavos.has(k)) oitavos.set(k, new THREE.CylinderGeometry(r, r, larg, 8).rotateY(Math.PI / 8)); return oitavos.get(k); };
 // Kart de blocos. Mesma interface do kart3D: userData.chassi, volante, escapes, rodas (children[0] e [1] giram em x).
 export function kartB(cor, texEmblema, { capo: corCapo = cor, detalhe = AZUL } = {}) {
   const g = new THREE.Group(), chassi = new THREE.Group();
@@ -397,8 +402,12 @@ export function kartB(cor, texEmblema, { capo: corCapo = cor, detalhe = AZUL } =
   g.userData.rodas = [];
   for (const [x, z, rr] of [[-1.12, 1.05, 0.44], [1.12, 1.05, 0.44], [-1.18, -1.05, 0.54], [1.18, -1.05, 0.54]]) {
     const roda = new THREE.Group();
-    const pneu = new THREE.Mesh(new THREE.CylinderGeometry(rr, rr, 0.52, 14), plastico(AZUL)); pneu.rotation.z = Math.PI / 2; pneu.castShadow = true;
-    const miolo = new THREE.Mesh(geoCaixa(0.58, rr * 1.0, rr * 1.0), plastico(corCapo));
+    const pneu = new THREE.Mesh(geoOitavo(rr, 0.52), plastico(AZUL)); pneu.rotation.z = Math.PI / 2; pneu.castShadow = true;
+    // miolo: tampa de 8 lados com uma barra por cima (a barra mostra a roda girando); gira junto com o pneu
+    const miolo = new THREE.Group();
+    const tampa = new THREE.Mesh(geoOitavo(rr * 0.58, 0.58), plastico(corCapo)); tampa.rotation.z = Math.PI / 2;
+    const barra = new THREE.Mesh(geoCaixa(0.62, rr * 0.16, rr * 0.9), plastico(0xf4f4f4));
+    miolo.add(tampa, barra);
     roda.add(pneu, miolo);
     roda.position.set(x, rr, z); roda.userData.frente = z > 0; g.add(roda); g.userData.rodas.push(roda);
   }
