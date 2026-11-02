@@ -295,7 +295,12 @@ function construirMundo(img) {
     }
     return false;
   }
-  lojas.forEach((o, k) => colocarParceiro(o, predioParceiro, PARC.larguraMax, PARC.prof, 30 + Math.round((k * AMOSTRAS) / lojas.length), 1, [30, 36, 44, 56]));
+  const lojasDeFora = [];
+  lojas.forEach((o, k) => {
+    if (!colocarParceiro(o, predioParceiro, PARC.larguraMax, PARC.prof, 30 + Math.round((k * AMOSTRAS) / lojas.length), 1, [30, 36, 44, 56])) lojasDeFora.push(o.p.nome);
+  });
+  if (lojasDeFora.length) console.warn(`pista ${PISTA.numero}: sem lugar para ${lojasDeFora.length} loja(s) parceira(s): ${lojasDeFora.join(", ")}`);
+  if (params.has("teste")) window.lojasKart = { total: lojas.length, deFora: lojasDeFora };
   for (let k = 0; k < 9; k++) {
     colocarParceiro(lojas[(k + 1) % lojas.length], outdoorParceiro, PARC.outdoorLarg, 1, Math.round(((k + 0.5) / 9) * AMOSTRAS) + 140, k % 2 ? -1 : 1, [30, 36, 46]);
   }

@@ -16,6 +16,7 @@ const vigia = setTimeout(() => { console.log("✗ o teste travou (o navegador ca
 const ok = (c, msg) => { console.log(c ? "✓" : "✗", msg); if (!c) falhas++; };
 const ate = async (t, expr, ms = 40000, passo = 250) => { const fim = Date.now() + ms; while (Date.now() < fim) { if (await t.ev(expr).catch(() => false)) return true; await espera(passo); } return false; };
 // 404 das vozes ainda não geradas (rp-*) e do banco de nomes é esperado
+const esperaJogo = async (t, seg) => { const t0 = await t.ev("teste.tempo"); while ((await t.ev("teste.tempo")) - t0 < seg) await espera(30); };
 const errosDeVerdade = (t) => t.erros.filter((e) => !/assets\/voz\/(rp-|nomes\/)/.test(e));
 const PEDIDO = /conecte um controle|ligue (o|um) controle|leia o qr|aperte um bot[aã]o|em breve: o jogador 2|jogador 2 \(|desconectou|conectou numa tv/i;
 const FAMILIA = `localStorage.setItem("rabisco.familia", JSON.stringify({ responsavel: { nome: "Teste", email: "t@t" }, crianca: { nome: "Alice", genero: "menina" } }))`;
@@ -87,8 +88,8 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   await ev("teste.ir(0, 33); teste.olhar(Math.PI)"); await espera(1200);
   const custo = await ev("(() => { const a = teste.medir().semSombra.calls; teste.missoes.grupo.visible = false; const b = teste.medir().semSombra.calls; teste.missoes.grupo.visible = true; return { com: a, sem: b, montados: teste.missoes.montados() }; })()");
   ok(custo.com - custo.sem <= 0, `na praça as missões não custam chamadas de desenho (${custo.sem} → ${custo.com}; montados perto: ${custo.montados.join(", ") || "nenhum"})`);
-  const perto = async (x, z, dx = 1.6, dz = 1.2) => { await ev(`teste.ir(${x + dx}, ${z + dz})`); await espera(700); };
-  const acao = async () => { await ev("teste.acao()"); await espera(300); };
+  const perto = async (x, z, dx = 1.6, dz = 1.2) => { await ev(`teste.ir(${x + dx}, ${z + dz})`); await esperaJogo(t, 0.5); }; // em tempo de jogo: com a máquina carregada os quadros demoram
+  const acao = async () => { await ev("teste.acao()"); await esperaJogo(t, 0.3); };
   const posNpc = (mid, id) => ev(`teste.missoes.npc('${mid}', '${id}')`);
   const fotoPerto = async (nome, x, z, ang = 0.6, dist = 7, alt = 3.4, ay = 1) => { if (!fotos) return; await ev(`teste.vista([${x} + Math.sin(${ang}) * ${dist}, ${alt}, ${z} + Math.cos(${ang}) * ${dist}], [${x}, ${ay}, ${z}])`); await espera(900); await t.foto(`${FOTOS}missao-${nome}.png`); await ev("teste.vista(null)"); };
   const info = () => ev("teste.missoes.etapaInfo()");
@@ -164,7 +165,7 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
         const b = (await info()).bau; if (!b) break;
         await perto(b.x, b.z, 1.2, 1.2);
         if (k === 0) await foto("f1-tesouro-bau", b.x, b.z, 0.6, 5, 2.6, 0.6);
-        const c = await ev("teste.contexto"); await acao(); await espera(k === E.pistas.length - 1 ? 2600 : 2000);
+        const c = await ev("teste.contexto"); await acao(); await esperaJogo(t, k === E.pistas.length - 1 ? 2.6 : 2);
         ok(c?.includes("baú"), `tesouro: abriu o baú ${k + 1} ("${c}")`);
       }
       await esperaEtapa(m, e);
@@ -210,7 +211,7 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
         await inter("contadora", 1000); await t.foto(`${FOTOS}f4-crescente-contadora.png`);
         ok(await ev("teste.missoes.levando.includes('alvara') && teste.missoes.naMao === 'alvara'"), "alvara: a contadora entregou o alvará e ele foi para a mão do Rabisco");
       } else {
-        await inter("halter", 1000);
+        await inter("halter", 1000); await ate(t, "teste.trava === null", 40000); // espera o halter acabar (em tempo de jogo) antes de ir para a esteira
         await inter("esteira", 1500); await t.foto(`${FOTOS}f4-rise-esteira.png`);
         ok(await ev("teste.trava !== null"), "exercício: na esteira o Rabisco fica correndo no lugar");
         await ate(t, "teste.trava === null", 40000); // a esteira corre em tempo de jogo: em máquina lenta demora mais
@@ -478,17 +479,17 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   await espera(400);
   await t.foto(`${FOTOS}helicoptero-no-heliponto.png`);
   await t.ev("teste.voar(true)");
-  await espera(2500);
+  await esperaJogo(t, 2.5); // em tempo de jogo: com a máquina carregada os quadros demoram e o relógio de parede engana
   const alt1 = await t.ev("teste.dentro.alt");
   const h0 = await t.ev("[teste.dentro.pos.x, teste.dentro.pos.z]");
   await t.ev("teste.volante(1, 0.15, { subir: false })");
   let furou = false;
-  for (let i = 0; i < 10; i++) { await espera(250); if (await t.ev("teste.mundo.solidos.some((s) => s.y1 > teste.dentro.alt + 0.3 && teste.dentro.pos.x > s.x0 && teste.dentro.pos.x < s.x1 && teste.dentro.pos.z > s.z0 && teste.dentro.pos.z < s.z1)")) furou = true; }
+  for (let i = 0; i < 10; i++) { await esperaJogo(t, 0.25); if (await t.ev("teste.mundo.solidos.some((s) => (s.topo ?? s.y1) > teste.dentro.alt + 0.3 && teste.dentro.pos.x > s.x0 && teste.dentro.pos.x < s.x1 && teste.dentro.pos.z > s.z0 && teste.dentro.pos.z < s.z1)")) furou = true; }
   const h1 = await t.ev("[teste.dentro.pos.x, teste.dentro.pos.z]");
   await t.foto(`${FOTOS}helicoptero-voando.png`);
   await t.ev("teste.volante(0, 0, { descer: true })");
   let pousou = false;
-  for (let i = 0; i < 40 && !pousou; i++) { await espera(300); pousou = await t.ev("teste.dentro.alt - teste.chaoHeli(teste.dentro.pos.x, teste.dentro.pos.z) < 0.15"); }
+  for (let i = 0; i < 40 && !pousou; i++) { await esperaJogo(t, 0.3); pousou = await t.ev("teste.dentro.alt - teste.chaoHeli(teste.dentro.pos.x, teste.dentro.pos.z) < 0.15"); }
   const voou = Math.hypot(h1[0] - h0[0], h1[1] - h0[1]);
   ok(alt1 > 4 && voou > 8 && !furou && pousou, `helicóptero: subiu a ${alt1.toFixed(1)} m, voou ${voou.toFixed(1)} m sem atravessar prédios e pousou devagar (${pousou})`);
   ok(await t.ev("teste.dentro.g.userData.rotor.rotation.y !== 0"), "helicóptero: as hélices giram");

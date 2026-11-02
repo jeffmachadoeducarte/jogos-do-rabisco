@@ -11,6 +11,7 @@ const vigia = setTimeout(() => { console.log("✗ o teste travou"); process.exit
 let falhas = 0;
 const ok = (c, msg) => { console.log(c ? "✓" : "✗", msg); if (!c) falhas++; };
 const ate = async (t, expr, ms = 15000, passo = 150) => { const fim = Date.now() + ms; while (Date.now() < fim) { if (await t.ev(expr).catch(() => false)) return true; await espera(passo); } return false; };
+const esperaJogo = async (seg) => { const t0 = await t.ev("teste.tempo"); while ((await t.ev("teste.tempo")) - t0 < seg) await espera(30); }; // tempo de jogo: com a máquina carregada o relógio de parede engana
 const errosDeVerdade = (t) => t.erros.filter((e) => !/assets\/voz\/(rp-|nomes\/)/.test(e));
 
 const t = await abrir("about:blank", { largura: 1280, altura: 720 });
@@ -60,7 +61,7 @@ try {
   // (c) descer sobre o prédio: para no topo, não entra nele
   await t.ev(`(() => { const v = teste.dentro; v.pos.set(${(alvo.x0 + alvo.x1) / 2}, ${alvo.topo + 5}, ${alvo.z}); v.alt = ${alvo.topo + 5}; v.vel = 0; v.vs = 0; })()`);
   await t.ev("teste.voar(false, true)");
-  await espera(6000);
+  await esperaJogo(6);
   await t.ev("teste.voar(false, false)");
   const d = await t.ev("({ alt: teste.dentro.alt, y: teste.dentro.pos.y, chao: teste.chaoHeli(teste.dentro.pos.x, teste.dentro.pos.z) })");
   ok(d.alt >= alvo.topo - 0.02 && d.alt < alvo.topo + 0.5, `(c) desceu e parou no topo do prédio (alt ${d.alt.toFixed(2)}, topo ${alvo.topo.toFixed(2)})`);
@@ -69,8 +70,8 @@ try {
   // (d) sair no telhado: o Rabisco vai para o chão, fora do prédio, e fica livre
   await t.ev("teste.volante(null); teste.dentro.vel = 0");
   await t.ev("teste.sair()");
-  ok(await ate(t, "!teste.dentro", 3000), "(d) saiu do helicóptero sobre o prédio");
-  await espera(1500);
+  ok(await ate(t, "!teste.dentro", 15000), "(d) saiu do helicóptero sobre o prédio");
+  await esperaJogo(1.5);
   const p = await t.ev(`({ x: teste.j.pos.x, y: teste.j.pos.y, z: teste.j.pos.z, preso: teste.fis.bate(teste.j.pos.x, teste.j.pos.z, teste.j.pos.y), dentroPredio: teste.fis.bate(teste.j.pos.x, teste.j.pos.z, 0.1, 0) })`);
   ok(!p.preso && !p.dentroPredio && p.y < 1, `(d) o Rabisco não ficou preso (x ${p.x.toFixed(1)}, y ${p.y.toFixed(2)}, z ${p.z.toFixed(1)})`);
   await t.ev("teste.voar(false, false)");
