@@ -187,7 +187,41 @@ export function bombeiros(l) {
 }
 // ---------- a Educarte em blocos, na mesma composição da escola oficial: corpo creme, alas rosa e azul, telhados em
 // degraus e a torre-lápis com o relógio. Marca só pelos arquivos oficiais de assets/marca/logos.
-export function escola(l) {
+// a frente nova da Educarte Kids II (missão da Speedy Soluções): perfis de alumínio e pele de vidro, cada um num grupo escondido
+// até a obra chegar neles. O letreiro azul com o logo fica por cima dos dois e não muda.
+function frenteDeVidro(e) {
+  const AL = 0xc9d2da, ALE = 0x9aa6b2, f = { sombra: false };
+  const perfis = new THREE.Group(), vidro = new THREE.Group();
+  for (const g of [perfis, vidro]) { g.userData.dinamico = true; g.visible = false; e.add(g); }
+  const W = 16, y0 = 0.5, y1 = 6.94, colunas = 8, cw = W / colunas, linhas = [y0, 2.3, 4.2, y1];
+  // pele de vidro: cada placa com um tom, como o céu refletindo; no térreo, as do meio dão lugar à entrada
+  for (let i = 0; i < colunas; i++) for (let a = 0; a < 3; a++) {
+    const x = -W / 2 + cw * (i + 0.5);
+    if (a === 0 && Math.abs(x) < 2) continue;
+    const quente = (i * 3 + a * 5) % 7 === 0, clara = (i + a) % 3 === 0;
+    pc(vidro, cw, linhas[a + 1] - linhas[a], 0.08, 0, x, (linhas[a] + linhas[a + 1]) / 2, 3.62, { ...f, material: quente ? MAT.janelaQuente : clara ? MAT.janela : MAT.vidro });
+  }
+  // brilho do vidro: faixas claras na diagonal, em poucas placas
+  for (const [x, y, h] of [[-6.1, 5.5, 1.9], [-5.6, 5.3, 1.3], [5.3, 3.3, 1.5], [5.8, 3.2, 1.0], [-3.1, 3.2, 1.2], [3.2, 5.6, 1.6]]) pc(vidro, 0.14, h, 0.02, 0xeaf7ff, x, y, 3.68, { ...f, rz: -0.42 });
+  // entrada: porta dupla de vidro com pórtico de alumínio, puxadores compridos e um filete rosa da escola
+  pc(vidro, 3.6, 3.15, 0.08, 0, 0, 0.45 + 3.15 / 2, 3.64, { ...f, material: MAT.janelaQuente });
+  pc(vidro, 3.6, 0.8, 0.08, 0, 0, 3.8, 3.64, { ...f, material: MAT.janela });
+  for (const q of [-1, 1]) pc(vidro, 0.08, 1.5, 0.16, 0x20262c, q * 0.34, 1.75, 3.72, f);
+  // marquise de vidro sobre a porta
+  pc(vidro, 6.2, 0.08, 2.5, 0, 0, 4.0, 4.82, { ...f, material: MAT.vidro });
+  // perfis: montantes, travessas, pórtico da porta e a estrutura da marquise
+  for (let i = 0; i <= colunas; i++) { const x = -W / 2 + cw * i; if (Math.abs(x) > 2.2) pc(perfis, i % 2 ? 0.1 : 0.16, y1 - y0, 0.16, AL, x, (y0 + y1) / 2, 3.7, f); else pc(perfis, i % 2 ? 0.1 : 0.16, y1 - 4.2, 0.16, AL, x, (y1 + 4.2) / 2, 3.7, f); }
+  for (const y of linhas) for (const q of [-1, 1]) {
+    const interno = y === 2.3 || y === y0 ? 2 : 0; // no térreo a travessa para no pórtico
+    pc(perfis, W / 2 - interno, 0.13, 0.16, AL, q * (interno + (W / 2 - interno) / 2), y, 3.7, f);
+  }
+  for (const q of [-1, 1]) pc(perfis, 0.26, 3.5, 0.26, ALE, q * 1.93, 0.5 + 1.75, 3.72, f);
+  pc(perfis, 4.12, 0.26, 0.26, ALE, 0, 4.0, 3.72, f); pc(perfis, 0.09, 3.5, 0.2, ALE, 0, 2.25, 3.72, f);
+  pc(perfis, 6.3, 0.12, 0.12, AL, 0, 3.98, 6.05, f); pc(perfis, 6.3, 0.05, 0.13, 0xec2e8c, 0, 4.06, 6.05, f);
+  for (const q of [-1, 1]) { pc(perfis, 0.12, 0.12, 2.5, AL, q * 3.1, 3.98, 4.82, f); pc(perfis, 0.14, 3.9, 0.14, ALE, q * 3.0, 1.97, 5.95); }
+  return { perfis, vidro };
+}
+export function escola(l, { frenteTrocavel = false } = {}) {
   const S = novo(), g = S.grupo, k = 0.9716, f = { sombra: false }; // mesma escala e mesmo lugar da escola oficial no lote
   const e = new THREE.Group(); e.scale.setScalar(k); e.position.z = -12.87; g.add(e);
   const CIANO = 0x00b5f0, ROSA = 0xec2e8c, LARANJA = 0xff7a00, ROXO = 0x8e6cff, CREME = 0xfff1d6;
@@ -205,17 +239,20 @@ export function escola(l) {
   pc(e, 2.8, 2.8, 0.3, ROSA, 0, 10, 2.1); pc(e, 2.3, 2.3, 0.1, 0xffffff, 0, 10, 2.27, f);
   const icone = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), new THREE.MeshBasicMaterial({ map: carregarTextura("../../assets/marca/logos/icone-branco.png"), transparent: true, color: ROSA }));
   icone.position.set(0, 10, 2.34); icone.userData.dinamico = true; e.add(icone);
+  // a frente do corpo central: na Kids II fica à parte, para a missão da Speedy trocar por pele de vidro (mundo.js mescla cada uma)
+  const antiga = new THREE.Group(); e.add(antiga);
+  if (frenteTrocavel) antiga.userData.dinamico = true;
   // janelas dos dois andares e das alas
-  janelas(e, { w: 15, andares: 2, z: 3.52, y0: 1.2, alt: 3.3, jw: 1.5, jh: 1.6, colunas: 5, cor: 0xffffff });
+  janelas(antiga, { w: 15, andares: 2, z: 3.52, y0: 1.2, alt: 3.3, jw: 1.5, jh: 1.6, colunas: 5, cor: 0xffffff });
   for (const [x, c] of [[-11.5, 0xffb3d4], [11.5, 0x9fe0ff]]) { const a = new THREE.Group(); a.position.x = x; e.add(a); janelas(a, { w: 6, andares: 1, z: 3.52, y0: 1.5, jw: 1.6, jh: 1.8, colunas: 2, cor: c }); }
   // porta grande e logo oficial em cima dela
-  porta(e, { z: 3.54, w: 3, h: 3.1, cor: ROSA });
+  porta(antiga, { z: 3.54, w: 3, h: 3.1, cor: ROSA });
   pc(e, 6.4, 2, 0.3, CIANO, 0, 5.35, 3.66); pc(e, 6, 1.7, 0.1, 0xffffff, 0, 5.35, 3.84, f);
   const logo = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 1.35), matNovo({ map: carregarTextura("../../assets/marca/logos/azul-icone-rosa.png"), transparent: true, alphaTest: 0.3 }));
   logo.position.set(0, 5.35, 3.92); logo.userData.dinamico = true; e.add(logo);
   // toldo rosa da entrada, sobre duas colunas de lápis
-  pc(e, 5.4, 0.35, 2.4, ROSA, 0, 3.95, 4.6); pc(e, 5.7, 0.14, 2.6, 0xffa8d0, 0, 4.18, 4.6, f);
-  for (const [x, c] of [[-2.4, 0xffcc1f], [2.4, 0x58c43a]]) { pc(e, 0.7, 3.2, 0.7, c, x, 1.9, 5.5); const t = malha(degraus(0.7, 0.7, 0.5, 3), mat(0xf3c99a)); t.rotation.x = Math.PI; t.position.set(x, 0.1, 5.5); e.add(t); pc(e, 0.74, 0.3, 0.74, 0x2a2a2a, x, 3.6, 5.5, f); }
+  pc(antiga, 5.4, 0.35, 2.4, ROSA, 0, 3.95, 4.6); pc(antiga, 5.7, 0.14, 2.6, 0xffa8d0, 0, 4.18, 4.6, f);
+  for (const [x, c] of [[-2.4, 0xffcc1f], [2.4, 0x58c43a]]) { pc(antiga, 0.7, 3.2, 0.7, c, x, 1.9, 5.5); const t = malha(degraus(0.7, 0.7, 0.5, 3), mat(0xf3c99a)); t.rotation.x = Math.PI; t.position.set(x, 0.1, 5.5); antiga.add(t); pc(antiga, 0.74, 0.3, 0.74, 0x2a2a2a, x, 3.6, 5.5, f); }
   // mastro com a bandeira da Educarte
   pc(e, 0.5, 0.3, 0.5, 0xc8ccd2, 8.4, 0.15, 7); pc(e, 0.16, 8.6, 0.16, 0xf4f6fb, 8.4, 4.4, 7); pc(e, 0.3, 0.3, 0.3, 0x58c43a, 8.4, 8.8, 7);
   for (let i = 0; i < 4; i++) pc(e, 0.5, 1.2 - i * 0.34, 0.08, ROSA, 7.98 - i * 0.5, 7.9, 7, f);
@@ -228,6 +265,7 @@ export function escola(l) {
   for (const x of [11.6, 13]) { for (const s of [-1, 1]) pc(e, 0.05, 2.5, 0.05, 0x9aa3ad, x + s * 0.35, 2.2, 7, f); pc(e, 0.95, 0.12, 0.5, 0xff7a00, x, 0.96, 7); }
   // lápis de cor enfeitando a frente das alas
   [ROSA, LARANJA, 0xffcc1f, 0x58c43a, CIANO, ROXO].forEach((c, i) => { const x = -14 + i * 1.1 + (i > 2 ? 22.3 : 0); pc(e, 0.5, 1.4, 0.3, c, x, 1.2, 3.72, f); const t = malha(degraus(0.5, 0.3, 0.4, 2), mat(0xf3c99a)); t.position.set(x, 2.1, 3.72); e.add(t); });
+  if (frenteTrocavel) S.frente = { antiga, ...frenteDeVidro(e) };
   const zc = e.position.z, z0 = zc - 3.6 * k, z1 = zc + 3.8 * k;
   sol(S, -15 * k, 15 * k, z0, z1, 20);
   return S;
@@ -787,7 +825,7 @@ export function parquinhoBebe(A) {
 
 // Educarte Kids II (5 a 12 anos): a escola oficial (escolaEducarte3D) com placa própria
 export function educarteKids2(l) {
-  const S = escola(l);
+  const S = escola(l, { frenteTrocavel: true });
   const placa = placaEscola("Educarte Kids II", "#00b5f0", 12); placa.position.set(0, 1.6, 0.6); S.grupo.add(placa);
   for (const x of [-5.6, 5.6]) { const p = malha(new THREE.CylinderGeometry(0.12, 0.12, 1.6, 8), mat(0x2f3440)); p.position.set(x, 0.8, 0.4); S.grupo.add(p); }
   S.solidos.push({ x0: -6.2, x1: 6.2, z0: 0.2, z1: 0.8, y1: 3 });

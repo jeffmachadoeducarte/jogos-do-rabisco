@@ -16,7 +16,8 @@ import { criarPessoa } from "./pessoas.js";
 import { lugar } from "./mapa.js";
 import { PARCEIROS } from "../../src/parceiros.js";
 import { PROPAGANDA, falaDaPropaganda } from "./propaganda.js";
-import { gatinho, bau, foguinho, portico, placaNumero, caixaFrutas, caixaCorreio, texturaEnvelope, tapeteOracao, alvara } from "./missoes-objetos.js";
+import { gatinho, bau, foguinho, portico, placaNumero, caixaFrutas, caixaCorreio, texturaEnvelope, tapeteOracao, alvara, rackVidros } from "./missoes-objetos.js";
+import { criarCena } from "./missoes-cenas.js";
 const OBJETOS_MAO = { alvara };
 
 // figurinha redonda com emoji (itens, buraquinhos da horta)
@@ -101,6 +102,8 @@ function posicionarNaCidade(ctx) {
   const escDe = (d) => (d.unidade ? lugar(d.unidade) : esc); // unidade: "kids2" fixa a escola do npc, sem olhar a idade
   for (const M of MISSOES) {
     for (const d of Object.values(M.npcs)) {
+      // quem já fica na porta da parceira (pessoas.js, montado em mundo.js): a missão usa esse mesmo boneco
+      if (d.fachada) { const q = ctx.lugares?.().find((l) => l.id === d.fachada)?.pessoaNaPorta; if (q) { d.x = q.x; d.z = q.z; } }
       if (d.casa != null) naCasa(d, d.lado ?? 1.6);
       const e = d.escola && escDe(d);
       if (e) { d.x = e.x + d.escola[0]; d.z = e.z + d.escola[1]; d.rot = e.rot; }
@@ -149,7 +152,9 @@ export function criarMissoes(ctx) {
     // "mesmo": é a mesma pessoa de outra missão (a Professora Lápis Turquesa da Hora da Aula recebe o presente)
     if (d.mesmo) { const [mid, nid] = d.mesmo.split(":"); return npcDe(MISSOES.find((x) => x.id === mid), nid); }
     const n = { dados: d, M, id, quem: id === M.quem, festa: 0 };
-    if (d.tipo === "vovo") Object.assign(n, { m: vovo, g: vovo.grupo, fixo: true });
+    const naPorta = d.fachada && ctx.lugares?.().find((l) => l.id === d.fachada)?.pessoaNaPorta;
+    if (naPorta) Object.assign(n, { m: naPorta.m, g: naPorta.m.grupo, fixo: true, pessoa: true, fachada: true, mundo: [naPorta.x, naPorta.z] });
+    else if (d.tipo === "vovo") Object.assign(n, { m: vovo, g: vovo.grupo, fixo: true });
     else if (["ovelha", "coelho", "piquenique", "gato"].includes(d.tipo)) {
       n.g = d.tipo === "gato" ? gatinho(d.cor) : bichinho(d.tipo); n.bicho = true; n.g.position.set(d.x, 0.03, d.z); n.g.rotation.y = d.rot ?? Math.PI;
       if (d.tipo === "piquenique") {
@@ -213,7 +218,7 @@ export function criarMissoes(ctx) {
   }
   for (const M of MISSOES) M.quem = Object.keys(M.npcs)[0];
 
-  const npcPos = (n) => (n === caronaNpc() ? [carona.pos.x, carona.pos.z] : [n.g.position.x, n.g.position.z]);
+  const npcPos = (n) => (n.mundo ?? (n === caronaNpc() ? [carona.pos.x, carona.pos.z] : [n.g.position.x, n.g.position.z]));
   const caronaNpc = () => (carona && ativa ? npcs.get(`${ativa.id}:${ativa.etapas[etapa]?.passageiro}`) : null);
   const nomeDe = (id) => ativa?.npcs[id]?.nome ?? "";
   function reagir(n) {
@@ -428,7 +433,7 @@ export function criarMissoes(ctx) {
       const vis = n === caronaNpc() || (daMissao && Math.hypot(p.x - x, p.z - z) < R);
       if (!n.fixo) n.g.visible = vis;
       if (n.extras) n.extras.visible = Math.hypot(p.x - n.casa[0], p.z - n.casa[1]) < R && (n.casaExtras ? ativa === n.M : daMissao);
-      if (n.marca) { const pede = !feitas.has(n.M.id) && !ativa; n.marca.visible = pede && (n.fixo ? n.g.visible : vis); n.marca.position.set(x, n.g.position.y + (n.bicho ? 1.6 : n.m?.altura ?? 1.4) + 0.75 + Math.sin(t * 4) * 0.12, z); }
+      if (n.marca) { const pede = !feitas.has(n.M.id) && !ativa; n.marca.visible = pede && (n.fixo && !n.fachada ? n.g.visible : vis); n.marca.position.set(x, n.g.position.y + (n.bicho ? 1.6 : n.m?.altura ?? 1.4) + 0.75 + Math.sin(t * 4) * 0.12, z); }
       if (!vis && !n.fixo) continue;
       if (n.m && !n.fixo) {
         // parado: vira para o Rabisco quando ele chega perto
@@ -507,7 +512,7 @@ export function criarMissoes(ctx) {
     const novo = alvoNovo(E); if (novo !== undefined) return novo;
     const nid = E.tipo === "falar" ? E.com : E.tipo === "levar" ? E.ate : E.tipo === "dirigir" ? (carona ? E.ate : E.passageiro) : npcDe(ativa, E.quem ?? E.com).seguindo ? E.ate : E.quem ?? E.com;
     const n = npcDe(ativa, nid);
-    if (n.fixo) return { x: n.g.position.x, z: n.g.position.z, emoji: ativa.icone };
+    if (n.fixo) { const [x, z] = npcPos(n); return { x, z, emoji: ativa.icone }; }
     return { x: n.casa[0], z: n.casa[1], emoji: ativa.icone };
   }
   function texto() {
@@ -536,6 +541,7 @@ export function criarMissoes(ctx) {
   // ================================================================== etapas que vieram da Rabiscópolis
   const temp = (o) => { grupo.add(o); (est.objs ??= []).push(o); return o; };
   function limparEst() {
+    est.cena?.fim();
     const soltar = (o) => { o.removeFromParent(); o.traverse((q) => { if (q.isSprite) q.material.dispose(); if (q.geometry && !q.geometry.userData.compartilhada) q.geometry.dispose(); }); };
     for (const o of est.objs ?? []) soltar(o);
     if (est.carga) soltar(est.carga);
@@ -566,16 +572,18 @@ export function criarMissoes(ctx) {
     if (E.tipo === "levarVeiculo") {
       est.carregado = !E.de; est.veiculo = null;
       if (E.de && E.carga.modelo === "frutas") { const n = npcDe(ativa, E.de); est.carga = caixaFrutas(); est.carga.position.set(n.casa[0] + 1.3, 0.03, n.casa[1] + 0.4); grupo.add(est.carga); }
+      if (E.de && E.carga.modelo === "vidros") { const n = npcDe(ativa, E.de); est.carga = rackVidros(); est.carga.position.set(n.casa[0] - 1.8, 0.03, n.casa[1] + 0.6); grupo.add(est.carga); }
     }
     if (E.tipo === "apagar") est.fogos = E.fogos.map(([x, z]) => { const g = temp(foguinho()); g.position.set(x, 0.03, z); return { x, z, g, agua: 0, jato: 0, perto: 0, apagado: false, fumaca: 0 }; });
     if (E.tipo === "pistas") { est.i = 0; est.baus = E.pistas.map((q) => { const g = temp(bau()); g.position.set(q.x, 0.03, q.z); g.rotation.y = Math.PI * 0.15; g.visible = false; return { ...q, g, aberto: 0 }; }); }
     if (E.tipo === "entregar") est.feitas = new Set();
     if (E.tipo === "evento") est.evento = E.evento;
     if (E.tipo === "escolherCarro") { ctx.patioJE?.devolver(); carroEscolhido = null; }
+    if (E.tipo === "cena") est.cena = criarCena(E.cena, { ...ctx, E, M: ativa, grupo, temp, tirarDaCabeca, npc: (id) => npcDe(ativa, id), npcPos, fim: () => { reagir(npcDe(ativa, E.ate)); avancar(); } });
     if (E.tipo === "orar") { const g = temp(tapeteOracao()); g.position.set(E.tapete[0], 0.03, E.tapete[1]); g.rotation.y = E.olhar; est.orando = false; }
   }
   const veiculoServe = (E, v) => v && (E.veiculos === "escolhido" ? v === carroEscolhido : E.veiculos === "porta-malas" ? !["bici", "patinete", "barco", "heli"].includes(v.tipo) : E.veiculos.includes(v.tipo));
-  function avisar(quem, texto, voz = null, cada = 6) { if (aviso > 0) return; aviso = cada; dizer(quem, texto, 3200); if (voz) falar(voz); }
+  function avisar(quem, texto, voz = null, cada = 6) { if (aviso > 0) return; aviso = cada; dizer(ativa?.parceiro ? "Rabiscolândia" : quem, texto, 3200); if (voz) falar(voz); }
   function juntar(E, n) {
     est.juntos.add(n.id); fila.push(n); n.seguindo = true;
     sons.moeda?.(); n.m?.acenar(2); n.m?.pular?.();
@@ -584,8 +592,11 @@ export function criarMissoes(ctx) {
     if (todos && E.falaTodos) { dizer(n.dados.nome, E.falaTodos, 3800); if (E.vozTodos) falar(E.vozTodos); }
     else { dizer(n.dados.nome, E.fala ?? "Oba! Vou com você.", 2600); if (E.voz) falar(E.voz); }
   }
+  // tira da cabeça do Rabisco uma das coisas que ele leva (garrafa que foi para a esteira)
+  function tirarDaCabeca(id) { const s = sobreCabeca.children.find((q) => q.userData.item === id); if (s) { sobreCabeca.remove(s); s.material.dispose(); } levando = levando.filter((x) => x !== id); }
   function contextoNovo(E, p) {
     const perto = (x, z, r) => Math.hypot(p.x - x, p.z - z) < r;
+    if (E.tipo === "cena") return est.cena?.contexto(p) ?? null;
     if (E.tipo === "achar" || E.tipo === "seguirVarios") {
       for (const id of pendentes(E)) { const n = npcDe(ativa, id); if (perto(n.g.position.x, n.g.position.z, 2.8)) return { rotulo: E.rotulo ?? "💌 Convidar", fazer: () => juntar(E, n) }; }
     }
@@ -655,6 +666,7 @@ export function criarMissoes(ctx) {
   const _de = new THREE.Vector3(), _para = new THREE.Vector3();
   function atualizarNova(E, dt, t, p) {
     aviso -= dt; est.t += dt;
+    if (E.tipo === "cena") { est.cena?.atualizar(dt, t, p); return; }
     const v = veiculoAtual(), p2 = ctx.pos2?.();
     // fila: cada um vai atrás do anterior (o Rabisco é o primeiro); de carro, vão de carona (somem até ele descer)
     if ((E.tipo === "achar" || E.tipo === "seguirVarios") && fila.length) {
@@ -712,7 +724,7 @@ export function criarMissoes(ctx) {
         if (v && veiculoServe(E, v) && Math.abs(v.vel) < 2 && Math.hypot(v.pos.x - n.casa[0], v.pos.z - n.casa[1]) < 9) {
           est.carregado = true; est.veiculo = v;
           if (est.carga) { v.g.add(est.carga); est.carga.position.set(0, 1.0, -v.comp * 0.6); est.carga.rotation.set(0, 0, 0); est.carga.scale.setScalar(0.85 / (v.g.scale.x || 1)); }
-          sons.moeda?.(); n.m?.acenar(2); dizer(n.dados.nome, E.carregou ?? "Está no carro!", 3200); if (E.vozCarregou) falar(E.vozCarregou);
+          sons.moeda?.(); n.m?.acenar(2); dizer(quemFala(ativa, n.dados.nome), E.carregou ?? "Está no carro!", 3200); if (E.vozCarregou) falar(E.vozCarregou);
         } else if (!v && Math.hypot(p.x - n.casa[0], p.z - n.casa[1]) < 3.4) avisar(n.dados.nome, E.aPe ?? "Venha de carro!", E.vozAPe, 7);
         else if (v && !veiculoServe(E, v) && Math.hypot(v.pos.x - n.casa[0], v.pos.z - n.casa[1]) < 9) avisar(n.dados.nome, E.errado ?? "Aqui não cabe a caixa! Venha de carro. 🚗", E.vozErrado ?? null, 6);
       } else {
@@ -778,6 +790,7 @@ export function criarMissoes(ctx) {
     if (E.tipo === "pistas") { const b = est.baus[est.i]; return b ? { x: b.x, z: b.z, emoji: "🗝️" } : null; }
     if (E.tipo === "entregar") { const p = pos(); const n = E.entregas.filter((en) => !est.feitas.has(en.item)).map((en) => npcDe(ativa, en.ate)).sort((a, b) => Math.hypot(npcPos(a)[0] - p.x, npcPos(a)[1] - p.z) - Math.hypot(npcPos(b)[0] - p.x, npcPos(b)[1] - p.z))[0]; if (!n) return null; const [x, z] = npcPos(n); return { x, z, emoji: "✉️" }; }
     if (E.tipo === "voltar") return npcAlvo(E.ate);
+    if (E.tipo === "cena") return est.cena?.alvo() ?? null;
     if (E.tipo === "orar") return { x: E.tapete[0], z: E.tapete[1], emoji: "🙏" };
     if (E.tipo === "evento") { const l = lugar(E.lugar); return l ? { x: l.x, z: l.z, emoji: "🚪" } : null; }
     if (E.tipo === "escolherCarro") { const p = pos(), vg = ctx.patioJE?.vagas.filter((q, i) => !ctx.patioJE.escolhidos.includes(i)).sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z))[0]; return vg ? { x: vg.x, z: vg.z, emoji: "🚗" } : null; }
@@ -796,6 +809,7 @@ export function criarMissoes(ctx) {
     if (E.tipo === "pistas") return `Pista ${est.i + 1} de ${E.pistas.length}: ache o baú`;
     if (E.tipo === "entregar") return `Entregue as cartas: ${est.feitas.size} de ${E.entregas.length}`;
     if (E.tipo === "voltar") return `Volte e conte para ${nomeDe(E.ate)}`;
+    if (E.tipo === "cena") return est.cena?.texto() ?? "";
     if (E.tipo === "evento") return E.texto;
     if (E.tipo === "escolherCarro") return "Entre no pátio e escolha o seu carro";
     if (E.tipo === "levarVeiculo" && E.veiculos === "escolhido") return veiculoAtual() === carroEscolhido ? `Saia pelo portão e leve o carro até ${nomeDe(E.ate)}` : "Entre no seu carro novo";
@@ -822,6 +836,7 @@ export function criarMissoes(ctx) {
     plantasDe: (mid) => plantas.filter((x) => x.missao === mid).map((x) => ({ x: x.x, z: x.z, feito: x.feito })),
     // estado da etapa atual (testes): fila, contagem, bandeiras, carga, foguinhos, baús, entregas
     get naMao() { return naMao?.userData.item ?? null; },
+    get cena() { return est.cena ?? null; },
     get carroNovo() { return carroEscolhido ? { cor: carroEscolhido.cor, x: carroEscolhido.pos.x, z: carroEscolhido.pos.z } : null; },
     // algo aconteceu lá dentro de um lugar (embrulhou o presente, terminou o treino): a etapa "evento" anda
     evento(nome, dados = {}) {
@@ -836,7 +851,7 @@ export function criarMissoes(ctx) {
     },
     etapaInfo: () => ({ tipo: ativa?.etapas[etapa]?.tipo ?? null, fila: fila.map((n) => n.id), juntos: [...(est.juntos ?? [])], n: est.n, placas: est.placas?.map((q) => ({ n: q.n, x: q.x, z: q.z })), prox: est.prox,
       carregado: est.carregado, fogos: est.fogos?.map((f) => ({ x: f.x, z: f.z, apagado: f.apagado })), bau: est.baus?.[est.i] ? { x: est.baus[est.i].x, z: est.baus[est.i].z, i: est.i } : null,
-      entregues: [...(est.feitas ?? [])], patosVisiveis: est.patos?.filter((q) => q.p.visible).length }),
+      entregues: [...(est.feitas ?? [])], patosVisiveis: est.patos?.filter((q) => q.p.visible).length, cena: est.cena?.info() ?? null }),
   };
   return api;
 }

@@ -157,6 +157,7 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
   let fase = semente * 1.7, tempo = semente * 3.1, piscar = 2 + (semente % 3), aceno = 0, pulinho = 0, vy = 0, py = 0, juntas = false;
   const api = {
     grupo, nome, tipo, altura: (PERNA + info.alto) * escala,
+    partes: { raiz, bE, bD, pE, pD }, // cenas de dança e de desfile mexem nos membros depois do atualizar
     pular() { if (py <= 0.001) { vy = 3.4; pulinho = 1; } },
     acenar(s = 1.8) { aceno = Math.max(aceno, s); },
     // mãos juntinhas na frente do peito (orar): os dois bracinhos vêm para o meio

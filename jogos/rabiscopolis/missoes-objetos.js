@@ -173,3 +173,14 @@ export function alvara() {
   }
   return g;
 }
+// cavalete de ferro com placas de vidro e perfis de alumínio: a carga da Speedy Soluções (na calçada e depois no carro)
+export function rackVidros() {
+  const g = new THREE.Group(), ferro = mat(0x4c5660), al = mat(0xc9d2da);
+  const base = caixaRedonda(1.5, 0.12, 0.8, ferro, { sombra: false }); base.position.y = 0.1; g.add(base);
+  for (const s of [-1, 1]) { const p = caixaRedonda(0.08, 1.2, 0.08, ferro, { sombra: false }); p.position.set(s * 0.68, 0.7, 0); g.add(p); }
+  const topo = caixaRedonda(1.44, 0.08, 0.1, ferro, { sombra: false }); topo.position.y = 1.28; g.add(topo);
+  for (const z of [-0.2, -0.05, 0.1]) { const v = caixaRedonda(1.2, 1.0, 0.03, mat(0x9fdcf5), { sombra: false }); v.position.set(0, 0.68, z); g.add(v); }
+  for (const z of [0.26, 0.34]) { const b = caixaRedonda(1.46, 0.07, 0.06, al, { sombra: false }); b.position.set(0, 0.25 + (z - 0.26) * 3, z); g.add(b); }
+  mesclar(g);
+  return g;
+}

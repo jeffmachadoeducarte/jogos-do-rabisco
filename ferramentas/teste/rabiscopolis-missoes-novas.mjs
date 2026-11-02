@@ -132,7 +132,7 @@ try {
     if (!ok((await ev("teste.missoes.ativa")) === m.id, `${nomeM}: missão aceita`)) continue;
     let travou = null;
     for (let k = 0; k < m.etapas.length && !travou; k++) {
-      const E = m.etapas[k], fim = Date.now() + 75000;
+      const E = m.etapas[k], fim = Date.now() + (E.tipo === "cena" ? 240000 : 75000);
       const aindaNela = () => ev(`teste.missoes.ativa === ${JSON.stringify(m.id)} && teste.missoes.etapa === ${k}`);
       while ((await aindaNela()) && Date.now() < fim) {
         if (E.tipo === "falar" || E.tipo === "levar" || E.tipo === "voltar") { const n = await npc(m.id, E.com ?? E.ate); await irPerto(n.x, n.z); await ev("teste.acao()"); await espera(600); }
@@ -158,6 +158,19 @@ try {
         } else if (E.tipo === "evento" && E.evento === "roda") {
           await ev("soltar()"); await ev("teste.ir(0, 370.5)"); await espera(600); await ev("teste.subirRoda()");
           await ate(t, "teste.roda === null", 45000); await espera(500);
+        } else if (E.tipo === "cena") {
+          // chega na marca e aperta: cada aperto faz uma parte (a garrafa na esteira, cada fase da obra)
+          const ci = (await ev("teste.missoes.etapaInfo().cena")) ?? {};
+          if (!(await ev("teste.trava")) && ci.x != null) await irPerto(ci.x, ci.z, 600);
+          await ev("teste.acao()"); await espera(700);
+        } else if (E.tipo === "evento" && (E.evento === "dancou" || E.evento === "desfilou")) {
+          // lá dentro de verdade: botão só na janela certa (estrelinha no círculo, luz verde), pelo mesmo teste.acao() do jogador
+          await ev("soltar()"); await ev(`teste.entrarLugar(${JSON.stringify(E.lugar)})`); await espera(900);
+          if (E.evento === "desfilou") for (const iid of ["tapete", "luz", "bandeiras"]) { await ev(`teste.irAoInterativo("${iid}")`); await espera(500); await ev("teste.acao()"); await espera(900); }
+          await ev(`teste.irAoInterativo("${E.evento === "dancou" ? "dancar" : "comecar"}")`); await espera(500); await ev("teste.acao()");
+          await ev("teste.emLugar.est.sonda = () => { if (teste.emLugar?.est.ritmo?.janela) teste.acao(); }");
+          await ate(t, `teste.missoes.etapa !== ${k} || teste.missoes.ativa !== ${JSON.stringify(m.id)}`, 240000);
+                    await ate(t, "!teste.trava", 15000); await ev("teste.emLugar && (teste.emLugar.est.sonda = null); teste.sairLugar()"); await espera(500);
         } else if (E.tipo === "pistas") {
           const b = await ev("teste.missoes.etapaInfo().bau"); if (!b) { await espera(800); continue; }
           await irPerto(b.x, b.z, 600); await ev("teste.acao()"); await espera(2700);

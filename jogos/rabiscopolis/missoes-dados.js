@@ -34,6 +34,9 @@
 //   levarVeiculo com veiculos: "escolhido" e portao: [x, z]    — sair dirigindo o carro escolhido pelo portão até quem espera
 //   { tipo: "orar", tapete: [x, z], olhar, ate }               — Pai Nosso: no tapete azul, mãos juntas, frase por frase
 //                                                                  (karaokê com as vozes cid-pai-1..11); o jogador 2 ora junto
+//   { tipo: "cena", cena: "pet" | "obra", ate, falas: [{ texto, voz }] } — cena na rua, de missoes-cenas.js (a máquina do Marlon, a obra da
+//                                                                  Kids II): o botão faz cada parte; no fim, quem espera reage
+// npc.fachada: id do lugar da parceira cujo boneco da porta (mundo.js) é esse npc; a missão usa o mesmo boneco
 // npcs: { id: { nome, tipo, cor, x, z, rot?, acessorio?, escala?, casa?: n, escola?: [dx, dz], caixa?: cor } } — tipo de
 // personagens.js (lapis, giz, borracha...) ou bichinho (ovelha, coelho, gato); casa: na porta da casa n (posição na hora);
 // escola: na porta da Educarte da idade da criança (Kids I até 4 anos, senão Kids II), deslocado [dx, dz];
@@ -47,6 +50,9 @@
 // agradece: { pre, pos, neutra, texto, textoSem, ms } (quem recebe agradece pelo nome antes do "fim" da anfitriã).
 // item.objeto (evento): vai na MÃO do Rabisco como objeto 3D (missoes-objetos.js), não na cabeça. levar.icone: do botão.
 // corAcessorio (cor do laço) e tenis (cor do tênis): cada personagem com as suas cores.
+
+// garrafas PET na calçada, perto do galpão da Marlon Máquinas
+const GARRAFAS_MARLON = [[-125, 147.5], [-112, 147.6], [-97, 147.5], [-84, 147.6]].map(([x, z], i) => ({ id: `pet${i + 1}`, nome: "garrafa PET", emoji: "🧴", x, z }));
 
 export const MISSOES = [
   {
@@ -690,6 +696,70 @@ export const MISSOES = [
     fim: "Todo mundo sentadinho! O Vovô Léo contou do menino Samuel, que ouviu Deus chamar de noite e aprendeu a escutar.",
     fimNome: "Muito bem, {nome}! Todo mundo sentadinho! O Vovô Léo contou do menino Samuel, que ouviu Deus chamar de noite e aprendeu a escutar.",
     verso: { texto: "O menino Samuel respondeu a Deus: fala, que o teu servo está ouvindo.", ref: "baseado em 1 Samuel 3.10" },
+  },
+  // ---- missões especiais das parceiras, pelo ramo de cada uma. Pessoas de verdade (seu Marlon, Prof. Samira, Diretora Sabrina) não falam: a anfitriã narra
+  {
+    // Marlon Máquinas: junta garrafas PET pela rua e vê a máquina do galpão separar rótulo, tampa e flocos
+    id: "parceiro-marlon-maquinas", titulo: "A máquina das garrafas", icone: "♻️", tipo: "cidadania", parceiro: "marlon-maquinas",
+    npcs: { marlon: { nome: "Seu Marlon", tipo: "pessoa", pessoa: "marlon", fachada: "parceiro-marlon-maquinas" } },
+    pedido: "Rabisco, o seu Marlon convidou você para visitar o galpão da Marlon Máquinas! Junte quatro garrafas PET aqui perto e traga para ele mostrar como a reciclagem funciona.",
+    etapas: [
+      { tipo: "pegar", itens: GARRAFAS_MARLON, fala: "Quatro garrafas! Agora vá até o portão do galpão: o seu Marlon vai mostrar a máquina.", voz: "rp-m-parceiro-marlon-maquinas-pegou" },
+      { tipo: "cena", cena: "pet", ate: "marlon", falas: [
+        { texto: "O seu Marlon mostra a máquina: um container que pica a garrafa PET e separa tudo. Coloque a primeira garrafa na esteira!", voz: "rp-m-parceiro-marlon-maquinas-maquina" },
+        { texto: "Viu só? A tampa caiu numa caixa, o rótulo em outra, e a garrafa picadinha virou flocos. Coloque mais uma!", voz: "rp-m-parceiro-marlon-maquinas-separou" },
+      ] },
+    ],
+    fim: "Cada parte separada vira coisa nova! O seu Marlon explica que reciclar deixa a cidade mais limpa e cuida do mundo que Deus criou.",
+    fimNome: "Muito bem, {nome}! Cada parte separada vira coisa nova! O seu Marlon explica que reciclar deixa a cidade mais limpa e cuida do mundo que Deus criou.",
+    verso: { texto: "Deus colocou o ser humano no jardim para cuidar dele e cultivá-lo.", ref: "baseado em Gênesis 2.15" },
+  },
+  {
+    // Ballet e Cia: minijogo de passos no tempo da música e apresentação no palco (parceiras-palcos.js)
+    id: "parceiro-ballet-e-cia", titulo: "O palco da Ballet e Cia", icone: "🩰", tipo: "biblica", parceiro: "ballet-e-cia",
+    npcs: { samira: { nome: "Prof. Samira", tipo: "pessoa", pessoa: "samira", fachada: "parceiro-ballet-e-cia" } },
+    pedido: "Rabisco, a Professora Samira preparou uma surpresa! Aqui na Ballet e Cia, as alunas da Educarte fazem ballet e jazz. Entre, suba no palco e dance com a turma!",
+    etapas: [
+      { tipo: "evento", evento: "dancou", lugar: "parceiro-ballet-e-cia", texto: "Entre na Ballet e Cia e dance no palco com a turma" },
+      { tipo: "voltar", ate: "samira" },
+    ],
+    fim: "Que apresentação linda! A Professora Samira e a turma ficaram muito felizes. Dançar com alegria também é um jeito de louvar a Deus.",
+    fimNome: "Parabéns, {nome}! Que apresentação linda! A Professora Samira e a turma ficaram muito felizes. Dançar com alegria também é um jeito de louvar a Deus.",
+    verso: { texto: "Louvem o nome de Deus com danças e cantem para ele com alegria e música!", ref: "baseado em Salmos 149.3" },
+  },
+  {
+    // BT Models: preparar a passarela e chamar cada amigo do estojo na hora certa, num desfile de fantasias (parceiras-palcos.js)
+    id: "parceiro-bt-models", titulo: "O desfile do estojo", icone: "🎉", tipo: "biblica", parceiro: "bt-models",
+    npcs: { produtora: { nome: "Produtora Régua", tipo: "regua", escola: [4.6, -1.2], unidade: "parceiro-bt-models", acessorio: "bone" } },
+    pedido: "Rabisco, hoje tem desfile de fantasias na BT Models, com os amigos do estojo! Entre, prepare a passarela e chame cada amigo na hora certa.",
+    etapas: [
+      { tipo: "evento", evento: "desfilou", lugar: "parceiro-bt-models", texto: "Entre na BT Models, prepare a passarela e chame os amigos" },
+      { tipo: "voltar", ate: "produtora" },
+    ],
+    fim: "Que desfile alegre! Cada um com a sua cor e com o seu jeito. Deus fez cada pessoa de um modo especial.",
+    fimNome: "Muito bem, {nome}! Que desfile alegre! Cada um com a sua cor e com o seu jeito. Deus fez cada pessoa de um modo especial.",
+    verso: { texto: "Eu te agradeço, Deus, porque me fizeste de um modo tão especial e maravilhoso!", ref: "baseado em Salmos 139.14" },
+  },
+  {
+    // Speedy Soluções: leva os vidros de carro até a Kids II e a frente da escola troca de verdade (e fica trocada: missão feita no salvo)
+    id: "parceiro-speedy-solucoes", titulo: "A frente nova da Kids II", icone: "🪟", tipo: "cidadania", parceiro: "speedy-solucoes",
+    npcs: {
+      vidraceiro: { nome: "Vidraceiro Clipe Azul", tipo: "clipe", cor: 0x2f8fe8, escola: [2.8, 0.2], unidade: "parceiro-speedy-solucoes", acessorio: "bone" },
+      diretora: { nome: "Diretora Sabrina", tipo: "pessoa", pessoa: "sabrina", mesmo: "alvara:diretora" },
+    },
+    pedido: "Rabisco, a Speedy Soluções vai trocar a frente da Educarte Kids II! Os vidros e os perfis de alumínio são grandes: venha de carro buscar e leve até a Diretora Sabrina.",
+    etapas: [
+      { tipo: "levarVeiculo", de: "vidraceiro", carga: { nome: "carga de vidros", emoji: "🪟", modelo: "vidros" }, veiculos: "porta-malas", ate: "diretora",
+        carregou: "Vidros bem firmes no carro! Agora, com cuidado, até a Educarte Kids II.", vozCarregou: "rp-m-parceiro-speedy-solucoes-carregou", aPe: "Os vidros são grandes demais para levar a pé! Venha de carro.", vozAPe: "rp-m-parceiro-speedy-solucoes-ape", errado: "Aqui não cabem os vidros! Venha de carro.", vozErrado: "rp-m-parceiro-speedy-solucoes-errado" },
+      { tipo: "cena", cena: "obra", ate: "diretora", falas: [
+        { texto: "A Diretora Sabrina já liberou a obra! Fique na marca, na frente da escola, e aperte o botão.", voz: "rp-m-parceiro-speedy-solucoes-obra" },
+        { texto: "Primeiro, tiramos a frente antiga, com bastante cuidado. Aperte de novo para os perfis!", voz: "rp-m-parceiro-speedy-solucoes-tirou" },
+        { texto: "Agora os perfis de alumínio, bem alinhados. Aperte de novo para os vidros!", voz: "rp-m-parceiro-speedy-solucoes-perfis" },
+      ] },
+    ],
+    fim: "Olhe que linda! Agora a Educarte Kids II tem uma fachada nova, de pele de vidro com perfis de alumínio. A Diretora Sabrina ficou muito feliz.",
+    fimNome: "Muito bem, {nome}! Olhe que linda! Agora a Educarte Kids II tem uma fachada nova, de pele de vidro com perfis de alumínio. A Diretora Sabrina ficou muito feliz.",
+    verso: { texto: "Se o Senhor não construir a casa, o trabalho dos construtores não adianta.", ref: "baseado em Salmos 127.1" },
   },
 ];
 // palavras que não podem aparecer em nada que a criança vê ou ouve (teste rabiscopolis-conteudo.mjs)

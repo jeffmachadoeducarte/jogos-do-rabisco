@@ -315,7 +315,12 @@ function iniciar() {
     adicionarVeiculo: (vg) => { const v = criarVeiculo("carro", vg.hex, (g) => enfeitarCarro(g, vg.modelo)); v.pos.set(vg.x, 0.03, vg.z); v.ang = vg.ang; animarVeiculo(v, 0, 0); cena.add(v.g, v.parado); veiculos.push(v); return v; },
     orar: (tp, fim) => comecarOracao(tp, fim), pararOracao: () => terminarOracao(false),
     casas: () => mundo.casas, idade: idadeCrianca, patos: () => mundo.anima.patos, chaoHeli: (x, z) => fis.chaoHeli(x, z),
+    // cenas das parceiras na rua (máquina do Marlon, obra da Kids II): lugares do mundo, prender o Rabisco e câmera de cena
+    lugares: () => mundo.lugares, frenteKids2: (f) => mundo.frenteKids2(f),
+    travar: (o) => apiLugar().travar(o), destravar: () => apiLugar().destravar(), vista: (v) => { camera.st.vista = v; },
   });
+  // a Speedy já trocou a frente da Kids II (salvo: missão feita): continua trocada depois de recarregar
+  if (missoes.feitas.includes("parceiro-speedy-solucoes")) mundo.frenteKids2(3);
 
   // HUD
   hud = el("div", { class: "hud-rp" });
@@ -572,6 +577,8 @@ const apiLugar = () => ({
   // colisão que entra e sai com o objeto (blocos e objetos das aulas)
   solido: (s, sim = true) => { if (sim) { solidosDentro.push(s); mundo.solidos.push(s); } else for (const L of [solidosDentro, mundo.solidos]) { const i = L.indexOf(s); if (i >= 0) L.splice(i, 1); } },
   travar: (o) => { trava = { ...o, t: 0, tp: 0 }; teclas.clear(); toque?.zerar(); },
+  destravar: () => { trava = null; j.vel.set(0, 0, 0); },
+  teleportar: (x, z) => { j.pos.set(x, 0.07, z); j.vel.set(0, 0, 0); },
   abrirSorvete: (sabores, cb) => { teclas.clear(); toque?.zerar(); sorveteUI.abrir(sabores, cb); },
 });
 function entrarLugar(id, imediato = false) {
@@ -856,7 +863,13 @@ function entrada() {
 function regras() {
   // o que a ação faz agora
   contexto = null;
-  if (trava) { pad.acaoNova = false; if (toque) toque.acaoNova = false; return; } // na esteira/halter a ação espera
+  if (trava) {
+    // na esteira/halter a ação espera; nas cenas com botão (aoAcao: passo do ballet, garrafa na esteira) ela vale
+    const quer = pad.acaoNova || toque?.acaoNova;
+    pad.acaoNova = false; if (toque) toque.acaoNova = false;
+    if (trava.aoAcao) { contexto = { rotulo: trava.rotulo ?? "✋", fazer: trava.aoAcao }; if (quer) trava.aoAcao(); }
+    return;
+  }
   if (oracao) {
     const passou = relogio.elapsedTime - oracao.inicio, pode = passou > Math.min(oracao.dur * 0.6, oracao.dur - 0.3);
     contexto = pode ? { rotulo: oracao.i === ORACAO.length - 1 ? "🙏 Amém!" : "🙏 Amém, próxima", fazer: () => proximaFrase() } : { rotulo: "🙏 Orando…", fazer: () => {} };
@@ -918,7 +931,7 @@ function posicionarCamera(k, dt, andando = false) {
   }
   if (emCasa || emLugar) { // casa de bonecas: da frente e levemente por cima (3ª pessoa inclinada), sem teto
     const cx = dois ? dois.x : j.pos.x, cz = dois ? dois.z : j.pos.z, af = dois ? Math.min(4, dois.afastar) : 0;
-    camera.st.vista = { pos: [cx, 5.6 + af * 0.7, cz + 8.6 + af * 0.8], alvo: [cx, 1.1, cz - 1.2] };
+    camera.st.vista = emLugar?.vista?.(j.pos) ?? { pos: [cx, 5.6 + af * 0.7, cz + 8.6 + af * 0.8], alvo: [cx, 1.1, cz - 1.2] };
     camera.posicionar({ P: j.pos }, k, dt);
     ceu.seguir(j.pos.x, j.pos.z);
     mundo.visibilidade(j.pos.x, j.pos.z);
@@ -1003,6 +1016,8 @@ function passo(dt, ultimo) {
       j.pos.set(trava.x, 0.07, trava.z); j.vel.set(0, 0, 0); j.dir = trava.dir;
       rabisco.grupo.position.copy(j.pos); rabisco.grupo.rotation.y = j.dir;
       rabisco.atualizar(dt, { modo: trava.modo, vel: trava.vel ?? 0, vmax: VEL });
+      trava.posar?.(rabisco, dt, trava); // cenas: dança, desfile (mexe nos membros e em onde ele está)
+      if (trava) {
       trava.t += dt; trava.tp -= dt;
       const f = Math.min(1, trava.t / trava.segundos);
       if (trava.pose === "halter") { // levanta o halter acima da cabeça e desce
@@ -1012,6 +1027,7 @@ function passo(dt, ultimo) {
       }
       if (trava.progresso && trava.tp <= 0) { trava.tp = 0.45; trava.progresso(f); }
       if (f >= 1) { const o = trava; trava = null; if (o.objeto) o.objeto.position.y = 0.25; o.aoFim?.(); }
+      }
     } else if (oracao) {
       pad.puloNovo = false; if (toque) toque.puloNovo = false;
       j.pos.set(oracao.x, 0.07, oracao.z); j.vel.set(0, 0, 0); j.dir = oracao.olhar;
