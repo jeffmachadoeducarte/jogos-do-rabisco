@@ -570,7 +570,12 @@ falas.update({
 # "J.E Multimarcas" se pronuncia "Jóta Ê Multimarcas" (E fechado, como em "você").
 # Conferido: "Jóta Ê" sai com o E fechado (F1 ~480 Hz); "Jóta É" sai aberto (~750 Hz); "J.E" a voz lê "J e" solto.
 import re
+# "See Love" (inglês): escrito assim a voz diz "si lóvis"; como "Sí Lóv" sai "si lóv" (conferido com reconhecimento de fala).
+# "Kids I" a voz lê "Kids i"; "Lucas 15.8-9" ela lê "quinze ponto oito nove".
 def para_fala(texto):
+    texto = re.sub(r"\bSee Love\b", "Sí Lóv", texto, flags=re.I)
+    texto = re.sub(r"\bKids I\b", "Kids Um", texto)
+    texto = re.sub(r"(\d+)\.(\d+)-(\d+)", lambda m: f"{m[1]}, versículos {m[2]} {'e' if int(m[3]) == int(m[2]) + 1 else 'a'} {m[3]}", texto)
     return re.sub(r"\bJ\.? ?E(?= Multimarcas)", "Jóta Ê", texto, flags=re.I)
 
 

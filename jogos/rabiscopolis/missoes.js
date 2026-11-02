@@ -14,6 +14,8 @@ import { criarMorador } from "./personagens.js";
 import { MISSOES, PESSOAS_PORTA } from "./missoes-dados.js";
 import { criarPessoa } from "./pessoas.js";
 import { lugar } from "./mapa.js";
+import { PARCEIROS } from "../../src/parceiros.js";
+import { PROPAGANDA, falaDaPropaganda } from "./propaganda.js";
 import { gatinho, bau, foguinho, portico, placaNumero, caixaFrutas, caixaCorreio, texturaEnvelope, tapeteOracao, alvara } from "./missoes-objetos.js";
 const OBJETOS_MAO = { alvara };
 
@@ -244,6 +246,7 @@ export function criarMissoes(ctx) {
     if (!M || ativa) return false;
     limparItens(M.id); // jogando de novo: os brotos da vez passada saem
     ativa = M; etapa = 0; levando = []; carona = null; aviso = 0; // missão nova: as dicas podem aparecer na hora
+    calmoAte = Date.now() + 7000; // a propaganda da missão anterior não corta o pedido desta
     for (const nid of Object.keys(M.npcs)) voltarAoLugar(npcDe(M, nid));
     clearTimeout(concluir.t2);
     // o pedido é para o Rabisco ir/fazer algo: sempre "Rabisco", nunca o nome da criança
@@ -261,7 +264,7 @@ export function criarMissoes(ctx) {
   }
   function avancar() {
     const E = ativa.etapas[etapa];
-    if (E?.tipo === "pegar" && E.fala) { dizer(nomeDe(E.quemFala ?? ativa.quem), E.fala, 3200); if (E.voz) falar(E.voz); if (E.quemFala) { const n = npcDe(ativa, E.quemFala); n.m?.acenar(2.5); n.m?.pular(); } }
+    if (E?.tipo === "pegar" && E.fala) { dizer(E.quemFala ? nomeDe(E.quemFala) : quemFala(ativa, nomeDe(ativa.quem)), E.fala, 3200); if (E.voz) falar(E.voz); if (E.quemFala) { const n = npcDe(ativa, E.quemFala); n.m?.acenar(2.5); n.m?.pular(); } }
     limparEst();
     etapa++; prepararEtapa();
   }
@@ -277,9 +280,31 @@ export function criarMissoes(ctx) {
   const textoFim = (M) => { const nm = ctx.nome?.(); return nm && M.fimNome ? M.fimNome.replace("{nome}", nm) : M.fim; };
   function falarFim(M) {
     const neutra = () => falar(M.voz?.fim ?? `rp-m-${M.id}-fim`);
-    if (!M.fimNome) return neutra();
-    Promise.resolve(ctx.falarNome?.(`rp-m-${M.id}-fim-pre`, `rp-m-${M.id}-fim-pos`)).then((ok) => { if (!ok) neutra(); });
+    if (!M.fimNome) { neutra(); return Promise.resolve(); }
+    return Promise.resolve(ctx.falarNome?.(`rp-m-${M.id}-fim-pre`, `rp-m-${M.id}-fim-pos`)).then((ok) => { if (!ok) neutra(); }); // resolve quando a fala começa
   }
+  // propaganda da parceira (propaganda.js): depois do fim e do versículo, sem cortar nenhuma fala e sem parar o jogo.
+  // msFala: quanto a Francisca demora para falar um texto (medido nos MP3: até ~100 ms por letra).
+  const msFala = (texto) => 800 + texto.length * 95;
+  let tPropaganda = 0, calmoAte = 0;
+  function mostrarPropaganda(id) {
+    const parc = PARCEIROS.find((p) => p.id === id), P = PROPAGANDA[id];
+    if (!parc || !P) return false;
+    falar(`rp-prop-${id}`);
+    dizer("Rabiscolândia", `${P.texto}<span class="prop-insta">📸 ${parc.nome} · @${parc.instagram}</span>`, msFala(falaDaPropaganda(id)) + 1500);
+    return true;
+  }
+  function agendarPropaganda(M) {
+    if (!PROPAGANDA[M.parceiro]) return;
+    // de volta para a cidade: se estiver numa sala, orando ou ouvindo o pedido da missão seguinte, espera acabar
+    const tentar = (resta) => {
+      if (!ctx.ocupado?.() && !est.orando && Date.now() >= calmoAte) mostrarPropaganda(M.parceiro);
+      else if (resta > 0) tPropaganda = setTimeout(() => tentar(resta - 1), 1500);
+    };
+    clearTimeout(tPropaganda);
+    tPropaganda = setTimeout(() => tentar(40), atrasoPropaganda(M));
+  }
+  const atrasoPropaganda = (M) => (M.verso ? 5400 + msFala(`${M.verso.texto} ${M.verso.ref}`) : (M.agradece?.ms ?? 0) + msFala(textoFim(M)));
   function concluir() {
     const M = ativa;
     limparEst(); fila.length = 0;
@@ -298,8 +323,10 @@ export function criarMissoes(ctx) {
       dizer(quemFala(M, M.npcs[destino]?.nome ?? "Rabiscolândia"), nm ? A.texto.replace("{nome}", nm) : A.textoSem, A.ms);
       Promise.resolve(ctx.falarNome?.(A.pre, A.pos)).then((ok) => { if (!ok) falar(A.neutra); });
       concluir.t2 = setTimeout(() => { falarFim(M); dizer("Rabiscolândia", textoFim(M), 6500); }, A.ms);
+      agendarPropaganda(M);
     } else {
-      falarFim(M);
+      // a fala com nome pode esperar um MP3 no ar acabar: a propaganda só conta o tempo depois que o fim começou
+      falarFim(M).then(() => agendarPropaganda(M));
       dizer(quemFala(M, ultimoReceptor ?? M.npcs[destino]?.nome ?? "Rabiscolândia"), textoFim(M), 5200);
     }
     ultimoReceptor = null;
@@ -325,7 +352,7 @@ export function criarMissoes(ctx) {
     const E = ativa.etapas[etapa];
     if (!E) return null;
     if (E.tipo === "falar") { const n = npcDe(ativa, E.com); const [x, z] = npcPos(n); if (Math.hypot(p.x - x, p.z - z) < 3.2) return { rotulo: `💬 Falar com ${nomeDe(E.com)}`, fazer: () => { n.m?.acenar(2); sons.moeda?.(); avancar(); } }; }
-    if (E.tipo === "pegar") for (const it of itens) if (!it.pego && it.missao === ativa.id && Math.hypot(p.x - it.x, p.z - it.z) < 2.2) return { rotulo: `${it.emoji} Pegar ${it.nome}`, fazer: () => pegar(it) };
+    if (E.tipo === "pegar") for (const it of itens) if (!it.pego && it.missao === ativa.id && Math.hypot(p.x - it.x, p.z - it.z) < 2.2) return { rotulo: it.rotulo ?? `${it.emoji} Pegar ${it.nome}`, fazer: () => pegar(it) };
     if (E.tipo === "plantar") for (const pl of plantas) if (!pl.feito && pl.missao === ativa.id && Math.hypot(p.x - pl.x, p.z - pl.z) < 2) return { rotulo: "🌱 Plantar a semente", fazer: () => plantar(pl) };
     if (E.tipo === "levar") { const n = npcDe(ativa, E.ate); const [x, z] = npcPos(n); if (Math.hypot(p.x - x, p.z - z) < 3.2) return { rotulo: `${E.icone ?? "🎁"} Entregar para ${nomeDe(E.ate)}`, fazer: () => { if (n.pessoa) entregarNaMao(n); else reagir(n); avancar(); } }; }
     if (E.tipo === "dirigir" && !carona && ctx.chamarCarro) { const n = npcDe(ativa, E.passageiro); const [x, z] = npcPos(n); if (Math.hypot(p.x - x, p.z - z) < 3.2) return { rotulo: "📱 Chamar um carro", fazer: () => ctx.chamarCarro() }; }
@@ -374,7 +401,8 @@ export function criarMissoes(ctx) {
       const g = q.m.grupo;
       // bem longe (a praça, o resto da cidade): desmonta de vez; as texturas ficam no cache de pessoas.js
       if (dist > R + 20) { g.removeFromParent(); g.traverse((o) => { o.geometry?.dispose(); o.material?.dispose?.(); }); q.m = null; q.perto = false; continue; }
-      g.visible = dist < R;
+      // com a missão dela em andamento, quem aparece é o boneco da missão, no mesmo lugar (a Diretora Carina nos uniformes novos)
+      g.visible = dist < R && ![...npcs.values()].some((n) => n.pessoa && n.m.id === q.d.pessoa && n.g.visible);
       if (!g.visible) continue;
       // vira para o Rabisco quando ele chega perto; depois volta a olhar para a rua
       const alvo = dist < 6 ? Math.atan2(p.x - q.d.x, p.z - q.d.z) : q.d.rot ?? 0;
@@ -778,7 +806,7 @@ export function criarMissoes(ctx) {
   // onde está quem pede cada missão (Passaporte: "mostrar o caminho")
   const ondePede = (id) => { const M = MISSOES.find((x) => x.id === id); const d = M.npcs[M.quem]; return d.tipo === "vovo" ? { x: vovo.grupo.position.x, z: vovo.grupo.position.z } : { x: d.x, z: d.z }; };
   const api = {
-    MISSOES, contexto, atualizar, alvo, aceitar, texto, largar, ondePede, grupo,
+    MISSOES, contexto, atualizar, alvo, aceitar, texto, largar, ondePede, grupo, mostrarPropaganda, atrasoPropaganda,
     get ativa() { return ativa?.id ?? null; }, get etapa() { return etapa; }, get feitas() { return [...feitas]; },
     get levando() { return [...levando]; }, get carona() { return Boolean(carona); },
     npc: (mid, id) => { const n = npcDe(MISSOES.find((x) => x.id === mid), id); const [x, z] = npcPos(n); return { x, z, y: n.g.position.y, festa: n.festa, seguindo: Boolean(n.seguindo), visivel: n.g.visible, montado: true }; },

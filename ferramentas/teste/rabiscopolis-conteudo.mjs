@@ -95,7 +95,8 @@ ok(!MISSOES.some((m) => /\{nome\}/.test(m.pedido)) && !MISSOES.some((m) => m.ped
   const pontosDe = (m) => [...Object.values(m.npcs).filter((n) => n.x != null), ...m.etapas.flatMap((e) => [...(e.itens ?? []).filter((it) => it.x != null), ...(e.pistas ?? []), ...(e.pontos ?? []).map((q) => (Array.isArray(q) ? { x: q[0], z: q[1] } : q))])];
   const fora = (p) => Math.max(Math.abs(p.x), Math.abs(p.z)) > M2.BORDA_ANTIGA;
   const casaNova = (m) => Object.values(m.npcs).some((n) => n.casa > 16);
-  const longe = novas.filter((m) => !casaNova(m) && !pontosDe(m).some(fora)).map((m) => m.id);
+  // (as missões de parceira ficam fora da conta: elas vão até a loja da empresa, que pode ser no miolo)
+  const longe = novas.filter((m) => !m.parceiro && !casaNova(m) && !pontosDe(m).some(fora)).map((m) => m.id);
   ok(!longe.length, `as ${novas.length} missões novas acontecem nos bairros novos ou no mar ${longe.join(", ")}`);
   const regiao = (p) => (p.z > M2.ORLA.z0 - 1 ? (M2.naIlha(p.x, p.z, 2) ? "ilha" : "orla/mar") : p.x < -M2.BORDA_ANTIGA ? "Vila dos Ipês" : p.x > M2.BORDA_ANTIGA ? "Bairro das Palmeiras" : p.z < -M2.BORDA_ANTIGA ? "Jardim das Estrelas" : "miolo");
   const porRegiao = {};

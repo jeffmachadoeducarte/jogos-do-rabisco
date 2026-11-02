@@ -92,5 +92,8 @@ for (const m of MISSOES) {
     for (const q of E.pistas ?? []) if (q.texto && q.voz?.startsWith("rp-")) FALAS_PT[q.voz] = q.texto;
   }
 }
+// propaganda das empresas parceiras (a anfitriã, no fim das missões com parceiro)
+const { PROPAGANDA, falaDaPropaganda } = await import(`data:text/javascript,${encodeURIComponent(readFileSync(new URL("./propaganda.js", import.meta.url), "utf8"))}`);
+for (const id of Object.keys(PROPAGANDA)) FALAS_PT[`rp-prop-${id}`] = falaDaPropaganda(id);
 writeFileSync(new URL("./falas.json", import.meta.url), JSON.stringify({ pt: FALAS_PT }, null, 1) + "\n");
 console.log(`${Object.keys(FALAS_PT).length} falas em português`);

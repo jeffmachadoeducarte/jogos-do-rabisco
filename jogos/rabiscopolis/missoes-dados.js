@@ -5,7 +5,8 @@
 //
 // Etapas (em ordem):
 //   { tipo: "falar", com: npcId }                              — conversar com alguém (ação perto dele)
-//   { tipo: "pegar", itens: [{ id, nome, emoji, x, z }] }      — pegar cada coisa (ação perto; vai em cima da cabeça)
+//   { tipo: "pegar", itens: [{ id, nome, emoji, x, z, rotulo? }] } — pegar cada coisa (ação perto; vai em cima da cabeça;
+//                                                                  rotulo troca o "Pegar ..." do botão)
 //   { tipo: "levar", ate: npcId }                              — entregar ao npc (ação perto dele; ele reage)
 //   { tipo: "seguir", quem: npcId, ate: npcId }                — o amigo vem atrás do Rabisco até o destino
 //   { tipo: "plantar", pontos: [{ x, z }] }                    — plantar a semente em cada ponto (ação)
@@ -38,6 +39,7 @@
 // escola: na porta da Educarte da idade da criança (Kids I até 4 anos, senão Kids II), deslocado [dx, dz];
 // caixa: caixinha de correio dessa cor ao lado. O primeiro da lista é quem pede (com um "!" em cima).
 // Só aparecem perto do Rabisco (orçamento de desenho). voz: { pedido?, fim? } reaproveita falas gravadas (cid-*).
+// parceiro: id de src/parceiros.js: quem fala é a anfitriã e, no fim, ela faz a propaganda da empresa (propaganda.js).
 // Nome da criança x "Rabisco" (regra do dono): a anfitriã/narradora fala o NOME DA CRIANÇA só na oração e no parabéns por
 // missão concluída; ao mandar ir a algum lugar, fazer algo ou mexer no boneco, chama de "Rabisco". Nunca um pelo outro.
 // Com o nome da criança (banco assets/voz/nomes): fimNome ("Parabéns, {nome}! ...": falas rp-m-<id>-fim-pre/-pos emendadas
@@ -595,6 +597,69 @@ export const MISSOES = [
       { tipo: "levar", ate: "capitao", icone: "🧭" },
     ],
     fim: "Que tesouro bonito! E o melhor de tudo é descobrir a ilha junto com os amigos.",
+  },
+  // ---- empresas parceiras, cada uma com a missão do seu ramo (quem pede fica na porta da loja; a propaganda vem no fim)
+  {
+    id: "cestaGala", titulo: "Cesta com buquê", icone: "💐", tipo: "cidadania", parceiro: "gala-presentes",
+    npcs: {
+      dourado: { nome: "Lápis Dourado, da Gala Presentes", tipo: "lapis", cor: 0xd9a520, x: -42.5, z: 36, rot: -Math.PI / 2, acessorio: "gravata" },
+      aniversariante: { nome: "Dona Giz Rosa", tipo: "giz", cor: 0xff9fc8, casa: 8, acessorio: "laco" },
+    },
+    pedido: "Rabisco, hoje é aniversário da Dona Giz Rosa, e ela está esperando na casa oito! Monte o presente aqui na Gala Presentes: a cesta, o buquê e o cartão.",
+    etapas: [
+      { tipo: "pegar", itens: [{ id: "cesta", nome: "a cesta", emoji: "🧺", x: -43.5, z: 33 }, { id: "buque", nome: "o buquê", emoji: "💐", x: -43.5, z: 28 }, { id: "cartao", nome: "o cartão", emoji: "💌", x: -43.5, z: 24 }], fala: "Cesta pronta! Agora, entrega rápida para a Dona Giz Rosa, na casa oito.", voz: "rp-m-cestaGala-pegou" },
+      { tipo: "levar", ate: "aniversariante", icone: "💐" },
+    ],
+    fim: "A cesta chegou rapidinho, e a Dona Giz Rosa ficou muito feliz. Alegrar alguém é mostrar o amor de Deus.",
+    fimNome: "Muito bem, {nome}! A cesta chegou rapidinho, e a Dona Giz Rosa ficou muito feliz. Alegrar alguém é mostrar o amor de Deus.",
+  },
+  {
+    // a moeda perdida (Lucas 15.8-9): a vela e a vassoura são as da história; a dona festeja no fim
+    id: "semijoiaPerdida", titulo: "A semijoia perdida", icone: "💍", tipo: "biblica", parceiro: "see-love-joias",
+    npcs: {
+      perola: { nome: "Lápis Pérola, da See Love", tipo: "lapis", cor: 0xe8dcc8, x: 57.5, z: -115, rot: -Math.PI / 2, acessorio: "laco" },
+      dona: { nome: "Dona Régua Rosa", tipo: "regua", casa: 16, acessorio: "oculos" },
+    },
+    pedido: "Rabisco, a Dona Régua Rosa perdeu uma semijoia na cidade! Pegue a vela e a vassoura aqui na See Love Semijoias e procure com cuidado.",
+    etapas: [
+      { tipo: "pegar", itens: [{ id: "vela", nome: "a vela", emoji: "🕯️", x: 57, z: -123 }, { id: "vassoura", nome: "a vassoura", emoji: "🧹", x: 57, z: -127 }], fala: "Luz acesa e vassoura na mão! Agora procure na frente da Biblioteca.", voz: "rp-m-semijoiaPerdida-procure" },
+      { tipo: "pegar", itens: [{ id: "semijoia", nome: "a semijoia", emoji: "💍", x: 7, z: -53 }], fala: "Achou a semijoia! Leve para a Dona Régua Rosa, na casa dezesseis.", voz: "rp-m-semijoiaPerdida-achou" },
+      { tipo: "levar", ate: "dona", icone: "💍" },
+    ],
+    fim: "A semijoia voltou para a dona!",
+    fimNome: "Muito bem, {nome}! A semijoia voltou para a dona!",
+    verso: { texto: "Uma mulher perdeu uma moeda. Acendeu a luz, varreu a casa e procurou até achar. Depois, chamou as amigas para festejar.", ref: "baseado em Lucas 15.8-9" },
+  },
+  {
+    id: "uniformesCarina", titulo: "Uniformes novos da Educarte", icone: "👕", tipo: "cidadania", parceiro: "bella-company",
+    npcs: {
+      anil: { nome: "Lápis Anil, da Bella Company", tipo: "lapis", cor: 0x3f51b5, x: 223, z: 58, rot: Math.PI, acessorio: "bone" },
+      // a mesma Diretora Carina da porta da Kids I (PESSOAS_PORTA), que fica escondida enquanto esta aparece
+      carina: { nome: "Diretora Carina", tipo: "pessoa", pessoa: "carina", escola: [-4.5, 1.5], unidade: "kids1", soNaMissao: true },
+    },
+    pedido: "Rabisco, os uniformes novos da Educarte ficaram prontos na Bella Company! Pegue as camisetas e os agasalhos e leve para a Diretora Carina, na Educarte Kids I.",
+    etapas: [
+      { tipo: "pegar", itens: [{ id: "camisetas", nome: "as camisetas", emoji: "👕", x: 212, z: 57.5 }, { id: "agasalhos", nome: "os agasalhos", emoji: "🧥", x: 207.5, z: 57.5 }], fala: "Uniformes prontos! A Educarte Kids I fica do outro lado da cidade: chame um carro no Rabifone.", voz: "rp-m-uniformesCarina-pegou" },
+      { tipo: "levar", ate: "carina", icone: "👕" },
+    ],
+    fim: "Os uniformes chegaram, e a Diretora Carina ficou muito feliz. Cuidar de cada criança é mostrar o amor de Deus.",
+    fimNome: "Muito bem, {nome}! Os uniformes chegaram, e a Diretora Carina ficou muito feliz. Cuidar de cada criança é mostrar o amor de Deus.",
+  },
+  {
+    id: "devocionalKids", titulo: "O devocional do Clipe", icone: "📖", tipo: "biblica", parceiro: "cafe-com-deus-pai-kids",
+    npcs: {
+      marrom: { nome: "Lápis Marrom, do Café com Deus Pai Kids", tipo: "lapis", cor: 0x8a5a2b, x: -42.5, z: -156, rot: -Math.PI / 2, acessorio: "oculos" },
+      clipe: { nome: "Clipe Azulzinho", tipo: "clipe", cor: 0x00b5f0, casa: 15, escala: 0.6, acessorio: "bone" },
+    },
+    pedido: "Rabisco, o Clipe Azulzinho está esperando um devocional na casa quinze! Busque o Café com Deus Pai Kids aqui na loja e leve para ele.",
+    etapas: [
+      { tipo: "pegar", itens: [{ id: "devocional", nome: "o devocional", emoji: "📖", x: -43.5, z: -166 }], fala: "O devocional está com você! No caminho, agradeça a Deus por três presentes: o sol, o pão e a família.", voz: "rp-m-devocionalKids-pegou" },
+      { tipo: "pegar", itens: [{ id: "sol", nome: "o sol", emoji: "☀️", rotulo: "🙏 Agradecer pelo sol", x: -48, z: -131 }, { id: "pao", nome: "o pão", emoji: "🥖", rotulo: "🙏 Agradecer pelo pão", x: -48, z: -118 }, { id: "familia", nome: "a família", emoji: "🏠", rotulo: "🙏 Agradecer pela família", x: -60, z: -103 }], fala: "Que coração agradecido! Agora entregue o devocional para o Clipe Azulzinho.", voz: "rp-m-devocionalKids-gratidao" },
+      { tipo: "levar", ate: "clipe", icone: "📖" },
+    ],
+    fim: "Amém! O Clipe Azulzinho agradeceu a Deus junto com você.",
+    fimNome: "Amém, {nome}! O Clipe Azulzinho agradeceu a Deus junto com você.",
+    verso: { texto: "Agradeçam a Deus em todas as situações.", ref: "baseado em 1 Tessalonicenses 5.18" },
   },
   // ---- Vovô Léo, amigo do Rabisco: conta histórias bíblicas em eventos nas escolas. É pessoa de verdade: não fala, a anfitriã narra
   {
