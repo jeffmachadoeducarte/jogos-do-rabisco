@@ -9,7 +9,10 @@
 //    camiseta preta e jeans;
 //  - "camila": Camila, dona da academia Rise Up — loira com raiz castanha, argolas grandes, regata e legging pretas com
 //    "RISE UP" no peito, tênis branco e laranja;
-//  - "riseup-dono": Robert, também dono da Rise Up — boné preto "RISE UP", barba cheia, forte, camiseta grafite.
+//  - "riseup-dono": Robert, também dono da Rise Up — boné preto "RISE UP", barba cheia, forte, camiseta grafite;
+//  - "vovo-leo": Vovô Léo, amigo do Rabisco (conta histórias bíblicas em eventos nas escolas) — boina clara, óculos finos,
+//    barba e cabelo brancos, camisa xadrez com bolso, suspensório argyle, gravata-borboleta azul, calça caqui, sapato
+//    marrom; a maleta de atividades é opcional: criarPessoa("vovo-leo", { objeto: true }).
 //
 // Custo baixo: o corpo inteiro é UMA malha com esqueleto (cada caixa presa ao seu osso) com cor por vértice, mais uma
 // malha com os desenhos (rosto e peito). Com a sombrinha redonda: 3 chamadas de desenho.
@@ -43,6 +46,8 @@ const PESSOAS = {
   camila: { nome: "Camila", empresa: "Rise Up", pele: 0xf7d3bc, roupa: 0x1b1b20, manga: null, calca: 0x1b1b20, sapato: 0xf6f6f8, tenis: 0xff5a36, frente: "#1b1b20", texto: "RISE UP", corpo: { ombros: 0.96, gordo: 0.92 }, cabelo: { estilo: "ondas", cor: 0x8a6a48, pontas: 0xead39e }, brinco: 0xe7b443, rosto: { iris: "#3a6a7a", brow: "#6a4a2c", batom: "#d9707f", cilios: true, boca: "aberta" }, objeto: null },
   "riseup-dono": { nome: "Robert", empresa: "Rise Up", escala: 1.1, pele: 0xf1c3a8, roupa: 0x2e3036, manga: 0x2e3036, curta: true, calca: 0x18181c, sapato: 0x18181c, tenis: 0xff5a36, frente: "#2e3036", corpo: { ombros: 1.2, gordo: 1.06 }, cabelo: { estilo: "bone", cor: 0x17181c }, barba: 0x4a3324, rosto: { iris: "#4a3016", brow: "#3a2616", boca: "sorriso", barba: true, bone: "RISE UP" }, objeto: null },
   carina: { nome: "Diretora Carina", escola: "kids1", pele: 0xd9a07a, roupa: 0xd8c29e, manga: 0xd8c29e, calca: 0xd9a07a, saia: true, sapato: 0x1d1c22, frente: "#d8c29e", botoes: true, cabelo: { estilo: "cachos", cor: 0x17110e }, brinco: 0xe9b84a, rosto: { iris: "#3a2010", brow: "#17110e", batom: "#a8483c", cilios: true, boca: "dentes" }, objeto: null },
+  // escala 0,83: a mesma altura do Rabisco
+  "vovo-leo": { nome: "Vovô Léo", escala: 0.83, pele: 0xf0bea2, roupa: 0xf6f0e4, manga: 0xe2d0ae, curta: true, calca: 0xb09c72, sapato: 0x6b4226, frente: "#f6f0e4", xadrez: ["#a07f6b", "#e2d0ae", "#b4d3ef"], suspensorio: 0x4a4a50, gravata: { cor: 0x1f7fe0, no: 0x1865b8 }, corpo: { ombros: 1.08 }, cabelo: { estilo: "boina", cor: 0xeeece8, boina: 0xe3e3e0, aba: 0xe0e0dd, botao: 0xd8d8d5 }, barba: 0xf3f2ef, oculos: 0x6c7178, rosto: { iris: "#342010", brow: "#8e8a82", boca: "dentes", barba: true }, objeto: { tipo: "maleta", opcional: true, pose: { oEx: 0, oEz: 0.2, cE: -0.06, mEx: 0 } } },
 };
 
 // ---------------------------------------------------------------- montagem: cada caixa presa a um osso
@@ -66,6 +71,10 @@ function montar(p) {
   else P("quadril", L, 0.2, 0.36, p.calca, 0, 0.94, 0);
   P("tronco", L, 0.52, 0.34 * G.gordo, p.roupa, 0, 1.3, 0);
   P("tronco", 0.2, 0.08, 0.2, p.pele, 0, 1.59, 0);
+  // suspensório: as duas tiras das costas e o passante nos ombros (a frente é desenhada na estampa, com o argyle)
+  if (p.suspensorio) for (const s of [-1, 1]) { P("tronco", 0.09, 0.52, 0.01, p.suspensorio, s * 0.17, 1.3, -0.175); P("tronco", 0.09, 0.012, 0.35, p.suspensorio, s * 0.17, 1.562, 0); }
+  // gravata-borboleta: duas pontas e o nó, em cima da gola
+  if (p.gravata) { for (const s of [-1, 1]) P("tronco", 0.1, 0.09, 0.03, p.gravata.cor, s * 0.065, 1.5, 0.19); P("tronco", 0.05, 0.05, 0.04, p.gravata.no, 0, 1.5, 0.195); }
   // braços: manga (ou pele, na regata), antebraço e mão
   for (const [s, o, c, m] of [[1, "ombroE", "cotoveloE", "maoE"], [-1, "ombroD", "cotoveloD", "maoD"]]) {
     const x = s * (xB + 0.02), b = p.manga ?? p.pele, b2 = p.curta || p.manga == null ? p.pele : p.manga;
@@ -90,12 +99,25 @@ function montar(p) {
       for (const x of [-0.24, 0, 0.24]) for (const y of [0.2, 0, -0.2, -0.36]) k(x, y, -0.3, 0.24);
       for (const x of [-0.2, 0, 0.2]) k(x, 0.24, 0.24, 0.16);
     }
+    else if (C.estilo === "boina") { // cabelo branco só nas laterais e na nuca; a boina cobre o resto
+      for (const s of [-1, 1]) P(cab, 0.05, 0.2, 0.46, C.cor, s * 0.295, Y + 0.04, -0.02);
+      P(cab, W + 0.02, 0.2, 0.05, C.cor, 0, Y + 0.04, -0.27);
+      P(cab, W + 0.14, 0.11, 0.62, C.boina, 0, Y + 0.33, -0.02); P(cab, W - 0.02, 0.07, 0.48, C.boina, 0, Y + 0.41, -0.04);
+      P(cab, 0.06, 0.03, 0.06, C.botao, 0, Y + 0.46, -0.04); P(cab, W - 0.06, 0.035, 0.15, C.aba, 0, Y + 0.28, 0.33);
+    }
   }
   if (p.brinco) for (const s of [-1, 1]) P(cab, 0.06, p.nome === "Camila" ? 0.14 : 0.08, 0.06, p.brinco, s * 0.32, Y - 0.16, 0.04);
   if (p.oculos) { for (const s of [-1, 1]) { P(cab, 0.2, 0.03, 0.03, p.oculos, s * 0.13, Y + 0.12, 0.26); P(cab, 0.2, 0.03, 0.03, p.oculos, s * 0.13, Y - 0.02, 0.26); P(cab, 0.03, 0.17, 0.03, p.oculos, s * 0.03, Y + 0.05, 0.26); P(cab, 0.03, 0.17, 0.03, p.oculos, s * 0.23, Y + 0.05, 0.26); P(cab, 0.03, 0.03, 0.26, p.oculos, s * 0.29, Y + 0.1, 0.13); } }
   if (p.barba) { P(cab, W + 0.03, 0.14, 0.53, p.barba, 0, Y - 0.2, 0.0); P(cab, 0.12, 0.2, 0.5, p.barba, 0.27, Y - 0.1, 0); P(cab, 0.12, 0.2, 0.5, p.barba, -0.27, Y - 0.1, 0); }
   // objeto na mão
   if (p.objeto?.tipo === "prancheta") { P("objeto", 0.05, 0.36, 0.28, 0xb07a45, 0.55, 0.92, 0.14); P("objeto", 0.06, 0.28, 0.22, 0xffffff, 0.56, 0.9, 0.14); P("objeto", 0.07, 0.04, 0.1, 0xc8d0da, 0.56, 1.06, 0.14); }
+  // maleta de madeira clara com adesivos de viagem: pendurada pela alça na mão, ao lado da perna
+  if (p.objeto?.tipo === "maleta") {
+    const x = 0.5;
+    P("objeto", 0.12, 0.32, 0.5, 0xd9b27c, x, 0.47, 0); P("objeto", 0.13, 0.03, 0.51, 0x9a6f42, x, 0.47, 0);
+    P("objeto", 0.03, 0.03, 0.16, 0x6b4226, x, 0.7, 0); for (const s of [-1, 1]) P("objeto", 0.03, 0.07, 0.03, 0x6b4226, x, 0.665, s * 0.07);
+    P("objeto", 0.13, 0.08, 0.1, 0xec2e8c, x, 0.55, 0.13); P("objeto", 0.13, 0.08, 0.1, 0x1f7fe0, x, 0.39, -0.13);
+  }
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("normal", new THREE.Float32BufferAttribute(nrm, 3));
   g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setAttribute("color", new THREE.Float32BufferAttribute(cor, 3));
@@ -142,6 +164,13 @@ function desenhar(c, p, fechado, logo) {
   // estampa do tronco
   c.save(); c.translate(S, 0);
   c.fillStyle = p.frente; c.fillRect(0, 0, S, S);
+  if (p.xadrez) {
+    // camisa xadrez, carcela com botões, bolso no peito e as duas tiras do suspensório com losangos (argyle)
+    p.xadrez.forEach((cor, i) => { c.globalAlpha = 0.55; c.fillStyle = cor; for (let k = i * 22; k < S; k += 64) { c.fillRect(k, 0, 18, S); c.fillRect(0, k, S, 18); } });
+    c.globalAlpha = 1; c.fillStyle = "#2a1d18"; for (const y of [48, 104, 160, 216]) c.fillRect(124, y, 8, 8);
+    c.strokeStyle = "#5a4538"; c.lineWidth = 3; c.strokeRect(166, 96, 44, 48);
+    for (const x of [46, 180]) { c.fillStyle = "#4a4a50"; c.fillRect(x, 0, 30, S); c.fillStyle = "#17171b"; for (let y = 0; y < S; y += 30) { c.beginPath(); c.moveTo(x + 15, y); c.lineTo(x + 30, y + 15); c.lineTo(x + 15, y + 30); c.lineTo(x, y + 15); c.fill(); } }
+  }
   if (p.listras) { c.fillStyle = p.listras; for (let y = 22; y < S; y += 44) for (let x = 0; x < S; x += 32) c.fillRect(x, y + (x % 64 ? 8 : 0), 22, 8); }
   if (p.lapela) { c.fillStyle = p.lapela; c.fillRect(0, 0, 66, S); c.fillRect(S - 66, 0, 66, S); c.fillStyle = "#ffffff"; c.fillRect(90, 0, 76, 44); }
   if (p.botoes) { c.fillStyle = "#eadbbf"; c.fillRect(70, 0, 116, 34); c.fillStyle = "#8a6a48"; for (const y of [66, 118, 170, 222]) c.fillRect(118, y, 20, 20); }
@@ -159,9 +188,10 @@ function texturasDe(p) {
 let matCorpo = null;
 const corpoMat = () => (matCorpo ??= comArestas(new THREE.MeshPhongMaterial({ vertexColors: true, specular: 0x2c2c2c, shininess: 36 })));
 
-export function criarPessoa(id = "sabrina", { escala: esc = null, nome = null } = {}) {
-  const p = PESSOAS[id];
-  if (!p) throw new Error(`pessoa desconhecida: ${id}`);
+export function criarPessoa(id = "sabrina", { escala: esc = null, nome = null, objeto = false } = {}) {
+  const base = PESSOAS[id];
+  if (!base) throw new Error(`pessoa desconhecida: ${id}`);
+  const p = base.objeto?.opcional && !objeto ? { ...base, objeto: null } : base; // objeto opcional só entra se pedido
   const escala = esc ?? p.escala ?? 1;
   const grupo = new THREE.Group();
   const raiz = new THREE.Group(); // pulo e estica-e-achata
@@ -189,7 +219,7 @@ export function criarPessoa(id = "sabrina", { escala: esc = null, nome = null } 
 
   // ---------------- animação
   const B = (n) => ossos[O[n]];
-  const POSE_OBJ = { oEx: -0.12, oEz: 0.04, cE: -1.0, mEx: 0.25 };
+  const POSE_OBJ = { oEx: -0.12, oEz: 0.04, cE: -1.0, mEx: 0.25, ...(p.objeto?.pose ?? {}) };
   const atual = {};
   let tempo = Math.random() * 10, fase = 0, piscar = 2, aceno = 0, festa = 0, recebe = 0, juntas = false;
   let vy = 0, py = 0, objQuer = Boolean(p.objeto), objEsc = objQuer ? 1 : 0, segurando = null, pendente = null, olharAlvo = 0, olharT = 3;

@@ -34,6 +34,8 @@
   <button data-p="aurelio">Aurélio</button>
   <button data-p="camila">Camila</button>
   <button data-p="riseup-dono">Robert</button>
+  <button data-p="vovo-leo">Vovô Léo</button>
+  <button data-a="maleta">Maleta: não</button>
   <button data-p="juntas">Todas</button>
 </div>
 <script type="module">
@@ -59,9 +61,9 @@ const g = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshToonMate
 const calc = TEX.calcada.clone(); calc.needsUpdate = true; calc.repeat.set(3, 3);
 const c = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), new THREE.MeshToonMaterial({ map: calc })); c.rotation.x = -Math.PI / 2; c.position.y = 0.01; cena.add(c);
 
-const pessoas = { sabrina: criarPessoa("sabrina"), elaine: criarPessoa("elaine"), carina: criarPessoa("carina"), aurelio: criarPessoa("aurelio"), camila: criarPessoa("camila"), "riseup-dono": criarPessoa("riseup-dono") };
-const TITULOS = { sabrina: "Diretora Sabrina · Kids II", elaine: "Contadora Elaine · Crescente Contabilidade", carina: "Diretora Carina · Kids I", aurelio: "Aurélio · Crescente Contabilidade", camila: "Camila · Rise Up", "riseup-dono": "Robert · Rise Up", juntas: "Todas as pessoas" };
-const LUGAR = { sabrina: -2.75, elaine: -1.65, aurelio: -0.55, carina: 0.55, camila: 1.65, "riseup-dono": 2.75 };
+const pessoas = { sabrina: criarPessoa("sabrina"), elaine: criarPessoa("elaine"), carina: criarPessoa("carina"), aurelio: criarPessoa("aurelio"), camila: criarPessoa("camila"), "riseup-dono": criarPessoa("riseup-dono"), "vovo-leo": criarPessoa("vovo-leo", { objeto: true }) };
+const TITULOS = { sabrina: "Diretora Sabrina · Kids II", elaine: "Contadora Elaine · Crescente Contabilidade", carina: "Diretora Carina · Kids I", aurelio: "Aurélio · Crescente Contabilidade", camila: "Camila · Rise Up", "riseup-dono": "Robert · Rise Up", "vovo-leo": "Vovô Léo · amigo do Rabisco", juntas: "Todas as pessoas" };
+const LUGAR = { sabrina: -2.75, elaine: -1.65, aurelio: -0.55, carina: 0.55, camila: 1.65, "riseup-dono": 2.75, "vovo-leo": 3.85 };
 for (const p of Object.values(pessoas)) cena.add(p.grupo);
 let sabrina = pessoas.sabrina, quem = "sabrina";
 function mostrar(q) {
@@ -82,21 +84,23 @@ cena.add(rabisco.grupo);
 const alvara = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.26, 0.01), new THREE.MeshToonMaterial({ color: 0xfffbe8 }));
 alvara.rotation.x = -0.4;
 
-const est = { acao: "parada", girar: true, ang: 0.35, comRabisco: false, cam: { dist: 5.2, alt: 1.25, alvoY: 1.12 } };
+const est = { maleta: false, acao: "parada", girar: true, ang: 0.35, comRabisco: false, cam: { dist: 5.2, alt: 1.25, alvoY: 1.12 } };
 const info = document.getElementById("info");
 mostrar("sabrina");
+pessoas["vovo-leo"].objeto(false);
 
 function fazer(a) {
+  if (a === "maleta") { est.maleta = !est.maleta; document.querySelector("[data-a=maleta]").textContent = `Maleta: ${est.maleta ? "sim" : "não"}`; pessoas["vovo-leo"].objeto(est.maleta); return; }
   if (a === "girar") { est.girar = !est.girar; document.querySelector("[data-a=girar]").textContent = `Girar: ${est.girar ? "sim" : "não"}`; return; }
   est.acao = a;
   const todas = quem === "juntas" ? Object.values(pessoas) : [sabrina];
-  for (const b of document.querySelectorAll("#barra button[data-a]")) if (b.dataset.a !== "girar") b.classList.toggle("ativo", b.dataset.a === a);
+  for (const b of document.querySelectorAll("#barra button[data-a]")) if (b.dataset.a !== "girar" && b.dataset.a !== "maleta") b.classList.toggle("ativo", b.dataset.a === a);
   for (const s of todas) {
     s.orar(a === "orar");
     if (a === "acenar") s.acenar(3);
     if (a === "comemorar") s.comemorar(3);
     if (a === "parada") s.calma();
-    if (a !== "receber") { s.segurar(null); s.objeto(true); }
+    if (a !== "receber") { s.segurar(null); s.objeto(s.id === "vovo-leo" ? est.maleta : true); }
   }
   if (a === "receber") { sabrina.segurar(null); sabrina.receber(alvara); setTimeout(() => { if (est.acao === "receber") { sabrina.segurar(null); sabrina.objeto(true); } }, 4500); }
 }
