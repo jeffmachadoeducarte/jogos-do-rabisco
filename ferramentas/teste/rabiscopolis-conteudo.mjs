@@ -45,7 +45,7 @@ const semVerso = bib.filter((m) => !m.verso || !/^baseado em [1-3]?\s?[A-ZÁ-Ú]
 ok(semVerso.length === 0, `toda bíblica tem versículo em paráfrase com "baseado em Livro c.v"${semVerso.length ? ": falta em " + semVerso.map((m) => m.id).join(", ") : ""}`);
 const TIPOS = new Set(["lapis", "giz", "borracha", "cola", "regua", "caderno", "clipe", "apontador", "pincel", "vovo", "ovelha", "coelho", "piquenique", "gato", "pessoa"]);
 // bonecos de pessoas de verdade (pessoas.js) usados nas missões
-const PESSOAS = new Set(["sabrina", "elaine", "carina", "aurelio", "camila", "riseup-dono"]);
+const PESSOAS = new Set(["sabrina", "elaine", "carina", "aurelio", "camila", "riseup-dono", "vovo-leo"]);
 const ETAPAS = new Set(["falar", "pegar", "levar", "seguir", "plantar", "dirigir", "faixa", "achar", "seguirVarios", "contar", "bandeiras", "levarVeiculo", "apagar", "pistas", "entregar", "voltar", "orar", "evento", "escolherCarro"]);
 const vozesUsadas = new Set();
 for (const m of MISSOES) {

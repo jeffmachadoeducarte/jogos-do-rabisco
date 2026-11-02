@@ -596,6 +596,36 @@ export const MISSOES = [
     ],
     fim: "Que tesouro bonito! E o melhor de tudo é descobrir a ilha junto com os amigos.",
   },
+  // ---- Vovô Léo, amigo do Rabisco: conta histórias bíblicas em eventos nas escolas. É pessoa de verdade: não fala, a anfitriã narra
+  {
+    id: "maletaLeo", titulo: "A maleta de histórias", icone: "🧳", tipo: "biblica",
+    npcs: {
+      leo: { nome: "Vovô Léo", tipo: "pessoa", pessoa: "vovo-leo", escola: [-10, 1.5], unidade: "kids1" },
+      vizinha: { nome: "Dona Caderno Rosa", tipo: "caderno", cor: 0xff9fc8, casa: 20, acessorio: "oculos" },
+    },
+    pedido: "Rabisco, o Vovô Léo chegou na Educarte Kids I para contar histórias da Bíblia aos pequeninos, mas a maleta de histórias ficou na casa vinte, na Vila dos Ipês! Busque a maleta e leve para ele.",
+    etapas: [
+      { tipo: "pegar", itens: [{ id: "maleta", nome: "maleta de histórias", emoji: "🧳", casa: 20 }], fala: "Aqui está a maleta! Agora leve para o Vovô Léo, na Educarte Kids I.", voz: "rp-m-maletaLeo-pegou", quemFala: "vizinha" },
+      { tipo: "levar", ate: "leo", icone: "🧳" },
+    ],
+    fim: "A maleta chegou! Os pequeninos já estão sentadinhos para ouvir a história do Vovô Léo.",
+    fimNome: "Muito bem, {nome}! A maleta chegou e os pequeninos já estão sentadinhos para ouvir a história do Vovô Léo.",
+    verso: { texto: "Desde pequenino, Timóteo conhecia as palavras da Bíblia, que ensinam a confiar em Jesus.", ref: "baseado em 2 Timóteo 3.15" },
+  },
+  {
+    id: "samuelLeo", titulo: "A história de Samuel", icone: "👂", tipo: "biblica",
+    npcs: {
+      leo: { nome: "Vovô Léo", tipo: "pessoa", pessoa: "vovo-leo", escola: [-10, 1.5], unidade: "kids2", objeto: true },
+      k1: { nome: "Clipe Verdinho", tipo: "clipe", cor: 0x58c43a, x: 170, z: 8.2, escala: 0.6, acessorio: "bone" },
+      k2: { nome: "Caderninho Lilás", tipo: "caderno", cor: 0xa98ce0, x: 222, z: 8.2, escala: 0.6, acessorio: "laco" },
+      k3: { nome: "Pincel Amarelinho", tipo: "pincel", cor: 0xffcc1f, casa: 27, escala: 0.6, acessorio: "bone" },
+    },
+    pedido: "Rabisco, o Vovô Léo vai contar uma história da Bíblia na Educarte Kids II! Chame três crianças, uma delas na casa vinte e sete, no Bairro das Palmeiras, e traga todas para ouvir. Siga os coraçõezinhos!",
+    etapas: [{ tipo: "seguirVarios", quem: ["k1", "k2", "k3"], ate: "leo", rotulo: "👂 Chamar", fala: "Oba! Eu adoro histórias!", voz: "rp-m-criancas-convite", falaTodos: "Somos três! Vamos para a Educarte Kids II!", vozTodos: "rp-m-samuelLeo-todos" }],
+    fim: "Todo mundo sentadinho! O Vovô Léo contou do menino Samuel, que ouviu Deus chamar de noite e aprendeu a escutar.",
+    fimNome: "Muito bem, {nome}! Todo mundo sentadinho! O Vovô Léo contou do menino Samuel, que ouviu Deus chamar de noite e aprendeu a escutar.",
+    verso: { texto: "O menino Samuel respondeu a Deus: fala, que o teu servo está ouvindo.", ref: "baseado em 1 Samuel 3.10" },
+  },
 ];
 // palavras que não podem aparecer em nada que a criança vê ou ouve (teste rabiscopolis-conteudo.mjs)
 export const PROIBIDAS = ["arma", "revólver", "pistola", "tiro", "matar", "morte", "morreu", "sangue", "prisão", "preso", "polícia prende", "ladrão", "roubo", "roubar", "briga", "brigar", "soco", "susto", "monstro", "fantasma", "zumbi", "namor", "beijo", "roblox", "brookhaven", "robux", "dinheiro", "comprar", "pagar"];

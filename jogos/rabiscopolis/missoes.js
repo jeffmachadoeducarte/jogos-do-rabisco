@@ -157,7 +157,7 @@ export function criarMissoes(ctx) {
       grupo.add(n.g);
     } else if (d.pessoa) {
       // pessoa de verdade (boneco de pessoas.js): a Diretora Sabrina; recebe o alvará com as duas mãos e comemora
-      const m = criarPessoa(d.pessoa);
+      const m = criarPessoa(d.pessoa, { objeto: d.objeto });
       m.grupo.position.set(d.x, 0.03, d.z); m.grupo.rotation.y = d.rot ?? 0;
       grupo.add(m.grupo);
       Object.assign(n, { m, g: m.grupo, pessoa: true });
@@ -236,9 +236,9 @@ export function criarMissoes(ctx) {
     if (n.pessoa) { n.m.segurar(null); n.m.calma(); n.m.objeto(true); }
   }
 
-  // missões de parceiras (Bella Cat, Rise Up, J.E, Crescente): por enquanto os personagens parceiros não falam; quem
-  // fala é a anfitriã narrando (o balão mostra "Rabiscolândia")
-  const quemFala = (M, nome) => (M?.parceiro ? "Rabiscolândia" : nome);
+  // missões de parceiras (Bella Cat, Rise Up, J.E, Crescente) e de pessoas de verdade (Vovô Léo): esses personagens não
+  // falam; quem fala é a anfitriã narrando (o balão mostra "Rabiscolândia")
+  const quemFala = (M, nome) => (M?.parceiro || M?.npcs[M.quem]?.pessoa ? "Rabiscolândia" : nome);
   function aceitar(id) {
     const M = MISSOES.find((x) => x.id === id);
     if (!M || ativa) return false;

@@ -207,6 +207,18 @@
   "rp-m-bauIlha-fim": "Que tesouro bonito! E o melhor de tudo é descobrir a ilha junto com os amigos.",
   "rp-m-bauIlha-achou": "Você achou o baú: dentro tem conchinhas, uma bússola e um mapa da ilha! Leve para o Capitão Borracha.",
   "rp-m-bauIlha-pista-2": "Achou! A próxima pista está pertinho da roda-gigante.",
-  "rp-m-bauIlha-pista-3": "Muito bem! Agora procure perto do guarda-sol, na areia."
+  "rp-m-bauIlha-pista-3": "Muito bem! Agora procure perto do guarda-sol, na areia.",
+  "rp-m-maletaLeo-pedido": "Rabisco, o Vovô Léo chegou na Educarte Kids I para contar histórias da Bíblia aos pequeninos, mas a maleta de histórias ficou na casa vinte, na Vila dos Ipês! Busque a maleta e leve para ele.",
+  "rp-m-maletaLeo-fim": "A maleta chegou! Os pequeninos já estão sentadinhos para ouvir a história do Vovô Léo.",
+  "rp-m-maletaLeo-fim-pre": "Muito bem,",
+  "rp-m-maletaLeo-fim-pos": "A maleta chegou e os pequeninos já estão sentadinhos para ouvir a história do Vovô Léo.",
+  "rp-m-maletaLeo-verso": "Desde pequenino, Timóteo conhecia as palavras da Bíblia, que ensinam a confiar em Jesus. Baseado em 2 Timóteo 3.15.",
+  "rp-m-maletaLeo-pegou": "Aqui está a maleta! Agora leve para o Vovô Léo, na Educarte Kids I.",
+  "rp-m-samuelLeo-pedido": "Rabisco, o Vovô Léo vai contar uma história da Bíblia na Educarte Kids II! Chame três crianças, uma delas na casa vinte e sete, no Bairro das Palmeiras, e traga todas para ouvir. Siga os coraçõezinhos!",
+  "rp-m-samuelLeo-fim": "Todo mundo sentadinho! O Vovô Léo contou do menino Samuel, que ouviu Deus chamar de noite e aprendeu a escutar.",
+  "rp-m-samuelLeo-fim-pre": "Muito bem,",
+  "rp-m-samuelLeo-fim-pos": "Todo mundo sentadinho! O Vovô Léo contou do menino Samuel, que ouviu Deus chamar de noite e aprendeu a escutar.",
+  "rp-m-samuelLeo-verso": "O menino Samuel respondeu a Deus: fala, que o teu servo está ouvindo. Baseado em 1 Samuel 3.10.",
+  "rp-m-samuelLeo-todos": "Somos três! Vamos para a Educarte Kids II!"
  }
 }
