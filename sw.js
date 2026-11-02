@@ -1,7 +1,7 @@
 // Service worker do app Jogos do Rabisco: abre rápido e continua funcionando sem internet.
 // Páginas e código: busca na rede primeiro (pega a versão nova) e usa a cópia guardada se estiver sem internet.
 // Vozes, imagens e fontes: usa a cópia guardada primeiro (não mudam) e só baixa o que falta.
-const VERSAO = "rabisco-v6-dois-jogos";
+const VERSAO = "rabisco-v7-blocos";
 const ESSENCIAIS = ["./", "./index.html", "./src/app.js", "./src/style.css", "./src/catalogo.js", "./vendor/three.module.min.js", "./manifest.webmanifest", "./assets/app/icone-192.png"];
 
 self.addEventListener("install", (e) => {
