@@ -198,38 +198,66 @@ export const musica = {
   },
 };
 
-// Ronco do motor do kart: pulso grave que sobe com a velocidade
-let motorOsc = null, motorOsc2 = null, motorGanho = null;
+// Ronco do motor (kart e veículos da Rabiscolândia): pulso grave que sobe com a velocidade.
+// Perfis: base e faixa de frequência (Hz), duty do pulso, vibração das pás (helicóptero) e volume.
+const PERFIS_MOTOR = {
+  carro: { base: 55, faixa: 75, duty: 0.125, vol: 0.07 },
+  moto: { base: 85, faixa: 120, duty: 0.25, vol: 0.045 },
+  barco: { base: 45, faixa: 45, duty: 0.25, vol: 0.05 },
+  heli: { base: 38, faixa: 14, duty: 0.5, vol: 0.06, pas: 11 },
+};
+let motorOsc = null, motorOsc2 = null, motorGanho = null, motorLfo = null, motorPerfil = null;
 export const motor = {
-  ligar() {
-    if (motorOsc) return;
+  ligar(tipo = "carro") {
+    if (motorOsc && motorPerfil === PERFIS_MOTOR[tipo]) return;
+    if (motorOsc) this.desligar();
     const a = audio();
+    motorPerfil = PERFIS_MOTOR[tipo] ?? PERFIS_MOTOR.carro;
     motorGanho = a.createGain();
     motorGanho.gain.value = 0.0;
     motorOsc = a.createOscillator();
-    motorOsc.setPeriodicWave(ondas[0.125]);
+    motorOsc.setPeriodicWave(ondas[motorPerfil.duty]);
     motorOsc2 = a.createOscillator();
     motorOsc2.type = "triangle";
-    motorOsc.connect(motorGanho);
-    motorOsc2.connect(motorGanho);
+    let entrada = motorGanho;
+    if (motorPerfil.pas) { // pás do helicóptero: o som "bate" várias vezes por segundo
+      const bate = a.createGain();
+      bate.gain.value = 0.55;
+      bate.connect(motorGanho);
+      const fundo = a.createGain();
+      fundo.gain.value = 0.45;
+      motorLfo = a.createOscillator();
+      motorLfo.frequency.value = motorPerfil.pas;
+      motorLfo.connect(fundo).connect(bate.gain);
+      motorLfo.start();
+      entrada = bate;
+    }
+    motorOsc.connect(entrada);
+    motorOsc2.connect(entrada);
     motorGanho.connect(mestre);
     motorOsc.start();
     motorOsc2.start();
+    motor.ritmo = 0;
   },
   // ritmo de 0 (parado) a 1 (máxima); turbo pode passar de 1
   atualizar(ritmo) {
     if (!motorOsc) return;
     const t = ctx.currentTime;
-    const f = 55 + ritmo * 75;
+    const p = motorPerfil;
+    const f = p.base + ritmo * p.faixa;
     motorOsc.frequency.setTargetAtTime(f, t, 0.08);
     motorOsc2.frequency.setTargetAtTime(f * 0.5, t, 0.08);
-    motorGanho.gain.setTargetAtTime(0.025 + ritmo * 0.03, t, 0.1);
+    motorGanho.gain.setTargetAtTime(p.vol * 0.5 + ritmo * p.vol * 0.6, t, 0.1);
+    motor.ritmo = ritmo;
   },
   desligar() {
     if (!motorOsc) return;
     motorGanho.gain.setTargetAtTime(0, ctx.currentTime, 0.1);
-    const o1 = motorOsc, o2 = motorOsc2;
-    setTimeout(() => { o1.stop(); o2.stop(); }, 400);
-    motorOsc = motorOsc2 = null;
+    const nos = [motorOsc, motorOsc2, motorLfo].filter(Boolean);
+    setTimeout(() => nos.forEach((o) => o.stop()), 400);
+    motorOsc = motorOsc2 = motorLfo = motorPerfil = null;
   },
+  get ligado() { return Boolean(motorOsc); },
+  get estadoAudio() { return ctx ? ctx.state : null; },
+  get ganho() { return motorGanho ? motorGanho.gain.value : 0; },
 };

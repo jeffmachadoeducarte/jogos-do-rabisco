@@ -13,7 +13,7 @@ import { THREE, MAT, mesclar, placa } from "./base3d.js";
 import { PARCEIROS } from "../../src/parceiros.js";
 import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
 import { criarCasca, el } from "../../src/motor/casca.js";
-import { sons } from "../../src/motor/sons.js";
+import { sons, motor } from "../../src/motor/sons.js";
 import { Engrenagem } from "../../src/motor/engrenagem.js";
 import { falar, falarNome, preCarregarFalas } from "../../src/motor/voz.js";
 import { montarMundo } from "./mundo.js";
@@ -401,6 +401,7 @@ function parar() {
   veiculos.length = 0; transito = []; patioJE = null; moradores = []; vovo = null; garagem = null; missoes = null;
   jogo.palco.querySelector('.escolha-j2-rp')?.remove(); j2 = null;
   dentro = null; contexto = null; alvoMapa = null; oracao = null; trava = null;
+  motor.desligar();
   teclas.clear();
 }
 
@@ -926,6 +927,14 @@ function posicionarCamera(k, dt, andando = false) {
   ceu.seguir(P.x, P.z);
   mundo.visibilidade(P.x, P.z);
 }
+// ronco do veículo que o Rabisco dirige (som de motor do Kart, com perfil por tipo); cala ao sair, pausar ou entrar em casa
+const PERFIL_MOTOR = { heli: "heli", moto: "moto", jetski: "moto", barco: "barco", lancha: "barco", trator: "barco" };
+function somDoMotor() {
+  if (!dentro || jogo.pausado || ["bici", "patinete"].includes(dentro.tipo)) { motor.desligar(); return; }
+  motor.ligar(PERFIL_MOTOR[dentro.tipo] ?? "carro");
+  const heli = dentro.tipo === "heli";
+  motor.atualizar(heli ? Math.min(1, dentro.rotor ?? 0) : Math.min(1.2, Math.abs(dentro.vel) / (dentro.vmax || 15)));
+}
 function quadro() {
   if (!vivo) return;
   // aparelho lento: o tempo do jogo não fica para trás (até 8 passos de 1/30 s por quadro)
@@ -936,6 +945,7 @@ function quadro() {
   const doisToque = Boolean(j2?.ativo) && qualidade.perfil.toque;
   if (doisToque !== quadro.doisToque) { quadro.doisToque = doisToque; if (qualidade.perfil.toque) { mundo.alcance = doisToque ? 78 : 95; mundo.detalheAte = doisToque ? 28 : 35; cena.fog.far = mundo.alcance; } }
   for (let p = 0; p < passos; p++) passo(total / passos, p === passos - 1);
+  somDoMotor();
   estat.tj = (estat.tj ?? 0) + total; // tempo de jogo (o que os passos simularam), para os testes
   r3.render(cena, cam);
   estat.calls = r3.info.render.calls; estat.tris = r3.info.render.triangles;
