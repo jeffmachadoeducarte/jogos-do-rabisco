@@ -77,6 +77,8 @@ const N = (nome) => {
 
 export const sons = {
   destravar() { audio(); },
+  // contexto e volume geral, para quem toca sequência própria (as músicas das cenas da Rabiscolândia)
+  saida() { return { ctx: audio(), mestre }; },
   alternarMudo() {
     mudo = !mudo;
     audio();

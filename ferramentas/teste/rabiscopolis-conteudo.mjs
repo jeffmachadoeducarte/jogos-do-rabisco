@@ -45,8 +45,8 @@ const semVerso = bib.filter((m) => !m.verso || !/^baseado em [1-3]?\s?[A-ZÁ-Ú]
 ok(semVerso.length === 0, `toda bíblica tem versículo em paráfrase com "baseado em Livro c.v"${semVerso.length ? ": falta em " + semVerso.map((m) => m.id).join(", ") : ""}`);
 const TIPOS = new Set(["lapis", "giz", "borracha", "cola", "regua", "caderno", "clipe", "apontador", "pincel", "vovo", "ovelha", "coelho", "piquenique", "gato", "pessoa"]);
 // bonecos de pessoas de verdade (pessoas.js) usados nas missões
-const PESSOAS = new Set(["sabrina", "elaine", "carina", "aurelio", "camila", "riseup-dono", "vovo-leo"]);
-const ETAPAS = new Set(["falar", "pegar", "levar", "seguir", "plantar", "dirigir", "faixa", "achar", "seguirVarios", "contar", "bandeiras", "levarVeiculo", "apagar", "pistas", "entregar", "voltar", "orar", "evento", "escolherCarro"]);
+const PESSOAS = new Set(["sabrina", "elaine", "carina", "aurelio", "camila", "riseup-dono", "vovo-leo", "marlon", "samira"]);
+const ETAPAS = new Set(["falar", "pegar", "levar", "seguir", "plantar", "dirigir", "faixa", "achar", "seguirVarios", "contar", "bandeiras", "levarVeiculo", "apagar", "pistas", "entregar", "voltar", "orar", "evento", "escolherCarro", "cena"]);
 const vozesUsadas = new Set();
 for (const m of MISSOES) {
   const ids = Object.keys(m.npcs);
@@ -95,7 +95,8 @@ ok(!MISSOES.some((m) => /\{nome\}/.test(m.pedido)) && !MISSOES.some((m) => m.ped
   const pontosDe = (m) => [...Object.values(m.npcs).filter((n) => n.x != null), ...m.etapas.flatMap((e) => [...(e.itens ?? []).filter((it) => it.x != null), ...(e.pistas ?? []), ...(e.pontos ?? []).map((q) => (Array.isArray(q) ? { x: q[0], z: q[1] } : q))])];
   const fora = (p) => Math.max(Math.abs(p.x), Math.abs(p.z)) > M2.BORDA_ANTIGA;
   const casaNova = (m) => Object.values(m.npcs).some((n) => n.casa > 16);
-  const longe = novas.filter((m) => !casaNova(m) && !pontosDe(m).some(fora)).map((m) => m.id);
+  // (as especiais das parceiras acontecem onde a loja está, dentro ou fora do miolo)
+  const longe = novas.filter((m) => !m.parceiro && !casaNova(m) && !pontosDe(m).some(fora)).map((m) => m.id);
   ok(!longe.length, `as ${novas.length} missões novas acontecem nos bairros novos ou no mar ${longe.join(", ")}`);
   const regiao = (p) => (p.z > M2.ORLA.z0 - 1 ? (M2.naIlha(p.x, p.z, 2) ? "ilha" : "orla/mar") : p.x < -M2.BORDA_ANTIGA ? "Vila dos Ipês" : p.x > M2.BORDA_ANTIGA ? "Bairro das Palmeiras" : p.z < -M2.BORDA_ANTIGA ? "Jardim das Estrelas" : "miolo");
   const porRegiao = {};

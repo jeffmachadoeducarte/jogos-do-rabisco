@@ -69,6 +69,25 @@ export const FALAS_PT = {
   "rp-aula-fim-pre": "Parabéns,",
   "rp-aula-fim-pos": "Você aprendeu muito hoje! O sábio ouve e aprende ainda mais. Baseado em Provérbios um, versículo cinco.",
   "rp-pai-intro-pos": "vamos orar juntos. Fique quietinho e repita comigo.",
+  // teatro da Ballet e Cia e salão da BT Models (parceiras-palcos.js)
+  "rp-ballet-entrar": "Bem-vindo à Ballet e Cia! Chegue na estrela, em frente ao palco, e suba para dançar com a turma.",
+  "rp-ballet-passos": "Olhe as estrelinhas! Quando a estrelinha chegar no círculo, aperte o botão e dance no tempo da música, igual às alunas.",
+  "rp-ballet-show": "Muito bem! A cortina vai abrir de novo. É hora da apresentação!",
+  "rp-ballet-bravo": "Bravo! Que apresentação linda! A plateia inteira aplaudiu.",
+  "rp-desfile-entrar": "Bem-vindo à BT Models! Hoje tem desfile de fantasias. Chegue nas marcas brilhantes para preparar a passarela.",
+  "rp-desfile-tapete": "Tapete esticado!",
+  "rp-desfile-luz": "Refletores ligados!",
+  "rp-desfile-band": "Bandeirinhas no lugar!",
+  "rp-desfile-falta": "Ainda falta preparar a passarela: veja as marcas brilhantes.",
+  "rp-desfile-comecar": "Tudo pronto! Olhe as luzes no alto do portal: um, dois, três... quando a luz ficar verde, aperte o botão e chame o amigo!",
+  "rp-desfile-quase": "Quase! Espere a luz verde.",
+  "rp-desfile-1": "Com vocês, o Lápis Vermelho, de capa de herói!",
+  "rp-desfile-2": "Agora, o Giz Amarelo, de chapéu de festa e saia de arco-íris!",
+  "rp-desfile-3": "Olha a Borracha, de cartola e gravata-borboleta!",
+  "rp-desfile-4": "Lá vem o Caderno Verde, com asas de borboleta!",
+  "rp-desfile-5": "E a Cola, de coroa e capa de rainha!",
+  "rp-desfile-rabisco": "E quem fecha o desfile é o Rabisco!",
+  "rp-desfile-fim": "Que festa! Todo mundo junto na passarela. Cada um é especial do seu jeito!",
   "rp-livro-2": "Os bichos da arca. O leão, a girafa, o elefante e o macaquinho entraram na arca de dois em dois. Noé cuidou de todos até a chuva passar.",
 };
 // quadros de versículo da casa (paráfrases para crianças, com a referência em que se baseiam)
@@ -90,6 +109,7 @@ for (const m of MISSOES) {
   for (const E of m.etapas) {
     for (const [txt, voz] of PARES) if (E[txt] && E[voz]?.startsWith("rp-")) FALAS_PT[E[voz]] = E[txt];
     for (const q of E.pistas ?? []) if (q.texto && q.voz?.startsWith("rp-")) FALAS_PT[q.voz] = q.texto;
+    for (const q of E.falas ?? []) if (q.texto && q.voz?.startsWith("rp-")) FALAS_PT[q.voz] = q.texto;
   }
 }
 writeFileSync(new URL("./falas.json", import.meta.url), JSON.stringify({ pt: FALAS_PT }, null, 1) + "\n");

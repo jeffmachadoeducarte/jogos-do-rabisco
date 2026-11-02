@@ -17,6 +17,7 @@ import { PROFISSOES } from "./roupas-rp.js";
 import { HINOS } from "../../src/radio/hinos.js";
 import { montarAulas } from "./aulas-sala.js";
 import { montarBella, montarRise, montarCrescente } from "./parceiras-dentro.js";
+import { montarTeatro, montarSalao } from "./parceiras-palcos.js";
 
 const W = 14, D = 9, ALT = 3;
 export const SALAS = {
@@ -35,6 +36,8 @@ export const SALAS = {
     dica: { missao: "presente", fala: "cid-bella-escolha", texto: "Que bom que você veio! Escolha um presente: chegue pertinho de um pedestal e aperte o botão!" } },
   "parceiro-crescente-contabilidade": { nome: "Crescente Contabilidade", piso: 0xf3e6cf, parede: 0xf7eedc, acento: 0x813d18, profissao: null, fala: "cid-crescente-entrar", boasVindas: "Bem-vindo à Crescente Contabilidade! O Aurélio vai chamar a contadora Elaine. Vá até o balcão!",
     dica: { missao: "alvara", fala: "cid-crescente-dica", texto: "Você veio buscar o alvará da escola? A contadora Elaine está esperando no balcão!" } },
+  "parceiro-ballet-e-cia": { nome: "Ballet e Cia", piso: 0x8a5a2c, parede: 0x3a1636, acento: 0xb5447e, profissao: null, propria: montarTeatro, fala: "rp-ballet-entrar", boasVindas: "Bem-vindo à Ballet e Cia! Chegue na estrela, em frente ao palco, e suba para dançar com a turma." },
+  "parceiro-bt-models": { nome: "BT Models", piso: 0x2c2d35, parede: 0x23242b, acento: 0xe7c35a, profissao: null, propria: montarSalao, fala: "rp-desfile-entrar", boasVindas: "Bem-vindo à BT Models! Hoje tem desfile de fantasias. Chegue nas marcas brilhantes para preparar a passarela." },
   "parceiro-rise-up": { nome: "Academia Rise Up", piso: 0x4a4e55, parede: 0xf1ebe0, acento: 0xff7a00, profissao: null, fala: "cid-rise-donos", boasVindas: "Bem-vindo à Academia Rise Up! A Camila e o Robert são casados e são os donos da academia. Os dois dão as boas-vindas! Aqui a gente cuida do corpo que Deus nos deu. Corra na esteira e levante o halter!" },
 };
 export const IDS_SALAS = Object.keys(SALAS);
@@ -125,6 +128,7 @@ export const MUSIQUINHA = [0, 1, 60, 1, 1, 64, 2, 1, 67, 3, 1, 64, 4, 2, 65, 6, 
 // ---------- montagem
 export function montarSala(id, { idade = null } = {}) {
   const def = SALAS[id], [ox, , oz] = origemSala(id);
+  if (def.propria) return def.propria({ id, def, ox, oz }); // o teatro da Ballet e Cia e o salão da BT Models: maiores, com câmera e cena próprias (parceiras-palcos.js)
   const g = new THREE.Group(); g.position.set(ox, 0, oz);
   const fixo = new THREE.Group(); g.add(fixo);
   const solidosL = [], inter = [], npcs = [], anim = [];

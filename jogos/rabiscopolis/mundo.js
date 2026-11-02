@@ -120,12 +120,14 @@ export function montarMundo(cena) {
     if (l.parceiro?.tipo === "contabilidade") { por(P.escritorioCrescente(l), ox, oz, l.rot); continue; } // prédio-escritório (sem foto)
     if (FACHADAS[l.parceiro?.tipo]) { // parceira com fachada inventada (predios-parceiros.js)
       const S = por(FACHADAS[l.parceiro.tipo](l), ox, oz, l.rot);
-      Object.assign(lugares.at(-1), { porta: mundoDe(ox, oz, l.rot, ...S.porta), topo: S.topo });
+      Object.assign(lugares.at(-1), { porta: mundoDe(ox, oz, l.rot, ...S.porta), topo: S.topo, origem: [ox, oz, l.rot] });
       if (S.pessoa) { // quem fica na porta: cada um respira, olha em volta e só anima com o bloco visível
         const q = criarPessoa(S.pessoa.id);
         q.grupo.userData.dinamico = true; q.grupo.position.set(S.pessoa.x, 0.09, S.pessoa.z);
         S.grupo.add(q.grupo);
         anima.pessoas.push(q);
+        const [px, pz] = mundoDe(ox, oz, l.rot, S.pessoa.x, S.pessoa.z);
+        lugares.at(-1).pessoaNaPorta = { m: q, x: px, z: pz }; // as missões usam este mesmo boneco (nada de dois iguais)
       }
       continue;
     }
@@ -143,6 +145,7 @@ export function montarMundo(cena) {
     if (fabrica[l.id]) {
       const S = por(fabrica[l.id](l), ox, oz, l.rot);
       if (S.foto) lugares.at(-1).fotoGrupo = S.foto;
+      if (S.frente) Object.assign(lugares.at(-1), { frente: S.frente, origem: [ox, oz, l.rot] });
     }
   }
   // praça (centro) e parque e fazendinha (em coordenadas do mundo)
@@ -295,11 +298,14 @@ export function montarMundo(cena) {
   let malhas = 0;
   for (const b of blocos) malhas += mesclar(b);
   for (const c of casas) mesclar(c.grupo.userData.paredes); // cada casa com as paredes à parte (cor trocável)
+  for (const l of lugares) if (l.frente) for (const g of Object.values(l.frente)) mesclar(g); // cada frente da Kids II à parte (só uma aparece)
 
   // retângulo de cada bloco (para a distância até o jogador)
   for (const g of blocos) { const [i, j] = g.userData.bloco; g.userData.ret = { x0: GRADE0 + i * BLOCO, x1: GRADE0 + (i + 1) * BLOCO, z0: GRADE0 + j * BLOCO, z1: GRADE0 + (j + 1) * BLOCO }; }
   const api = {
     solidos, circulos, lugares, casas, semaforos, anima, blocos, malhas,
+    // frente da Educarte Kids II: 0 = a antiga · 1 = só a parede (obra) · 2 = perfis de alumínio · 3 = pele de vidro inteira
+    frenteKids2(fase) { const f = lugares.find((l) => l.id === "kids2")?.frente; if (!f) return; f.antiga.visible = fase === 0; f.perfis.visible = fase >= 2; f.vidro.visible = fase >= 3; },
     alcance: 140, // neblina: além disso não se vê nada
     detalheAte: 36, // flores, cercas, moitas e bancos só nos blocos perto
     // mostra só o bloco do jogador e os vizinhos que estão dentro da neblina; detalhe só perto

@@ -54,7 +54,7 @@ function vitrine(g, { x, w, a, b, cor, prof, divisoes = 0, luz = true }) {
   if (luz) pc(g, w - 0.5, 0.1, 0.3, 0, x, b - 0.06, -prof / 2, { ...F, material: MAT.lampada });
 }
 // letreiro: caixa com moldura e a arte inventada, que brilha um pouco para ler de longe e de noite
-function letreiro(g, id, { w, h, x = 0, y, z = 0, cor }) {
+export function letreiro(g, id, { w, h, x = 0, y, z = 0, cor }) {
   const op = { instagram: PARCEIROS.find((q) => q.id === id)?.instagram ?? null };
   pc(g, w + 0.44, h + 0.44, 0.32, cor, x, y, z + 0.16, F);
   const larg = 1024, alt = Math.round((larg * h) / w);
