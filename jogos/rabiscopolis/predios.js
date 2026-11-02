@@ -133,11 +133,10 @@ export function igrejaReviver(l) {
   for (const x of [-9, -4.2, 9]) { pc(g, 0.24, 1.9, 0.24, 0x2c7a3f, x, 0.95, 5.6); pc(g, 1.9, 0.62, 0.2, 0x2448a8, x, 2.1, 5.6); S.solidos.push({ x0: x - 0.3, x1: x + 0.3, z0: 5.3, z1: 5.9, y1: 2.5 }); }
   // palmeiras dos dois lados
   for (const [x, a] of [[-W / 2 + 1.2, 7.2], [W / 2 - 1.2, 8]]) { const c = coqueiro(a); c.position.set(x, 0.03, 2.8); c.rotation.y = x < 0 ? 0.4 : 2.6; g.add(c); S.solidos.push({ x0: x - 0.5, x1: x + 0.5, z0: 2.3, z1: 3.3, y1: 6 }); }
-  // torre baixinha atrás com a cruz dourada
+  // torre baixinha atrás
   pc(g, 5, alt + 5, 5, CLARO, 0, (alt + 5) / 2, -D + 4);
   for (const s of [-1, 1]) pc(g, 0.9, 6, 0.2, 0, s * 1.1, alt + 2, -D + 6.55, { ...f, material: MAT.janelaQuente });
   const teto = malha(degraus(6.4, 6.4, 3.2, 4), mat(MARINHO)); teto.position.set(0, alt + 6.6, -D + 4); g.add(teto);
-  pc(g, 0.45, 2.6, 0.45, 0xffd36b, 0, alt + 9.4, -D + 4); pc(g, 1.6, 0.45, 0.45, 0xffd36b, 0, alt + 9.8, -D + 4);
   // escadaria larga na frente
   for (let i = 0; i < 3; i++) pc(g, 10 - i * 1.2, 0.22, 1.2 - i * 0.25, 0xdfe2e8, -0.2, 0.11 + i * 0.22, 0.9 - i * 0.3, f);
   sol(S, -W / 2 + 1, W / 2 - 1, -D + 2, 0, 20);

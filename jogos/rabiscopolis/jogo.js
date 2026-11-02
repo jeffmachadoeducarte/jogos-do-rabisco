@@ -720,14 +720,17 @@ function sair() {
   const livreSaida = op.find(([ox, oz]) => !fis.bate(v.pos.x + ox, v.pos.z + oz, 0.1));
   if (!livreSaida && v.tipo === "barco") { dizer("Barquinho", "Leve o barquinho até a beirinha do lago para descer.", 2600); return; }
   if (!livreSaida && (v.tipo === "jetski" || v.tipo === "lancha")) { dizer(v.tipo === "jetski" ? "Jet ski" : "Lancha", "Encoste na areia, no píer ou na ilha para descer.", 2600); return; }
-  const [ox, oz] = livreSaida ?? op[0];
+  let [ox, oz] = livreSaida ?? op[0];
+  // helicóptero pousado num telhado: o Rabisco desce para o chão, no ponto livre mais perto (nunca fica dentro do prédio)
+  const noTelhado = v.tipo === "heli" && v.alt > 1.5;
+  if (noTelhado && !livreSaida) { const [lx2, lz2] = fis.livre(v.pos.x, v.pos.z); ox = lx2 - v.pos.x; oz = lz2 - v.pos.z; }
   dentro = null; v.vel = 0; v.jatoLigado = false;
   atualizarPlaca();
   radioUI?.sairDoCarro(); avisoRadio?.esconder();
   toque?.especial(null);
   cena.add(rabisco.grupo); rabisco.grupo.visible = true;
   v.g.userData.aoSair?.(rabisco); // moto: tira o capacete
-  j.pos.set(v.pos.x + ox, v.tipo === "heli" ? Math.max(0.07, v.alt) : 0.07, v.pos.z + oz); j.vel.set(0, 0, 0); j.dir = v.ang;
+  j.pos.set(v.pos.x + ox, v.tipo === "heli" && !noTelhado ? Math.max(0.07, v.alt) : 0.07, v.pos.z + oz); j.vel.set(0, 0, 0); j.dir = v.ang;
   rabisco.grupo.position.copy(j.pos); rabisco.grupo.rotation.set(0, j.dir, 0);
   j2?.sair(v, v.pos.x - ox, v.pos.z - oz); // o jogador 2 desce do outro lado
   v.g.userData.seta.visible = true;

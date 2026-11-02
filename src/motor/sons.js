@@ -201,10 +201,10 @@ export const musica = {
 // Ronco do motor (kart e veículos da Rabiscolândia): pulso grave que sobe com a velocidade.
 // Perfis: base e faixa de frequência (Hz), duty do pulso, vibração das pás (helicóptero) e volume.
 const PERFIS_MOTOR = {
-  carro: { base: 55, faixa: 75, duty: 0.125, vol: 0.07 },
-  moto: { base: 85, faixa: 120, duty: 0.25, vol: 0.045 },
-  barco: { base: 45, faixa: 45, duty: 0.25, vol: 0.05 },
-  heli: { base: 38, faixa: 14, duty: 0.5, vol: 0.06, pas: 11 },
+  carro: { base: 55, faixa: 75, duty: 0.125, vol: 0.09 },
+  moto: { base: 85, faixa: 120, duty: 0.25, vol: 0.06 },
+  barco: { base: 45, faixa: 45, duty: 0.25, vol: 0.065 },
+  heli: { base: 38, faixa: 14, duty: 0.5, vol: 0.08, pas: 11 },
 };
 let motorOsc = null, motorOsc2 = null, motorGanho = null, motorLfo = null, motorPerfil = null;
 export const motor = {

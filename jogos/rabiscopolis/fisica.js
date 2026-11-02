@@ -154,14 +154,14 @@ export function criarFisica(mundo) {
     return forte;
   }
   // Helicóptero: subir/descer, frente/ré e virar. O chão embaixo dele é o topo do que estiver ali (dá para pousar
-  // num telhado); não atravessa prédios (bate de leve e para), não cai e não explode; pousa devagar.
+  // num telhado); sobrevoa o que está abaixo dele (topo real do prédio, s.topo, ou y1) e bate no que está acima (bate de leve e para), não cai e não explode; pousa devagar.
   const R_HELI = 2.6;
   const chaoHeli = (x, z) => {
     let h = 0.03;
-    for (const s of solidos) if (x > s.x0 - R_HELI && x < s.x1 + R_HELI && z > s.z0 - R_HELI && z < s.z1 + R_HELI && s.y1 > h && s.y1 < 40) h = s.y1;
+    for (const s of solidos) { const t = s.topo ?? s.y1; if (x > s.x0 - R_HELI && x < s.x1 + R_HELI && z > s.z0 - R_HELI && z < s.z1 + R_HELI && t > h && t < 40) h = t; }
     return h;
   };
-  const heliBate = (x, z, alt) => solidos.some((s) => s.y1 > alt + 0.3 && x > s.x0 - R_HELI && x < s.x1 + R_HELI && z > s.z0 - R_HELI && z < s.z1 + R_HELI)
+  const heliBate = (x, z, alt) => solidos.some((s) => (s.topo ?? s.y1) > alt + 0.3 && x > s.x0 - R_HELI && x < s.x1 + R_HELI && z > s.z0 - R_HELI && z < s.z1 + R_HELI)
     || (alt < 1 && circulos.some((c) => Math.hypot(x - c.x, z - c.z) < c.r + R_HELI)) || Math.abs(x) > BORDA + 4 || Math.abs(z) > BORDA + 4;
   // ent = { ix, iy, subir, descer } · devolve { pousado }
   function voar(v, ent, dt) {

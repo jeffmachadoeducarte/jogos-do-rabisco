@@ -16,7 +16,7 @@ export const mundoDe = (ox, oz, rot, lx, lz) => [ox + lx * Math.cos(rot) + lz * 
 function retMundo(ox, oz, rot, s) {
   const cs = [[s.x0, s.z0], [s.x1, s.z0], [s.x1, s.z1], [s.x0, s.z1]].map(([x, z]) => mundoDe(ox, oz, rot, x, z));
   const xs = cs.map((c) => c[0]), zs = cs.map((c) => c[1]);
-  return { x0: Math.min(...xs), x1: Math.max(...xs), z0: Math.min(...zs), z1: Math.max(...zs), y1: s.y1 };
+  return { x0: Math.min(...xs), x1: Math.max(...xs), z0: Math.min(...zs), z1: Math.max(...zs), y1: s.y1, ...(s.topo ? { topo: s.topo } : {}) };
 }
 
 export const RODA_VEL = (Math.PI * 2) / 30; // rad/s
@@ -27,9 +27,12 @@ export function montarMundo(cena) {
   const blocoEm = (x, z) => { const [i, j] = blocoDe(x, z); return blocos[i * NBLOCOS + j]; };
   const ocupado = (x, z, folga = 0) => solidos.some((s) => x > s.x0 - folga && x < s.x1 + folga && z > s.z0 - folga && z < s.z1 + folga) || PEGADAS_FIXAS.some((s) => x > s.x0 - folga && x < s.x1 + folga && z > s.z0 - folga && z < s.z1 + folga);
   // põe um conjunto { grupo, solidos } com a frente em (ox, oz) girado em rot, no bloco certo
+  // altura real do que está montado (só o helicóptero usa: y1 de prédio é 20/30 "de folga", e ele passa por cima do telhado de verdade)
+  const topoDe = (grupo) => new THREE.Box3().setFromObject(grupo).max.y;
   const por = (S, ox, oz, rot, bloco = blocoEm(ox, oz)) => {
     S.grupo.position.set(ox, 0, oz); S.grupo.rotation.y = rot;
     bloco.add(S.grupo);
+    if (S.solidos.some((s) => !s.circulo && s.y1 >= 20)) { const topo = topoDe(S.grupo); for (const s of S.solidos) if (!s.circulo && s.y1 >= 20) s.topo = topo; }
     for (const s of S.solidos) {
       if (s.circulo) { const [x, z] = mundoDe(ox, oz, rot, s.x, s.z); circulos.push({ x, z, r: s.r }); } else solidos.push(retMundo(ox, oz, rot, s));
     }
@@ -121,6 +124,7 @@ export function montarMundo(cena) {
         Object.assign(s, r);
       });
       por(S, ox, oz, l.rot);
+      s.topo = topoDe(S.grupo);
       continue;
     }
     if (fabrica[l.id]) {
