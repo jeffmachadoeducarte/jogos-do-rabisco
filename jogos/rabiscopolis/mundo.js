@@ -6,6 +6,8 @@
 import { THREE, mat, matNovo, malha, caixa, TEX, fita, densificar, normais, arvoreReal, semaforo, mesclar, r as rnd } from "./base3d.js";
 import { RUAS, CALCADA, distRua, LUGARES, LOTES, LOTE, PREDIOS, PREDIOS_NOVOS, PRACAS_NOVAS, BORDA_ANTIGA, MAR, ORLA, ILHA, PIERS, RODA, naMar, SEMAFOROS, PARQUE, LAGO, PLAYGROUND, PRACA, FAZENDA, CAMPO, ESPORTES, QUADRA, HORTA, PARQUINHO_BEBE, PATIO_KIDS2, HELIPONTO, PRAIA, LAGO2, NBLOCOS, GRADE0, VAGAS, LARGADA, PEGADAS_FIXAS, BORDA, BLOCO, blocoDe, pegadaDe } from "./mapa.js";
 import * as P from "./predios.js";
+import { FACHADAS } from "./predios-parceiros.js";
+import { criarPessoa } from "./pessoas.js";
 import { casa } from "./casas.js";
 import { degraus } from "./blocos.js";
 import { marEAreia, pier, postoSalvaVidas, quiosqueCoco, rodaGigante, enfeitesOrla } from "./orla.js";
@@ -21,7 +23,7 @@ function retMundo(ox, oz, rot, s) {
 
 export const RODA_VEL = (Math.PI * 2) / 30; // rad/s
 export function montarMundo(cena) {
-  const solidos = [], circulos = [], lugares = [], casas = [], semaforos = [], anima = { patos: [], bichos: [], aguas: [], jatos: [] };
+  const solidos = [], circulos = [], lugares = [], casas = [], semaforos = [], anima = { patos: [], bichos: [], aguas: [], jatos: [], pessoas: [] };
   const blocos = [];
   for (let i = 0; i < NBLOCOS; i++) for (let j = 0; j < NBLOCOS; j++) { const g = new THREE.Group(); g.userData.bloco = [i, j]; cena.add(g); blocos.push(g); }
   const blocoEm = (x, z) => { const [i, j] = blocoDe(x, z); return blocos[i * NBLOCOS + j]; };
@@ -116,6 +118,17 @@ export function montarMundo(cena) {
     if (l.novo) continue; // os dos bairros novos são montados no fim (a cidade de antes fica igualzinha)
     const ox = l.x - l.dir[0] * l.recuo, oz = l.z - l.dir[1] * l.recuo;
     if (l.parceiro?.tipo === "contabilidade") { por(P.escritorioCrescente(l), ox, oz, l.rot); continue; } // prédio-escritório (sem foto)
+    if (FACHADAS[l.parceiro?.tipo]) { // parceira com fachada inventada (predios-parceiros.js)
+      const S = por(FACHADAS[l.parceiro.tipo](l), ox, oz, l.rot);
+      Object.assign(lugares.at(-1), { porta: mundoDe(ox, oz, l.rot, ...S.porta), topo: S.topo });
+      if (S.pessoa) { // quem fica na porta: cada um respira, olha em volta e só anima com o bloco visível
+        const q = criarPessoa(S.pessoa.id);
+        q.grupo.userData.dinamico = true; q.grupo.position.set(S.pessoa.x, 0.09, S.pessoa.z);
+        S.grupo.add(q.grupo);
+        anima.pessoas.push(q);
+      }
+      continue;
+    }
     if (l.parceiro) {
       const s = { x0: 0, x1: 0, z0: 0, z1: 0, y1: 20 };
       solidos.push(s);
@@ -310,6 +323,7 @@ export function montarMundo(cena) {
     atualizar(dt, t) {
       for (const p of anima.patos) { p.a += p.v * dt; p.p.position.set(LAGO.x + Math.cos(p.a) * p.r, 0.12 + Math.sin(t * 3 + p.r) * 0.03, LAGO.z + Math.sin(p.a) * p.r); p.p.rotation.y = -p.a; }
       for (const j of anima.jatos) j.scale.y = 1 + Math.sin(t * 6) * 0.08;
+      for (const q of anima.pessoas) { let v = true; for (let o = q.grupo; o && v; o = o.parent) v = o.visible; if (v) q.atualizar(dt, { modo: "parado" }); } // só quem está perto
       TEX.agua.offset.set(t * 0.012, t * 0.02); // a água corre devagar
       if (anima.roda) anima.roda.girar(t * RODA_VEL); // a roda-gigante não para (uma volta a cada ~30 s)
       if (anima.boias) for (const [i, b] of anima.boias.entries()) b.position.y = 0.2 + Math.sin(t * 1.8 + i) * 0.08;

@@ -4,7 +4,7 @@
 //  - cada empresa parceira de PARCEIROS tem ponto (e só elas têm "parceiro");
 //  - as rotas dos carros são fechadas e andam só em cima do asfalto (com a faixa da direita).
 // Uso: node ferramentas/teste/rabiscopolis-mapa.mjs
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 // os módulos do jogo são do navegador (sem package.json "type": "module"): importa pelo texto, trocando o import relativo
 const raiz = new URL("../../", import.meta.url);
@@ -58,6 +58,27 @@ ok(comParceiro.length === PARCEIROS.length, `${comParceiro.length} lojas parceir
 ok(PARCEIROS.every((p) => comParceiro.some((l) => l.parceiro.id === p.id)), "cada parceira tem o seu ponto");
 ok(M.PONTOS_PARCEIROS.length >= PARCEIROS.length, `pontos sobrando para parceiras novas: ${M.PONTOS_PARCEIROS.length - PARCEIROS.length}`);
 ok(!M.lugar("igreja").parceiro, "a Igreja Reviver não conta como loja parceira");
+// parceiras novas (depois da Crescente) e os pontos guardados: espalhadas, longe de qualquer outra parceira
+const ptsP = M.PONTOS_PARCEIROS.slice(0, -1); // o último é o ponto livre de antes, mantido como reserva
+const juntas = [];
+for (let i = 4; i < ptsP.length; i++) for (let k = 0; k < i; k++) { const d = Math.hypot(ptsP[i][0] - ptsP[k][0], ptsP[i][1] - ptsP[k][1]); if (d < 60) juntas.push(`${i}×${k} (${Math.round(d)} m)`); }
+ok(!juntas.length, `parceiras novas a 60 m ou mais de qualquer outra ${juntas.join(", ")}`);
+// a pegada inteira fora da rua (não só os cantos: a rua pode cortar o meio dela)
+const naRuaInteira = M.LUGARES.filter((l) => l.parceiro).concat(M.PONTOS_PARCEIROS.slice(PARCEIROS.length).map(([x, z, dx, dz], i) => ({ id: `reserva-${i}`, x, z, dir: [dx, dz], pegada: [M.LOJA_MAX, 7.5], recuo: 1 }))).filter((l) => {
+  const p = M.pegadaDe(l.x, l.z, l.dir, l.pegada[0], l.pegada[1], l.recuo);
+  for (let a = 0; a <= 10; a++) for (let b = 0; b <= 10; b++) if (M.distRua(p.x0 + ((p.x1 - p.x0) * a) / 10, p.z0 + ((p.z1 - p.z0) * b) / 10).d <= 0) return true;
+  return false;
+}).map((l) => l.id);
+ok(!naRuaInteira.length, `lojas parceiras e reservas: pegada inteira fora do asfalto ${naRuaInteira.join(", ")}`);
+const idsP = new Set(PARCEIROS.map((p) => p.id)), nomesP = new Set(PARCEIROS.map((p) => p.nome));
+ok(idsP.size === PARCEIROS.length && nomesP.size === PARCEIROS.length, "ids e nomes de parceira sem repetir");
+ok(idsP.has("bella-cat") && idsP.has("bella-company") && PARCEIROS.find((p) => p.id === "bella-cat").nome !== PARCEIROS.find((p) => p.id === "bella-company").nome, "Bella Cat e Bella Company são parceiras diferentes");
+ok(PARCEIROS.every((p) => p.foto && existsSync(new URL(p.foto.split("?")[0], raiz))), "toda parceira tem a imagem no disco");
+ok(PARCEIROS.every((p) => p.tipo && /ESTILO_PARCEIRO/.test(parceirosSrc) && new RegExp(`\\b${p.tipo}: \\{`).test(parceirosSrc)), "todo tipo de parceira tem estilo");
+const CONFIRMADOS = { "speedy-solucoes": "speedysolucoes.sc", "gala-presentes": "gala.presentes", "see-love-joias": "seelovesemijoias", "bella-company": "somosbellacompany", "ballet-e-cia": "balleteciaitajai", "marlon-maquinas": "marlonmaquinas", "cafe-com-deus-pai-kids": "cafecomdeuspai", "bt-models": "btmodels.agency" };
+ok(Object.entries(CONFIRMADOS).every(([id, ig]) => PARCEIROS.find((p) => p.id === id)?.instagram === ig), "@ das parceiras novas conferido");
+const espaco = M.PEGADAS_FIXAS.filter((p) => p.id.startsWith("reserva-parceira"));
+ok(espaco.length >= 1, `lugares guardados no mapa: ${espaco.length}`);
 
 // ---------- rotas dos carros: fechadas e em cima do asfalto (também deslocadas 2,7 m para a faixa da direita)
 for (const rota of M.ROTAS) {

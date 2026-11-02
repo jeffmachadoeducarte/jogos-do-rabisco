@@ -15,11 +15,11 @@ const rv = aleatorio(3301); // sorteio só do visual (janelas acesas): não mexe
 const hexDe = (c) => (typeof c === "string" ? new THREE.Color(c).getHex() : c);
 const repetida = (t, x, y) => { const c = t.clone(); c.repeat.set(x, y); c.needsUpdate = true; return c; };
 const MAT_CALCADA = mat(0xffffff, { map: repetida(TEX.calcada, 9, 9) }), MAT_TERRA = mat(0xffffff, { map: repetida(TEX.terra, 1, 10) });
-const novo = () => ({ grupo: new THREE.Group(), solidos: [] });
-const sol = (S, x0, x1, z0, z1, y1 = 20) => S.solidos.push({ x0, x1, z0, z1, y1 });
+export const novo = () => ({ grupo: new THREE.Group(), solidos: [] });
+export const sol = (S, x0, x1, z0, z1, y1 = 20) => S.solidos.push({ x0, x1, z0, z1, y1 });
 
 // fileira de janelas na fachada (+z) de uma parede de largura w, em z (frente da parede). De noite nem toda janela acende
-function janelas(g, { w, andares, z, y0 = 1.2, alt = 3.2, jw = 1.4, jh = 1.5, cor = BRANCO, colunas = null, emX = false }) {
+export function janelas(g, { w, andares, z, y0 = 1.2, alt = 3.2, jw = 1.4, jh = 1.5, cor = BRANCO, colunas = null, emX = false }) {
   const n = colunas ?? Math.max(1, Math.floor((w - 1) / 3)), f = { sombra: false };
   for (let a = 0; a < andares; a++) for (let i = 0; i < n; i++) {
     const x = -w / 2 + (w / n) * (i + 0.5), y = y0 + a * alt + jh / 2, s = emX ? Math.sign(z) || 1 : 1;
@@ -31,7 +31,7 @@ function janelas(g, { w, andares, z, y0 = 1.2, alt = 3.2, jw = 1.4, jh = 1.5, co
   }
 }
 // toldo listrado de blocos, inclinado, com a barrinha na ponta; de largura w na frente (origem na parede)
-function toldo(w, cor1, cor2) {
+export function toldo(w, cor1, cor2) {
   const t = new THREE.Group(), n = Math.max(4, Math.round(w / 1.15)), l = w / n;
   for (let i = 0; i < n; i++) {
     const c = hexDe(i % 2 ? cor2 : cor1), x = -w / 2 + l * (i + 0.5);
@@ -40,7 +40,7 @@ function toldo(w, cor1, cor2) {
   }
   return t;
 }
-function porta(g, { x = 0, z, w = 2.6, h = 3.2, cor = 0x2f6fc0, vidro = true }) {
+export function porta(g, { x = 0, z, w = 2.6, h = 3.2, cor = 0x2f6fc0, vidro = true }) {
   pc(g, w + 0.44, h + 0.22, 0.2, BRANCO, x, h / 2 + 0.11, z, { sombra: false });
   pc(g, w, h, 0.22, 0, x, h / 2, z + 0.03, { sombra: false, material: vidro ? MAT.janela : mat(cor) });
   pc(g, 0.1, h, 0.26, cor, x, h / 2, z + 0.04, { sombra: false });
@@ -48,7 +48,7 @@ function porta(g, { x = 0, z, w = 2.6, h = 3.2, cor = 0x2f6fc0, vidro = true }) 
   pc(g, 0.16, 0.16, 0.34, 0xffcc1f, x + w * 0.16, h * 0.46, z + 0.06, { sombra: false });
 }
 // corpo de prédio: caixa com rodapé, cantoneiras na frente (fazem a fachada parecer montada), beiral e mureta no teto
-function corpo(g, w, h, d, cor, { beiral = 0xffffff, rodape = null } = {}) {
+export function corpo(g, w, h, d, cor, { beiral = 0xffffff, rodape = null } = {}) {
   pc(g, w, h, d, cor, 0, h / 2, -d / 2);
   pc(g, w + 0.7, 0.5, d + 0.7, beiral, 0, h + 0.2, -d / 2);
   for (const [ww, dd, x, z] of [[w + 0.7, 0.4, 0, 0.15], [w + 0.7, 0.4, 0, -d - 0.15], [0.4, d + 0.7, -w / 2 - 0.15, -d / 2], [0.4, d + 0.7, w / 2 + 0.15, -d / 2]]) pc(g, ww, 0.4, dd, claro(beiral, 0.14), x, h + 0.62, z, { sombra: false });
