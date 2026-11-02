@@ -1,9 +1,9 @@
-// Rabiscolândia: o Rabifone, o celular do jogo. Menu HTML com 5 apps (Casa, Garagem, Mapa, Dia/Noite e o Passaporte
-// das missões, com os selos) que dá para
+// Rabiscolândia: o Rabifone, o celular do jogo. Menu HTML com 6 apps (Casa, Garagem, Mapa, Dia/Noite, o Passaporte
+// das missões, com os selos, e o Meu Rabisco, que abre a tela de vestir o Rabisco) que dá para
 // usar no toque, no mouse, no teclado (setas, Enter, Esc) e no controle (direcional, A confirma, B volta): os itens
 // têm data-foco e o foco anda pela grade, como nos menus da casca.
 //
-//   const fone = criarRabifone(caixa, { aoGaragem(tipo, cor), aoHora(h), aoMapa(), aoCasa(acao), infoCasa() });
+//   const fone = criarRabifone(caixa, { aoGaragem(tipo, cor), aoHora(h), aoMapa(), aoMeuRabisco(), aoCasa(acao), infoCasa() });
 //   fone.abrir(); fone.fechar(); fone.navegar(dx, dy); fone.confirmar(); fone.voltar();
 
 const APPS = [
@@ -12,6 +12,7 @@ const APPS = [
   { id: "mapa", icone: "🗺️", nome: "Mapa", cor: "#58c43a" },
   { id: "hora", icone: "🌗", nome: "Dia/Noite", cor: "#8e6cff" },
   { id: "passaporte", icone: "📘", nome: "Passaporte", cor: "#ff7a00" },
+  { id: "meurabisco", icone: "✏️", nome: "Meu Rabisco", cor: "#00b5f0" },
 ];
 const VEICULOS = [
   { tipo: "carro", cor: 0xec2e8c, nome: "Carro rosa", emoji: "🚗" },
@@ -66,6 +67,8 @@ export function criarRabifone(onde, cb) {
         for (const o of HORAS) lista.append(botao(`<span class="rf-emoji">${o.emoji}</span>${o.nome}`, () => { cb.aoHora?.(o.h); api.fechar(); }));
       } else if (id === "mapa") {
         cb.aoMapa?.(); api.fechar(); return;
+      } else if (id === "meurabisco") {
+        api.fechar(); cb.aoMeuRabisco?.(); return;
       } else if (id === "passaporte") {
         const { lista: ms = [], ativa } = cb.missoes?.() ?? {};
         const p = document.createElement("p");

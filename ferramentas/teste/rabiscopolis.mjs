@@ -347,6 +347,37 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   console.log(`  desempenho na largada (praça, 9 blocos): ${est.calls} chamadas de desenho, ${Math.round(est.tris / 1000)} mil triângulos, ${est.malhas} malhas mescladas, FPS headless (swiftshader) ${q}`);
   // (a)
   ok(!errosDeVerdade(t).length, `(a) sem erro de console ${errosDeVerdade(t).slice(0, 4).join(" ; ")}`);
+  // mapa só quando pedir: escondido ao começar; M, o controle (L3) e a opção "Mapa" da ⚙️ mostram e escondem; tocar nele abre o grande
+  const mm = () => t.ev("document.querySelector('.minimapa-rp').hidden");
+  ok(await mm(), "mapa: o minimapa começa escondido");
+  await t.ev("dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyM' }))"); await espera(400);
+  ok(!(await mm()) && await t.ev("teste.mapaLigado"), "mapa: a tecla M mostra o minimapa");
+  await t.ev("dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyM' }))"); await espera(300);
+  ok(await mm(), "mapa: M de novo esconde");
+  await t.botao(10); ok(!(await mm()), "mapa: o botão L3 do controle mostra o minimapa");
+  await t.botao(10); ok(await mm(), "mapa: L3 de novo esconde");
+  await t.ev("document.querySelector('.eng-botao').click()"); await espera(500);
+  const optMapa = await t.ev("(() => { const b = document.querySelector('[data-eng=mapa]'); return b ? b.textContent : null; })()");
+  ok(optMapa && /Mapa/.test(optMapa), `mapa: a ⚙️ tem a opção "${optMapa}"`);
+  await t.foto(`${FOTOS}engrenagem-mapa.png`);
+  await t.ev("document.querySelector('[data-eng=mapa]').click()"); await espera(500);
+  ok(!(await mm()) && !(await t.ev("teste.Engrenagem?.aberta ?? false")), "mapa: escolher \"Mapa\" na ⚙️ mostra o minimapa");
+  await t.ev("document.querySelector('.minimapa-rp').click()"); await espera(300);
+  ok(await t.ev("!document.querySelector('.mapa-grande-rp').hidden"), "mapa: tocar no minimapa abre o mapa grande");
+  await t.ev("dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyM' }))"); await espera(300);
+  ok(await t.ev("document.querySelector('.mapa-grande-rp').hidden") && !(await mm()), "mapa: com o grande aberto, M fecha o grande e deixa o minimapa");
+  await t.ev("teste.mapaPedido()"); await espera(200);
+  ok(await mm(), "mapa: o pedido esconde o minimapa de novo");
+  await t.ev("teste.entrarCasa(1)"); await espera(300); await t.ev("teste.mapaPedido()"); await espera(200);
+  ok(await mm(), "mapa: dentro de casa o minimapa não aparece"); await t.ev("teste.sairCasa()"); await espera(400); // o pedido feito lá dentro já vale: ao sair o minimapa aparece
+  ok(!(await mm()), "mapa: ao sair de casa o minimapa volta se estava pedido"); await t.ev("teste.mapaPedido()"); await espera(200);
+  // nome em cima do Rabisco: o do cadastro da família ("Alice"); some dentro de veículo
+  const pl = await t.ev("teste.placa");
+  ok(pl?.visivel && pl.nome === "Alice", `nome: a plaquinha mostra "${pl?.nome}" em cima do Rabisco`);
+  await t.ev("teste.entrar(0)"); await espera(400);
+  ok(!(await t.ev("teste.placa.visivel")), "nome: dentro do veículo a plaquinha fica escondida");
+  await t.ev("teste.sair()"); await espera(400);
+  ok(await t.ev("teste.placa.visivel"), "nome: ao descer a plaquinha volta");
   await t.foto(`${FOTOS}largada.png`);
   await orcamento(t, 250, "TV/computador");
   // (f)
@@ -810,8 +841,10 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   const rot = await t.ev("document.querySelector('.rp-acao').textContent");
   await t.toque(".rp-acao"); await espera(500);
   ok(rot.includes("ovelhinha") && await t.ev("teste.missoes.ativa === 'ovelha'"), `celular: o botão ✋ mostra "${rot}" e aceita a missão`);
+  await t.ev("teste.mapaPedido()"); await espera(300); // o minimapa só aparece quando pedido
   const faixaM = await t.ev("(() => { const a = document.querySelector('.missao-rp').getBoundingClientRect(), b = document.querySelector('.minimapa-rp').getBoundingClientRect(); return { vis: !document.querySelector('.missao-rp').hidden, cruza: !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom) }; })()");
   ok(faixaM.vis && !faixaM.cruza, "celular: a faixa da missão aparece no HUD sem tapar o minimapa");
+  await t.ev("teste.mapaPedido()");
   await t.foto(`${FOTOS}missao-celular.png`);
   await t.ev("teste.missoes.largar()");
   // decorar pelo toque: mora na casa 1, entra, abre o carrossel e toca ▶ e ✓

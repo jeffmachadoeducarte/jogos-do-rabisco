@@ -9,11 +9,12 @@
 // · jogador2.js (2 jogadores: com 1 jogador só o Rabisco; o jogador 2 escolhe a criança do cadastro ou um amigo do estojo).
 // ?teste expõe window.teste.
 
-import { THREE, MAT, mesclar } from "./base3d.js";
+import { THREE, MAT, mesclar, placa } from "./base3d.js";
 import { PARCEIROS } from "../../src/parceiros.js";
 import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
 import { criarCasca, el } from "../../src/motor/casca.js";
 import { sons } from "../../src/motor/sons.js";
+import { Engrenagem } from "../../src/motor/engrenagem.js";
 import { falar, falarNome, preCarregarFalas } from "../../src/motor/voz.js";
 import { montarMundo } from "./mundo.js";
 import { criarFisica, VEL } from "./fisica.js";
@@ -26,6 +27,8 @@ import { criarJogador2 } from "./jogador2.js";
 import { CODIGOS_J2, TECLAS_J1_EXTRA } from "../../src/motor/jogadores.js";
 import { criarMorador, criarVovo } from "./personagens.js";
 import { criarRabifone } from "./rabifone.js";
+import { criarMeuRabisco } from "./meu-rabisco-ui.js";
+import { prepararRoupa, vestirPecas, escolhaSalva, ajustarUniforme } from "./meu-rabisco.js";
 import { criarToque } from "./toque.js";
 import { carregar, salvar } from "./salvar.js";
 import { criarQualidade } from "./qualidade.js";
@@ -53,7 +56,7 @@ const CONTROLES = [
   { id: "fone", nome: "Rabifone", teclas: ["Tab", "KeyC"], botoes: [8], controle: "select" },
   { id: "girarE", nome: "Girar a câmera ⟲", teclas: ["KeyQ"] },
   { id: "girarD", nome: "Girar a câmera ⟳", teclas: ["KeyE"] },
-  { id: "mapa", nome: "Mapa grande", teclas: ["KeyM"] },
+  { id: "mapa", nome: "Mapa (mostrar / esconder)", teclas: ["KeyM"], botoes: [10], controle: "mapa" },
 ];
 // Pai Nosso (Mateus 6.9-13, texto tradicional): uma frase por vez, cada uma com a sua voz (cid-pai-1..11, da Rabiscópolis)
 const ORACAO = [
@@ -75,9 +78,9 @@ const jogo = criarCasca({
   menuNoJogo: false,
   teclado: false,
   dica: {
-    teclado: "WASD ou setas andam · F faz a ação · Tab abre o Rabifone · M abre o mapa · Q/E giram a câmera · Espaço pula",
-    toque: "Arraste à esquerda para andar · à direita para olhar · ✋ faz a ação · 📱 abre o Rabifone",
-    controle: "Alavanca anda · X faz a ação · Select abre o Rabifone · A pula · Start pausa",
+    teclado: "WASD ou setas andam · F faz a ação · Tab abre o Rabifone · M mostra o mapa · Q/E giram a câmera · Espaço pula",
+    toque: "Arraste à esquerda para andar · à direita para olhar · ✋ faz a ação · 📱 abre o Rabifone · ⚙️ mostra o mapa",
+    controle: "Alavanca anda · X faz a ação · Select abre o Rabifone · L3 mostra o mapa · A pula · Start pausa",
   },
   falas: { titulo: "rp-titulo", vitoria: null },
   controles: CONTROLES,
@@ -108,9 +111,10 @@ function teclasDe(acao) {
 const tem = (acao) => teclasDe(acao).some((k) => teclas.has(k));
 const ehAcao = (acao, code) => teclasDe(acao).includes(code);
 const pad = { x: 0, y: 0, gx: 0, pulo: false, puloNovo: false, acaoNova: false };
-let toque = null, fone = null;
+let toque = null, fone = null, meuRb = null;
 addEventListener("keydown", (e) => {
   if (jogo.estado !== "jogando" || jogo.pausado) return;
+  if (e.target?.matches?.("input, textarea")) return; // digitando o nome no Meu Rabisco
   if (J.tv && !ehAcao("mapa", e.code)) return; // TV como tela (página tv/): os dois jogam pelos controles e celulares
   if (sorveteUI?.aberto) {
     const mapa = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
@@ -126,6 +130,13 @@ addEventListener("keydown", (e) => {
     if (e.code === "Escape" || e.code === "Backspace") { deco.cancelar(); e.preventDefault(); }
     return;
   }
+  if (meuRb?.aberto) {
+    const mapa = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], KeyA: [-1, 0], KeyD: [1, 0], KeyW: [0, -1], KeyS: [0, 1] };
+    if (mapa[e.code]) { meuRb.navegar(...mapa[e.code]); e.preventDefault(); return; }
+    if (e.code === "Enter" || e.code === "Space" || e.code === "KeyF") { meuRb.confirmar(); e.preventDefault(); return; }
+    if (e.code === "Escape" || e.code === "Backspace") { meuRb.voltar(); e.preventDefault(); }
+    return;
+  }
   if (fone?.aberto) {
     const mapa = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], KeyA: [-1, 0], KeyD: [1, 0], KeyW: [0, -1], KeyS: [0, 1] };
     if (mapa[e.code]) { fone.navegar(...mapa[e.code]); e.preventDefault(); return; }
@@ -138,7 +149,7 @@ addEventListener("keydown", (e) => {
   if (ehAcao("pular", e.code)) { pad.puloNovo = true; e.preventDefault(); }
   if (ehAcao("acao", e.code) && !e.repeat) { pad.acaoNova = true; e.preventDefault(); }
   if (ehAcao("fone", e.code) && !e.repeat) { e.preventDefault(); fone?.abrir(); }
-  if (ehAcao("mapa", e.code) && !e.repeat) alternarMapa();
+  if (ehAcao("mapa", e.code) && !e.repeat) mapaPedido();
   if (e.code.startsWith("Arrow")) e.preventDefault();
 });
 addEventListener("keyup", (e) => teclas.delete(e.code));
@@ -153,6 +164,12 @@ function lerControle({ segura, apertou, eixoX, eixoY }) {
     if (apertou.esq) deco.navegar(-1, 0); if (apertou.dir) deco.navegar(1, 0);
     if (apertou.cima) deco.navegar(0, -1); if (apertou.baixo) deco.navegar(0, 1);
     if (apertou.confirma) deco.confirmar(); else if (apertou.voltar) deco.cancelar();
+    return;
+  }
+  if (meuRb?.aberto) {
+    if (apertou.esq) meuRb.navegar(-1, 0); if (apertou.dir) meuRb.navegar(1, 0);
+    if (apertou.cima) meuRb.navegar(0, -1); if (apertou.baixo) meuRb.navegar(0, 1);
+    if (apertou.confirma) meuRb.confirmar(); else if (apertou.voltar) meuRb.voltar();
     return;
   }
   if (fone?.aberto) {
@@ -174,6 +191,7 @@ function lerControle({ segura, apertou, eixoX, eixoY }) {
   for (const p of navigator.getGamepads?.() ?? []) if (p && p.index !== J.padJ2 && (p.buttons[4]?.pressed || p.buttons[6]?.pressed)) pad.descer = true;
   if (apertou.acao) pad.acaoNova = true;
   if (apertou.select) fone?.abrir();
+  if (apertou.mapa) mapaPedido();
   if (apertou.voltar && mapaGrande && !mapaGrande.hidden) alternarMapa();
 }
 
@@ -197,6 +215,7 @@ const j = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), noChao: true, co
 const veiculos = []; let garagem = null; // veículo chamado pelo Rabifone (só um por vez)
 let transito = [], moradores = [], vovo = null, missoes = null, j2 = null, patioJE = null;
 let dentro = null, contexto = null, salvo = carregar(), alvoMapa = null;
+let mapaLigado = false; // minimapa do canto: escondido ao começar; M, L3 e a ⚙️ mostram e escondem
 let emCasa = null, deco = null, fade = null; const interiores = {}; // casa por dentro (montada uma vez por planta)
 let emLugar = null, sorveteUI = null; const salas = {}; // lugares por dentro (Fatia 3), montados na primeira visita
 let solidosDentro = []; // colisões da sala/casa em que o Rabisco está
@@ -210,6 +229,36 @@ function idadeCrianca() {
   try { const i = window.Familia?.crianca?.()?.idade; return Number.isFinite(i) ? i : null; } catch { return null; }
 }
 const nomeCrianca = () => { try { return window.Familia?.crianca?.()?.nome || null; } catch { return null; } };
+// plaquinha com o nome em pé sobre a cabeça do Rabisco: o nome do cadastro da família ou, sem cadastro, o que a criança escreveu
+// no Meu Rabisco (só neste aparelho). Até 12 letras (nome comprido mostra o primeiro nome). Sem nome, sem plaquinha.
+const nomeDaPlaca = () => {
+  const n = (nomeCrianca() || salvo.nomeRabisco || "").trim().replace(/\s+/g, " ");
+  return (n.length > 12 ? n.split(" ")[0] : n).slice(0, 12);
+};
+let placaNome = null; // { sprite, nome }
+function criarPlaca() {
+  placaNome = null;
+  atualizarPlaca();
+  document.fonts?.ready.then(() => { if (placaNome) { placaNome.nome = null; atualizarPlaca(); } });
+}
+function atualizarPlaca() {
+  if (!rabisco) return;
+  const nome = nomeDaPlaca();
+  if (!nome) { if (placaNome) placaNome.sprite.visible = false; return; }
+  if (!placaNome) {
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false }));
+    sprite.scale.set(1.25, 0.37, 1); sprite.position.y = 2.05; sprite.renderOrder = 7;
+    rabisco.grupo.add(sprite);
+    placaNome = { sprite, nome: null };
+  }
+  if (placaNome.nome !== nome) {
+    placaNome.sprite.material.map?.dispose();
+    placaNome.sprite.material.map = placa(nome, { cor: "#ec2e8c", w: 384, h: 112 });
+    placaNome.sprite.material.needsUpdate = true;
+    placaNome.nome = nome;
+  }
+  placaNome.sprite.visible = !dentro; // dentro de um veículo a plaquinha fica escondida (o teto e o vidro a cobririam)
+}
 
 function iniciar() {
   parar();
@@ -234,7 +283,10 @@ function iniciar() {
   camera = criarCamera(cam, mundo.solidos);
   rabisco = new Rabisco3D({ raiz: "../..", altura: 1.8 });
   cena.add(rabisco.grupo);
+  prepararRoupa(rabisco);
   otimizarRabisco(rabisco);
+  vestirPecas(rabisco, escolhaSalva(salvo), { juntar: true }); // depois do 1º mesclar: a mochila original só se esconde
+  criarPlaca();
   if (salvo.roupas?.[0] && PROFISSOES[salvo.roupas[0]]) setTimeout(() => vestir(salvo.roupas[0]), 0);
   // celular: neblina mais perto, menos blocos e carros desenhados
   if (qualidade.perfil.toque) { mundo.alcance = 95; mundo.detalheAte = 35; cena.fog.far = 95; cena.fog.near = 40; }
@@ -267,7 +319,8 @@ function iniciar() {
 
   // HUD
   hud = el("div", { class: "hud-rp" });
-  minimapa = el("canvas", { class: "minimapa-rp", width: "200", height: "200", role: "button", "aria-label": "Abrir o mapa" });
+  minimapa = el("canvas", { class: "minimapa-rp", width: "200", height: "200", role: "button", "aria-label": "Abrir o mapa grande", hidden: "" });
+  mapaLigado = false;
   minimapa.addEventListener("click", () => alternarMapa());
   balao = el("div", { class: "balao-rp", "aria-live": "polite" });
   bussola = el("div", { class: "bussola-rp", hidden: "" }, [el("div", { class: "seta", html: "<span>➤</span>" }), el("div", { class: "rotulo" })]);
@@ -285,7 +338,7 @@ function iniciar() {
     salvo: () => salvo, salvar: (d) => salvar(d), crianca: () => { try { return window.Familia?.crianca?.() || null; } catch { return null; } },
     otimizar: (rb) => otimizarRabisco(rb, () => j2?.modelo?.c?.rabisco === rb),
     veiculo: () => dentro, yaw: () => camera.st.yaw, caronaDaMissao: () => missoes?.carona,
-    travado: () => Boolean(fone?.aberto || deco?.aberto || sorveteUI?.aberto),
+    travado: () => Boolean(fone?.aberto || deco?.aberto || sorveteUI?.aberto || meuRb?.aberto),
   });
   acaoJ2 = el("div", { class: "acao-j2-rp", hidden: "" }); caixa.append(acaoJ2);
   fade = el("div", { class: "fade-rp" }); caixa.append(fade);
@@ -302,6 +355,7 @@ function iniciar() {
     aoGaragem: (tipo, cor) => chamarVeiculo(tipo, cor),
     aoHora: (h) => mudarHora(h),
     aoMapa: () => alternarMapa(true),
+    aoMeuRabisco: () => meuRb.abrir(),
     infoCasa: () => ({ tem: salvo.casa != null, nome: salvo.casa != null ? `Casa ${salvo.casa}` : "" }),
     coresCasa: () => CORES_PAREDE,
     missoes: () => ({ lista: missoes.MISSOES.map((m) => ({ id: m.id, titulo: m.titulo, icone: m.icone, tipo: m.tipo, feita: missoes.feitas.includes(m.id) })), ativa: missoes.ativa }),
@@ -318,6 +372,15 @@ function iniciar() {
       else alvoMapa = { x: c.frente[0], z: c.frente[1], emoji: "🏠" };
     },
   });
+  // Meu Rabisco: mochila, fone, sapatos, calça e óculos (meu-rabisco.js); a escolha vale na hora e fica no aparelho
+  meuRb = criarMeuRabisco(caixa, {
+    escolha: () => escolhaSalva(salvo),
+    nomeCadastro: () => (nomeCrianca() ? nomeDaPlaca() : null),
+    nomeSalvo: () => salvo.nomeRabisco,
+    aoEscolher: (slot, id) => { salvo.meuRabisco = { ...salvo.meuRabisco, [slot]: id }; salvar(salvo); vestirPecas(rabisco, escolhaSalva(salvo), { juntar: true }); },
+    aoNome: (n) => { salvo.nomeRabisco = n; salvar(salvo); atualizarPlaca(); },
+    aoAbrir: () => { teclas.clear(); toque.zerar(); },
+  });
   atualizarHud();
 
   new ResizeObserver(ajustar).observe(caixa);
@@ -330,6 +393,7 @@ function iniciar() {
 }
 function parar() {
   vivo = false;
+  if (meuRb?.aberto) meuRb.fechar();
   emCasa = null; for (const k of Object.keys(interiores)) delete interiores[k];
   emLugar = null; solidosDentro = []; for (const k of Object.keys(salas)) delete salas[k];
   radioUI?.sairDoCarro();
@@ -346,7 +410,8 @@ function parar() {
 // (roupas3d.js mexe neles). O rosto chega depois (rosto3d.json): junta de novo quando ele aparecer.
 function otimizarRabisco(rb, vale = () => rabisco === rb) {
   for (const o of [rb.bone, rb.pivoAba, rb.aba]) if (o) o.userData.dinamico = true;
-  const juntas = new Set([rb.corpo, rb.tronco, rb.pernaE.quadril, rb.pernaE.joelho, rb.pernaD.quadril, rb.pernaD.joelho, rb.bracoE.ombro, rb.bracoE.cotovelo, rb.bracoD.ombro, rb.bracoD.cotovelo].filter(Boolean));
+  // a mochila original fica em malhas à parte (rb.rp.mochila, de meu-rabisco.js): dá para escondê-la ao trocar de mochila
+  const juntas = new Set([rb.rp?.mochila, rb.corpo, rb.tronco, rb.pernaE.quadril, rb.pernaE.joelho, rb.pernaD.quadril, rb.pernaD.joelho, rb.bracoE.ombro, rb.bracoE.cotovelo, rb.bracoD.ombro, rb.bracoD.cotovelo].filter(Boolean));
   const juntar = () => { if (vale()) mesclar(rb.grupo, { juntas }); };
   juntar();
   for (const ms of [1500, 4000, 9000]) setTimeout(juntar, ms);
@@ -453,7 +518,7 @@ function entrarCasa(c, imediato = false) {
     trocarSolidosCasa([...int.solidos, ...solidosDosMoveis(int)]);
     j.pos.set(int.entrada[0], 0.07, int.entrada[1]); j.vel.set(0, 0, 0); j.dir = Math.PI;
     camera.st.yaw = Math.PI;
-    minimapa.hidden = true;
+    aplicarMinimapa();
     posicionarCamera(1, 0);
     if (!entrarCasa.falou) { entrarCasa.falou = true; falar("rp-casa-entrar"); dizer("Minha casa", "Que casa gostosa! Chegue perto de um círculo amarelo e aperte a ação para decorar.", 4200); }
   };
@@ -471,7 +536,7 @@ function sairCasa(imediato = false) {
     camera.st.vista = null; camera.st.yaw = Math.atan2(s[0], s[1]); // antes do irPara: a câmera da rua já nasce no lugar certo
     irPara(fx + s[0] * 2.5, fz + s[1] * 2.5);
     j.dir = camera.st.yaw;
-    minimapa.hidden = false;
+    aplicarMinimapa();
   };
   imediato ? fazer() : escurecer(fazer);
 }
@@ -481,9 +546,10 @@ function vestir(id) {
   // cada peça vira poucas malhas (por dentro ela não mexe)
   for (const r of Object.values(rabisco.roupas ?? {})) for (const o of r.objs) mesclar(o);
   for (const objs of Object.values(rabisco.roupasRP ?? {})) for (const o of objs) mesclar(o);
+  ajustarUniforme(rabisco); // botas e óculos do uniforme mandam nos sapatos e nos óculos escolhidos
   salvo.roupas = [id]; salvar(salvo);
 }
-function tirarUniforme() { tirarProfissao(rabisco); salvo.roupas = []; salvar(salvo); }
+function tirarUniforme() { tirarProfissao(rabisco); ajustarUniforme(rabisco); salvo.roupas = []; salvar(salvo); }
 // parabéns por missão/aula concluída: a narradora fala o NOME DA CRIANÇA (rp-xxx-pre + nome gravado + rp-xxx-pos); sem
 // cadastro ou sem o nome no banco, a fala neutra rp-xxx, sem nome e sem "Rabisco". `chave` = "rp-xxx" (-pre/-pos/neutra).
 function parabens(chave, depois, ms, quem = "Rabiscolândia") {
@@ -517,7 +583,7 @@ function entrarLugar(id, imediato = false) {
     trocarSolidosCasa([...s.solidos]);
     j.pos.set(s.entrada[0], 0.07, s.entrada[1]); j.vel.set(0, 0, 0); j.dir = Math.PI;
     camera.st.yaw = Math.PI;
-    minimapa.hidden = true;
+    aplicarMinimapa();
     posicionarCamera(1, 0);
     const def = SALAS[id];
     // nas lojas parceiras quem fala é a anfitriã narrando (os personagens parceiros, por enquanto, não falam)
@@ -539,7 +605,7 @@ function sairLugar(imediato = false) {
     camera.st.vista = null; camera.st.yaw = Math.atan2(l.dir[0], l.dir[1]); // antes do irPara: a câmera da rua já nasce no lugar certo
     irPara(l.x + l.dir[0] * 2.6, l.z + l.dir[1] * 2.6);
     j.dir = camera.st.yaw;
-    minimapa.hidden = false;
+    aplicarMinimapa();
   };
   imediato ? fazer() : escurecer(fazer);
 }
@@ -619,6 +685,7 @@ function pertoDeVeiculo() {
 function entrar(v) {
   if (dentro) return;
   dentro = v;
+  atualizarPlaca();
   j.vel.set(0, 0, 0);
   v.g.add(rabisco.grupo); const a = v.g.userData.motorista; rabisco.grupo.position.set(a.x, a.y - 2.0 * rabisco.escala, a.z); rabisco.grupo.rotation.set(0, 0, 0);
   v.g.userData.aoEntrar?.(rabisco); // moto: põe o capacete
@@ -654,6 +721,7 @@ function sair() {
   if (!livreSaida && (v.tipo === "jetski" || v.tipo === "lancha")) { dizer(v.tipo === "jetski" ? "Jet ski" : "Lancha", "Encoste na areia, no píer ou na ilha para descer.", 2600); return; }
   const [ox, oz] = livreSaida ?? op[0];
   dentro = null; v.vel = 0; v.jatoLigado = false;
+  atualizarPlaca();
   radioUI?.sairDoCarro(); avisoRadio?.esconder();
   toque?.especial(null);
   cena.add(rabisco.grupo); rabisco.grupo.visible = true;
@@ -778,7 +846,7 @@ function entrada() {
   if (entradaTeste) { ix = entradaTeste.virar; iy = entradaTeste.acel; }
   const m = Math.hypot(ix, iy);
   if (m > 1) { ix /= m; iy /= m; }
-  if (fone?.aberto || deco?.aberto || sorveteUI?.aberto) ix = iy = 0;
+  if (fone?.aberto || deco?.aberto || sorveteUI?.aberto || meuRb?.aberto) ix = iy = 0;
   return { ix, iy, m };
 }
 function regras() {
@@ -971,7 +1039,7 @@ function passo(dt, ultimo) {
     regras();
     posicionarCamera(Math.min(1, dt * 6), dt, andando);
     tMapa -= dt;
-    if (ultimo && tMapa <= 0) { tMapa = 0.15; desenharMapa(minimapa.getContext("2d"), 200); atualizarBussola(); atualizarBotaoAcao(); atualizarMissaoHud(); atualizarAcaoJ2(); if (!mapaGrande.hidden) desenharMapa(mapaGrande.querySelector("canvas").getContext("2d"), 640, true); }
+    if (ultimo && tMapa <= 0) { tMapa = 0.15; if (!minimapa.hidden) desenharMapa(minimapa.getContext("2d"), 200); atualizarBussola(); atualizarBotaoAcao(); atualizarMissaoHud(); atualizarAcaoJ2(); if (!mapaGrande.hidden) desenharMapa(mapaGrande.querySelector("canvas").getContext("2d"), 640, true); }
     if (ultimo && !params.has("fixo")) qualidade.medir(t);
   }
 }
@@ -1087,6 +1155,20 @@ function atualizarBussola() {
   bussola.querySelector(".seta").style.transform = `rotate(${(-rel * 180) / Math.PI - 90}deg)`;
   bussola.querySelector(".rotulo").textContent = `${a.emoji} ${Math.round(Math.hypot(a.x - j.pos.x, a.z - j.pos.z))} m`;
 }
+// minimapa do canto: só aparece quando a criança pede (M, L3 do controle ou "Mapa" na ⚙️) e nunca dentro de casa ou de lugar;
+// tocar nele abre o mapa grande. Com o mapa grande aberto, o pedido fecha o grande.
+function aplicarMinimapa() { if (minimapa) minimapa.hidden = !mapaLigado || Boolean(emCasa || emLugar); }
+function alternarMinimapa(ligar = null) {
+  mapaLigado = ligar === null ? !mapaLigado : ligar;
+  aplicarMinimapa();
+  if (!minimapa.hidden) desenharMapa(minimapa.getContext("2d"), 200);
+}
+function mapaPedido() {
+  if (!vivo) return;
+  if (!mapaGrande.hidden) alternarMapa(false); else alternarMinimapa();
+}
+Engrenagem.extra({ id: "meurabisco", ic: "✏️", texto: "Meu Rabisco", sub: "Mochila, fone, sapatos, calça e óculos", mostrar: () => vivo, acao: () => meuRb?.abrir() });
+Engrenagem.extra({ id: "mapa", ic: "🗺️", texto: "Mapa", sub: "Mostrar ou esconder o mapa", mostrar: () => vivo, acao: () => mapaPedido() });
 function alternarMapa(abrir = null) {
   mapaGrande.hidden = abrir === null ? !mapaGrande.hidden : !abrir;
   if (!mapaGrande.hidden) desenharMapa(mapaGrande.querySelector("canvas").getContext("2d"), 640, true);
@@ -1159,7 +1241,7 @@ if (params.has("teste")) window.teste = {
   get mundo() { return mundo; }, get dentro() { return dentro; }, get contexto() { return contexto?.rotulo ?? null; },
   get salvo() { return carregar(); }, get fone() { return fone; }, get transito() { return transito; }, get moradores() { return moradores; },
   get ceu() { return ceu; }, get estat() { return { ...estat, fps: qualidade?.fps ?? 0, blocos: mundo.blocosVisiveis(), malhas: mundo.malhas }; },
-  get vivo() { return vivo; }, get tempo() { return estat.tj ?? 0; }, get fis() { return fis; },
+  get vivo() { return vivo; }, get mapaLigado() { return mapaLigado; }, mapaPedido, Engrenagem, get meuRb() { return meuRb; }, get pecas() { return rabisco?.rp ? { ...rabisco.rp.atual } : null; }, get placa() { return placaNome ? { visivel: placaNome.sprite.visible, nome: placaNome.nome, y: placaNome.sprite.position.y } : null; }, get tempo() { return estat.tj ?? 0; }, get fis() { return fis; },
   get modo() { return emCasa ? "casa" : emLugar ? "lugar" : dentro ? "veiculo" : "rua"; },
   get emLugar() { return emLugar ? { id: emLugar.id, est: emLugar.est, interativos: emLugar.interativos.map((i) => ({ id: i.id, rotulo: i.rotulo, pos: i.pos })) } : null; },
   get sorveteUI() { return sorveteUI; },

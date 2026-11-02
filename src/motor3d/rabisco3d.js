@@ -428,6 +428,7 @@ export class Rabisco3D {
     aba.position.z = 0.42;
     aba.rotation.x = 0.4;
 
+    const iniMochila = this.tronco.children.length; // (só marca as peças da mochila e das alças, para um jogo poder trocá-las)
     // mochila nas costas (a forma vem da vista lateral e das costas)
     const fm = new G.Shape();
     const mw = 0.42, mh = 0.72, mr = 0.2;
@@ -475,6 +476,8 @@ export class Rabisco3D {
       const pts = [p(150, 3.3, 0.62), p(120, 3.5, 0.6), p(95, 3.58, 0.62), p(76, 3.48), p(70, 3.3), p(74, 3.12), p(92, 3.02), p(118, 2.94), p(146, 2.86, 0.62)];
       this.solida(new G.TubeGeometry(new G.CatmullRomCurve3(pts, false, "centripetal"), 64, 0.055, 10, false), COR.laranja, { pai: this.tronco, borda: 0 });
     }
+
+    this.partes = { mochila: this.tronco.children.slice(iniMochila) };
 
     // braços na pose do desenho (soltos ao lado do corpo)
     const braco = (lado) => {
