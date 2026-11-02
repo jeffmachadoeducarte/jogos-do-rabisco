@@ -9,7 +9,10 @@
 //    camiseta preta e jeans;
 //  - "camila": Camila, dona da academia Rise Up — loira com raiz castanha, argolas grandes, regata e legging pretas com
 //    "RISE UP" no peito, tênis branco e laranja;
-//  - "riseup-dono": Robert, também dono da Rise Up — boné preto "RISE UP", barba cheia, forte, camiseta grafite.
+//  - "riseup-dono": Robert, também dono da Rise Up — boné preto "RISE UP", barba cheia, forte, camiseta grafite;
+//  - "marlon": Marlon, dono da Marlon Máquinas — senhor moreno claro e careca, camisa de trabalho verde, calça cinza;
+//  - "samira": Prof. Samira, da Ballet e Cia — figura genérica de professora de ballet (a aparência real não é conhecida):
+//    coque, collant vinho e saia de tule nas cores da fachada.
 //
 // Custo baixo: o corpo inteiro é UMA malha com esqueleto (cada caixa presa ao seu osso) com cor por vértice, mais uma
 // malha com os desenhos (rosto e peito). Com a sombrinha redonda: 3 chamadas de desenho.
@@ -23,7 +26,7 @@
 
 import { THREE, texturaCanvas } from "../../src/motor3d/toon.js";
 import { sombraBlob } from "../../src/motor3d/objetos.js";
-import { comArestas } from "./blocos.js";
+import { comArestas, claro } from "./blocos.js";
 
 // ---------------------------------------------------------------- esqueleto (posição de repouso, em metros, escala 1)
 const OSSOS = [
@@ -42,6 +45,8 @@ const PESSOAS = {
   aurelio: { nome: "Aurélio", empresa: "Crescente Contabilidade", escala: 1.1, pele: 0xf3c2a6, roupa: 0x232328, manga: 0x232328, curta: true, calca: 0x2b3b62, sapato: 0x1a1a1e, frente: "#232328", corpo: { ombros: 1.14, gordo: 1.18 }, cabelo: { estilo: "curto", cor: 0x9c8a6a }, barba: 0xbdb19a, oculos: 0x16161a, rosto: { iris: "#3f5a3a", brow: "#7c6d52", boca: "sorriso", barba: true }, objeto: null },
   camila: { nome: "Camila", empresa: "Rise Up", pele: 0xf7d3bc, roupa: 0x1b1b20, manga: null, calca: 0x1b1b20, sapato: 0xf6f6f8, tenis: 0xff5a36, frente: "#1b1b20", texto: "RISE UP", corpo: { ombros: 0.96, gordo: 0.92 }, cabelo: { estilo: "ondas", cor: 0x8a6a48, pontas: 0xead39e }, brinco: 0xe7b443, rosto: { iris: "#3a6a7a", brow: "#6a4a2c", batom: "#d9707f", cilios: true, boca: "aberta" }, objeto: null },
   "riseup-dono": { nome: "Robert", empresa: "Rise Up", escala: 1.1, pele: 0xf1c3a8, roupa: 0x2e3036, manga: 0x2e3036, curta: true, calca: 0x18181c, sapato: 0x18181c, tenis: 0xff5a36, frente: "#2e3036", corpo: { ombros: 1.2, gordo: 1.06 }, cabelo: { estilo: "bone", cor: 0x17181c }, barba: 0x4a3324, rosto: { iris: "#4a3016", brow: "#3a2616", boca: "sorriso", barba: true, bone: "RISE UP" }, objeto: null },
+  marlon: { nome: "Marlon", empresa: "Marlon Máquinas", escala: 1.04, pele: 0xd9a67e, roupa: 0x2e9e57, manga: 0x2e9e57, curta: true, calca: 0x5c6670, sapato: 0x18181c, frente: "#2e9e57", botoes: true, corBotoes: { gola: "#25804a", botao: "#ffffff" }, dedos: true, corpo: { ombros: 1.06, gordo: 1.05 }, cabelo: { estilo: "careca", cor: 0x8c8378 }, rosto: { iris: "#4a3016", brow: "#7a7166", boca: "sorriso" }, objeto: null },
+  samira: { nome: "Prof. Samira", empresa: "Ballet e Cia", pele: 0xefc7a8, roupa: 0x7d1f4f, manga: 0x7d1f4f, calca: 0xf6c6d8, saia: true, tule: 0xffb0cc, cinto: 0xe5bd5a, abre: 0.2, sapato: 0x1d1c22, frente: "#7d1f4f", decote: "#efc7a8", dedos: true, corpo: { ombros: 0.92, gordo: 0.9 }, cabelo: { estilo: "coque", cor: 0x2c1b14 }, brinco: 0xe5bd5a, rosto: { iris: "#4a2c16", brow: "#2c1b14", batom: "#b03f6c", cilios: true, boca: "discreta" }, objeto: null },
   carina: { nome: "Diretora Carina", escola: "kids1", pele: 0xd9a07a, roupa: 0xd8c29e, manga: 0xd8c29e, calca: 0xd9a07a, saia: true, sapato: 0x1d1c22, frente: "#d8c29e", botoes: true, cabelo: { estilo: "cachos", cor: 0x17110e }, brinco: 0xe9b84a, rosto: { iris: "#3a2010", brow: "#17110e", batom: "#a8483c", cilios: true, boca: "dentes" }, objeto: null },
 };
 
@@ -62,7 +67,8 @@ function montar(p) {
     P(j, 0.29, 0.13, 0.42, p.sapato, x, 0.065, 0.06); if (p.tenis) { P(j, 0.3, 0.05, 0.43, p.tenis, x, 0.12, 0.06); }
   }
   // tronco, quadril e pescoço
-  if (p.saia) { P("quadril", 0.82, 0.3, 0.42, p.roupa, 0, 0.82, 0); P("quadril", 0.92, 0.24, 0.46, p.roupa, 0, 0.6, 0); P("tronco", L + 0.02, 0.1, 0.38, 0xcdb28a, 0, 1.02, 0); }
+  if (p.tule) { P("quadril", L, 0.2, 0.36, p.roupa, 0, 0.94, 0); P("quadril", 0.8, 0.07, 0.62, p.tule, 0, 0.86, 0); P("quadril", 0.7, 0.07, 0.52, claro(p.tule, 0.4), 0, 0.93, 0); P("tronco", L + 0.02, 0.06, 0.32, p.cinto, 0, 1.04, 0); }
+  else if (p.saia) { P("quadril", 0.82, 0.3, 0.42, p.roupa, 0, 0.82, 0); P("quadril", 0.92, 0.24, 0.46, p.roupa, 0, 0.6, 0); P("tronco", L + 0.02, 0.1, 0.38, 0xcdb28a, 0, 1.02, 0); }
   else P("quadril", L, 0.2, 0.36, p.calca, 0, 0.94, 0);
   P("tronco", L, 0.52, 0.34 * G.gordo, p.roupa, 0, 1.3, 0);
   P("tronco", 0.2, 0.08, 0.2, p.pele, 0, 1.59, 0);
@@ -70,6 +76,7 @@ function montar(p) {
   for (const [s, o, c, m] of [[1, "ombroE", "cotoveloE", "maoE"], [-1, "ombroD", "cotoveloD", "maoD"]]) {
     const x = s * (xB + 0.02), b = p.manga ?? p.pele, b2 = p.curta || p.manga == null ? p.pele : p.manga;
     P(o, 0.22, 0.3, 0.24, b, x, 1.36, 0); P(c, 0.2, 0.3, 0.22, b2, x, 1.06, 0); P(m, 0.2, 0.16, 0.2, p.pele, x, 0.84, 0);
+    if (p.dedos) { for (const q of [-0.07, -0.024, 0.024, 0.07]) P(m, 0.038, 0.09, 0.05, p.pele, x + q, 0.725, 0.04); P(m, 0.05, 0.1, 0.05, p.pele, x - s * 0.12, 0.8, 0.05); }
   }
   // cabeça
   const cab = "cabeca", W = 0.56, A = 0.54, Y = H + 0.08 + A / 2;
@@ -77,6 +84,15 @@ function montar(p) {
   const C = p.cabelo;
   if (C.estilo === "bone") {
     P(cab, W + 0.03, 0.2, 0.53, C.cor, 0, Y + 0.2, 0); P(cab, W - 0.04, 0.08, 0.34, C.cor, 0, Y + 0.32, 0); P(cab, 0.5, 0.05, 0.3, C.cor, 0, Y + 0.13, 0.36);
+  } else if (C.estilo === "careca") { // careca: só o topo da cabeça, um pouco mais alto e arredondado
+    P(cab, W - 0.08, 0.05, 0.42, p.pele, 0, Y + 0.29, 0);
+  } else if (C.estilo === "coque") { // puxado para trás, com franjinha baixa e o coque bem alto
+    P(cab, W + 0.04, 0.14, 0.54, C.cor, 0, Y + 0.26, 0);
+    P(cab, W, 0.08, 0.07, C.cor, 0, Y + 0.18, 0.25);
+    for (const s of [-1, 1]) P(cab, 0.06, 0.26, 0.5, C.cor, s * 0.3, Y + 0.08, -0.02);
+    P(cab, W + 0.04, 0.42, 0.08, C.cor, 0, Y + 0.04, -0.27);
+    P(cab, 0.3, 0.14, 0.3, C.cor, 0, Y + 0.38, -0.08); P(cab, 0.24, 0.1, 0.24, 0x3a261c, 0, Y + 0.48, -0.08);
+    P(cab, 0.32, 0.03, 0.32, 0xff9ec0, 0, Y + 0.33, -0.08); // fitinha do coque
   } else {
     P(cab, W + 0.04, 0.16, 0.54, C.cor, 0, Y + 0.25, 0); // topo
     if (C.estilo === "lado") { P(cab, 0.2, 0.3, 0.54, C.cor, -0.24, Y + 0.08, 0); P(cab, 0.3, 0.1, 0.1, C.cor, -0.12, Y + 0.17, 0.25); P(cab, 0.09, 0.28, 0.54, C.cor, 0.3, Y + 0.06, 0); P("cabeloTras", W + 0.06, 0.92, 0.14, C.cor, 0, 1.68, -0.24); for (const s of [-1, 1]) P("tronco", 0.14, 0.42, 0.14, C.cor, s * 0.33, 1.52, 0.12); }
@@ -144,7 +160,8 @@ function desenhar(c, p, fechado, logo) {
   c.fillStyle = p.frente; c.fillRect(0, 0, S, S);
   if (p.listras) { c.fillStyle = p.listras; for (let y = 22; y < S; y += 44) for (let x = 0; x < S; x += 32) c.fillRect(x, y + (x % 64 ? 8 : 0), 22, 8); }
   if (p.lapela) { c.fillStyle = p.lapela; c.fillRect(0, 0, 66, S); c.fillRect(S - 66, 0, 66, S); c.fillStyle = "#ffffff"; c.fillRect(90, 0, 76, 44); }
-  if (p.botoes) { c.fillStyle = "#eadbbf"; c.fillRect(70, 0, 116, 34); c.fillStyle = "#8a6a48"; for (const y of [66, 118, 170, 222]) c.fillRect(118, y, 20, 20); }
+  if (p.botoes) { c.fillStyle = p.corBotoes?.gola ?? "#eadbbf"; c.fillRect(70, 0, 116, 34); c.fillStyle = p.corBotoes?.botao ?? "#8a6a48"; for (const y of [66, 118, 170, 222]) c.fillRect(118, y, 20, 20); }
+  if (p.decote) { c.fillStyle = p.decote; c.beginPath(); c.moveTo(56, 0); c.lineTo(S - 56, 0); c.lineTo(128, 70); c.closePath(); c.fill(); }
   if (logo) { const w = 96, h = (logo.naturalHeight / logo.naturalWidth) * w; c.fillStyle = "#ffffff"; c.fillRect(S - 112, 60, w + 8, h + 8); c.drawImage(logo, S - 108, 64, w, h); }
   if (p.texto) { c.fillStyle = "#ff5a36"; c.font = "900 54px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("RISE", S / 2, 96); c.fillStyle = "#ffffff"; c.fillText("UP", S / 2, 150); }
   if (r.bone) { c.fillStyle = "#17181c"; c.fillRect(S / 2, 0, S / 2, 40); c.fillStyle = "#ff5a36"; c.font = "900 30px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(r.bone, (S * 3) / 4, 20); }
@@ -196,7 +213,7 @@ export function criarPessoa(id = "sabrina", { escala: esc = null, nome = null } 
   const k0 = (dt, v) => 1 - Math.exp(-dt * v);
 
   function pose(andando, vel) {
-    const a = { qY: 0, corpoY: 0, tronX: 0, tronY: 0, tronZ: 0, cabX: 0, cabY: 0, cabZ: 0, oEx: 0, oEz: 0.08, cE: -0.1, mEx: 0, oDx: 0, oDz: -0.08, cD: -0.1, mDx: 0, pE: 0, jE: 0, pD: 0, jD: 0, tX: 0, tZ: 0, sq: 1 };
+    const a = { qY: 0, corpoY: 0, tronX: 0, tronY: 0, tronZ: 0, cabX: 0, cabY: 0, cabZ: 0, oEx: 0, oEz: 0.08 + (p.abre ?? 0), cE: -0.1, mEx: 0, oDx: 0, oDz: -0.08 - (p.abre ?? 0), cD: -0.1, mDx: 0, pE: 0, jE: 0, pD: 0, jD: 0, tX: 0, tZ: 0, sq: 1 };
     const t = tempo;
     if (andando) {
       const s = Math.sin(fase), c = Math.cos(fase), amp = Math.min(0.55, 0.32 + vel * 0.06);

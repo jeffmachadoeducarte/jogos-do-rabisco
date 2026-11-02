@@ -172,7 +172,23 @@ export const LUGARES = [
 export const LOJA_MAX = 19;
 // A Crescente Contabilidade (a 4ª) fica longe das outras, no oeste: lado sul da Avenida da Esperança, entre a Avenida do
 // Contorno e a Educarte Kids I, num prédio-escritório maior (PEGADA_ESCRITORIO).
-export const PONTOS_PARCEIROS = [[164, -59.5, 0, 1], [93, 9, 0, -1], [116, 9, 0, -1], [-160, -40.5, 0, -1], [118, -59.5, 0, 1]];
+// [x, z, dir x, dir z, bairro?]. As parceiras novas ficam ESPALHADAS pela cidade, nunca juntas (o teste confere: 60 m ou mais
+// de qualquer outra parceira). Do índice 4 ao 11: Gala, See Love, Bella Company, Marlon, Café com Deus Pai Kids, Ballet e Cia,
+// BT Models e Speedy Soluções. O último é o ponto livre de antes (segue reservado para a próxima parceira).
+export const PONTOS_PARCEIROS = [
+  [164, -59.5, 0, 1], [93, 9, 0, -1], [116, 9, 0, -1], [-160, -40.5, 0, -1],
+  [-41, 30, -1, 0, "Centro"], // Gala Presentes: Rua do Sol, ao lado da praça
+  [59, -120, -1, 0, "Nordeste"], // See Love Semijoias: Rua da Lua, ao norte
+  [216, 59.5, 0, -1, "Sudeste"], // Bella Company: Avenida da Alegria, do outro lado da Educarte Kids II
+  [-106, 149.5, 0, -1, "Sudoeste"], // Marlon Máquinas: sul da Avenida do Contorno
+  [-41, -162, -1, 0, "Norte"], // Café com Deus Pai Kids: Rua do Sol, perto da Biblioteca e do Mirante
+  [-165, 59.5, 0, -1, "Oeste"], // Ballet e Cia: Avenida da Alegria, para o lado da Educarte Kids I
+  [98, 149.5, 0, -1, "Sul"], // BT Models: sul da Avenida do Contorno
+  [-116, -149.5, 0, 1, "Noroeste"], // Speedy Soluções: norte da Avenida do Contorno
+  [118, -59.5, 0, 1],
+];
+// largura e fundo do prédio de cada tipo de parceira que tem fachada própria (as outras: LOJA_MAX × 7,5)
+export const PEGADA_TIPO = { presentes: [17, 9], joias: [15, 9], confeccao: [19, 10], reciclagem: [24, 16], livraria: [17, 10], ballet: [21, 12], agencia: [19, 11], vidracaria: [18, 10] };
 export const PEGADA_ESCRITORIO = [16, 12];
 // pátio da J.E (atrás da loja, no bairro Leste, longe da praça: de lá não se vê nem custa nada): cercado, com o portão
 // aberto para a Avenida do Contorno (no lado x0, de z = portao[0] a portao[1]) e 5 carros em leque, cada um com o bico
@@ -187,9 +203,9 @@ export const PATIO_JE = {
   }),
 };
 PARCEIROS.slice(0, PONTOS_PARCEIROS.length).forEach((p, i) => {
-  const [x, z, dx, dz] = PONTOS_PARCEIROS[i];
+  const [x, z, dx, dz, bairro] = PONTOS_PARCEIROS[i];
   const escritorio = p.tipo === "contabilidade";
-  LUGARES.push(L(`parceiro-${p.id}`, p.nome, x, z, dx, dz, { parceiro: p, pegada: escritorio ? PEGADA_ESCRITORIO : [LOJA_MAX, 7.5], recuo: 1, bairro: escritorio ? "Oeste" : "Comércio" }));
+  LUGARES.push(L(`parceiro-${p.id}`, p.nome, x, z, dx, dz, { parceiro: p, pegada: escritorio ? PEGADA_ESCRITORIO : PEGADA_TIPO[p.tipo] ?? [LOJA_MAX, 7.5], recuo: 1, parceiroNovo: i >= 4, bairro: bairro ?? (escritorio ? "Oeste" : "Comércio") }));
 });
 // bairros novos (novo: true: montados depois de tudo o que já existia, para a cidade de antes ficar igualzinha)
 const N = (id, nome, x, z, dx, dz, extra) => L(id, nome, x, z, dx, dz, { novo: true, ...extra });
@@ -306,7 +322,7 @@ function semente(s) {
 }
 const sobrepoe = (a, b, folga = 0) => a.x0 < b.x1 + folga && a.x1 > b.x0 - folga && a.z0 < b.z1 + folga && a.z1 > b.z0 - folga;
 export const PEGADAS_FIXAS = [
-  ...LUGARES.filter((l) => l.pegada).map((l) => ({ id: l.id, ...pegadaDe(l.x, l.z, l.dir, l.pegada[0], l.pegada[1], l.recuo) })),
+  ...LUGARES.filter((l) => l.pegada).map((l) => ({ id: l.id, nova: l.parceiroNovo, ...pegadaDe(l.x, l.z, l.dir, l.pegada[0], l.pegada[1], l.recuo) })),
   ...LOTES.map((l) => ({ id: l.id, ...pegadaDe(l.x, l.z, l.dir, LOTE.w, LOTE.d, LOTE.recuo) })),
   { id: "praca", x0: PRACA.x - PRACA.r - 2, x1: PRACA.x + PRACA.r + 2, z0: PRACA.z - PRACA.r - 2, z1: PRACA.z + PRACA.r + 2 },
   ...PRACAS_NOVAS.map((p) => ({ id: p.id, x0: p.x - p.r - 2, x1: p.x + p.r + 2, z0: p.z - p.r - 2, z1: p.z + p.r + 2 })),
@@ -315,15 +331,18 @@ export const PEGADAS_FIXAS = [
   { id: "parquinho-bebe", ...PARQUINHO_BEBE }, { id: "patio-je", x0: PATIO_JE.x0, x1: PATIO_JE.x1, z0: PATIO_JE.z0, z1: PATIO_JE.z1 }, { id: "patio-kids2", ...PATIO_KIDS2 }, { id: "praia-area", ...PRAIA },
   { id: "heliponto-area", x0: HELIPONTO.x - HELIPONTO.r, x1: HELIPONTO.x + HELIPONTO.r, z0: HELIPONTO.z - HELIPONTO.r, z1: HELIPONTO.z + HELIPONTO.r },
   // pontos de parceira ainda livres ficam reservados (a próxima parceira já tem lugar)
-  ...PONTOS_PARCEIROS.slice(PARCEIROS.length).map(([x, z, dx, dz], i) => ({ id: `reserva-parceira-${i}`, ...pegadaDe(x, z, [dx, dz], LOJA_MAX, 7.5, 1) })),
+  ...PONTOS_PARCEIROS.slice(PARCEIROS.length).map(([x, z, dx, dz], i, resto) => ({ id: `reserva-parceira-${i}`, nova: i < resto.length - 1, ...pegadaDe(x, z, [dx, dz], LOJA_MAX, 7.5, 1) })),
   ...VAGAS.map((v, i) => [v, i]).filter(([v]) => !["heli", "barco", "trator", "jetski", "lancha"].includes(v.tipo)).map(([v, i]) => { const [meioC, meioL] = { onibus: [7.5, 3], bombeiro: [3.8, 1.4], ambulancia: [2.9, 1.4], sorvete: [2.9, 1.4], bici: [1.0, 0.5], patinete: [0.8, 0.4], moto: [1.1, 0.45] }[v.tipo] ?? [2.6, 1.4]; const deitado = Math.abs(Math.sin(v.ang)) > 0.5; return { id: `vaga-${i}`, x0: v.x - (deitado ? meioC : meioL), x1: v.x + (deitado ? meioC : meioL), z0: v.z - (deitado ? meioL : meioC), z1: v.z + (deitado ? meioL : meioC) }; }),
   { id: "largada", x0: LARGADA.x - 3, x1: LARGADA.x + 3, z0: LARGADA.z - 3, z1: LARGADA.z + 3 },
 ];
+// lugares das parceiras novas (nova: true): o sorteio dos prédios de enchimento não os enxerga, senão a cidade inteira
+// mudaria de lugar. Quem ficar em cima deles sai depois dos sorteios, e os outros continuam exatamente onde estavam.
+const FIXAS_DE_ANTES = PEGADAS_FIXAS.filter((p) => !p.nova);
 export const PREDIOS = [];
 {
   const r = semente(2027);
   const cores = ["#f6d2a8", "#bfe0f2", "#f5c4c4", "#c9eabf", "#fbe3a6", "#d8cdf2", "#ffd9b8", "#c4ece6"];
-  const ocupado = (p) => [...PEGADAS_FIXAS, ...PREDIOS].some((o) => sobrepoe(p, o, 3));
+  const ocupado = (p) => [...FIXAS_DE_ANTES, ...PREDIOS].some((o) => sobrepoe(p, o, 3));
   for (let gx = -232; gx <= 232; gx += 17) for (let gz = -232; gz <= 232; gz += 17) {
     const x = gx + (r() - 0.5) * 3, z = gz + (r() - 0.5) * 3;
     const centro = Math.abs(x) < 50 && Math.abs(z) < 50;
@@ -349,7 +368,7 @@ export const PREDIOS_NOVOS = [];
 {
   const r = semente(4049);
   const cores = ["#f6d2a8", "#bfe0f2", "#f5c4c4", "#c9eabf", "#fbe3a6", "#d8cdf2", "#ffd9b8", "#c4ece6"];
-  const ocupado = (p) => [...PEGADAS_FIXAS, ...PREDIOS, ...PREDIOS_NOVOS].some((o) => sobrepoe(p, o, 3));
+  const ocupado = (p) => [...FIXAS_DE_ANTES, ...PREDIOS, ...PREDIOS_NOVOS].some((o) => sobrepoe(p, o, 3));
   for (let gx = -382; gx <= 382; gx += 17) for (let gz = -382; gz <= 230; gz += 17) {
     if (Math.max(Math.abs(gx), Math.abs(gz)) < 256) continue; // dentro da Serra: a cidade de antes
     const x = gx + (r() - 0.5) * 3, z = gz + (r() - 0.5) * 3;
@@ -366,6 +385,10 @@ export const PREDIOS_NOVOS = [];
     const andares = torres ? 6 + Math.floor(r() * 5) : norte ? 3 + Math.floor(r() * 4) : 2 + Math.floor(r() * 3);
     PREDIOS_NOVOS.push({ id: `predio-novo-${PREDIOS_NOVOS.length}`, ...p, cx: x, cz: z, w, d, dir, rot: Math.atan2(dir[0], dir[1]), andares, cor: cores[Math.floor(r() * cores.length)], tipo: r() < (torres ? 0 : norte ? 0.45 : 0.7) ? "sobrado" : "predio" });
   }
+}
+{
+  const novas = PEGADAS_FIXAS.filter((p) => p.nova);
+  for (const lista of [PREDIOS, PREDIOS_NOVOS]) for (let i = lista.length - 1; i >= 0; i--) if (novas.some((n) => sobrepoe(lista[i], n, 3))) lista.splice(i, 1);
 }
 
 // ---------- semáforos nos cruzamentos das avenidas com as ruas do Sol e da Lua
