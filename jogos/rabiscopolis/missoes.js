@@ -42,8 +42,8 @@ function bichinho(tipo) {
   if (tipo === "ovelha") {
     const la = mat(0xfdfdfd);
     g.scale.setScalar(0.62);
-    for (let i = 0; i < 8; i++) { const b = malha(new THREE.SphereGeometry(0.34, 10, 8), la, { contorno: 0.04, sombra: false }); b.position.set(((i % 3) - 1) * 0.28, 0.72 + (i > 5 ? 0.22 : 0), (Math.floor(i / 3) - 1) * 0.3); g.add(b); }
-    const cab = malha(new THREE.SphereGeometry(0.25, 12, 10), mat(0x3a3a3a), { contorno: 0.04, sombra: false }); cab.scale.z = 1.2; cab.position.set(0, 0.92, 0.58); g.add(cab);
+    for (let i = 0; i < 8; i++) { const b = malha(new THREE.SphereGeometry(0.34, 10, 8), la, { sombra: false }); b.position.set(((i % 3) - 1) * 0.28, 0.72 + (i > 5 ? 0.22 : 0), (Math.floor(i / 3) - 1) * 0.3); g.add(b); }
+    const cab = malha(new THREE.SphereGeometry(0.25, 12, 10), mat(0x3a3a3a), { sombra: false }); cab.scale.z = 1.2; cab.position.set(0, 0.92, 0.58); g.add(cab);
     for (const s of [-1, 1]) {
       const o = malha(new THREE.SphereGeometry(0.07, 8, 6), mat(0xffffff), { sombra: false }); o.position.set(s * 0.1, 1.0, 0.83); g.add(o);
       const p = malha(new THREE.SphereGeometry(0.035, 6, 5), mat(0x151515), { sombra: false }); p.position.set(s * 0.1, 1.0, 0.89); g.add(p);
@@ -54,34 +54,30 @@ function bichinho(tipo) {
     for (const dx of [-0.45, 0.45]) {
       const cor = mat(dx < 0 ? 0xffffff : 0xd9b38c);
       const c = new THREE.Group(); c.position.x = dx; g.add(c);
-      const corpo = malha(new THREE.SphereGeometry(0.3, 12, 10), cor, { contorno: 0.03, sombra: false }); corpo.scale.set(1, 0.9, 1.2); corpo.position.y = 0.3; c.add(corpo);
+      const corpo = malha(new THREE.SphereGeometry(0.3, 12, 10), cor, { sombra: false }); corpo.scale.set(1, 0.9, 1.2); corpo.position.y = 0.3; c.add(corpo);
       const rabo = malha(new THREE.SphereGeometry(0.1, 8, 6), mat(0xffffff), { sombra: false }); rabo.position.set(0, 0.36, -0.36); c.add(rabo);
-      const cab = malha(new THREE.SphereGeometry(0.22, 12, 10), cor, { contorno: 0.03, sombra: false }); cab.position.set(0, 0.62, 0.25); c.add(cab);
+      const cab = malha(new THREE.SphereGeometry(0.22, 12, 10), cor, { sombra: false }); cab.position.set(0, 0.62, 0.25); c.add(cab);
       const nariz = malha(new THREE.SphereGeometry(0.035, 6, 5), mat(0xff7aa8), { sombra: false }); nariz.position.set(0, 0.62, 0.47); c.add(nariz);
       for (const s of [-1, 1]) {
-        const o = malha(new THREE.CapsuleGeometry(0.06, 0.3, 4, 8), cor, { contorno: 0.02, sombra: false }); o.position.set(s * 0.09, 0.95, 0.2); o.rotation.z = s * 0.2; c.add(o);
+        const o = malha(new THREE.CapsuleGeometry(0.06, 0.3, 4, 8), cor, { sombra: false }); o.position.set(s * 0.09, 0.95, 0.2); o.rotation.z = s * 0.2; c.add(o);
         const ol = malha(new THREE.SphereGeometry(0.04, 8, 6), mat(0x151515), { sombra: false }); ol.position.set(s * 0.08, 0.68, 0.43); c.add(ol);
       }
     }
   } else if (tipo === "piquenique") {
-    const toalha = caixaRedonda(3.2, 0.04, 2.4, mat(0xe8413c), { raio: 0.02, sombra: false }); toalha.position.y = 0.04; g.add(toalha);
-    for (let i = 0; i < 6; i++) { const q = caixaRedonda(0.5, 0.05, 0.5, mat(0xffffff), { raio: 0.02, sombra: false }); q.position.set(-1.25 + (i % 3) * 1.25 + (Math.floor(i / 3) ? 0.6 : 0), 0.07, -0.85 + Math.floor(i / 3) * 1.15); g.add(q); }
-    const cesta = caixaRedonda(0.6, 0.4, 0.45, mat(0xc98a4b), { raio: 0.06, contorno: 0.03, sombra: false }); cesta.position.set(0.9, 0.25, 0); g.add(cesta);
-    for (const [x, z, c] of [[-0.6, 0.2, 0xff4f7a], [-0.2, -0.3, 0xffcc1f], [0.2, 0.3, 0x58c43a]]) { const f = malha(new THREE.SphereGeometry(0.13, 10, 8), mat(c), { contorno: 0.02, sombra: false }); f.position.set(x, 0.17, z); g.add(f); }
+    const toalha = caixaRedonda(3.2, 0.04, 2.4, mat(0xe8413c), { sombra: false }); toalha.position.y = 0.04; g.add(toalha);
+    for (let i = 0; i < 6; i++) { const q = caixaRedonda(0.5, 0.05, 0.5, mat(0xffffff), { sombra: false }); q.position.set(-1.25 + (i % 3) * 1.25 + (Math.floor(i / 3) ? 0.6 : 0), 0.07, -0.85 + Math.floor(i / 3) * 1.15); g.add(q); }
+    const cesta = caixaRedonda(0.6, 0.4, 0.45, mat(0xc98a4b), { sombra: false }); cesta.position.set(0.9, 0.25, 0); g.add(cesta);
+    for (const [x, z, c] of [[-0.6, 0.2, 0xff4f7a], [-0.2, -0.3, 0xffcc1f], [0.2, 0.3, 0x58c43a]]) { const f = malha(new THREE.SphereGeometry(0.13, 10, 8), mat(c), { sombra: false }); f.position.set(x, 0.17, z); g.add(f); }
   } else if (tipo === "arca") {
     const madeira = mat(0xb9773d), escura = mat(0x8a5527);
-    // casco fechado (perfil de barquinho puxado no comprimento): o contorno fica só por fora
-    const perfil = new THREE.Shape([new THREE.Vector2(-1.25, 1.7), new THREE.Vector2(1.25, 1.7), new THREE.Vector2(1.05, 0.7), new THREE.Vector2(0.55, 0.15), new THREE.Vector2(-0.55, 0.15), new THREE.Vector2(-1.05, 0.7)]);
-    const geoC = new THREE.ExtrudeGeometry(perfil, { depth: 6.2, bevelEnabled: true, bevelThickness: 0.25, bevelSize: 0.2, bevelSegments: 3 }); geoC.translate(0, 0, -3.1);
-    const casco = malha(geoC, madeira, { contorno: 0.08 }); casco.rotation.y = Math.PI / 2; g.add(casco);
-    for (const y of [0.75, 1.25]) { const f = caixaRedonda(6.7, 0.12, 2.6, escura, { raio: 0.05 }); f.position.y = y; f.scale.z = y < 1 ? 0.82 : 0.98; g.add(f); }
-    const conves = caixaRedonda(6.2, 0.2, 2.3, escura, { raio: 0.08 }); conves.position.y = 1.65; g.add(conves);
-    const casinha = caixaRedonda(3, 1.5, 1.8, mat(0xe9c28a), { raio: 0.12, contorno: 0.06 }); casinha.position.y = 2.5; g.add(casinha);
-    const tel = new THREE.Shape([new THREE.Vector2(-1.8, 0), new THREE.Vector2(0, 1.1), new THREE.Vector2(1.8, 0)]);
-    const geoT = new THREE.ExtrudeGeometry(tel, { depth: 2.2, bevelEnabled: false }); geoT.translate(0, 0, -1.1);
-    const telhado = malha(geoT, mat(0xd6402f), { contorno: 0.06 }); telhado.rotation.y = Math.PI / 2; telhado.position.y = 3.25; g.add(telhado);
-    for (const x of [-0.8, 0.8]) { const j = caixaRedonda(0.6, 0.6, 0.1, mat(0x3a2a1c), { raio: 0.1 }); j.position.set(x, 2.6, 0.92); g.add(j); }
-    const rampa = caixaRedonda(1.1, 0.12, 3, escura, { raio: 0.05 }); rampa.position.set(0, 0.8, 2.2); rampa.rotation.x = 0.5; g.add(rampa);
+    // casco fechado em degraus: mais estreito embaixo, com a proa e a popa recuando
+    for (const [c, l, y, a] of [[4.8, 1.3, 0.3, 0.3], [6, 2.1, 0.72, 0.56], [6.9, 2.8, 1.3, 0.62]]) { const m = caixaRedonda(c, a, l, madeira); m.position.y = y; g.add(m); }
+    for (const y of [0.75, 1.25]) { const f = caixaRedonda(6.7, 0.12, 2.6, escura); f.position.y = y; f.scale.z = y < 1 ? 0.82 : 0.98; g.add(f); }
+    const conves = caixaRedonda(6.2, 0.2, 2.3, escura); conves.position.y = 1.65; g.add(conves);
+    const casinha = caixaRedonda(3, 1.5, 1.8, mat(0xe9c28a)); casinha.position.y = 2.5; g.add(casinha);
+    for (let i = 0; i < 4; i++) { const t = caixaRedonda(3.6, 0.28, 2.3 - i * 0.65, mat(i % 2 ? 0xe2533f : 0xd6402f)); t.position.y = 3.39 + i * 0.28; g.add(t); } // telhado em degraus
+    for (const x of [-0.8, 0.8]) { const j = caixaRedonda(0.6, 0.6, 0.1, mat(0x3a2a1c)); j.position.set(x, 2.6, 0.92); g.add(j); }
+    const rampa = caixaRedonda(1.1, 0.12, 3, escura); rampa.position.set(0, 0.8, 2.2); rampa.rotation.x = 0.5; g.add(rampa);
   }
   mesclar(g);
   return g;
@@ -112,8 +108,6 @@ function posicionarNaCidade(ctx) {
   for (const d of PESSOAS_PORTA) { const e = lugar(d.unidade); if (e) { d.x = e.x + d.escola[0]; d.z = e.z + d.escola[1]; d.rot = e.rot; } }
 }
 // contorno preto do boneco (a 2ª malha com esqueleto): só de perto, para economizar desenho
-const cascaDe = (p) => p.grupo.children[0].children.filter((o) => o.isSkinnedMesh)[1];
-const PERTO_CONTORNO = 16;
 export function criarMissoes(ctx) {
   const { cena, falar, dizer, sons, salvo, salvar, pos, rabisco, vovo, veiculoAtual, raio } = ctx;
   posicionarNaCidade(ctx);
@@ -166,7 +160,7 @@ export function criarMissoes(ctx) {
       const m = criarPessoa(d.pessoa);
       m.grupo.position.set(d.x, 0.03, d.z); m.grupo.rotation.y = d.rot ?? 0;
       grupo.add(m.grupo);
-      Object.assign(n, { m, g: m.grupo, pessoa: true, casca: cascaDe(m) });
+      Object.assign(n, { m, g: m.grupo, pessoa: true });
     } else {
       const m = criarMorador(d.tipo, { cor: d.cor ?? 0xec2e8c, nome: d.nome, semente: d.nome.length + 3, escala: d.escala ?? 0.78, acessorio: d.acessorio, corAcessorio: d.corAcessorio, tenis: d.tenis });
       m.grupo.position.set(d.x, d.naArvore ? 2.45 : d.naAgua ? -0.55 : 0.07, d.z); m.grupo.rotation.y = d.rot ?? 0;
@@ -174,17 +168,17 @@ export function criarMissoes(ctx) {
       Object.assign(n, { m, g: m.grupo });
       if (d.naAgua) {
         // na água (o nadador cansado do resgate): só o peito para fora, abraçado na boia laranja, balançando de leve
-        n.boia = malha(new THREE.TorusGeometry(0.42, 0.14, 8, 20), mat(0xff5a3c), { contorno: 0.03, sombra: false });
+        n.boia = malha(new THREE.TorusGeometry(0.42, 0.14, 8, 20), mat(0xff5a3c), { sombra: false });
         n.boia.rotation.x = Math.PI / 2; n.boia.position.y = 0.6 / (m.grupo.scale.y || 1); m.grupo.add(n.boia);
         n.naAgua = true;
       }
       if (d.acessorio === "cajado") {
         const cj = new THREE.Group(); cj.position.set(-0.62, 0, 0.1); m.grupo.add(cj);
-        const haste = malha(new THREE.CylinderGeometry(0.05, 0.05, 2.1, 8), mat(0x9a6232), { contorno: 0.025, sombra: false }); haste.position.y = 1.05; cj.add(haste);
-        const curva = malha(new THREE.TorusGeometry(0.2, 0.05, 6, 14, Math.PI), mat(0x9a6232), { contorno: 0.025, sombra: false }); curva.position.set(0.2, 2.1, 0); cj.add(curva);
+        const haste = malha(new THREE.CylinderGeometry(0.05, 0.05, 2.1, 8), mat(0x9a6232), { sombra: false }); haste.position.y = 1.05; cj.add(haste);
+        const curva = malha(new THREE.TorusGeometry(0.2, 0.05, 6, 14, Math.PI), mat(0x9a6232), { sombra: false }); curva.position.set(0.2, 2.1, 0); cj.add(curva);
       }
       if (d.acessorio === "barba") {
-        const b = malha(new THREE.SphereGeometry(0.22, 12, 8), mat(0xf4f4f4), { contorno: 0.03, sombra: false }); b.scale.set(1.1, 1, 0.55);
+        const b = malha(new THREE.SphereGeometry(0.22, 12, 8), mat(0xf4f4f4), { sombra: false }); b.scale.set(1.1, 1, 0.55);
         b.position.set(0, (m.altura / 0.78) * 0.47, 0.34); m.grupo.children[0].add(b);
       }
     }
@@ -201,8 +195,8 @@ export function criarMissoes(ctx) {
       if (d.naArvore) {
         // árvore atrás e um galho grosso que vem até a frente: o Zaqueu fica sentado na ponta, à vista
         const a = arvoreReal(1.15, 1); a.position.set(d.x, 0.03, d.z - 2.6); n.extras.add(a);
-        const galho = malha(new THREE.CylinderGeometry(0.11, 0.17, 2.7, 8), mat(0x9a6232), { contorno: 0.04, sombra: false }); galho.rotation.x = Math.PI / 2 - 0.25; galho.position.set(d.x, 2.25, d.z - 1.2); n.extras.add(galho);
-        const folhas = malha(new THREE.SphereGeometry(0.5, 7, 5), mat(0x6fd15a), { contorno: 0.05, sombra: false }); folhas.position.set(d.x - 0.75, 2.9, d.z - 0.9); n.extras.add(folhas);
+        const galho = malha(new THREE.CylinderGeometry(0.11, 0.17, 2.7, 8), mat(0x9a6232), { sombra: false }); galho.rotation.x = Math.PI / 2 - 0.25; galho.position.set(d.x, 2.25, d.z - 1.2); n.extras.add(galho);
+        const folhas = malha(new THREE.SphereGeometry(0.5, 7, 5), mat(0x6fd15a), { sombra: false }); folhas.position.set(d.x - 0.75, 2.9, d.z - 0.9); n.extras.add(folhas);
         mesclar(n.extras);
       }
       else { const a = bichinho("arca"); a.position.set(d.x + 6, 0.03, d.z + 4); a.rotation.y = -0.4; n.extras.add(a); }
@@ -347,7 +341,7 @@ export function criarMissoes(ctx) {
     pl.feito = true; grupo.remove(pl.sprite);
     const b = new THREE.Group(); b.position.set(pl.x, 0.45, pl.z);
     const caule = malha(new THREE.CylinderGeometry(0.04, 0.05, 0.5, 6), mat(0x3f9a32), { sombra: false }); caule.position.y = 0.2; b.add(caule);
-    for (const s of [-1, 1]) { const f = malha(new THREE.SphereGeometry(0.16, 8, 6), mat(0x6fd15a), { contorno: 0.02, sombra: false }); f.scale.set(1.4, 0.45, 0.8); f.position.set(s * 0.15, 0.45, 0); f.rotation.z = s * 0.4; b.add(f); }
+    for (const s of [-1, 1]) { const f = malha(new THREE.SphereGeometry(0.16, 8, 6), mat(0x6fd15a), { sombra: false }); f.scale.set(1.4, 0.45, 0.8); f.position.set(s * 0.15, 0.45, 0); f.rotation.z = s * 0.4; b.add(f); }
     mesclar(b); grupo.add(b); pl.broto = b; pl.cresce = 0;
     sons.pulo();
     if (plantas.every((x) => x.missao !== ativa.id || x.feito)) avancar();
@@ -368,21 +362,20 @@ export function criarMissoes(ctx) {
   // pessoas de verdade paradas na porta, sem missão ainda (a Diretora Carina na Educarte Kids I): montadas só quando o
   // Rabisco chega perto, escondidas de longe, contorno só de perto; acenam quando ele chega e a anfitriã apresenta
   // (uma vez por partida)
-  const porta = PESSOAS_PORTA.map((d) => ({ d, m: null, casca: null, perto: false, oi: false }));
+  const porta = PESSOAS_PORTA.map((d) => ({ d, m: null, perto: false, oi: false }));
   function atualizarPorta(dt, p, R) {
     for (const q of porta) {
       const dist = Math.hypot(p.x - q.d.x, p.z - q.d.z);
       if (!q.m) {
         if (dist > R + 8) continue;
         q.m = criarPessoa(q.d.pessoa); q.m.grupo.position.set(q.d.x, 0.03, q.d.z); q.m.grupo.rotation.y = q.d.rot ?? 0;
-        q.casca = cascaDe(q.m); grupo.add(q.m.grupo);
+        grupo.add(q.m.grupo);
       }
       const g = q.m.grupo;
       // bem longe (a praça, o resto da cidade): desmonta de vez; as texturas ficam no cache de pessoas.js
-      if (dist > R + 20) { g.removeFromParent(); g.traverse((o) => { o.geometry?.dispose(); o.material?.dispose?.(); }); q.m = q.casca = null; q.perto = false; continue; }
+      if (dist > R + 20) { g.removeFromParent(); g.traverse((o) => { o.geometry?.dispose(); o.material?.dispose?.(); }); q.m = null; q.perto = false; continue; }
       g.visible = dist < R;
       if (!g.visible) continue;
-      q.casca.visible = dist < PERTO_CONTORNO;
       // vira para o Rabisco quando ele chega perto; depois volta a olhar para a rua
       const alvo = dist < 6 ? Math.atan2(p.x - q.d.x, p.z - q.d.z) : q.d.rot ?? 0;
       let d = alvo - g.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); g.rotation.y += d * Math.min(1, dt * 4);
@@ -415,7 +408,6 @@ export function criarMissoes(ctx) {
         n.m.atualizar(dt, { vel: n.andando ? 4 : 0 });
       }
       if (n.amigos) for (const a of n.amigos) a.atualizar(dt, { vel: 0 });
-      if (n.casca) n.casca.visible = Math.hypot(p.x - x, p.z - z) < PERTO_CONTORNO;
       if (n.festa > 0) { n.festa -= dt; if (n.bicho) n.g.position.y = 0.03 + Math.abs(Math.sin(t * 9)) * 0.35; if (n.m && !n.fixo && !n.pessoa && Math.random() < dt * 2) n.m.pular(); }
       else if (n.bicho) n.g.position.y = 0.03 + (n.andando ? Math.abs(Math.sin(t * 12)) * 0.15 : 0);
       if (n.naAgua && n !== caronaNpc()) { n.g.position.y = -0.55 + Math.sin(t * 2 + x) * 0.06; if (Math.random() < dt * 0.3) n.m?.acenar(1.5); }
@@ -795,8 +787,8 @@ export function criarMissoes(ctx) {
     obstaculos: () => [...npcs.values()].filter((n) => !n.fixo && n.g.visible && n !== caronaNpc()).map((n) => ({ x: n.g.position.x, z: n.g.position.z, raio: n.bicho ? 0.8 : 0.5 }))
       .concat(porta.filter((q) => q.m?.grupo.visible).map((q) => ({ x: q.d.x, z: q.d.z, raio: 0.5 }))),
     // pessoas da porta (testes): onde estão, se já foram montadas, se aparecem e se o contorno está ligado
-    pessoaPorta: (id) => { const q = porta.find((k) => k.d.pessoa === id); return q && { x: q.d.x, z: q.d.z, montada: Boolean(q.m), visivel: Boolean(q.m?.grupo.visible), contorno: Boolean(q.casca?.visible), oi: q.oi }; },
-    pessoaDe: (mid, id) => { const n = npcs.get(`${mid}:${id}`); return n?.pessoa ? { id: n.m.id, contorno: n.casca.visible, segurando: Boolean(n.m.ossos.maoD.children.find((o) => o.userData.item === "alvara" || o.userData.dinamico)) } : null; },
+    pessoaPorta: (id) => { const q = porta.find((k) => k.d.pessoa === id); return q && { x: q.d.x, z: q.d.z, montada: Boolean(q.m), visivel: Boolean(q.m?.grupo.visible), oi: q.oi }; },
+    pessoaDe: (mid, id) => { const n = npcs.get(`${mid}:${id}`); return n?.pessoa ? { id: n.m.id, segurando: Boolean(n.m.ossos.maoD.children.find((o) => o.userData.item === "alvara" || o.userData.dinamico)) } : null; },
     visiveis: () => { let c = 0; grupo.traverse((o) => { if ((o.isMesh || o.isSprite) && o.visible) { let v = true; for (let q = o; q; q = q.parent) if (!q.visible) v = false; if (v) c++; } }); return c; },
     itensDe: (mid) => itens.filter((x) => x.missao === mid).map((x) => ({ id: x.id, x: x.x, z: x.z, pego: x.pego })),
     plantasDe: (mid) => plantas.filter((x) => x.missao === mid).map((x) => ({ x: x.x, z: x.z, feito: x.feito })),

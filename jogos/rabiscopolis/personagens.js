@@ -1,36 +1,21 @@
 // Rabiscolândia: os moradores são amigos do estojo (lápis de cor, borracha, apontador, giz de cera, cola, régua,
-// pincel, caderno, clipe) no mesmo traço do Rabisco: formas arredondadas, contorno preto, olhos grandes de
-// desenho animado (íris colorida, brilho, sobrancelha grossa e boca aberta com língua rosa), bracinhos e tênis.
+// pincel, caderno, clipe) feitos de blocos: cada um continua sendo o que é, com o rosto do traço do Rabisco (olhos grandes
+// de desenho animado, íris colorida, brilho, sobrancelha grossa e boca aberta com língua rosa), bracinhos e tênis.
 // Andam dando pulinhos (estica e achata), piscam, olham em volta e acenam quando o Rabisco chega perto.
 //
 //   const m = criarMorador("lapis", { cor: 0xe8413c });   cena.add(m.grupo);
 //   m.atualizar(dt, { vel, acenar, olhar });               // vel em m/s (0 = parado)
 
-import { THREE, mat, malha, comContorno, geoCaixaRedonda, texturaRosto, texturaCanvas, mesclar, MAT } from "./base3d.js";
-import { borracha3D, sombraBlob } from "../../src/motor3d/objetos.js";
+import { THREE, matNovo, mat, malha, geoCaixaRedonda, texturaRosto, texturaCanvas, mesclar, MAT } from "./base3d.js";
+import { cx, degraus, escuro, claro } from "./blocos.js";
+import { sombraBlob } from "../../src/motor3d/objetos.js";
 
 const PELE = 0xfce3c6, MADEIRA = 0xf3c99a, TINTA = 0x151515;
 const IRIS = ["#00b5f0", "#58c43a", "#8e6cff", "#ff7a00", "#ec2e8c", "#2f8fe8", "#1fc08e"];
 
-// perfil de lápis/tubo com fundo arredondado (LatheGeometry), raio r e altura h
-function geoTubo(r, h, seg = 20, arred = 0.14) {
-  const pts = [new THREE.Vector2(0, 0)];
-  for (let i = 0; i <= 5; i++) { const a = (i / 5) * (Math.PI / 2); pts.push(new THREE.Vector2(r - arred + Math.sin(a) * arred, arred - Math.cos(a) * arred)); }
-  pts.push(new THREE.Vector2(r, h));
-  pts.push(new THREE.Vector2(0.0001, h));
-  return new THREE.LatheGeometry(pts, seg);
-}
-// rosto curvo em volta de um cilindro de raio r (centro na frente, +z), altura em metros
-function rostoCurvo(r, largura, altura, material) {
-  const th = largura / r;
-  const geo = new THREE.CylinderGeometry(r, r, altura, 18, 1, true, -th / 2, th);
-  const m = new THREE.Mesh(geo, material);
-  m.renderOrder = 2;
-  return m;
-}
 const rostoPlano = (largura, altura, material) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(largura, altura), material); m.renderOrder = 2; return m; };
 // o rosto brilha um pouquinho (emissivo) para o branco dos olhos não ficar cinza na sombra
-const matRosto = (iris) => { const t = texturaRosto({ iris }); return new THREE.MeshToonMaterial({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.35, transparent: true, alphaTest: 0.35 }); };
+const matRosto = (iris) => { const t = texturaRosto({ iris }); return matNovo({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.35, transparent: true, alphaTest: 0.35 }); };
 
 // faixa de papel do giz de cera (zigue-zague nas pontas)
 const texPapelGiz = (cor) => texturaCanvas(256, 128, (c, w, h) => {
@@ -48,73 +33,66 @@ const texRotuloCola = texturaCanvas(256, 96, (c, w, h) => {
   c.fillStyle = "#ffcc1f"; c.fillRect(0, 0, w, 10); c.fillRect(0, h - 10, w, 10);
 });
 
-// ---------- corpos (cada um devolve { corpo, ombro: y dos ombros, quadril, larg, rosto } com a frente em +z)
+// ---------- corpos (cada um devolve { plano, ombro: y dos ombros, quadril, larg, rosto } com a frente em +z)
 const CORPOS = {
-  lapis(c, cor) {
-    const r = 0.36, h = 0.92;
-    c.add(malha(geoTubo(r, h, 12), mat(cor), { contorno: 0.05 }));
-    const madeira = malha(new THREE.CylinderGeometry(0.1, r, 0.42, 12), mat(MADEIRA), { contorno: 0.05 }); madeira.position.y = h + 0.21; c.add(madeira);
-    const ponta = malha(new THREE.ConeGeometry(0.1, 0.18, 12), mat(cor), { contorno: 0.04 }); ponta.position.y = h + 0.5; c.add(ponta);
-    const faixa = malha(new THREE.CylinderGeometry(r + 0.012, r + 0.012, 0.07, 12, 1, true), mat(0xffffff)); faixa.position.y = h - 0.08; c.add(faixa);
-    return { r, ombro: 0.5, quadril: 0.06, rostoY: 0.6, larg: r, alto: h + 0.6 };
+  lapis(c, cor) { // lápis de seção quadrada: arestas mais escuras, faixa branca, madeira em degraus e a ponta da cor dele
+    const w = 0.66, h = 0.92, e = escuro(cor, 0.82);
+    cx(c, w, h, w, cor, 0, h / 2, 0);
+    for (const [x, z] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) cx(c, 0.1, h, 0.1, e, x * (w / 2 - 0.02), h / 2, z * (w / 2 - 0.02), { sombra: false });
+    cx(c, w + 0.03, 0.07, w + 0.03, 0xffffff, 0, h - 0.08, 0, { sombra: false });
+    const m = malha(degraus(w, w, 0.42, 3, { fim: 0.34 }), mat(MADEIRA)); m.position.y = h + 0.21; c.add(m);
+    const p = malha(degraus(0.22, 0.22, 0.2, 2), mat(cor)); p.position.y = h + 0.5; c.add(p);
+    return { plano: w / 2 + 0.012, ombro: 0.5, quadril: 0.06, rostoY: 0.56, larg: w / 2, alto: h + 0.6 };
   },
-  giz(c, cor) {
-    const r = 0.4, h = 0.86;
-    c.add(malha(geoTubo(r, h, 18), mat(cor), { contorno: 0.05 }));
-    const papel = malha(new THREE.CylinderGeometry(r + 0.015, r + 0.015, 0.62, 18, 1, true), new THREE.MeshToonMaterial({ map: texPapelGiz(`#${new THREE.Color(cor).getHexString()}`) }));
-    papel.position.y = 0.42; c.add(papel);
-    const topo = malha(new THREE.CylinderGeometry(0.22, r, 0.26, 18), mat(cor), { contorno: 0.05 }); topo.position.y = h + 0.13; c.add(topo);
-    const bolinha = malha(new THREE.SphereGeometry(0.22, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(cor), { contorno: 0.04 }); bolinha.position.y = h + 0.26; c.add(bolinha);
-    return { r: r + 0.02, ombro: 0.5, quadril: 0.06, rostoY: 0.46, larg: r, alto: h + 0.45 };
+  giz(c, cor) { // giz de cera: papel com zigue-zague e ponta arredondada em degraus
+    const w = 0.72, h = 0.86, papel = matNovo({ map: texPapelGiz(`#${new THREE.Color(cor).getHexString()}`) });
+    cx(c, w, h, w, cor, 0, h / 2, 0); cx(c, w + 0.03, 0.62, w + 0.03, 0, 0, 0.42, 0, { material: papel });
+    const t = malha(degraus(w, w, 0.34, 3, { fim: 0.5 }), mat(cor)); t.position.y = h + 0.17; c.add(t);
+    return { plano: w / 2 + 0.03, ombro: 0.5, quadril: 0.06, rostoY: 0.44, larg: w / 2, alto: h + 0.4 };
   },
-  cola(c) {
-    const r = 0.36, h = 0.98;
-    c.add(malha(geoTubo(r, h, 20, 0.16), mat(0xfdfdfd), { contorno: 0.05 }));
-    const rotulo = malha(new THREE.CylinderGeometry(r + 0.012, r + 0.012, 0.26, 20, 1, true), new THREE.MeshToonMaterial({ map: texRotuloCola })); rotulo.position.y = 0.2; c.add(rotulo);
-    const tampa = malha(new THREE.CylinderGeometry(0.24, 0.3, 0.22, 18), mat(0xff7a00), { contorno: 0.05 }); tampa.position.y = h + 0.11; c.add(tampa);
-    const bico = malha(new THREE.ConeGeometry(0.12, 0.26, 16), mat(0xff7a00), { contorno: 0.04 }); bico.position.y = h + 0.34; c.add(bico);
-    return { r, ombro: 0.48, quadril: 0.07, rostoY: 0.62, larg: r, alto: h + 0.48 };
+  cola(c) { // tubo de cola: corpo branco, rótulo, tampa laranja e bico
+    const w = 0.66, h = 0.98;
+    cx(c, w, h, w, 0xfdfdfd, 0, h / 2, 0); cx(c, w + 0.03, 0.26, w + 0.03, 0, 0, 0.2, 0, { material: matNovo({ map: texRotuloCola }) });
+    cx(c, 0.52, 0.22, 0.52, 0xff7a00, 0, h + 0.11, 0); const b = malha(degraus(0.3, 0.3, 0.28, 3, { fim: 0.3 }), mat(0xff7a00)); b.position.y = h + 0.36; c.add(b);
+    return { plano: w / 2 + 0.012, ombro: 0.48, quadril: 0.07, rostoY: 0.64, larg: w / 2, alto: h + 0.5 };
   },
   apontador(c, cor) {
     const w = 0.82, h = 0.78, d = 0.62;
-    const b = malha(geoCaixaRedonda(w, h, d, 0.16), mat(cor), { contorno: 0.05 }); b.position.y = h / 2; c.add(b);
-    const lamina = malha(geoCaixaRedonda(w * 0.7, 0.06, d * 0.6, 0.02), mat(0xd9e2ec), { contorno: 0.03 }); lamina.position.set(0, h + 0.02, 0); c.add(lamina);
-    const parafuso = malha(new THREE.CylinderGeometry(0.06, 0.06, 0.05, 12), mat(0x9aa3ad)); parafuso.position.set(0.22, h + 0.06, 0); c.add(parafuso);
-    for (const s of [-1, 1]) { const furo = new THREE.Mesh(new THREE.CircleGeometry(0.17, 20), mat(0x24324a)); furo.position.set(s * (w / 2 + 0.003), h * 0.55, 0); furo.rotation.y = s * Math.PI / 2; c.add(furo); }
+    cx(c, w, h, d, cor, 0, h / 2, 0); cx(c, w * 0.7, 0.06, d * 0.6, 0xd9e2ec, 0, h + 0.02, 0); cx(c, 0.12, 0.05, 0.12, 0x9aa3ad, 0.22, h + 0.07, 0, { sombra: false });
+    for (const s of [-1, 1]) cx(c, 0.03, 0.3, 0.3, 0x24324a, s * (w / 2 + 0.003), h * 0.55, 0, { sombra: false });
     return { plano: d / 2 + 0.005, ombro: 0.46, quadril: 0.06, rostoY: 0.42, larg: w / 2, alto: h + 0.1 };
   },
   regua(c) {
     const w = 0.52, h = 1.42, d = 0.16;
-    const b = malha(geoCaixaRedonda(w, h, d, 0.07), mat(0xffd84a), { contorno: 0.04 }); b.position.y = h / 2; c.add(b);
-    const marcas = new THREE.Mesh(new THREE.PlaneGeometry(0.13, h - 0.16), new THREE.MeshToonMaterial({ map: texRegua, transparent: true }));
+    cx(c, w, h, d, 0xffd84a, 0, h / 2, 0);
+    const marcas = new THREE.Mesh(new THREE.PlaneGeometry(0.13, h - 0.16), matNovo({ map: texRegua, transparent: true }));
     marcas.position.set(-w / 2 + 0.08, h / 2, d / 2 + 0.004); c.add(marcas);
     return { plano: d / 2 + 0.006, ombro: 0.62, quadril: 0.06, rostoY: 1.04, larg: w / 2, alto: h, rostoX: 0.06, rostoL: 0.42 };
   },
-  pincel(c, cor) {
-    const cabo = malha(geoTubo(0.2, 0.55, 16, 0.1), mat(0xc97a3a), { contorno: 0.04 }); c.add(cabo);
-    const virola = malha(new THREE.CylinderGeometry(0.34, 0.26, 0.62, 18), mat(0xc8d0da), { contorno: 0.05 }); virola.position.y = 0.82; c.add(virola);
-    const pelos = malha(new THREE.SphereGeometry(0.34, 18, 12), mat(0x6b4a2f), { contorno: 0.05 }); pelos.scale.set(1, 1.15, 1); pelos.position.y = 1.2; c.add(pelos);
-    const tinta = malha(new THREE.SphereGeometry(0.24, 16, 10), mat(cor), { contorno: 0.04 }); tinta.scale.set(1, 1.2, 1); tinta.position.y = 1.44; c.add(tinta);
-    return { r: 0.315, ombro: 0.62, quadril: 0.06, rostoY: 0.84, larg: 0.32, alto: 1.7 };
+  pincel(c, cor) { // cabo de madeira, virola de metal, pelo e a tinta na ponta
+    cx(c, 0.36, 0.55, 0.36, 0xc97a3a, 0, 0.275, 0);
+    const v = malha(degraus(0.6, 0.6, 0.62, 3, { fim: 0.75 }), mat(0xc8d0da)); v.rotation.x = Math.PI; v.position.y = 0.82; c.add(v);
+    cx(c, 0.6, 0.3, 0.6, 0x6b4a2f, 0, 1.28, 0); cx(c, 0.46, 0.2, 0.46, cor, 0, 1.52, 0); cx(c, 0.28, 0.16, 0.28, cor, 0, 1.7, 0);
+    return { plano: 0.31, ombro: 0.62, quadril: 0.06, rostoY: 0.84, larg: 0.32, alto: 1.78, rostoL: 0.5 };
   },
   caderno(c, cor) {
     const w = 0.92, h = 1.08, d = 0.3;
-    const capa = malha(geoCaixaRedonda(w, h, d, 0.08), mat(cor), { contorno: 0.05 }); capa.position.y = h / 2; c.add(capa);
-    const folhas = malha(new THREE.BoxGeometry(w - 0.1, h - 0.1, d + 0.02), mat(0xfffdf5)); folhas.position.set(0.04, h / 2, 0); folhas.scale.z = 0.7; c.add(folhas);
-    const etiqueta = malha(geoCaixaRedonda(0.5, 0.18, 0.02, 0.05), mat(0xffffff), { contorno: 0.02 }); etiqueta.position.set(0.06, h - 0.2, d / 2 + 0.01); c.add(etiqueta);
-    for (let i = 0; i < 6; i++) { const a = malha(new THREE.TorusGeometry(0.07, 0.022, 6, 14), mat(0xb8c0cc)); a.rotation.y = Math.PI / 2; a.position.set(-w / 2, 0.14 + i * 0.16, 0); c.add(a); }
-    return { plano: d / 2 + 0.012, ombro: 0.5, quadril: 0.06, rostoY: 0.5, larg: w / 2, alto: h, rostoX: 0.06 };
+    cx(c, w, h, d, cor, 0, h / 2, 0); cx(c, w - 0.1, h - 0.1, d + 0.02, 0xfffdf5, 0.04, h / 2, 0, { sombra: false }); cx(c, w + 0.02, h + 0.02, 0.08, cor, 0, h / 2, 0.13, { sombra: false });
+    cx(c, 0.5, 0.18, 0.02, 0xffffff, 0.06, h - 0.2, d / 2 + 0.03, { sombra: false });
+    for (let i = 0; i < 6; i++) cx(c, 0.12, 0.05, d + 0.1, 0xb8c0cc, -w / 2, 0.14 + i * 0.16, 0, { sombra: false });
+    return { plano: d / 2 + 0.04, ombro: 0.5, quadril: 0.06, rostoY: 0.5, larg: w / 2, alto: h, rostoX: 0.06 };
   },
-  clipe(c, cor) {
-    const r = 0.36, h = 0.95;
-    c.add(malha(geoTubo(r, h, 20, 0.3), mat(cor), { contorno: 0.05 }));
-    const topo = malha(new THREE.SphereGeometry(r, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(cor), { contorno: 0.05 }); topo.position.y = h; c.add(topo);
-    // o arame do clipe virou um topete
-    const arame = new THREE.Group(); arame.position.y = h + r - 0.05;
-    const curva = new THREE.CatmullRomCurve3([[0, 0, 0], [0, 0.35, 0], [0.16, 0.48, 0], [0.3, 0.35, 0], [0.3, 0.05, 0], [0.12, 0.05, 0], [0.12, 0.3, 0]].map(([x, y, z]) => new THREE.Vector3(x - 0.15, y, z)));
-    arame.add(malha(new THREE.TubeGeometry(curva, 40, 0.035, 8), mat(0xc8d0da), { contorno: 0.02 }));
-    c.add(arame);
-    return { r, ombro: 0.5, quadril: 0.06, rostoY: 0.6, larg: r, alto: h + 0.8 };
+  clipe(c, cor) { // o corpo é um bloco colorido e o arame do clipe, em trechos retos, virou um topete
+    const w = 0.66, h = 1.05, a = 0xc8d0da, e = 0.07;
+    cx(c, w, h, w, cor, 0, h / 2, 0); cx(c, w - 0.2, 0.14, w - 0.2, claro(cor, 0.12), 0, h + 0.07, 0);
+    for (const [ww, hh, x, y] of [[e, 0.56, -0.16, 0.28], [0.36, e, 0.02, 0.56], [e, 0.46, 0.2, 0.33], [0.24, e, 0.08, 0.1], [e, 0.3, -0.04, 0.25]]) cx(c, ww, hh, e, a, x, h + 0.1 + y, 0);
+    return { plano: w / 2 + 0.012, ombro: 0.5, quadril: 0.06, rostoY: 0.6, larg: w / 2, alto: h + 0.8 };
+  },
+  borracha(c, cor) { // borracha: bloco rosa e a capa de papel na metade de baixo, com a ponta gasta em degrau
+    const w = 1.2, d = 0.82, h = 1.0;
+    cx(c, w, h, d, cor, 0, h / 2, 0); cx(c, w + 0.04, 0.54, d + 0.04, 0x00b5f0, 0, 0.27, 0); cx(c, w + 0.05, 0.08, d + 0.05, 0xffffff, 0, 0.54, 0, { sombra: false });
+    cx(c, w - 0.16, 0.1, d - 0.16, claro(cor, 0.16), 0, h + 0.05, 0);
+    return { plano: d / 2 + 0.012, rostoX: 0, ombro: 0.48, quadril: 0.1, rostoY: 0.72, larg: 0.6, alto: 1.15, rostoL: 0.6 };
   },
 };
 
@@ -130,39 +108,25 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
   const corIris = iris ?? IRIS[semente % IRIS.length];
   const mRosto = matRosto(corIris);
   const texAberto = mRosto.map, texFechado = texturaRosto({ iris: corIris, fechado: true });
-  let info;
-  if (tipo === "borracha") {
-    // borracha3D (src/motor3d/objetos.js) sem as sobrancelhas bravas, os olhos e a boca dela: ganha o rosto feliz
-    const b = borracha3D();
-    b.scale.setScalar(1.35);
-    b.userData.corpo.traverse((o) => { if (o.isMesh && (o.geometry.type === "BoxGeometry" && o.geometry.parameters.width < 0.25 || o.geometry.type === "SphereGeometry" || o.geometry.type === "TorusGeometry")) o.visible = false; });
-    for (const o of b.userData.olhos) o.visible = false;
-    for (const pe of b.userData.pes) pe.visible = false;
-    b.position.y = -0.02;
-    corpo.add(b);
-    info = { plano: 0.47 * 1.35 + 0.01, rostoX: 0.05 * 1.35, ombro: 0.52, quadril: 0.1, rostoY: 0.72, larg: 0.62, alto: 1.2, rostoL: 0.62 };
-  } else {
-    info = (CORPOS[tipo] ?? CORPOS.lapis)(corpo, cor);
-  }
+  const info = (CORPOS[tipo] ?? CORPOS.lapis)(corpo, tipo === "borracha" ? 0xff9ec4 : cor);
   const PERNA = 0.36; // o corpo fica em cima das perninhas
   corpo.position.y = PERNA;
   // rosto
   const L = info.rostoL ?? 0.56;
-  const rosto = info.plano ? rostoPlano(L, L, mRosto) : rostoCurvo(info.r + 0.012, L, L, mRosto);
-  if (info.plano) rosto.position.set(info.rostoX ?? 0, PERNA + info.rostoY, info.plano);
-  else rosto.position.set(0, PERNA + info.rostoY, 0);
+  const rosto = rostoPlano(L, L, mRosto);
+  rosto.position.set(info.rostoX ?? 0, PERNA + info.rostoY, info.plano);
   raiz.add(rosto);
 
   // Vovó Lápis: coque grisalho, óculos redondos e xale
   if (vovo) {
     const cinza = mat(0xd9d9e0);
-    const coque = malha(new THREE.SphereGeometry(0.2, 16, 12), cinza, { contorno: 0.04 }); coque.position.set(0, PERNA + 1.22, -0.18); raiz.add(coque);
-    const franja = malha(new THREE.SphereGeometry(0.31, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2.4), cinza, { contorno: 0.04 }); franja.position.set(0, PERNA + 0.98, 0); franja.scale.set(1.16, 0.6, 1.16); raiz.add(franja);
+    const coque = malha(new THREE.SphereGeometry(0.2, 16, 12), cinza); coque.position.set(0, PERNA + 1.22, -0.18); raiz.add(coque);
+    const franja = malha(new THREE.SphereGeometry(0.31, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2.4), cinza); franja.position.set(0, PERNA + 0.98, 0); franja.scale.set(1.16, 0.6, 1.16); raiz.add(franja);
     const aro = mat(0x6b4a2f);
-    for (const s of [-1, 1]) { const o = malha(new THREE.TorusGeometry(0.105, 0.016, 8, 24), aro); o.position.set(s * 0.115, PERNA + info.rostoY + 0.05, info.r + 0.06); raiz.add(o); }
-    const ponte = malha(new THREE.CylinderGeometry(0.012, 0.012, 0.05, 6), aro); ponte.rotation.z = Math.PI / 2; ponte.position.set(0, PERNA + info.rostoY + 0.07, info.r + 0.06); raiz.add(ponte);
-    const xale = malha(new THREE.CylinderGeometry(info.r + 0.08, info.r + 0.2, 0.32, 20, 1, true), mat(0xb58ad9, { side: THREE.DoubleSide }), { contorno: 0.04 }); xale.position.y = PERNA + 0.36; raiz.add(xale);
-    const laco = malha(new THREE.SphereGeometry(0.08, 10, 8), mat(0x8e5cc9), { contorno: 0.02 }); laco.position.set(0, PERNA + 0.3, info.r + 0.2); raiz.add(laco);
+    for (const s of [-1, 1]) { const o = malha(new THREE.TorusGeometry(0.105, 0.016, 8, 24), aro); o.position.set(s * 0.115, PERNA + info.rostoY + 0.05, info.plano + 0.05); raiz.add(o); }
+    const ponte = malha(new THREE.CylinderGeometry(0.012, 0.012, 0.05, 6), aro); ponte.rotation.z = Math.PI / 2; ponte.position.set(0, PERNA + info.rostoY + 0.07, info.plano + 0.05); raiz.add(ponte);
+    const xale = malha(new THREE.BoxGeometry(info.larg * 2 + 0.14, 0.3, info.plano * 2 + 0.14), mat(0xb58ad9)); xale.position.y = PERNA + 0.36; raiz.add(xale);
+    const laco = malha(new THREE.SphereGeometry(0.08, 10, 8), mat(0x8e5cc9)); laco.position.set(0, PERNA + 0.3, info.plano + 0.14); raiz.add(laco);
   }
 
   // acessórios (vieram da Rabiscópolis): laço, óculos, gravata, chapéu de palha, boné, capacete de bombeiro, touca de chef
@@ -171,8 +135,7 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
   // bracinhos (pivô no ombro) e perninhas com tênis (pivô no quadril)
   const braco = (s) => {
     const p = new THREE.Group(); p.position.set(s * (info.larg + 0.04), PERNA + info.ombro, 0);
-    const b = malha(new THREE.CapsuleGeometry(0.065, 0.28, 4, 10), mat(PELE), { contorno: 0, sombra: false }); b.position.y = -0.2; p.add(b);
-    const mao = malha(new THREE.SphereGeometry(0.105, 14, 10), mat(PELE), { contorno: 0, sombra: false }); mao.position.y = -0.42; p.add(mao);
+    cx(p, 0.13, 0.3, 0.13, PELE, 0, -0.18, 0, { sombra: false }); cx(p, 0.18, 0.16, 0.18, PELE, 0, -0.41, 0, { sombra: false });
     p.rotation.z = s * 0.25;
     raiz.add(p);
     return p;
@@ -180,9 +143,7 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
   const corTenis = tenis ?? [0x00b5f0, 0xec2e8c, 0xff7a00, 0x58c43a, 0x8e6cff][semente % 5];
   const perna = (s) => {
     const p = new THREE.Group(); p.position.set(s * 0.15, PERNA, 0);
-    const l = malha(new THREE.CapsuleGeometry(0.07, 0.18, 4, 10), mat(PELE), { contorno: 0, sombra: false }); l.position.y = -0.15; p.add(l);
-    const tenis = malha(new THREE.SphereGeometry(1, 16, 10), mat(corTenis), { contorno: 0, sombra: false }); tenis.scale.set(0.13, 0.1, 0.2); tenis.position.set(0, -0.3, 0.06); p.add(tenis);
-    const sola = malha(new THREE.SphereGeometry(1, 16, 8), mat(0xffffff), { sombra: false }); sola.scale.set(0.135, 0.05, 0.21); sola.position.set(0, -0.35, 0.06); p.add(sola);
+    cx(p, 0.14, 0.24, 0.14, PELE, 0, -0.13, 0, { sombra: false }); cx(p, 0.24, 0.13, 0.36, corTenis, 0, -0.29, 0.06, { sombra: false }); cx(p, 0.26, 0.05, 0.38, 0xffffff, 0, -0.35, 0.06, { sombra: false });
     raiz.add(p);
     return p;
   };
@@ -241,28 +202,28 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
   return api;
 }
 
-// ---------- acessórios dos moradores das missões (no traço da cidade, com contorno)
+// ---------- acessórios dos moradores das missões
 function enfeitarMorador(raiz, qual, info, PERNA, corA = null) {
-  const r = info.r ?? info.larg, topo = PERNA + info.rostoY + 0.36, frente = info.plano ?? r;
+  const r = info.larg, topo = PERNA + info.rostoY + 0.36, frente = info.plano ?? r;
   const g = new THREE.Group(); raiz.add(g);
   if (qual === "laco") {
     const fita = mat(corA ?? 0xff4f9a);
-    for (const s of [-1, 1]) { const a = malha(new THREE.SphereGeometry(0.11, 10, 8), fita, { contorno: 0.02 }); a.scale.set(1.3, 0.8, 0.5); a.position.set(r * 0.55 + s * 0.12, topo + 0.06, 0.1); a.rotation.z = s * 0.4; g.add(a); }
-    const no = malha(new THREE.SphereGeometry(0.06, 8, 6), fita, { contorno: 0.02 }); no.position.set(r * 0.55, topo + 0.06, 0.12); g.add(no);
+    for (const s of [-1, 1]) { const a = malha(new THREE.SphereGeometry(0.11, 10, 8), fita); a.scale.set(1.3, 0.8, 0.5); a.position.set(r * 0.55 + s * 0.12, topo + 0.06, 0.1); a.rotation.z = s * 0.4; g.add(a); }
+    const no = malha(new THREE.SphereGeometry(0.06, 8, 6), fita); no.position.set(r * 0.55, topo + 0.06, 0.12); g.add(no);
   } else if (qual === "oculos") {
     const aro = mat(0x3a2a1c);
     for (const s of [-1, 1]) { const o = malha(new THREE.TorusGeometry(0.1, 0.016, 8, 22), aro); o.position.set(s * 0.115, PERNA + info.rostoY + 0.05, frente + 0.05); g.add(o); }
     const ponte = malha(new THREE.CylinderGeometry(0.012, 0.012, 0.05, 6), aro); ponte.rotation.z = Math.PI / 2; ponte.position.set(0, PERNA + info.rostoY + 0.07, frente + 0.05); g.add(ponte);
   } else if (qual === "gravata") {
-    const gr = malha(new THREE.ConeGeometry(0.08, 0.32, 4), mat(0x1f3a8a), { contorno: 0.02 }); gr.rotation.x = Math.PI; gr.position.set(0, PERNA + info.ombro - 0.12, frente + 0.03); gr.scale.z = 0.35; g.add(gr);
+    const gr = malha(new THREE.ConeGeometry(0.08, 0.32, 4), mat(0x1f3a8a)); gr.rotation.x = Math.PI; gr.position.set(0, PERNA + info.ombro - 0.12, frente + 0.03); gr.scale.z = 0.35; g.add(gr);
     const no = malha(new THREE.SphereGeometry(0.05, 8, 6), mat(0x1f3a8a)); no.position.set(0, PERNA + info.ombro + 0.06, frente + 0.03); g.add(no);
   } else if (qual === "chapeu" || qual === "bone" || qual === "capacete" || qual === "chef") {
     const cor = { chapeu: 0xf2d27a, bone: 0x00b5f0, capacete: 0xe63946, chef: 0xffffff }[qual];
-    const aba = malha(new THREE.CylinderGeometry(r + (qual === "chapeu" ? 0.2 : 0.06), r + (qual === "chapeu" ? 0.2 : 0.06), 0.05, 20), mat(cor), { contorno: 0.025 });
+    const aba = malha(new THREE.CylinderGeometry(r + (qual === "chapeu" ? 0.2 : 0.06), r + (qual === "chapeu" ? 0.2 : 0.06), 0.05, 20), mat(cor));
     aba.position.y = topo; if (qual === "bone") { aba.scale.set(0.8, 1, 1.25); aba.position.z = 0.12; } g.add(aba);
-    const copa = malha(new THREE.SphereGeometry(r + 0.02, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(cor), { contorno: 0.03 });
+    const copa = malha(new THREE.SphereGeometry(r + 0.02, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(cor));
     copa.position.y = topo; if (qual === "chef") copa.scale.set(1, 1.9, 1); g.add(copa);
-    if (qual === "capacete") { const placa = malha(geoCaixaRedonda(0.2, 0.16, 0.04, 0.03), mat(0xffcc1f), { contorno: 0.015 }); placa.position.set(0, topo + 0.14, r + 0.02); g.add(placa); }
+    if (qual === "capacete") { const placa = malha(geoCaixaRedonda(0.2, 0.16, 0.04, 0.03), mat(0xffcc1f)); placa.position.set(0, topo + 0.14, r + 0.02); g.add(placa); }
   }
   mesclar(g);
 }
@@ -270,4 +231,4 @@ function enfeitarMorador(raiz, qual, info, PERNA, corA = null) {
 // ---------- Vovó Lápis (para as entregas: fica esperando na porta de casa e reage quando recebe)
 export const criarVovo = () => criarMorador("lapis", { cor: 0xb58ad9, iris: "#8e6cff", nome: "Vovó Lápis", semente: 3, vovo: true });
 export { MAT };
-void comContorno; void TINTA;
+void TINTA;

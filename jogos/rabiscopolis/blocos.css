@@ -1,0 +1,32 @@
+/* Rabiscolândia: o HUD montado em peças, no mesmo idioma do mundo de blocos. Só aparência (carregado depois de estilo.css):
+   cantos quase retos, nada de contorno preto, aresta clara em cima e sombra grossa embaixo, como uma peça de plástico. */
+:root { --peca-aresta: inset 0 3px 0 rgba(255,255,255,0.6), inset 0 -5px 0 rgba(20,30,60,0.2); --peca-sombra: 0 5px 0 rgba(20,30,60,0.42); }
+.chip-rp, .bussola-rp, .balao-rp, .btn-fone-rp, .acao-rp, .missao-rp, .acao-j2-rp, .rp-radio-aviso,
+.mapa-grande-rp .cartao, .deco-cartao, .ej2-cartao, .sv-escolha {
+  border: 0 !important; border-radius: 8px !important; box-shadow: var(--peca-aresta), var(--peca-sombra) !important; }
+.chip-rp, .bussola-rp { background: rgba(255,255,255,0.96); }
+.bussola-rp .seta { border-radius: 6px; box-shadow: inset 0 3px 0 rgba(255,255,255,0.4), inset 0 -4px 0 rgba(0,0,0,0.2); }
+.minimapa-rp { border: 6px solid #fff !important; border-radius: 10px !important; box-shadow: 0 0 0 3px #2b6fc2, 0 8px 0 rgba(20,30,60,0.42) !important; }
+.btn-fone-rp, .acao-rp { padding: 8px 18px 11px; }
+.acao-rp { background: #ffcc1f; }
+.acao-rp kbd { border: 0; border-radius: 4px; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); }
+.acao-rp:active, .btn-fone-rp:active { transform: translateY(4px); box-shadow: var(--peca-aresta), 0 1px 0 rgba(20,30,60,0.42) !important; }
+.balao-rp { padding: 12px 20px 15px; }
+.balao-rp b { color: #d6217c; }
+.mapa-grande-rp canvas { border: 6px solid #fff; border-radius: 8px; box-shadow: 0 0 0 3px #2b6fc2; }
+/* Rabifone: um aparelho de plástico azul-marinho, com apps quadradinhos */
+.rf-aparelho { border-radius: 18px !important; background: #1f2a44 !important; box-shadow: inset 0 4px 0 rgba(255,255,255,0.18), inset 0 -8px 0 rgba(0,0,0,0.3), 0 10px 0 rgba(10,20,40,0.5) !important; }
+.rf-tela { border-radius: 8px; background: linear-gradient(180deg, #4aa7ee, #8fd2f7) !important; }
+.rf-item, .deco-bt, .deco-ok, .deco-voltar, .sv-sabor, .ej2-op { border: 0 !important; border-radius: 8px !important; box-shadow: var(--peca-aresta), 0 4px 0 rgba(20,30,60,0.42) !important; }
+.rf-icone { border: 0 !important; border-radius: 6px !important; box-shadow: inset 0 3px 0 rgba(255,255,255,0.5), inset 0 -4px 0 rgba(0,0,0,0.18); }
+.rf-botoes button { border-radius: 6px; background: #33415f; box-shadow: inset 0 2px 0 rgba(255,255,255,0.2), inset 0 -3px 0 rgba(0,0,0,0.3); }
+/* controles de toque: botões quadrados e gordinhos */
+.rp-toque button { border: 0 !important; border-radius: 16px !important; background: rgba(255,255,255,0.78); box-shadow: inset 0 4px 0 rgba(255,255,255,0.7), inset 0 -6px 0 rgba(20,30,60,0.22), 0 5px 0 rgba(20,30,60,0.38); }
+.rp-toque button.apertado { transform: translateY(3px) scale(0.97); box-shadow: inset 0 4px 0 rgba(255,255,255,0.7), inset 0 -4px 0 rgba(20,30,60,0.22), 0 1px 0 rgba(20,30,60,0.38); }
+.rp-pe .rp-acao.ativo { border-radius: 14px !important; }
+/* botões da casca (sair, pausa, configurações) e o joystick, só nesta página */
+.casca-redondo, .pausa-botao { border: 0 !important; border-radius: 10px !important; background: #fff !important; box-shadow: var(--peca-aresta), var(--peca-sombra) !important; }
+.jd-pulo { border: 0 !important; border-radius: 16px !important; background: rgba(255,255,255,0.8) !important; box-shadow: inset 0 4px 0 rgba(255,255,255,0.7), inset 0 -6px 0 rgba(20,30,60,0.22), 0 5px 0 rgba(20,30,60,0.38) !important; }
+.jd-base { border-radius: 16px !important; }
+.jd-pino { border-radius: 10px !important; }
+.jd-dica { border-radius: 16px !important; }

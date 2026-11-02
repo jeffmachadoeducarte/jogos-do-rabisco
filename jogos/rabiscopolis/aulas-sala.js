@@ -5,7 +5,8 @@
 // continuam. Na escola "da outra idade", a professora avisa onde é a turma da criança.
 //   montarAulas({ id, g, ox, oz, inter, npcs, est, solido, escrever, idade })  (chamado por montarSala)
 
-import { THREE, mat, malha, caixaRedonda, texturaCanvas, mesclar } from "./base3d.js";
+import { THREE, matNovo, mat, malha, caixaRedonda, texturaCanvas, mesclar } from "./base3d.js";
+import { emBlocos } from "./blocos.js";
 import { criarMorador } from "./personagens.js";
 import { falar, falarSequencia } from "../../src/motor/voz.js";
 import { nivelDaIdade, MATERIAS } from "./aulas.js";
@@ -25,14 +26,14 @@ const FRENTE = 0.95;
 const embaralhar = (l) => { const a = [...l]; for (let i = a.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [a[i], a[k]] = [a[k], a[i]]; } return a; };
 const fala = (chaves) => { falarSequencia(chaves).then((ok) => { if (!ok && chaves[0]) falar(chaves[0]); }); };
 
-// objetos das aulas (copiados de jogos/cidade-do-rabisco/interiores.js · objetoAula, no traço toon da cidade)
+// objetos das aulas (copiados de jogos/cidade-do-rabisco/interiores.js · objetoAula, de blocos, como a cidade)
 export function objetoAula({ tipo, valor }) {
   const g = new THREE.Group();
   const bola = (r, cor, x, y, z, c = 0.03) => { const m = malha(new THREE.SphereGeometry(r, 16, 12), mat(cor), { contorno: c, sombra: false }); m.position.set(x, y, z); g.add(m); return m; };
   if (tipo === "livro") {
     const l = new THREE.Group(); l.position.y = 0.5; l.rotation.y = 0.35; g.add(l);
-    const capa = caixaRedonda(0.66, 0.86, 0.26, mat(COR_OBJ[valor]), { raio: 0.04, contorno: 0.03, sombra: false }); l.add(capa);
-    const folhas = caixaRedonda(0.6, 0.8, 0.2, mat(0xfffbee), { raio: 0.02, sombra: false }); folhas.position.x = 0.05; l.add(folhas);
+    const capa = caixaRedonda(0.66, 0.86, 0.26, mat(COR_OBJ[valor]), { sombra: false }); l.add(capa);
+    const folhas = caixaRedonda(0.6, 0.8, 0.2, mat(0xfffbee), { sombra: false }); folhas.position.x = 0.05; l.add(folhas);
     const estrela = malha(new THREE.CircleGeometry(0.13, 5), mat(0xffffff), { sombra: false }); estrela.position.set(0, 0.12, 0.135); l.add(estrela);
   } else if (tipo === "bicho") {
     const cor = { gato: 0xff9f43, cachorro: 0x9a6232, pato: 0xffd84a }[valor];
@@ -43,7 +44,7 @@ export function objetoAula({ tipo, valor }) {
     } else {
       bola(0.34, cor, 0, 0.36, 0).scale.set(1, 0.9, 1.1); bola(0.27, cor, 0, 0.82, 0.12);
       for (const s of [-1, 1]) {
-        if (valor === "gato") { const o = malha(new THREE.ConeGeometry(0.09, 0.2, 4), mat(cor), { contorno: 0.02, sombra: false }); o.position.set(s * 0.14, 1.07, 0.1); g.add(o); }
+        if (valor === "gato") { const o = malha(new THREE.ConeGeometry(0.09, 0.2, 4), mat(cor), { sombra: false }); o.position.set(s * 0.14, 1.07, 0.1); g.add(o); }
         else bola(1, 0x6b4224, s * 0.26, 0.8, 0.08, 0).scale.set(0.07, 0.17, 0.11);
         bola(0.07, 0xffffff, s * 0.1, 0.88, 0.33, 0); bola(0.04, 0x151515, s * 0.1, 0.89, 0.39, 0);
       }
@@ -56,25 +57,25 @@ export function objetoAula({ tipo, valor }) {
     const cor = { circulo: 0xe53935, quadrado: 0x1e6fe0, triangulo: 0xffc928 }[valor];
     let geo;
     if (valor === "triangulo") { const t = new THREE.Shape([new THREE.Vector2(0, 0.46), new THREE.Vector2(-0.48, -0.36), new THREE.Vector2(0.48, -0.36)]); geo = new THREE.ExtrudeGeometry(t, { depth: 0.14, bevelEnabled: false }); geo.translate(0, 0, -0.07); }
-    else if (valor === "circulo") { geo = new THREE.CylinderGeometry(0.42, 0.42, 0.14, 28); geo.rotateX(Math.PI / 2); }
+    else if (valor === "circulo") { geo = new THREE.CylinderGeometry(0.42, 0.42, 0.14, 28); geo.rotateX(Math.PI / 2); geo.userData.compartilhada = true; } // a aula é de formas: o círculo continua redondo
     else geo = new THREE.BoxGeometry(0.72, 0.72, 0.14);
-    const f = malha(geo, mat(cor), { contorno: 0.03, sombra: false }); f.position.y = 0.66; g.add(f);
-    const pe = caixaRedonda(0.5, 0.1, 0.3, mat(0xffffff), { raio: 0.03, sombra: false }); pe.position.y = 0.05; g.add(pe);
-    const haste = caixaRedonda(0.06, 0.2, 0.06, mat(0xffffff), { raio: 0.02, sombra: false }); haste.position.y = 0.18; g.add(haste);
+    const f = malha(geo, mat(cor), { sombra: false }); f.position.y = 0.66; g.add(f);
+    const pe = caixaRedonda(0.5, 0.1, 0.3, mat(0xffffff), { sombra: false }); pe.position.y = 0.05; g.add(pe);
+    const haste = caixaRedonda(0.06, 0.2, 0.06, mat(0xffffff), { sombra: false }); haste.position.y = 0.18; g.add(haste);
   } else if (tipo === "letra") {
     const cor = COR_LETRA[valor.charCodeAt(0) % 6];
     const tex = texturaCanvas(128, 128, (c, w, h) => { c.fillStyle = "#fffaf0"; c.fillRect(0, 0, w, h); c.lineWidth = 10; c.strokeStyle = cor; c.strokeRect(5, 5, w - 10, h - 10); c.font = "900 96px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = cor; c.fillText(valor, w / 2, h / 2 + 6); });
-    const cubo = malha(new THREE.BoxGeometry(0.7, 0.7, 0.7), new THREE.MeshToonMaterial({ map: tex }), { contorno: 0.03, sombra: false }); cubo.position.y = 0.36; cubo.rotation.y = 0.2; g.add(cubo);
+    const cubo = malha(new THREE.BoxGeometry(0.7, 0.7, 0.7), matNovo({ map: tex }), { sombra: false }); cubo.position.y = 0.36; cubo.rotation.y = 0.2; g.add(cubo);
   }
   mesclar(g);
-  const anel = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.05, 6, 28), new THREE.MeshBasicMaterial({ color: 0xffcc1f })); anel.rotation.x = Math.PI / 2; anel.position.set(0, 0.06, FRENTE); anel.visible = false; g.add(anel);
+  const anel = new THREE.Mesh(emBlocos(new THREE.TorusGeometry(0.42, 0.05, 6, 28)), new THREE.MeshBasicMaterial({ color: 0xffcc1f })); anel.rotation.x = Math.PI / 2; anel.position.set(0, 0.06, FRENTE); anel.visible = false; g.add(anel);
   g.userData.anel = anel;
   return g;
 }
-function macaGeo() { const g = new THREE.SphereGeometry(0.14, 12, 10); g.scale(1, 0.92, 1); return g; }
+function macaGeo() { return new THREE.BoxGeometry(0.24, 0.22, 0.24); }
 function pilhaDeMacas(n) {
   const g = new THREE.Group();
-  for (let i = 0; i < n; i++) { const m = malha(macaGeo(), mat(0xe53935), { contorno: 0.02, sombra: false }); m.position.set(((i % 3) - 1) * 0.3, Math.floor(i / 3) * 0.26, 0); g.add(m); }
+  for (let i = 0; i < n; i++) { const m = malha(macaGeo(), mat(0xe53935), { sombra: false }); m.position.set(((i % 3) - 1) * 0.3, Math.floor(i / 3) * 0.26, 0); g.add(m); }
   mesclar(g);
   return g;
 }
@@ -86,9 +87,9 @@ export function montarAulas({ id, g, ox, oz, inter, npcs, est, solido, escrever,
   prof.grupo.position.set(ox + 2.4, 0.03, oz - 3.6); npcs.push(prof);
   const fixos = new THREE.Group(); g.add(fixos);
   const madeira = mat(id === "kids1" ? 0xffd3e2 : 0xc98a4b);
-  const mesa = (x, z, w = 1.3, d = 0.7) => { const t = caixaRedonda(w, 0.1, d, madeira, { raio: 0.04, contorno: 0.03 }); t.position.set(x, 0.8, z); fixos.add(t); for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const p = malha(new THREE.CylinderGeometry(0.05, 0.05, 0.8, 8), mat(0x8a5a32)); p.position.set(x + a * (w / 2 - 0.1), 0.4, z + b * (d / 2 - 0.1)); fixos.add(p); } solido(x, z, w + 0.1, d + 0.1); };
+  const mesa = (x, z, w = 1.3, d = 0.7) => { const t = caixaRedonda(w, 0.1, d, madeira); t.position.set(x, 0.8, z); fixos.add(t); for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const p = malha(new THREE.CylinderGeometry(0.05, 0.05, 0.8, 8), mat(0x8a5a32)); p.position.set(x + a * (w / 2 - 0.1), 0.4, z + b * (d / 2 - 0.1)); fixos.add(p); } solido(x, z, w + 0.1, d + 0.1); };
   mesa(0.7, -3.75); mesa(-4.2, -3.75);
-  const cesta = malha(new THREE.CylinderGeometry(0.34, 0.26, 0.3, 14, 1, true), mat(0xc98a3c, { side: THREE.DoubleSide }), { contorno: 0.02 }); cesta.position.set(0.9, 1.0, -3.75); fixos.add(cesta);
+  const cesta = malha(new THREE.CylinderGeometry(0.34, 0.26, 0.3, 14, 1, true), mat(0xc98a3c, { side: THREE.DoubleSide })); cesta.position.set(0.9, 1.0, -3.75); fixos.add(cesta);
   mesclar(fixos);
   // as maçãs da bandeja: uma malha só (InstancedMesh); "count" mostra as que sobraram
   const macas = new THREE.InstancedMesh(macaGeo(), mat(0xe53935), 10); macas.userData.dinamico = true;

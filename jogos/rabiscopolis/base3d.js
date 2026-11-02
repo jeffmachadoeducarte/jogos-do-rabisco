@@ -1,104 +1,117 @@
 // Rabiscolândia: peças 3D de base. Parte delas foi COPIADA de jogos/cidade-do-rabisco/cidade.js (que é de outro
-// jogo e não deve ser editado daqui): placa, densificar, normais, fita, arvoreReal, semaforo e lojaParceira.
-// Cada cópia diz de onde veio e o que mudou. O resto (caixa arredondada, materiais toon com contorno e a
-// mesclagem de malhas estáticas por material, que corta as chamadas de desenho) é novo.
+// jogo e não deve ser editado daqui): densificar, normais, fita e semaforo. Cada cópia diz de onde veio e o que mudou.
+// O resto (materiais de plástico, árvores de blocos, letreiros, a mesclagem de malhas estáticas por material, que
+// corta as chamadas de desenho) é novo. O que é peça de blocos pura mora em blocos.js.
 
-import { THREE, texturaCanvas, toon, comContorno, aleatorio } from "../../src/motor3d/toon.js";
-import { ESTILO_PARCEIRO } from "../../src/parceiros.js";
+import { THREE, texturaCanvas, aleatorio } from "../../src/motor3d/toon.js";
 import { LOJA_MAX } from "./mapa.js";
+import { plastico, plasticoNovo, plasticoVC, emBlocos, geoCaixa, cx, claro, escuro, placaBloco, comRecorte } from "./blocos.js";
 
 export const r = aleatorio(2027);
-export { THREE, toon, comContorno, texturaCanvas };
+export { THREE, texturaCanvas };
 
-// ---------- materiais (toon: tons chapados como desenho animado; o Rabisco e os moradores no mesmo traço)
-const cacheStd = new Map();
-// "mat" toon compartilhado por cor (a mesclagem junta tudo que usa o mesmo material numa malha só)
-export const mat = (cor, extra = {}) => toon(cor, extra);
-// material de vidro das janelas: de noite acende (ceu.js liga emissiveIntensity)
+// ---------- materiais: plástico liso (blocos.js)
+// "mat" compartilhado por cor (a mesclagem junta tudo que usa o mesmo material numa malha só)
+export const mat = (cor, extra = {}) => plastico(cor, extra);
+// vidro das janelas: de noite acende (ceu.js liga emissiveIntensity). MAT.vidro nunca acende: nem toda janela tem gente
+// em casa (e, por não ter emissivo, entra na mesclagem de cores).
 export const MAT = {
-  janela: new THREE.MeshToonMaterial({ color: 0x9fd8ff, emissive: 0xffd27a, emissiveIntensity: 0 }),
-  janelaQuente: new THREE.MeshToonMaterial({ color: 0xbfe6ff, emissive: 0xffb84d, emissiveIntensity: 0 }),
-  lampada: new THREE.MeshToonMaterial({ color: 0xfff6d8, emissive: 0xffe39a, emissiveIntensity: 0.15 }),
+  janela: plasticoNovo({ color: 0x8fd0f7, emissive: 0xffe0a0, emissiveIntensity: 0, specular: 0x8a8a8a, shininess: 90 }),
+  janelaQuente: plasticoNovo({ color: 0xa6dcfa, emissive: 0xffb84d, emissiveIntensity: 0, specular: 0x8a8a8a, shininess: 90 }),
+  lampada: plasticoNovo({ color: 0xfff6d8, emissive: 0xffe39a, emissiveIntensity: 0.15 }),
 };
 for (const m of Object.values(MAT)) m.userData.noite = true;
-export const std = (cor, extra = {}) => {
-  const k = `${cor}|${JSON.stringify(extra)}`;
-  if (!cacheStd.has(k) || extra.map) cacheStd.set(k, new THREE.MeshStandardMaterial({ color: cor, roughness: 0.85, metalness: 0, ...extra }));
-  return cacheStd.get(k);
-};
+MAT.vidro = plastico(0x7fc4ee, { specular: 0x8a8a8a, shininess: 90 });
+// poça de luz no chão embaixo dos postes (só de noite: ceu.js apaga o material de dia)
+const texPoca = texturaCanvas(64, 64, (c, w, h) => { const g = c.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); g.addColorStop(0, "rgba(255,226,160,0.75)"); g.addColorStop(0.55, "rgba(255,214,140,0.28)"); g.addColorStop(1, "rgba(255,214,140,0)"); c.fillStyle = g; c.fillRect(0, 0, w, h); });
+MAT.pocaLuz = new THREE.MeshBasicMaterial({ map: texPoca, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, visible: false });
+MAT.pocaLuz.userData.noite = true;
+// metal e vidro polidos (std) também viram plástico: mesmos parâmetros de antes, com mais ou menos brilho
+export const std = (cor, { metalness = 0, roughness = 0.85, ...extra } = {}) => plastico(cor, { ...extra, shininess: Math.round(10 + (1 - roughness) * 90), specular: metalness > 0.1 ? 0x666666 : 0x2c2c2c });
+// material de plástico com opções próprias (o que antes era um material toon solto)
+export const matNovo = (op = {}) => plasticoNovo(op);
 
-// malha com sombra; contorno opcional (casca invertida preta, igual ao Rabisco)
-export function malha(geo, material, { contorno = 0, sombra = true } = {}) {
-  const m = new THREE.Mesh(geo, material);
+// malha com sombra. A forma redonda vira forma de blocos aqui (emBlocos), na hora de montar cada peça
+export function malha(geo, material, { sombra = true } = {}) {
+  const m = new THREE.Mesh(emBlocos(geo), material);
   m.castShadow = sombra; m.receiveShadow = true;
-  if (contorno) comContorno(m, contorno);
   return m;
 }
-// caixa de cantos arredondados (fofinha, sem quina dura): w × h × d com raio r nas bordas
-const geoRedondas = new Map();
-export function geoCaixaRedonda(w, h, d, raio = 0.2, seg = 2) {
-  const k = [w, h, d, raio, seg].map((v) => +v.toFixed(3)).join("|");
-  if (geoRedondas.has(k)) return geoRedondas.get(k);
-  const rr = Math.min(raio, w / 2 - 0.01, h / 2 - 0.01, d / 2 - 0.01);
-  const ww = w / 2 - rr, hh = h / 2 - rr, c = Math.min(rr, ww, hh) * 0.6;
-  const f = new THREE.Shape();
-  f.moveTo(-ww + c, -hh); f.lineTo(ww - c, -hh); f.quadraticCurveTo(ww, -hh, ww, -hh + c);
-  f.lineTo(ww, hh - c); f.quadraticCurveTo(ww, hh, ww - c, hh); f.lineTo(-ww + c, hh);
-  f.quadraticCurveTo(-ww, hh, -ww, hh - c); f.lineTo(-ww, -hh + c); f.quadraticCurveTo(-ww, -hh, -ww + c, -hh);
-  const geo = new THREE.ExtrudeGeometry(f, { depth: Math.max(0.01, d - 2 * rr), bevelEnabled: true, bevelThickness: rr, bevelSize: rr, bevelSegments: seg, curveSegments: 3 });
-  geo.center();
-  geo.userData.compartilhada = true;
-  geoRedondas.set(k, geo);
-  return geo;
-}
-export const caixaRedonda = (w, h, d, material, { raio = 0.2, contorno = 0, sombra = true } = {}) => malha(geoCaixaRedonda(w, h, d, raio), material, { contorno, sombra });
-export const caixa = (w, h, d, material, { contorno = 0, sombra = true } = {}) => malha(new THREE.BoxGeometry(w, h, d), material, { contorno, sombra });
+// "caixa redonda" do traço antigo: no mundo de blocos, caixa reta com a mesma medida
+export const geoCaixaRedonda = (w, h, d) => geoCaixa(w, h, d);
+export const caixaRedonda = (w, h, d, material, { sombra = true } = {}) => malha(geoCaixa(w, h, d), material, { sombra });
+export const caixa = (w, h, d, material, { sombra = true } = {}) => malha(geoCaixa(w, h, d), material, { sombra });
 
-// ---------- texturas
-const ruido = (c, w, h, n, cores) => { for (let i = 0; i < n; i++) { c.fillStyle = cores[i % cores.length]; c.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 2, 1 + Math.random() * 2); } };
+// ---------- texturas: chão, rua e calçada em placas, com pinos discretos (mesmo tom da placa, um nada mais claro)
+const pino = (c, x, y, r, topo, lado) => { c.fillStyle = lado; c.beginPath(); c.arc(x + r * 0.1, y + r * 0.16, r, 0, Math.PI * 2); c.fill(); c.fillStyle = topo; c.beginPath(); c.arc(x, y, r * 0.9, 0, Math.PI * 2); c.fill(); };
+// semente fixa: o chão sai sempre igual
+const rt = aleatorio(4242);
 export const TEX = {
-  asfalto: texturaCanvas(256, 256, (c, w, h) => {
-    c.fillStyle = "#5b6170"; c.fillRect(0, 0, w, h);
-    ruido(c, w, h, 2600, ["#535969", "#646a7a", "#59606f"]);
-  }, { repetir: true }),
-  // calçada: u = 0 na beira da rua (meio-fio claro com sombrinha) e lajotas no resto
-  calcada: texturaCanvas(256, 256, (c, w, h) => {
-    c.fillStyle = "#efe4d0"; c.fillRect(0, 0, w, h);
-    for (let y = 0; y < 4; y++) for (let x = 0; x < 3; x++) {
-      const v = 228 + Math.floor(Math.random() * 18);
-      c.fillStyle = `rgb(${v},${v - 10},${v - 26})`; c.fillRect(34 + x * 74 + 3, y * 64 + 3, 68, 58);
+  // placas de 2,5 m (4 × 4 pinos) em três verdes bem próximos; a junta fina entre as placas
+  grama: texturaCanvas(512, 512, (c, w, h) => {
+    const verdes = [["#5dbb50", "#63c156", "#56b24a"], ["#59b64c", "#5fbc52", "#52ad46"], ["#61bf54", "#67c55a", "#5ab64e"]];
+    for (let i = 0; i < 4; i++) for (let k = 0; k < 4; k++) {
+      const [base, topo, lado] = verdes[Math.floor(rt() * 3)], x0 = i * 128, y0 = k * 128;
+      c.fillStyle = base; c.fillRect(x0, y0, 128, 128);
+      for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) pino(c, x0 + 16 + a * 32, y0 + 16 + b * 32, 7, topo, lado);
+      c.strokeStyle = lado; c.lineWidth = 2; c.strokeRect(x0 + 1, y0 + 1, 126, 126);
     }
-    c.fillStyle = "#ffffff"; c.fillRect(0, 0, 26, h);
-    c.fillStyle = "rgba(0,0,0,0.18)"; c.fillRect(26, 0, 6, h);
   }, { repetir: true }),
-  grama: texturaCanvas(256, 256, (c, w, h) => {
-    c.fillStyle = "#7ccf52"; c.fillRect(0, 0, w, h);
-    ruido(c, w, h, 2500, ["#72c44a", "#86d75c", "#6fbf45"]);
-    // tufinhos desenhados
-    c.strokeStyle = "rgba(60,140,40,0.55)"; c.lineWidth = 2;
-    for (let i = 0; i < 40; i++) { const x = Math.random() * w, y = Math.random() * h; c.beginPath(); c.moveTo(x - 3, y + 4); c.lineTo(x, y - 3); c.lineTo(x + 3, y + 4); c.stroke(); }
+  asfalto: texturaCanvas(256, 256, (c, w, h) => {
+    c.fillStyle = "#565a64"; c.fillRect(0, 0, w, h);
+    c.fillStyle = "#5b5f6a"; c.fillRect(8, 8, w - 16, h - 16);
+    c.strokeStyle = "#4c5059"; c.lineWidth = 3; c.strokeRect(0, 0, w, h);
   }, { repetir: true }),
-  linha: texturaCanvas(32, 256, (c, w, h) => { c.clearRect(0, 0, w, h); c.fillStyle = "#ffffff"; for (let y = 0; y < h; y += 64) c.fillRect(0, y, w, 34); }, { repetir: true }),
-  terra: texturaCanvas(128, 128, (c, w, h) => { c.fillStyle = "#c99a62"; c.fillRect(0, 0, w, h); ruido(c, w, h, 900, ["#b88a55", "#d6a96f"]); }, { repetir: true }),
+  // calçada: u = 0 na beira da rua (meio-fio claro com sombrinha) e placas com pinos no resto
+  calcada: texturaCanvas(256, 256, (c, w, h) => {
+    c.fillStyle = "#dfe2e8"; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 6; i++) for (let k = 0; k < 6; k++) pino(c, 50 + i * 35, 21 + k * 43, 7, "#e5e8ee", "#cfd3db");
+    c.fillStyle = "#f8f9fc"; c.fillRect(0, 0, 26, h);
+    c.fillStyle = "#9aa3b4"; c.fillRect(26, 0, 5, h);
+    c.strokeStyle = "#c3c8d2"; c.lineWidth = 3; c.strokeRect(31, 0, w - 31, h);
+  }, { repetir: true }),
+  linha: texturaCanvas(32, 256, (c, w, h) => { c.clearRect(0, 0, w, h); c.fillStyle = "#f6f7fb"; for (let y = 0; y < h; y += 64) c.fillRect(0, y, w, 34); }, { repetir: true }),
+  // água: tracinhos claros em fileiras, como ondas de blocos (mundo.js escorrega a textura devagar)
+  agua: texturaCanvas(256, 256, (c, w, h) => {
+    c.fillStyle = "#3f9fd2"; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 26; i++) { const x = Math.floor(rt() * 15) * 16, y = Math.floor(rt() * 15) * 16, l = 24 + Math.floor(rt() * 3) * 16; c.fillStyle = i % 3 ? "#4dabdc" : "#6cc0e6"; c.fillRect(x, y, l, 6); if (x + l > w) c.fillRect(x - w, y, l, 6); }
+  }, { repetir: true }),
+  terra: texturaCanvas(128, 128, (c, w, h) => { c.fillStyle = "#c98a52"; c.fillRect(0, 0, w, h); c.strokeStyle = "#b0763f"; c.lineWidth = 3; c.strokeRect(0, 0, w, h); }, { repetir: true }),
 };
 
-// ---------- placa de texto (copiada de cidade.js · placa; aqui com cantos redondos e contorno grosso)
-export function placa(texto, { cor = "#00b5f0", fundo = "#ffffff", tinta = "#151515", w = 512, h = 128, fonte = 800 } = {}) {
-  return texturaCanvas(w, h, (c) => {
-    c.fillStyle = "#151515"; c.beginPath(); c.roundRect(0, 0, w, h, h * 0.28); c.fill();
-    c.fillStyle = fundo; c.beginPath(); c.roundRect(8, 8, w - 16, h - 16, h * 0.22); c.fill();
-    c.fillStyle = cor; c.fillRect(8, h - 30, w - 16, 14);
-    let tam = Math.round(h * 0.56); c.font = `${fonte} ${tam}px 'Baloo 2', sans-serif`;
-    while (c.measureText(texto).width > w - 50) { tam -= 3; c.font = `${fonte} ${tam}px 'Baloo 2', sans-serif`; }
-    c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = tinta; c.fillText(texto, w / 2, h / 2 - 2);
-  });
+// piso dos interiores: placas com juntas e pinos discretos, em branco (a cor vem do material)
+const texPisoBloco = texturaCanvas(256, 256, (c, w, h) => {
+  c.fillStyle = "#ffffff"; c.fillRect(0, 0, w, h);
+  for (let i = 0; i < 2; i++) for (let k = 0; k < 2; k++) {
+    c.fillStyle = (i + k) % 2 ? "#ffffff" : "#f0f0f0"; c.fillRect(i * 128, k * 128, 128, 128);
+    for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) pino(c, i * 128 + 24 + a * 40, k * 128 + 24 + b * 40, 7, "#fbfbfb", "#e2e2e2");
+    c.strokeStyle = "#cfcfcf"; c.lineWidth = 3; c.strokeRect(i * 128, k * 128, 128, 128);
+  }
+}, { repetir: true });
+const pisos = new Map();
+export function matPisoBloco(cor, rx, ry) {
+  const k = `${cor}|${rx}|${ry}`;
+  if (!pisos.has(k)) { const t = texPisoBloco.clone(); t.needsUpdate = true; t.repeat.set(rx, ry); pisos.set(k, plasticoNovo({ color: cor, map: t })); }
+  return pisos.get(k);
 }
-// letreiro: placa em 3D (com moldura) presa numa fachada; largura em metros
+
+// água (mar, lago e chafariz): um material só, de brilho alto, que clareia um pouco de noite para não sumir
+export const MAT_AGUA = plasticoNovo({ map: TEX.agua, emissive: 0x0b3a5a, emissiveIntensity: 0.2, specular: 0x666666, shininess: 70 });
+MAT_AGUA.userData.noite = true;
+// água lisa (lago e chafariz): os discos de pixels têm um uv por fileira, sem textura
+export const MAT_LAGO = new THREE.MeshPhongMaterial({ color: 0x45a8d8, emissive: 0x0b3a5a, emissiveIntensity: 0.2, specular: 0x777777, shininess: 70 });
+MAT_LAGO.userData.noite = true;
+
+// ---------- placa de texto e letreiro em 3D (placa reta com moldura, presa numa fachada; largura em metros)
+export const placa = (texto, op = {}) => placaBloco(texto, op);
 export function letreiro(texto, largura = 8, opcoes = {}) {
-  const prop = (opcoes.w ?? 512) / (opcoes.h ?? 128);
+  const prop = (opcoes.w ?? 512) / (opcoes.h ?? 128), alt = largura / prop;
   const g = new THREE.Group();
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(largura, largura / prop), new THREE.MeshToonMaterial({ map: placa(texto, opcoes), transparent: true, alphaTest: 0.5 }));
-  m.position.z = 0.06;
+  const corHex = new THREE.Color(opcoes.cor ?? "#00b5f0").getHex();
+  cx(g, largura + 0.24, alt + 0.24, 0.2, corHex, 0, 0, -0.04, { sombra: false });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(largura, alt), matNovo({ map: placa(texto, { fundo: "#ffffff", ...opcoes, cor: opcoes.fundo ?? "#ffffff" }), emissive: 0xffffff, emissiveIntensity: 0.14 }));
+  m.material.emissiveMap = m.material.map;
+  m.position.z = 0.075;
   g.add(m);
   return g;
 }
@@ -139,7 +152,8 @@ export function fita(pts, fechada, a, b, y, material, repV, pular = null) {
         pos.push(p[k][0] + ns[k][0] * a, y, p[k][1] + ns[k][1] * a, p[k][0] + ns[k][0] * b, y, p[k][1] + ns[k][1] * b);
         uv.push(0, vv, 1, vv);
       }
-      ind.push(n, n + 2, n + 1, n + 1, n + 2, n + 3);
+      // face sempre para cima: o plástico de lado de trás escurece (a normal inverte)
+      if (b > a) ind.push(n, n + 1, n + 2, n + 1, n + 3, n + 2); else ind.push(n, n + 2, n + 1, n + 1, n + 2, n + 3);
       n += 4;
     }
     v += seg / repV;
@@ -150,7 +164,7 @@ export function fita(pts, fechada, a, b, y, material, repV, pular = null) {
   geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
   geo.setIndex(ind);
   geo.computeVertexNormals();
-  // normais sempre para cima (a ordem dos vértices pode virar a face; o material é DoubleSide)
+  // normais sempre para cima
   const nrm = geo.attributes.normal;
   for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, 0, 1, 0);
   const m = new THREE.Mesh(geo, material);
@@ -158,103 +172,123 @@ export function fita(pts, fechada, a, b, y, material, repV, pular = null) {
   return m;
 }
 
-// ---------- árvore (copiada de cidade.js · arvoreReal; aqui em toon, copa de bolas lisas com contorno e
-// um tronco mais gordinho, para combinar com o traço do Rabisco). escala 1 ≈ 5,5 m.
-const FOLHAS = [0x5cc443, 0x4cb83f, 0x6fd15a, 0x3fae4a];
-// copa: bola baixa em polígonos (com o sombreamento em tons chapados fica fofinha e custa pouco)
-const copas = new Map();
-const geoCopa = (s) => { const k = s.toFixed(2); if (!copas.has(k)) copas.set(k, new THREE.SphereGeometry(s, 7, 5)); return copas.get(k); };
+// ---------- árvores de blocos. escala 1 ≈ 5,5 m. Quatro tipos: copa de cubos, pinheiro de camadas, ipê florido e
+// copa alta. Tudo caixa: entra na mesclagem e custa bem menos que as bolas de antes.
+const VERDES = [0x42c92d, 0x35b83a, 0x58d63a, 0x2fae45];
+const IPES = [0xff6fb0, 0xffd21f];
 export function arvoreReal(escala = 1, tipo = 0) {
   const g = new THREE.Group();
-  const tronco = malha(new THREE.CylinderGeometry(0.26, 0.4, 2.6, 8), mat(0x9a6232), { contorno: 0.08, sombra: false });
-  tronco.position.y = 1.3;
-  g.add(tronco);
-  const folha = mat(FOLHAS[tipo % FOLHAS.length]);
-  const bolas = tipo % 3 === 2
-    ? [[0, 3.2, 0, 1.25], [0, 4.4, 0, 1.0], [0, 5.3, 0, 0.7]] // pinheirinho de bolas
-    : [[0, 3.7, 0, 1.65], [0.95, 3.2, 0.35, 1.1], [-0.85, 3.35, -0.4, 1.15]];
-  for (const [x, y, z, s] of bolas) {
-    const b = malha(geoCopa(s), folha, { contorno: 0.12, sombra: false });
-    b.position.set(x, y, z);
-    g.add(b);
+  const verde = VERDES[tipo % VERDES.length], o = { sombra: true }, f = { sombra: false };
+  if (tipo % 5 === 4) { // ipê: tronco fino e copa baixa e larga, toda florida
+    const flor = IPES[tipo % 10 === 4 ? 0 : 1];
+    cx(g, 0.56, 3, 0.56, 0x7f5128, 0, 1.5, 0, f);
+    cx(g, 3.5, 1.15, 3.5, flor, 0, 3.4, 0, o); cx(g, 2.5, 0.9, 2.5, claro(flor, 0.18), 0.2, 4.4, -0.1, o); cx(g, 1.4, 0.7, 1.4, claro(flor, 0.34), -0.2, 5.1, 0.2, f);
+    cx(g, 1.0, 0.7, 1.0, escuro(flor, 0.9), 1.5, 2.8, 0.8, f);
+  } else if (tipo % 3 === 2) { // pinheiro de camadas
+    cx(g, 0.62, 2.2, 0.62, 0x7f5128, 0, 1.1, 0, f);
+    [[3.3, 1.0, 2.4], [2.6, 1.0, 3.3], [1.9, 1.0, 4.2], [1.1, 0.9, 5.1], [0.5, 0.6, 5.8]].forEach(([w, h, y], i) => cx(g, w, h, w, i % 2 ? claro(verde, 0.09) : escuro(verde, 0.92), 0, y, 0, i < 2 ? o : f));
+  } else if (tipo % 4 === 1) { // copa alta de cubos deslocados
+    cx(g, 0.62, 3.2, 0.62, 0x8a5426, 0, 1.6, 0, f);
+    cx(g, 2.5, 2.2, 2.5, verde, 0, 4.0, 0, o); cx(g, 1.7, 1.4, 1.7, claro(verde, 0.12), -0.5, 5.5, 0.3, f); cx(g, 1.3, 1.1, 1.3, claro(verde, 0.05), 1.3, 3.5, -0.7, f); cx(g, 1.2, 1.0, 1.2, escuro(verde, 0.88), -1.2, 3.3, 0.9, f);
+  } else { // copa de cubos
+    cx(g, 0.72, 2.7, 0.72, 0x8a5426, 0, 1.35, 0, f);
+    cx(g, 3.3, 2.4, 3.3, verde, 0, 3.8, 0, o); cx(g, 2.1, 1.4, 2.1, claro(verde, 0.12), 0.3, 5.5, -0.2, f); cx(g, 1.3, 1.2, 1.3, claro(verde, 0.2), 1.9, 3.1, 0.7, f); cx(g, 1.2, 1.0, 1.2, escuro(verde, 0.86), -1.9, 3.4, -0.6, f);
   }
   g.scale.setScalar(escala);
   return g;
 }
 
-// ---------- semáforo (copiado de cidade.js · semaforo; materiais toon e caixa arredondada)
+// ---------- semáforo (copiado de cidade.js · semaforo; de blocos, com as luzes quadradas na caixa e viseiras)
 export function semaforo() {
   const g = new THREE.Group();
-  const poste = malha(new THREE.CylinderGeometry(0.12, 0.14, 4.2, 10), mat(0x2f3440), { contorno: 0.05 });
-  poste.position.y = 2.1;
-  const caixaLuz = caixaRedonda(0.75, 1.95, 0.6, mat(0x2a2a2a), { raio: 0.18, contorno: 0.06 });
-  caixaLuz.position.y = 4.6;
+  cx(g, 0.2, 4.2, 0.2, 0x2f3440, 0, 2.1, 0);
+  cx(g, 0.42, 0.3, 0.42, 0x4a5262, 0, 0.15, 0);
+  cx(g, 0.78, 1.95, 0.55, 0x23262e, 0, 4.6, 0);
   const luzes = {};
   [["vermelho", 0xff2a2a, 5.15], ["amarelo", 0xffc21a, 4.6], ["verde", 0x2aff6a, 4.05]].forEach(([nome, cor, y]) => {
-    const l = new THREE.Mesh(new THREE.CircleGeometry(0.22, 16), new THREE.MeshStandardMaterial({ color: 0x333333, emissive: cor, emissiveIntensity: 0 }));
-    l.position.set(0, y, 0.31);
+    const l = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), new THREE.MeshPhongMaterial({ color: 0x333333, emissive: cor, emissiveIntensity: 0 }));
+    l.position.set(0, y, 0.285);
     g.add(l);
     luzes[nome] = l;
+    cx(g, 0.56, 0.06, 0.2, 0x15171c, 0, y + 0.25, 0.37, { sombra: false }); // viseira
   });
   // bonequinho de pedestre (verde = pode atravessar)
-  const ped = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5), new THREE.MeshStandardMaterial({ color: 0x222222, emissive: 0xff3030, emissiveIntensity: 1 }));
+  const ped = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.46), new THREE.MeshPhongMaterial({ color: 0x222222, emissive: 0xff3030, emissiveIntensity: 1 }));
   ped.position.set(0, 3.2, 0.13);
-  const pedCaixa = caixa(0.6, 0.6, 0.2, mat(0x2a2a2a)); pedCaixa.position.set(0, 3.2, 0);
-  g.add(poste, caixaLuz, pedCaixa, ped);
+  cx(g, 0.6, 0.6, 0.2, 0x23262e, 0, 3.2, 0);
+  g.add(ped);
   for (const l of Object.values(luzes)) l.userData.dinamico = true;
   ped.userData.dinamico = true;
   g.userData = { luzes, ped };
   return g;
 }
 
-// ---------- loja de empresa parceira (copiada de cidade.js · lojaParceira; largura máxima LOJA_MAX do mapa,
-// marquise e degrau na frente). A frente inteira é a foto real da fachada, na proporção da foto. Até a foto
-// chegar (ou se ela falhar) fica um prédio liso do mesmo tipo. aoMudar(largura) avisa a nova largura (colisão).
+// ---------- loja de empresa parceira: prédio de blocos com a marca reconhecível. A logo REAL (recortada do arquivo em
+// assets/parceiros) é o letreiro; cada marca tem a sua fachada, baseada no prédio de verdade. Enquanto a imagem não
+// chega (ou se ela falhar), o letreiro mostra o nome em texto. aoMudar(largura) avisa a largura (colisão).
 export const LOJA = { altura: 8, d: 7.5, larguraMax: LOJA_MAX };
-export function lojaParceira(p, aoMudar, { foto = p.foto, estilo: est = null, altura = LOJA.altura, d = LOJA.d, larguraMax = LOJA.larguraMax } = {}) {
+// recorte: pedaço da imagem que é a logo; w: largura do prédio
+const MARCAS = {
+  "J.E Multimarcas": { parede: 0xf4f2ee, faixa: 0x17181c, acento: 0xe8413c, acento2: 0x1f5fd6, placa: "#17181c", texto: "#ffffff", w: 19.5, h: 7.6, recorte: [0, 0, 1, 0.375] },
+  "Bella Cat Make Biju": { parede: 0xf2e6ff, faixa: 0xffffff, acento: 0xec2e8c, acento2: 0xbfe9e6, placa: "#ffffff", texto: "#ec2e8c", w: 15, h: 8.2, recorte: [0, 0.03, 1, 0.335] },
+  "Academia Rise Up": { parede: 0xe8d9b8, faixa: 0x24272e, acento: 0xff7a00, acento2: 0xffe0a0, placa: "#17191e", texto: "#ff7a00", w: 19, h: 8.6, recorte: [0.42, 0.39, 0.68, 0.655] },
+};
+export function lojaParceira(p, aoMudar, { foto = p.foto, d = LOJA.d, larguraMax = LOJA.larguraMax } = {}) {
   const g = new THREE.Group();
-  const estilo = est ?? ESTILO_PARCEIRO[p.tipo] ?? ESTILO_PARCEIRO.carros;
-  const parede = mat(estilo.parede);
-  const matFrente = new THREE.MeshToonMaterial({ color: estilo.parede });
-  // frente = face +z; prédio de z = -d até 0
-  const corpo = new THREE.Mesh(new THREE.BoxGeometry(1, 1, d), [parede, parede, parede, parede, matFrente, parede]);
-  corpo.castShadow = corpo.receiveShadow = true;
-  const beiral = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), mat(estilo.beiral));
-  beiral.castShadow = true;
-  g.add(corpo, beiral);
-  // a geometria é refeita no tamanho certo (assim o contorno fica fino em qualquer largura)
-  const refazer = (m, geo) => { m.geometry.dispose(); m.geometry = geo; m.clear(); comContorno(m, 0.1); };
-  const montar = (prop) => {
-    const w = Math.min(larguraMax, altura * prop), h = w / prop;
-    refazer(corpo, new THREE.BoxGeometry(w, h, d)); corpo.position.set(0, h / 2, -d / 2);
-    refazer(beiral, geoCaixaRedonda(w + 0.6, 0.45, d + 0.6, 0.15)); beiral.position.set(0, h + 0.22, -d / 2 + 0.1);
-    g.userData.largura = w; g.userData.alturaFoto = h;
-    aoMudar?.(w, h);
-  };
-  montar(larguraMax / altura); // começa na largura máxima (reserva o terreno) e encolhe quando a foto chega
-  g.userData.dinamico = true; // muda de tamanho depois: fica fora da mesclagem
+  const m = MARCAS[p.nome] ?? MARCAS["J.E Multimarcas"];
+  const w = Math.min(larguraMax, m.w), h = m.h;
+  const z = (x, y, ww, hh, q = 0.2) => cx(g, ww, hh, q, 0xffffff, x, y, q / 2 - 0.02, { sombra: false }); // moldura
+  cx(g, w, h, d, m.parede, 0, h / 2, -d / 2);
+  cx(g, w + 0.2, 0.6, d + 0.2, escuro(m.parede, 0.74), 0, 0.3, -d / 2);       // rodapé
+  cx(g, w + 0.7, 0.5, d + 0.7, m.faixa === 0xffffff ? m.acento : m.faixa, 0, h + 0.25, -d / 2);    // beiral
+  cx(g, w - 2, 0.5, d - 2, escuro(m.parede, 0.9), 0, h + 0.65, -d / 2);        // caixas do telhado
+  cx(g, 2.4, 1.1, 2.0, 0xc9ced8, w / 4, h + 1.45, -d / 2); cx(g, 1.2, 0.8, 1.2, 0xdfe3ea, -w / 4, h + 1.3, -d / 2 - 0.6);
+  // letreiro: caixa da marca com a logo real
+  const lw = p.nome === "Academia Rise Up" ? 7 : p.nome === "Bella Cat Make Biju" ? w - 0.6 : w - 0.4;
+  const lh = p.nome === "Academia Rise Up" ? 3.3 : p.nome === "Bella Cat Make Biju" ? 3.2 : 2.9;
+  const ly = h - lh / 2 - 0.2 - (p.nome === "Academia Rise Up" ? 0.55 : 0);
+  cx(g, lw + 0.3, lh + 0.3, 0.5, m.faixa, 0, ly, 0.24);
+  const matL = matNovo({ map: placa(p.nome, { cor: m.placa, fundo: m.placa, tinta: m.texto, w: 1024, h: Math.round(1024 * lh / lw) }) });
+  const logo = new THREE.Mesh(new THREE.PlaneGeometry(lw, lh), matL); logo.position.set(0, ly, 0.5); logo.userData.dinamico = true; g.add(logo);
   g.userData.fotoOk = false;
-  new THREE.TextureLoader().load(`../../${foto}`, (t) => {
-    t.colorSpace = THREE.SRGBColorSpace;
-    t.anisotropy = 8;
-    // a foto também "brilha" um pouco (emissiva): fica legível mesmo com o sol de lado, na sombra ou de noite
-    Object.assign(matFrente, { map: t, emissiveMap: t, emissiveIntensity: 0.45 });
-    matFrente.color.set(0xffffff); matFrente.emissive.set(0xffffff); matFrente.needsUpdate = true;
-    g.userData.fotoOk = true;
-    montar(t.image.width / t.image.height);
-    g.userData.aoFoto?.(t);
-  }, undefined, () => { g.userData.aoFalhar?.(); });
+  comRecorte(matL, `../../${foto}`, m.recorte, (t) => { g.userData.fotoOk = true; g.userData.aoFoto?.(t); }, () => g.userData.aoFalhar?.());
+  // térreo: vitrines de ponta a ponta com porta no meio, cada marca com um detalhe da fachada real
+  const yV = 1.95, nV = p.nome === "Bella Cat Make Biju" ? 2 : 3, hV = ly - lh / 2 - 1.05;
+  for (let i = 0; i < nV; i++) {
+    const x = nV === 3 ? (i - 1) * (w / 3.1) : (i ? 1 : -1) * w * 0.31, lV = nV === 3 ? w / 3.7 : w * 0.26;
+    z(x, 0.65 + hV / 2 + 0.15, lV + 0.3, hV + 0.3, 0.16);
+    cx(g, lV, hV, 0.14, 0, x, 0.8 + hV / 2, 0.14, { material: i % 2 ? MAT.janelaQuente : MAT.janela, sombra: false });
+    cx(g, 0.1, hV, 0.08, 0xffffff, x, 0.8 + hV / 2, 0.22, { sombra: false });
+  }
+  if (p.nome === "J.E Multimarcas") { // risquinhas de cor da marca e luminárias
+    [m.acento2, 0x2fa7e8, m.acento].forEach((c, i) => cx(g, 0.5, 0.6, 0.12, c, -w / 2 + 0.7 + i * 0.6, 0.3 + yV + 1.4, 0.04, { sombra: false }));
+    for (const s of [-1, 0, 1]) cx(g, 0.5, 0.26, 0.4, 0, s * w / 3.1, 0.8 + hV + 0.32, 0.2, { material: MAT.lampada, sombra: false });
+  } else if (p.nome === "Bella Cat Make Biju") { // loja aberta: porta larga, vitrines claras e árvore de flores
+    cx(g, w * 0.3, hV + 0.2, 0.14, 0x1d1f27, 0, 0.8 + hV / 2 - 0.1, 0.1, { sombra: false });
+    cx(g, w * 0.26, 0.5, 0.2, 0xff9ec4, 0, 1.5, 0.18, { sombra: false }); cx(g, 1.3, 1.4, 0.3, 0xffd6e8, w * 0.1, 1.6, 0.25, { sombra: false }); cx(g, 1.3, 1.4, 0.3, 0xffc0da, -w * 0.08, 1.6, 0.25, { sombra: false });
+  } else { // academia: pórtico escuro com a logo, luzes quentes e pesos na janela
+    cx(g, 8, h - 0.5, 0.7, m.faixa, 0, (h - 0.5) / 2, 0.1);
+    cx(g, 3.4, 2.7, 0.3, 0, 0, 1.4, 0.42, { material: MAT.janelaQuente, sombra: false });
+    for (const s of [-1, 1]) for (let i = 0; i < 2; i++) cx(g, 0.5, 0.26, 0.36, 0, s * (5.6 + i * 2.6), 0.8 + hV + 0.3, 0.2, { material: MAT.lampada, sombra: false });
+  }
+  g.userData.largura = w; g.userData.alturaFoto = h;
+  aoMudar?.(w, h);
   return g;
 }
 
 // ---------- mesclagem: junta as malhas estáticas de um grupo numa malha por material (uma chamada de desenho cada).
-// Cores lisas (toon ou standard sem textura nem brilho) viram cor por vértice num material único: dezenas de cores,
+// Cores lisas (plástico sem textura nem emissivo) viram cor por vértice num material único: dezenas de cores,
 // uma chamada só. Pula o que tiver userData.dinamico (no próprio objeto ou num pai) e o que já foi mesclado.
 // juntas: Set de nós que se mexem (ex.: ombro e cotovelo do Rabisco). Cada malha vai para a junta mais próxima
 // acima dela (ou para a raiz), então o que gira continua girando. Também junta as peças "pintadas" do Rabisco
 // (ShaderMaterial com corBase), passando corBase/pesoLado para atributos por vértice.
 const matVC = new Map();
 function materialVC(m) {
+  if (m.isMeshPhongMaterial) {
+    const k = `phong|${m.specular.getHex()}|${m.shininess}|${m.side}`;
+    if (!matVC.has(k)) matVC.set(k, plasticoVC(m));
+    return matVC.get(k);
+  }
   if (m.isMeshToonMaterial) {
     const k = `toon|${m.gradientMap?.uuid}|${m.side}`;
     if (!matVC.has(k)) matVC.set(k, new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: m.gradientMap, side: m.side }));
@@ -264,7 +298,7 @@ function materialVC(m) {
   if (!matVC.has(k)) matVC.set(k, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: m.roughness, metalness: m.metalness, side: m.side }));
   return matVC.get(k);
 }
-const corLisa = (m) => (m.isMeshToonMaterial || m.isMeshStandardMaterial) && !m.map && !m.emissiveMap && !m.transparent && !m.alphaTest && !m.vertexColors && !m.userData.noite
+const corLisa = (m) => (m.isMeshPhongMaterial || m.isMeshToonMaterial || m.isMeshStandardMaterial) && !m.map && !m.emissiveMap && !m.transparent && !m.alphaTest && !m.vertexColors && !m.userData.noite
   && (!m.emissive || m.emissive.getHex() === 0 || m.emissiveIntensity === 0);
 const projecao = (m) => m.isShaderMaterial && m.uniforms?.corBase && m.uniforms?.texFrente;
 const matProj = new Map();
@@ -277,6 +311,12 @@ function materialProj(m) {
     matProj.set(k, new THREE.ShaderMaterial({ uniforms: { texFrente: u.texFrente, texCostas: u.texCostas, texLado: u.texLado }, vertexShader: vert, fragmentShader: frag }));
   }
   return matProj.get(k);
+}
+const semIndices = new WeakMap(), nm = new THREE.Matrix3();
+function semIndice(g) {
+  let n = semIndices.get(g);
+  if (!n) { n = g.index ? g.toNonIndexed() : g; if (!n.attributes.normal) n.computeVertexNormals(); semIndices.set(g, n); }
+  return n;
 }
 export function mesclar(raiz, { juntas = null } = {}) {
   raiz.updateMatrixWorld(true);
@@ -297,15 +337,11 @@ export function mesclar(raiz, { juntas = null } = {}) {
     const alvo = alvoDe(o);
     if (!invs.has(alvo)) invs.set(alvo, new THREE.Matrix4().copy(alvo.matrixWorld).invert());
     m4.multiplyMatrices(invs.get(alvo), o.matrixWorld);
-    const base = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
-    base.applyMatrix4(m4);
-    if (m4.determinant() < 0) { // espelhado: desvira os triângulos
-      const p = base.attributes.position;
-      for (let i = 0; i < p.count; i += 3) for (const at of Object.values(base.attributes)) {
-        for (let k = 0; k < at.itemSize; k++) { const a = at.getComponent(i + 1, k); at.setComponent(i + 1, k, at.getComponent(i + 2, k)); at.setComponent(i + 2, k, a); }
-      }
-    }
-    if (!base.attributes.normal) base.computeVertexNormals();
+    // geometria sem índice guardada por peça (o mundo de blocos repete as mesmas caixas milhares de vezes)
+    const base = semIndice(o.geometry);
+    const espelhado = m4.determinant() < 0;
+    nm.getNormalMatrix(m4);
+    const ePos = m4.elements, eN = nm.elements;
     const pedacos = Array.isArray(o.material)
       ? (o.geometry.groups.length ? o.geometry.groups : [{ start: 0, count: base.attributes.position.count, materialIndex: 0 }]).map((gr) => [o.material[gr.materialIndex], gr.start, gr.count])
       : [[o.material, 0, base.attributes.position.count]];
@@ -317,19 +353,20 @@ export function mesclar(raiz, { juntas = null } = {}) {
       const chave = `${alvo.uuid}|${mat.uuid}|${o.castShadow ? 1 : 0}|${det ? 1 : 0}`;
       if (!baldes.has(chave)) baldes.set(chave, { alvo, material: mat, tipo, det, sombra: o.castShadow, pos: [], nrm: [], uv: [], cor: [], pr: [], nr: [], cb: [], pl: [] });
       const b = baldes.get(chave);
-      const A = base.attributes, P = A.position, N = A.normal, U = A.uv;
+      const A = base.attributes, P = A.position.array, N = A.normal.array, U = A.uv?.array;
       if (tipo === "vc") c.copy(material.color);
       if (tipo === "proj") c.copy(material.uniforms.corBase.value);
       const peso = tipo === "proj" ? material.uniforms.pesoLado?.value ?? 1 : 0;
-      for (let i = ini; i < ini + qtd; i++) {
-        b.pos.push(P.getX(i), P.getY(i), P.getZ(i));
-        b.nrm.push(N.getX(i), N.getY(i), N.getZ(i));
+      for (let t = ini; t < ini + qtd; t += 3) for (let k = 0; k < 3; k++) {
+        const i = t + (espelhado && k ? 3 - k : k), x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], u = N[i * 3], v = N[i * 3 + 1], w = N[i * 3 + 2];
+        b.pos.push(ePos[0] * x + ePos[4] * y + ePos[8] * z + ePos[12], ePos[1] * x + ePos[5] * y + ePos[9] * z + ePos[13], ePos[2] * x + ePos[6] * y + ePos[10] * z + ePos[14]);
+        const nx = eN[0] * u + eN[3] * v + eN[6] * w, ny = eN[1] * u + eN[4] * v + eN[7] * w, nz = eN[2] * u + eN[5] * v + eN[8] * w, l = Math.hypot(nx, ny, nz) || 1;
+        b.nrm.push(nx / l, ny / l, nz / l);
         if (tipo === "proj") { b.pr.push(A.posRef.getX(i), A.posRef.getY(i), A.posRef.getZ(i)); b.nr.push(A.nrmRef.getX(i), A.nrmRef.getY(i), A.nrmRef.getZ(i)); b.cb.push(c.r, c.g, c.b); b.pl.push(peso); }
-        else if (U) b.uv.push(U.getX(i), U.getY(i)); else b.uv.push(0, 0);
+        else if (U) b.uv.push(U[i * 2], U[i * 2 + 1]); else b.uv.push(0, 0);
         if (tipo === "vc") b.cor.push(c.r, c.g, c.b);
       }
     }
-    base.dispose();
     remover.push(o);
   });
   for (const o of remover) o.removeFromParent();
@@ -350,7 +387,6 @@ export function mesclar(raiz, { juntas = null } = {}) {
     m.castShadow = b.sombra; m.receiveShadow = true;
     m.userData.mesclada = true;
     m.userData.detalhe = b.det;
-    if (b.material.side === THREE.BackSide && b.material.isMeshBasicMaterial) m.userData.contorno = true;
     b.alvo.add(m);
   }
   return baldes.size;

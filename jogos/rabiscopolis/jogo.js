@@ -218,10 +218,10 @@ function iniciar() {
   jogo.palco.append(caixa);
   r3 = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
   r3.outputColorSpace = THREE.SRGBColorSpace;
-  r3.toneMapping = THREE.ACESFilmicToneMapping;
+  r3.toneMapping = THREE.NoToneMapping; // cores vivas de plástico, sem o apagado do filme
   r3.toneMappingExposure = 1.0;
   r3.shadowMap.enabled = true;
-  r3.shadowMap.type = THREE.PCFSoftShadowMap;
+  r3.shadowMap.type = THREE.PCFShadowMap; // borda macia e limpa (sem o granulado do Soft em paredes retas)
   caixa.append(r3.domElement);
   const ajustar = () => { const w = caixa.clientWidth || innerWidth, h = caixa.clientHeight || innerHeight; r3.setPixelRatio(qualidade.calcular(w, h)); r3.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); };
   qualidade = criarQualidade(r3, () => ajustar());
@@ -237,7 +237,7 @@ function iniciar() {
   otimizarRabisco(rabisco);
   if (salvo.roupas?.[0] && PROFISSOES[salvo.roupas[0]]) setTimeout(() => vestir(salvo.roupas[0]), 0);
   // celular: neblina mais perto, menos blocos e carros desenhados
-  if (qualidade.perfil.toque) { mundo.alcance = 95; mundo.contornoAte = 20; mundo.detalheAte = 35; cena.fog.far = 95; cena.fog.near = 40; }
+  if (qualidade.perfil.toque) { mundo.alcance = 95; mundo.detalheAte = 35; cena.fog.far = 95; cena.fog.near = 40; }
   j.pos.set(LARGADA.x, 0.07, LARGADA.z); j.vel.set(0, 0, 0); j.dir = LARGADA.dir; camera.st.yaw = LARGADA.dir;
   for (const v of VAGAS) { const q = criarVeiculo(v.tipo, v.cor); q.pos.set(v.x, 0.03, v.z); q.ang = v.ang; cena.add(q.g, q.parado); animarVeiculo(q, 0, 0); veiculos.push(q); }
   transito = criarTransito(cena);
