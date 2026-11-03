@@ -72,7 +72,29 @@ export const PECAS_RP = {
     pc(new G.SphereGeometry(0.1, 10, 8), 0xff8cc0, g, { borda: 0.02, y: 0.48 });
     return [g];
   } },
+  // profissões curtas (profissoes.js): boné e colete de trabalho, com faixa refletiva
+  "bone-speedy": { slot: "cabeca", escondeAba: true, monta: (rb) => [boneLiso(rb, 0x1f4f8a, 0xffffff)] },
+  "colete-speedy": { slot: "corpo", monta: (rb) => [pano(rb, { cor: 0x2f8fe8, yTopo: 3.3, yBaixo: 2.0, raio: 0.63, aberto: true }), faixa(rb, 0xdfe6ee, 2.45)] },
+  "bone-reciclagem": { slot: "cabeca", escondeAba: true, monta: (rb) => [boneLiso(rb, 0x2e9e57, 0xffd23f)] },
+  "colete-reciclagem": { slot: "corpo", monta: (rb) => [pano(rb, { cor: 0x58c43a, yTopo: 3.3, yBaixo: 2.0, raio: 0.63, aberto: true }), faixa(rb, 0xffd23f, 2.45)] },
 };
+// boné de uma cor só, com a aba e o botão de cima de outra cor
+function boneLiso(rb, cor, detalhe) {
+  const g = noTronco(rb, 4.74);
+  const copa = new G.Mesh(new G.SphereGeometry(0.64, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), toon(cor));
+  copa.scale.y = 0.75; comContorno(copa, 0.04); g.add(copa);
+  const aba = pc(new G.CylinderGeometry(0.42, 0.42, 0.05, 24, 1, false, -Math.PI / 2, Math.PI), cor, g, { borda: 0.02, z: 0.45 });
+  aba.scale.z = 1.4;
+  pc(new G.SphereGeometry(0.1, 10, 8), detalhe, g, { borda: 0.02, y: 0.48 });
+  pc(new G.BoxGeometry(0.36, 0.16, 0.04), detalhe, g, { borda: 0, y: 0.2, z: 0.6 }).rotation.x = -0.35;
+  return g;
+}
+// faixa refletiva em volta do colete
+function faixa(rb, cor, y) {
+  const g = noTronco(rb, y);
+  pc(new G.CylinderGeometry(0.645, 0.645, 0.14, 28, 1, true, 0.35, Math.PI * 2 - 0.7), cor, g, { borda: 0, extra: { side: G.DoubleSide } });
+  return g;
+}
 function gola(rb, cor) {
   const g = noTronco(rb, 3.42);
   const t = pc(new G.TorusGeometry(0.6, 0.09, 8, 28), cor, g, { borda: 0.02 }); t.rotation.x = Math.PI / 2;
@@ -90,6 +112,8 @@ export const PROFISSOES = {
   caixa: { nome: "Caixa do mercado", pecas: ["avental-verde", "cracha"] },
   bibliotecario: { nome: "Bibliotecário", pecas: ["oculos-redondo", "colete", "cracha"] },
   coral: { nome: "Cantor do coral", pecas: ["beca"] },
+  entregador: { nome: "Entregador da Speedy", pecas: ["bone-speedy", "colete-speedy"] },
+  reciclagem: { nome: "Ajudante da reciclagem", pecas: ["bone-reciclagem", "colete-reciclagem"] },
 };
 
 export function tirarProfissao(rb) {

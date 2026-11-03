@@ -143,5 +143,8 @@ Object.assign(FALAS_PT, {
   "rp-album-pagina-versiculos": "Página completa! Você juntou todos os versículos. Ganhou Rabiscoins de bônus!",
   "rp-album-pagina-lugares": "Página completa! Você visitou todos os lugares da cidade. Ganhou Rabiscoins de bônus!",
 });
+// profissões curtas (profissoes-dados.js): explicação na 1ª vez, tarefas e fim do turno; quem fala é a anfitriã
+const { FALAS_TRABALHO } = await import(`data:text/javascript,${encodeURIComponent(readFileSync(new URL("./profissoes-dados.js", import.meta.url), "utf8"))}`);
+Object.assign(FALAS_PT, FALAS_TRABALHO);
 writeFileSync(new URL("./falas.json", import.meta.url), JSON.stringify({ pt: FALAS_PT }, null, 1) + "\n");
 console.log(`${Object.keys(FALAS_PT).length} falas em português`);

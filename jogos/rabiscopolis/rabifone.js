@@ -1,6 +1,7 @@
-// Rabiscolândia: o Rabifone, o celular do jogo. Menu HTML com 8 apps (Casa, Garagem, Mapa, Dia/Noite, o Passaporte
+// Rabiscolândia: o Rabifone, o celular do jogo. Menu HTML com 9 apps (Casa, Garagem, Mapa, Dia/Noite, o Passaporte
 // das missões, com os selos, o Meu Rabisco, que abre a tela de vestir o Rabisco, o Ateliê, com o saldo de Rabiscoins e a
-// loja de visual, e o Presente do dia, com o calendário de 7 dias do baú e a Missão do dia) que dá para
+// loja de visual, o Presente do dia, com o calendário de 7 dias do baú e a Missão do dia, e o Trabalhar, com as profissões
+// curtas de profissoes.js) que dá para
 // usar no toque, no mouse, no teclado (setas, Enter, Esc) e no controle (direcional, A confirma, B volta): os itens
 // têm data-foco e o foco anda pela grade, como nos menus da casca.
 //
@@ -18,6 +19,7 @@ const APPS = [
   { id: "atelie", icone: "🎨", nome: "Ateliê", cor: "#8e6cff" },
   { id: "presente", icone: "🎁", nome: "Presente", titulo: "Presente do dia", cor: "#ffcc1f" },
   { id: "album", icone: "📒", nome: "Álbum", titulo: "Álbum de figurinhas", cor: "#58c43a" },
+  { id: "trabalhar", icone: "💼", nome: "Trabalhar", cor: "#2e9e57" },
 ];
 const VEICULOS = [
   { tipo: "carro", cor: 0xec2e8c, nome: "Carro rosa", emoji: "🚗" },
@@ -84,6 +86,8 @@ export function criarRabifone(onde, cb) {
         mostrarPresente(lista);
       } else if (id === "album") {
         cb.montarAlbum?.(tela, lista, { botao }); // Álbum de figurinhas (album-ui.js)
+      } else if (id === "trabalhar") {
+        mostrarTrabalho(lista);
       } else if (id === "meurabisco") {
         api.fechar(); cb.aoMeuRabisco?.(); return;
       } else if (id === "passaporte") {
@@ -140,6 +144,27 @@ export function criarRabifone(onde, cb) {
       lista.append(box);
       if (!M.feita) lista.append(botao(`<span class="rf-emoji">🧭</span>Ir para a Missão do dia`, () => { cb.aoMissao?.("caminho", M.id); api.fechar(); }));
     }
+  }
+  // Trabalhar (profissoes.js): as 3 profissões curtas, o que rende e, com turno ativo, o andamento e o botão de terminar
+  //   cb.trabalho() → { ativa: { id, titulo, icone, feitas, total, ganhou } | null, lista: [{ id, titulo, icone, resumo, turnos, insta, rende }], bonus }
+  function mostrarTrabalho(lista) {
+    const W = cb.trabalho?.() ?? { lista: [] }, A = W.ativa;
+    const p = document.createElement("p");
+    p.innerHTML = A ? `${A.icone} <b>${A.titulo}</b>: ${A.feitas} de ${A.total} tarefas · <b class="rf-moedas">${A.ganhou}</b> Rabiscoins até agora.`
+      : `Turnos curtinhos de faz de conta! Cada tarefa rende Rabiscoins e o turno completo dá <b>+${W.bonus}</b> de bônus.`;
+    tela.insertBefore(p, lista);
+    if (A) {
+      lista.append(botao(`<span class="rf-emoji">🛑</span>Terminar o turno agora`, () => { cb.aoTrabalho?.("terminar"); api.fechar(); }));
+      return;
+    }
+    for (const t of W.lista) {
+      const b = botao(`<span class="rf-emoji">${t.icone}</span><span class="rf-missao">${t.titulo}<small>${t.resumo}${t.insta ? ` · @${t.insta}` : ""}</small></span><span class="rf-selo">${t.turnos ? `✅${t.turnos > 1 ? t.turnos : ""}` : "▶️"}</span>`, () => { api.fechar(); cb.aoTrabalho?.("comecar", t.id); }, "rf-item-missao");
+      b.dataset.trabalho = t.id;
+      lista.append(b);
+    }
+    const dica = document.createElement("p"); dica.className = "rf-dica";
+    dica.textContent = "Também dá para começar no ponto 💼 ao lado da Speedy Soluções, do galpão da Marlon Máquinas e dos Bombeiros. Pode parar quando quiser: o que já fez fica com você.";
+    lista.append(dica);
   }
   // paleta de cores da casa por fora
   function mostrarCores() {
