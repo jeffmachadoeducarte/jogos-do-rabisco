@@ -43,6 +43,11 @@ async function missaoTreino(t) {
   return ate(t, "teste.missoes.ativa === null && teste.missoes.feitas.includes('exercicio')", 8000);
 }
 const SALDO = "teste.Rabiscoins.saldo()";
+// vértices da cor `hex` nas fusões de roupa VISÍVEIS presas em `pai` (o jogo junta as peças de cada articulação numa malha só)
+const NA_FUSAO = (pai, hex) => `((pai, hex) => { const C = teste.rabisco.bone.material.color.constructor, alvo = new C(hex); let n = 0;
+  for (const f of teste.rabisco.rp.fusoes ?? []) { if (f.parent !== pai) continue; let v = true; for (let p = f; p; p = p.parent) if (!p.visible) v = false; if (!v) continue;
+    f.traverse((o) => { const a = o.geometry?.attributes?.color; if (!a) return; for (let i = 0; i < a.count; i++) if (Math.abs(a.getX(i) - alvo.r) + Math.abs(a.getY(i) - alvo.g) + Math.abs(a.getZ(i) - alvo.b) < 0.02) n++; }); }
+  return n; })(${pai}, ${hex})`;
 const CONTADOR = "Number(document.querySelector('.rbc-contador b')?.textContent)";
 
 // ================================================================ TV/computador (teclado)
@@ -91,6 +96,9 @@ const CONTADOR = "Number(document.querySelector('.rbc-contador b')?.textContent)
   ok(Boolean(provando) && await t.ev(SALDO) === 25, `andar pelas peças só prova (${provando}); nada foi comprado`);
   await tecla(t, "Escape"); await espera(500);
   ok(!(await t.ev("teste.atelie.aberto")), "Esc fechou a loja");
+  ok(!(await t.ev("teste.jogo.pausado")), "o Esc da loja não pausou o jogo");
+  await t.ev("teste.meuRb.abrir()"); await espera(800); await tecla(t, "Escape"); await espera(500);
+  ok(!(await t.ev("teste.meuRb.aberto")) && !(await t.ev("teste.jogo.pausado")), "Esc também fecha o Meu Rabisco (sem pausar)");
 
   // ---- recusar sem saldo
   await t.ev("teste.abrirAtelie('chapeu')"); await espera(800);
@@ -110,21 +118,30 @@ const CONTADOR = "Number(document.querySelector('.rbc-contador b')?.textContent)
   await t.ev("teste.Rabiscoins.ganhar(400, 'teste')");
   await t.ev("teste.atelie.aba('camiseta'); teste.atelie.escolher('rosa'); teste.atelie.fazer()");
   await t.ev("teste.atelie.aba('chapeu'); teste.atelie.escolher('cartola'); teste.atelie.fazer()"); await espera(400);
-  const cena = await t.ev(`(() => { const rb = teste.rabisco, g = rb.rp.grupos; const naCena = (o) => { for (let p = o; p; p = p.parent) { if (!p.visible) return false; if (p === teste.cena) return true; } return false; };
-    const malhas = (gs) => (gs ?? []).flatMap((x) => { const l = []; x.traverse((o) => { if (o.isMesh) l.push(o); }); return l; });
-    const cam = malhas(g.camiseta), cha = malhas(g.chapeu);
-    const corCam = cam.some((m) => m.material.color?.getHexString() === 'f14ba8' || (m.geometry.attributes.color && m.material.vertexColors));
-    return { cam: cam.length, camVisivel: (g.camiseta ?? []).every(naCena), noTronco: (g.camiseta ?? [])[0]?.parent === rb.tronco, mangas: (g.camiseta ?? []).slice(1).every((x) => x.parent === rb.bracoE.ombro || x.parent === rb.bracoD.ombro), corCam, cha: cha.length, chaVisivel: (g.chapeu ?? []).every(naCena), aba: rb.pivoAba.visible, bone: rb.bone.material.color.getHexString() }; })()`);
-  ok(cena.cam > 0 && cena.camVisivel && cena.noTronco && cena.mangas && cena.corCam, `grafo de cena: camiseta rosa no tronco e nas mangas do Rabisco da cidade (${JSON.stringify(cena)})`);
-  ok(cena.cha > 0 && cena.chaVisivel && !cena.aba && cena.bone !== "f14ba8", "grafo de cena: cartola na cabeça, a aba do boné escondida e o boné voltou ao laranja");
+  const cena = await t.ev(`(() => { const rb = teste.rabisco, g = rb.rp.grupos;
+    return { camiseta: (g.camiseta ?? []).length, noTronco: g.camiseta?.[0]?.parent === rb.tronco, mangas: (g.camiseta ?? []).slice(1).every((x) => x.parent === rb.bracoE.ombro || x.parent === rb.bracoD.ombro),
+      rosaTronco: ${NA_FUSAO("rb.tronco", 0xf14ba8)}, rosaManga: ${NA_FUSAO("rb.bracoE.ombro", 0xf14ba8)} + ${NA_FUSAO("rb.bracoD.ombro", 0xf14ba8)},
+      cartola: ${NA_FUSAO("rb.tronco", 0x2a2a33)}, fusoes: rb.rp.fusoes.length, aba: rb.pivoAba.visible, bone: rb.bone.material.color.getHexString() }; })()`);
+  ok(cena.camiseta === 3 && cena.noTronco && cena.mangas && cena.rosaTronco > 100 && cena.rosaManga > 50, `grafo de cena: camiseta rosa no tronco e nas mangas do Rabisco da cidade (${JSON.stringify(cena)})`);
+  ok(cena.cartola > 100 && !cena.aba && cena.bone !== "f14ba8", "grafo de cena: cartola na cabeça, a aba do boné escondida e o boné voltou ao laranja");
   ok(JSON.stringify(await t.ev("[teste.pecas.camiseta, teste.pecas.chapeu]")) === '["rosa","cartola"]', "vestido: camiseta rosa e cartola");
   // trocar de volta ao original e vestir de novo (o que já é seu não cobra de novo)
   const s0 = await t.ev(SALDO);
   await t.ev("teste.atelie.aba('chapeu'); teste.atelie.escolher('cartola'); teste.atelie.fazer()"); await espera(300);
-  ok((await t.ev("teste.pecas.chapeu")) === "original" && await t.ev("teste.rabisco.pivoAba.visible && !(teste.rabisco.rp.grupos.chapeu?.length)"), "↩ Tirar: volta o boné original com a aba");
+  ok((await t.ev("teste.pecas.chapeu")) === "original" && await t.ev(`teste.rabisco.pivoAba.visible && !(teste.rabisco.rp.grupos.chapeu?.length) && ${NA_FUSAO("teste.rabisco.tronco", 0x2a2a33)} === 0`), "↩ Tirar: volta o boné original com a aba");
   await t.ev("teste.atelie.escolher('cartola'); teste.atelie.fazer()"); await espera(300);
   ok((await t.ev("teste.pecas.chapeu")) === "cartola" && await t.ev(SALDO) === s0, "vestir de novo o que já é seu não cobra nada");
   await t.ev("teste.atelie.fechar()");
+
+  // ---- o capacete da moto guarda a cartola embaixo dele e devolve ao descer
+  await t.ev("teste.ir(0, 20); teste.olhar(0)"); await espera(300);
+  ok((await t.ev("teste.garagem('moto')")) != null, "moto chamada pelo Rabifone");
+  await t.ev("teste.entrar(teste.veiculos.indexOf(teste.garagemAtual))"); await espera(500);
+  const moto = await t.ev(`({ dentro: teste.modo, capacete: teste.rabisco.emCapacete, cartola: ${NA_FUSAO("teste.rabisco.tronco", 0x2a2a33)}, aba: teste.rabisco.pivoAba.visible })`);
+  ok(moto.dentro === "veiculo" && moto.capacete && moto.cartola === 0 && !moto.aba, `na moto o capacete esconde a cartola (${JSON.stringify(moto)})`);
+  await t.ev("teste.sair()"); await espera(500);
+  const desceu = await t.ev(`({ modo: teste.modo, capacete: teste.rabisco.emCapacete, cartola: ${NA_FUSAO("teste.rabisco.tronco", 0x2a2a33)}, aba: teste.rabisco.pivoAba.visible })`);
+  ok(desceu.modo === "rua" && !desceu.capacete && desceu.cartola > 100 && !desceu.aba, `ao descer a cartola volta (a aba segue escondida) (${JSON.stringify(desceu)})`);
 
   // ---- pintura: helicóptero laranja e carro roxo, chamados pelo Rabifone
   await t.ev("teste.abrirAtelie('veiculo')"); await espera(800);
@@ -151,7 +168,7 @@ const CONTADOR = "Number(document.querySelector('.rbc-contador b')?.textContent)
 
   // ---- recarregar: compras, roupa vestida e pinturas continuam
   await t.cmd("Page.reload"); await esperarJogo(t);
-  ok(JSON.stringify(await t.ev("[teste.pecas.camiseta, teste.pecas.chapeu]")) === '["rosa","cartola"]' && await t.ev("teste.rabisco.rp.grupos.camiseta?.length > 0 && !teste.rabisco.pivoAba.visible"), "depois de recarregar o Rabisco continua de camiseta rosa e cartola");
+  ok(JSON.stringify(await t.ev("[teste.pecas.camiseta, teste.pecas.chapeu]")) === '["rosa","cartola"]' && await t.ev(`${NA_FUSAO("teste.rabisco.tronco", 0xf14ba8)} > 100 && !teste.rabisco.pivoAba.visible`), "depois de recarregar o Rabisco continua de camiseta rosa e cartola");
   ok(await t.ev("teste.Rabiscoins.tem('rabiscolandia:pintura:heli-laranja') && teste.salvo.pinturas.heli === 'heli-laranja'"), "a pintura comprada continua");
   // peça paga que não foi comprada (salvo mexido à mão) não vale
   await t.ev("(() => { const k = 'rabisco.rabiscopolis.v1', d = JSON.parse(localStorage.getItem(k)); d.meuRabisco.chapeu = 'coroa'; localStorage.setItem(k, JSON.stringify(d)); })()");
@@ -194,9 +211,21 @@ const CONTADOR = "Number(document.querySelector('.rbc-contador b')?.textContent)
   ok((await t.ev("teste.pecas.oculos")) === "grandao" && await t.ev(SALDO) === 10, `tocar no botão grande comprou e vestiu o óculos (saldo ${await t.ev(SALDO)})`);
   await t.toque(".atl-ok"); await espera(500);
   ok(!(await t.ev("teste.atelie.aberto")), "✓ Pronto fechou a loja no toque");
+  // vestido inteiro (camiseta + chapéu + óculos + mochila): continua no orçamento do celular
+  await t.ev("teste.Rabiscoins.ganhar(1000, 'teste'); teste.abrirAtelie('camiseta'); for (const [c, id] of [['camiseta', 'listrada'], ['chapeu', 'cartola'], ['oculos', 'piloto'], ['mochila', 'foguete']]) { teste.atelie.aba(c); teste.atelie.escolher(id); teste.atelie.fazer(); } teste.atelie.fechar()");
+  await espera(600);
+  const mv = {};
+  for (const [nome, [x, z, yaw]] of Object.entries({ "praça": [0, 33, Math.PI], "frente da loja": [17, 20, Math.PI / 2], "porta da loja": [21.5, 20, Math.PI / 2], "loja de lado": [20, 40, 2.4] })) {
+    await t.ev(`teste.ir(${x}, ${z}); teste.olhar(${yaw})`); await espera(900);
+    mv[nome] = (await t.ev("teste.medir().total")).calls;
+    ok(mv[nome] <= 180, `celular vestido, ${nome}: ${mv[nome]} chamadas (≤ 180)`);
+  }
+  // o custo só do Rabisco (sem o resto da cidade): malhas visíveis dele e quantas fazem sombra
+  const custoRb = await t.ev("(() => { let n = 0, s = 0; teste.rabisco.grupo.traverseVisible((o) => { if (o.isMesh) { n++; if (o.castShadow) s++; } }); return { malhas: n, sombra: s, fusoes: teste.rabisco.rp.fusoes.length }; })()");
+  console.log("Rabisco vestido:", JSON.stringify(custoRb));
   const er = errosDeVerdade(t);
   ok(!er.length, `celular sem erro de console ${er.slice(0, 3).join(" | ")}`);
-  console.log("celular:", JSON.stringify(m));
+  console.log("celular:", JSON.stringify(m), "· vestido:", JSON.stringify(mv));
   await t.fechar();
 }
 

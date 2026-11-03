@@ -165,9 +165,11 @@ addEventListener("keydown", (e) => {
   if (e.code.startsWith("Arrow")) e.preventDefault();
 });
 addEventListener("keyup", (e) => teclas.delete(e.code));
-// Esc com o Ateliê aberto fecha a loja (antes da pausa da casca, que também ouve o Esc)
+// Esc com o Ateliê ou o Meu Rabisco aberto fecha a tela (antes da pausa da casca, que também ouve o Esc)
 addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && atelieUI?.aberto && !jogo.pausado) { e.preventDefault(); e.stopImmediatePropagation(); atelieUI.voltar(); }
+  if (e.key !== "Escape" || jogo.pausado || e.target?.matches?.("input, textarea")) return; // no campo do nome o Esc só sai do campo
+  const tela = atelieUI?.aberto ? atelieUI : meuRb?.aberto ? meuRb : null;
+  if (tela) { e.preventDefault(); e.stopImmediatePropagation(); tela.voltar(); }
 }, { capture: true });
 function lerControle({ segura, apertou, eixoX, eixoY }) {
   if (sorveteUI?.aberto) {

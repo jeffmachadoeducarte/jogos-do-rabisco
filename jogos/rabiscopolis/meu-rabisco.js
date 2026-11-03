@@ -338,10 +338,12 @@ export function prepararRoupa(rb) {
 function soltar(grupos) {
   for (const g of grupos) { g.removeFromParent(); g.traverse((m) => { if (m.isMesh) m.geometry.dispose(); }); }
 }
-// aplica a escolha (só mexe no que mudou). juntar: mescla cada peça nova em poucas malhas (o jogo); sem isso as peças ficam
-// soltas (a prévia da tela Meu Rabisco, que não tem pressa)
+// aplica a escolha (só mexe no que mudou). juntar (o jogo): todas as peças presas na mesma articulação viram UMA fusão
+// mesclada (fundir, abaixo), e as peças de verdade ficam guardadas e escondidas; sem isso as peças ficam soltas (a prévia
+// da tela Meu Rabisco e do Ateliê, que não têm pressa)
 export function vestirPecas(rb, escolha, { juntar = false } = {}) {
   if (!rb.rp) prepararRoupa(rb);
+  if (juntar) rb.rp.juntar = true;
   for (const slot of SLOTS) {
     const id = escolha?.[slot] ?? ESCOLHA_PADRAO[slot];
     if (rb.rp.atual[slot] === id) continue;
@@ -352,7 +354,7 @@ export function vestirPecas(rb, escolha, { juntar = false } = {}) {
     if (op.monta) {
       const gs = op.monta(rb);
       rb.rp.grupos[slot] = gs;
-      if (juntar) for (const g of gs) mesclar(g);
+      if (rb.rp.juntar) for (const g of gs) g.userData.dinamico = true; // a mesclagem do Rabisco inteiro não mexe nelas
     }
     rb.rp.atual[slot] = id;
   }
@@ -366,13 +368,52 @@ export function ajustarUniforme(rb) {
   const botas = Boolean(rb.roupas?.pes);
   const rosto = Boolean(rb.roupas?.rosto || rb.roupasRP?.rosto);
   const cabeca = Boolean(rb.roupas?.cabeca || rb.roupasRP?.cabeca || rb.emCapacete);
-  for (const g of rb.rp.grupos.sapatos ?? []) g.visible = !botas;
-  for (const g of rb.rp.grupos.oculos ?? []) g.visible = !rosto;
-  for (const g of rb.rp.grupos.chapeu ?? []) g.visible = !cabeca;
+  rb.rp.vis = { sapatos: !botas, oculos: !rosto, chapeu: !cabeca };
+  if (rb.rp.juntar) fundir(rb);
+  else for (const [slot, gs] of Object.entries(rb.rp.grupos)) for (const g of gs) g.visible = rb.rp.vis[slot] !== false;
   const ch = opcaoDe("chapeu", rb.rp.atual.chapeu);
   if (rb.pivoAba && !rb.emCapacete) {
     const uniformeEsconde = Boolean(rb.roupasRP?.cabeca) || Boolean(rb.roupas?.cabeca && ROUPAS[rb.roupas.cabeca.id]?.escondeAba);
     rb.pivoAba.visible = !uniformeEsconde && !(ch?.escondeAba && !cabeca);
+  }
+}
+// Fusão das roupas (o jogo): cada articulação (tronco, ombros, quadris, joelhos, pés) ganha um só grupo com a cópia de todas
+// as peças visíveis presas nela, mesclado de uma vez: com camiseta, chapéu, óculos e mochila o Rabisco custa ~6 chamadas a
+// mais, e não ~15 (uma malha por peça). Brilhos brancos dividem um só material; as capas das mangas não fazem sombra (a da
+// manga de baixo já é igual) e o resto faz. Refeita a cada troca e quando uniforme ou capacete escondem alguma peça.
+const BASICOS = new Map();
+function fundir(rb) {
+  for (const f of rb.rp.fusoes ?? []) { f.removeFromParent(); f.traverse((o) => { if (o.isMesh) o.geometry.dispose(); }); }
+  rb.rp.fusoes = [];
+  const porPai = new Map();
+  for (const [slot, gs] of Object.entries(rb.rp.grupos)) for (const g of gs) {
+    g.visible = false;
+    if (rb.rp.vis?.[slot] === false || !g.parent) continue;
+    if (!porPai.has(g.parent)) porPai.set(g.parent, []);
+    porPai.get(g.parent).push(g);
+  }
+  const ombros = new Set([rb.bracoE?.ombro, rb.bracoD?.ombro]);
+  for (const [pai, gs] of porPai) {
+    const f = new G.Group();
+    f.userData.fusaoRoupa = true;
+    for (const g of gs) {
+      const c = g.clone(true);
+      c.visible = true;
+      c.traverse((o) => {
+        o.userData.dinamico = false;
+        if (!o.isMesh) return;
+        const m = o.material;
+        if (m.isMeshBasicMaterial && !m.map && !m.transparent) {
+          const k = `${m.color.getHex()}|${m.side}`;
+          if (!BASICOS.has(k)) BASICOS.set(k, new G.MeshBasicMaterial({ color: m.color.getHex(), side: m.side }));
+          o.material = BASICOS.get(k);
+        } else if (m.isMeshToonMaterial && !m.map) o.castShadow = !ombros.has(pai);
+      });
+      f.add(c);
+    }
+    pai.add(f);
+    mesclar(f);
+    rb.rp.fusoes.push(f);
   }
 }
 export const escolhaAtual = (rb) => ({ ...(rb.rp?.atual ?? ESCOLHA_PADRAO) });
