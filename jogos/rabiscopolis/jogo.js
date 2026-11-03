@@ -247,7 +247,7 @@ function atualizarPlaca() {
   if (!nome) { if (placaNome) placaNome.sprite.visible = false; return; }
   if (!placaNome) {
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false }));
-    sprite.scale.set(1.25, 0.37, 1); sprite.position.y = 2.05; sprite.renderOrder = 7;
+    sprite.scale.set(0.76, 0.22, 1); sprite.position.y = 1.97; sprite.renderOrder = 7;
     rabisco.grupo.add(sprite);
     placaNome = { sprite, nome: null };
   }
