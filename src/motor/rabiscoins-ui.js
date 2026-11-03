@@ -3,7 +3,8 @@
 // (Web Audio, gerados na hora pela mesma saída de src/motor/sons.js: o mudo da casca vale aqui também).
 //
 //   const c = criarContador(hud);   c.ganhou(20);   c.atualizar();   c.el
-//   somMoedas(qtd) · somCompra() · somFalta() · ICONE_MOEDA (svg em texto)
+//   c.ganhou(15, { rotulo: "⭐ Missão do dia", alvo })   (rotulo: texto antes do "+15"; alvo: até onde o número conta)
+//   somMoedas(qtd) · somCompra() · somFalta() · tocar8bit([[hz, início, duração, tipo, volume]]) · ICONE_MOEDA (svg em texto)
 
 import { sons } from "./sons.js";
 import { saldo, aoMudar } from "./rabiscoins.js";
@@ -36,6 +37,7 @@ function tocar(notas) {
     o.start(t0 + ini); o.stop(t0 + ini + dur + 0.02);
   }
 }
+export { tocar as tocar8bit };
 const hz = (semi) => 440 * 2 ** (semi / 12); // semitons a partir do Lá 4
 // ganho: "plim-plim" subindo (D6 F#6 A6), com mais um degrau quando o ganho é grande
 export function somMoedas(qtd = 5) {
@@ -69,6 +71,7 @@ function estilo() {
 @keyframes rbc-pulo { 0% { transform: scale(1); } 35% { transform: scale(1.25); background: #fff4c2; } 100% { transform: scale(1); } }
 .rbc-mais { position: absolute; z-index: 30; pointer-events: none; display: flex; align-items: center; gap: 4px; font: 800 30px 'Baloo 2', sans-serif; color: #fff; -webkit-text-stroke: 6px #151515; paint-order: stroke fill; text-shadow: 0 4px 0 #151515; }
 .rbc-mais .rbc-moeda { width: 34px; height: 34px; }
+.rbc-mais .rbc-rotulo { font-size: 22px; -webkit-text-stroke-width: 5px; margin-right: 4px; }
 .rbc-voa { position: absolute; z-index: 30; pointer-events: none; width: 30px; height: 30px; }
 .rbc-voa .rbc-moeda { width: 100%; height: 100%; }
 @media (max-height: 520px) { .rbc-contador { height: 26px; font-size: 14px; border-width: 3px; padding-right: 9px; } .rbc-contador .rbc-moeda { width: 20px; height: 20px; } .rbc-mais { font-size: 24px; } }
@@ -101,13 +104,13 @@ export function criarContador(onde, { camada = onde } = {}) {
     el,
     atualizar() { cancelAnimationFrame(anim); mostrado = saldo(); pintar(mostrado); },
     // ganho com festa: "+20" sobe do meio da tela, as moedinhas voam até o contador e o número conta para cima
-    ganhou(qtd, { som = true } = {}) {
+    ganhou(qtd, { som = true, rotulo = "", alvo: ate = null } = {}) {
       if (som) somMoedas(qtd);
-      const alvo = saldo();
+      const alvo = ate ?? saldo();
       const caixa = camada.getBoundingClientRect(), r = el.getBoundingClientRect();
       const cx = caixa.width / 2, cy = caixa.height * 0.42, tx = r.left - caixa.left + 18, ty = r.top - caixa.top + 17;
       const mais = document.createElement("div");
-      mais.className = "rbc-mais"; mais.innerHTML = `+${qtd} ${ICONE_MOEDA}`;
+      mais.className = "rbc-mais"; mais.innerHTML = `${rotulo ? `<span class="rbc-rotulo">${rotulo}</span>` : ""}+${qtd} ${ICONE_MOEDA}`;
       mais.style.left = `${cx}px`; mais.style.top = `${cy}px`;
       camada.append(mais);
       // o contador sobe quando as moedinhas chegam (pelo relógio, não pelo fim da animação: aparelho lento não trava o número)
