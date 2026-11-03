@@ -34,9 +34,10 @@ import { prepararRoupa, vestirPecas, escolhaSalva, ajustarUniforme } from "./meu
 import { criarToque } from "./toque.js";
 import { carregar, salvar } from "./salvar.js";
 import { criarQualidade } from "./qualidade.js";
-import { montarInterior, colocar, solidosDosMoveis, cabe, pegadaDoMovel, PLANTAS, verificar } from "./interiores.js";
-import { MOVEIS, CORES_MOVEL, VERSICULOS } from "./moveis.js";
-import { criarDecorar } from "./decorar.js";
+import { PLANTAS, verificar } from "./interiores.js";
+import { montarCasa } from "./casa-3d.js";
+import { criarModoDecorar } from "./casa-decorar.js";
+import { lerCasa, migrarCasaAntiga } from "./casa-dados.js";
 import { recolorirParedes } from "./casas.js";
 import { montarSala, SALAS, tocarNotas, MUSIQUINHA } from "./lugares-dentro.js";
 import { vestirProfissao, tirarProfissao, PROFISSOES } from "./roupas-rp.js";
@@ -135,13 +136,7 @@ addEventListener("keydown", (e) => {
     if (e.code === "Escape" || e.code === "Backspace") { sorveteUI.fechar(); e.preventDefault(); }
     return;
   }
-  if (deco?.aberto) {
-    const mapa = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], KeyA: [-1, 0], KeyD: [1, 0], KeyW: [0, -1], KeyS: [0, 1] };
-    if (mapa[e.code]) { deco.navegar(...mapa[e.code]); e.preventDefault(); return; }
-    if (e.code === "Enter" || e.code === "Space" || e.code === "KeyF") { deco.confirmar(); e.preventDefault(); return; }
-    if (e.code === "Escape" || e.code === "Backspace") { deco.cancelar(); e.preventDefault(); }
-    return;
-  }
+  if (decoCasa?.ativo) { if (decoCasa.tecla(e)) e.preventDefault(); return; } // modo Decorar da casa (casa-decorar.js)
   if (atelieUI?.aberto) {
     const mapa = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], KeyA: [-1, 0], KeyD: [1, 0], KeyW: [0, -1], KeyS: [0, 1] };
     if (mapa[e.code]) { atelieUI.navegar(...mapa[e.code]); e.preventDefault(); return; }
@@ -177,6 +172,7 @@ addEventListener("keydown", (e) => {
   if (e.key !== "Escape" || jogo.pausado || e.target?.matches?.("input, textarea")) return; // no campo do nome o Esc só sai do campo
   const tela = atelieUI?.aberto ? atelieUI : meuRb?.aberto ? meuRb : null;
   if (tela) { e.preventDefault(); e.stopImmediatePropagation(); tela.voltar(); }
+  else if (decoCasa?.ativo) { e.preventDefault(); e.stopImmediatePropagation(); decoCasa.tecla(e); } // Esc no Decorar: fecha o baú ou sai (salva)
 }, { capture: true });
 function lerControle({ segura, apertou, eixoX, eixoY }) {
   if (sorveteUI?.aberto) {
@@ -185,12 +181,7 @@ function lerControle({ segura, apertou, eixoX, eixoY }) {
     if (apertou.confirma) sorveteUI.confirmar(); else if (apertou.voltar) sorveteUI.fechar();
     return;
   }
-  if (deco?.aberto) {
-    if (apertou.esq) deco.navegar(-1, 0); if (apertou.dir) deco.navegar(1, 0);
-    if (apertou.cima) deco.navegar(0, -1); if (apertou.baixo) deco.navegar(0, 1);
-    if (apertou.confirma) deco.confirmar(); else if (apertou.voltar) deco.cancelar();
-    return;
-  }
+  if (decoCasa?.ativo) { decoCasa.controle({ apertou, eixoX, eixoY }); return; }
   if (atelieUI?.aberto) {
     if (apertou.esq) atelieUI.navegar(-1, 0); if (apertou.dir) atelieUI.navegar(1, 0);
     if (apertou.cima) atelieUI.navegar(0, -1); if (apertou.baixo) atelieUI.navegar(0, 1);
@@ -248,7 +239,7 @@ let transito = [], moradores = [], vovo = null, missoes = null, j2 = null, patio
 let natal = null; // Natal na cidade (natal.js: de 1º/12 a 6/1, ou ?natal=1): luzes, árvore, presépio e música da praça
 let dentro = null, contexto = null, salvo = carregar(), alvoMapa = null;
 let mapaLigado = false; // minimapa do canto: escondido ao começar; M, L3 e a ⚙️ mostram e escondem
-let emCasa = null, deco = null, fade = null; const interiores = {}; // casa por dentro (montada uma vez por planta)
+let emCasa = null, casaM = null, decoCasa = null, fade = null; // a casa da criança por dentro (casa-3d.js) e o modo Decorar
 let emLugar = null, sorveteUI = null; const salas = {}; // lugares por dentro (Fatia 3), montados na primeira visita
 let solidosDentro = []; // colisões da sala/casa em que o Rabisco está
 let entradaTeste = null;
@@ -383,17 +374,12 @@ function iniciar() {
     salvo: () => salvo, salvar: (d) => salvar(d), crianca: () => { try { return window.Familia?.crianca?.() || null; } catch { return null; } },
     otimizar: (rb) => otimizarRabisco(rb, () => j2?.modelo?.c?.rabisco === rb),
     veiculo: () => dentro, yaw: () => camera.st.yaw, caronaDaMissao: () => missoes?.carona,
-    travado: () => Boolean(fone?.aberto || deco?.aberto || sorveteUI?.aberto || meuRb?.aberto || atelieUI?.aberto),
+    travado: () => Boolean(fone?.aberto || decoCasa?.ativo || sorveteUI?.aberto || meuRb?.aberto || atelieUI?.aberto),
   });
   acaoJ2 = el("div", { class: "acao-j2-rp", hidden: "" }); caixa.append(acaoJ2);
   fade = el("div", { class: "fade-rp" }); caixa.append(fade);
   painelOracao = el("div", { class: "oracao-rp", hidden: "", "aria-live": "polite" }); caixa.append(painelOracao);
   sorveteUI = criarSorveteUI(caixa);
-  deco = criarDecorar(caixa, {
-    aoTrocar: (e) => { if (emCasa && pontoDeco) colocar(emCasa.int, pontoDeco, e); },
-    aoConfirmar: (e) => confirmarDeco(e),
-    aoCancelar: (orig) => { if (emCasa && pontoDeco) colocar(emCasa.int, pontoDeco, orig); pontoDeco = null; },
-  });
   fone = criarRabifone(caixa, {
     hora: () => ceu.horaAtual,
     aoAbrir: () => { teclas.clear(); toque.zerar(); },
@@ -472,7 +458,7 @@ function parar() {
   if (meuRb?.aberto) meuRb.fechar();
   if (atelieUI?.aberto) atelieUI.fechar();
   contadorMoedas?.destruir(); contadorMoedas = null;
-  emCasa = null; for (const k of Object.keys(interiores)) delete interiores[k];
+  emCasa = null; casaM = null; decoCasa?.raiz.remove(); decoCasa?.catalogo.raiz.remove(); decoCasa = null;
   emLugar = null; solidosDentro = []; for (const k of Object.keys(salas)) delete salas[k];
   radioUI?.sairDoCarro();
   if (r3) { r3.dispose(); r3 = null; }
@@ -567,12 +553,13 @@ function aplicarCasa() {
     if (c.grupo.userData.paredes.userData.cor !== cor) recolorirParedes(c.grupo.userData.paredes, cor);
   }
 }
-// ------------------------------------------------------------------ Casa por dentro (Fatia 2)
-// Planta A no Bairro das Casas, planta B na Vila das Flores. A casa é vista em corte (sem teto, frente baixinha);
-// a decoração é por pontos fixos com o carrossel (decorar.js) e fica guardada no aparelho (salvar.js: moveis).
+// ------------------------------------------------------------------ Casa por dentro (casa decorável)
+// A casa da criança tem um interior só (sala e quarto, casa-3d.js), igual em qualquer lote: trocar de casa leva os móveis.
+// O modo Decorar (casa-decorar.js) põe, gira, move e guarda móveis numa grade; o catálogo troca Rabiscoins por móveis
+// (casa-catalogo-ui.js). Tudo fica em salvo.casaDeco (casa-dados.js: lerCasa). A decoração antiga por pontos
+// (salvo.moveis) vira móveis de presente no baú, uma vez (migrarCasaAntiga).
 const CORES_PAREDE = [0xf59ac0, 0x8cc8f5, 0xffd86b, 0x9ee08a, 0xc8b0f5, 0xffb27a, 0x8fe3cf, 0xfff0c9, 0xffffff, 0xff8a8a];
-let pontoDeco = null;
-const plantaDe = (lote) => (lote.numero <= 8 ? "A" : "B");
+const hojeCasa = () => (hojeTeste ? dataDe(hojeTeste) : new Date()); // ?teste&hoje=AAAA-MM-DD vale para os móveis de Natal
 function trocarCorCasa(hex) {
   if (salvo.casa == null) return;
   salvo.corCasa = hex; salvar(salvo); aplicarCasa();
@@ -585,30 +572,54 @@ function trocarSolidosCasa(novos) {
   solidosDentro = novos;
   mundo.solidos.push(...novos);
 }
+function garantirCasa() {
+  if (casaM) return;
+  casaM = montarCasa(); casaM.grupo.visible = false; cena.add(casaM.grupo);
+  decoCasa = criarModoDecorar(caixa, {
+    casa: casaM, data: hojeCasa, camera: () => cam, canvas: r3.domElement, get r3() { return r3; },
+    salvar: (e) => { salvo.casaDeco = e; salvar(salvo); },
+    saldo: () => saldoRabiscoins(), comprados: () => Rabiscoins.comprados(),
+    trocar: (it) => comprarNaCarteira(it.idCarteira, it.preco),
+    falar: (k) => { radio?.pausarPorFala(true); falar(k); }, dizer: (...a) => dizer(...a), confete: () => jogo.confete?.(),
+    aoEntrar: () => { teclas.clear(); toque?.zerar(); fone?.fechar(); },
+    aoSair: () => { teclas.clear(); toque?.zerar(); },
+    // a colisão acompanha os móveis; se um móvel ficou em cima do Rabisco, ele dá um passinho para o lado
+    mudou: () => {
+      if (!emCasa) return;
+      trocarSolidosCasa([...casaM.solidos, ...casaM.solidosMoveis(decoCasa.estado.moveis, hojeCasa(), decoCasa.mao?.origem ?? -1)]);
+      if (fis.bate(j.pos.x, j.pos.z, 0.1)) { const [lx, lz] = fis.livre(j.pos.x, j.pos.z, 0.5); j.pos.x = lx; j.pos.z = lz; }
+    },
+  });
+}
 function entrarCasa(c, imediato = false) {
   if (emCasa || emLugar || dentro) return;
-  const id = plantaDe(c.lote);
   const fazer = () => {
-    if (!interiores[id]) { interiores[id] = montarInterior(id); cena.add(interiores[id].grupo); }
-    const int = interiores[id];
-    int.grupo.visible = true;
-    const salvos = salvo.moveis?.[c.lote.numero] ?? {};
-    for (const p of int.pontos) { const e = salvos[p.id] ?? null; if (JSON.stringify(e) !== JSON.stringify(p.escolha)) colocar(int, p, e); }
-    emCasa = { c, int, solidos: [] };
-    trocarSolidosCasa([...int.solidos, ...solidosDosMoveis(int)]);
-    j.pos.set(int.entrada[0], 0.07, int.entrada[1]); j.vel.set(0, 0, 0); j.dir = Math.PI;
+    garantirCasa();
+    casaM.grupo.visible = true;
+    const est = lerCasa(salvo);
+    if (!est.migrado) { // a casa antiga (pontos fixos) vira presente no baú
+      for (const [k, v] of Object.entries(migrarCasaAntiga(salvo.moveis))) est.ganhos[k] = (est.ganhos[k] ?? 0) + v;
+      est.migrado = true; salvo.casaDeco = est; salvar(salvo);
+    }
+    emCasa = { c, int: casaM };
+    if (decoCasa.carregar(est)) { salvo.casaDeco = est; salvar(salvo); } // os de Natal fora da época voltaram para o baú
+    j.pos.set(casaM.entrada[0], 0.07, casaM.entrada[1]); j.vel.set(0, 0, 0); j.dir = Math.PI;
     camera.st.yaw = Math.PI;
     aplicarMinimapa();
     posicionarCamera(1, 0);
-    if (!entrarCasa.falou) { entrarCasa.falou = true; falar("rp-casa-entrar"); dizer("Minha casa", "Que casa gostosa! Chegue perto de um círculo amarelo e aperte a ação para decorar.", 4200); }
+    if (!est.falou.boasVindas) {
+      est.falou.boasVindas = true; salvo.casaDeco = est; salvar(salvo);
+      radio?.pausarPorFala(true); falar("rp-casa-boasvindas");
+      dizer("Minha casa", "Bem-vindo à sua casa! Aqui tem a sala e o quarto. Aperte 🛋️ Decorar para deixar tudo do seu jeito.", 5200);
+    }
   };
   imediato ? fazer() : escurecer(fazer);
 }
 function sairCasa(imediato = false) {
   if (!emCasa) return;
+  if (decoCasa?.ativo) decoCasa.sair();
   const fazer = () => {
     const { c, int } = emCasa;
-    deco.cancelar();
     trocarSolidosCasa([]);
     int.grupo.visible = false;
     emCasa = null;
@@ -800,48 +811,6 @@ function interativoPerto() {
   return melhor;
 }
 
-// móveis que cabem no ponto (os quadros de versículo viram um item por versículo)
-function listaDoPonto(p) {
-  const out = [];
-  for (const m of MOVEIS) {
-    if (m.comodo !== p.comodo) continue;
-    const [w, d] = pegadaDoMovel(m.id);
-    if (!cabe({ pegada: [w, d] }, p)) continue;
-    if (m.variantes) for (let v = 0; v < m.variantes; v++) out.push({ id: m.id, variante: v, nome: `${m.nome}: “${VERSICULOS[v].texto}”` });
-    else out.push({ id: m.id, nome: m.nome });
-  }
-  return out;
-}
-function pontoPerto() {
-  if (!emCasa) return null;
-  let melhor = null, dm = 1.7;
-  for (const p of emCasa.int.pontos) {
-    const [x, z] = p.pe, d = Math.hypot(x - j.pos.x, z - j.pos.z);
-    if (d < dm) { dm = d; melhor = p; }
-  }
-  return melhor;
-}
-function abrirDeco(p) {
-  pontoDeco = p;
-  const nomes = { sala: "Sala", cozinha: "Cozinha", quarto: "Quarto", parede: "Parede" };
-  deco.abrir({ titulo: `${nomes[p.comodo] ?? "Cômodo"} · escolha o móvel`, lista: listaDoPonto(p), escolha: p.escolha, paleta: CORES_MOVEL,
-    dica: document.body.classList.contains("touch") ? "◀ ▶ móvel · bolinhas = cor" : "◀ ▶ móvel · ▲ ▼ cor · Enter = pronto · Esc = voltar" });
-  teclas.clear(); toque?.zerar();
-}
-function confirmarDeco(e) {
-  const p = pontoDeco; pontoDeco = null;
-  if (!emCasa || !p) return;
-  colocar(emCasa.int, p, e);
-  const n = emCasa.c.lote.numero;
-  salvo.moveis = typeof salvo.moveis === "object" && !Array.isArray(salvo.moveis) ? salvo.moveis : {};
-  salvo.moveis[n] = { ...(salvo.moveis[n] ?? {}) };
-  if (e) salvo.moveis[n][p.id] = e; else delete salvo.moveis[n][p.id];
-  salvar(salvo);
-  trocarSolidosCasa([...emCasa.int.solidos, ...solidosDosMoveis(emCasa.int)]);
-  // se o móvel novo ficou em cima do Rabisco, ele dá um passinho para o lado
-  if (fis.bate(j.pos.x, j.pos.z, 0.1)) { const [lx, lz] = fis.livre(j.pos.x, j.pos.z, 0.5); j.pos.x = lx; j.pos.z = lz; }
-  if (e) { sons.moeda?.(); falar(e.id === "quadro-versiculo" ? `rp-versiculo-${(e.variante ?? 0) + 1}` : "rp-casa-movel"); if (e.id === "quadro-versiculo") dizer("Quadro novo", `${VERSICULOS[e.variante ?? 0].texto} (${VERSICULOS[e.variante ?? 0].ref})`, 4800); }
-}
 function morarAqui(c) {
   salvo.casa = c.lote.numero; salvo.corCasa = c.lote.hex;
   salvar(salvo);
@@ -1033,7 +1002,7 @@ function entrada() {
   if (entradaTeste) { ix = entradaTeste.virar; iy = entradaTeste.acel; }
   const m = Math.hypot(ix, iy);
   if (m > 1) { ix /= m; iy /= m; }
-  if (fone?.aberto || deco?.aberto || sorveteUI?.aberto || meuRb?.aberto || atelieUI?.aberto) ix = iy = 0;
+  if (fone?.aberto || decoCasa?.ativo || sorveteUI?.aberto || meuRb?.aberto || atelieUI?.aberto) ix = iy = 0;
   return { ix, iy, m };
 }
 function regras() {
@@ -1059,9 +1028,12 @@ function regras() {
     if (Math.hypot(emLugar.porta[0] - j.pos.x, emLugar.porta[1] - j.pos.z) < 1.6) contexto = { rotulo: "🚪 Sair", fazer: () => sairLugar() };
     else if (it) contexto = { rotulo: it.rotulo, fazer: () => it.fazer(apiLugar()) };
   } else if (emCasa) {
-    const p = pontoPerto();
+    if (decoCasa?.ativo) { // decorando: a ação e os botões são do modo Decorar
+      pad.acaoNova = false; if (toque) { toque.acaoNova = false; toque.foneNovo = false; toque.sairNovo = false; }
+      return;
+    }
     if (Math.hypot(emCasa.int.porta[0] - j.pos.x, emCasa.int.porta[1] - j.pos.z) < 1.6) contexto = { rotulo: "🚪 Sair de casa", fazer: () => sairCasa() };
-    else if (p) contexto = { rotulo: p.escolha ? "🛋️ Trocar" : "🛋️ Decorar", fazer: () => abrirDeco(p) };
+    else contexto = { rotulo: "🛋️ Decorar", fazer: () => decoCasa.entrar([j.pos.x, j.pos.z]) };
   } else if (dentro) contexto = { rotulo: "🚪 Sair", fazer: sair };
   else if (roda) contexto = roda.podeDescer ? { rotulo: "🎡 Descer", fazer: () => descerRoda() } : { rotulo: "🎡 Passeando…", fazer: () => {} };
   else if ((contexto = missoes?.contexto() ?? null)) { /* missão: pedir, pegar, entregar, plantar */ }
@@ -1084,7 +1056,7 @@ function regras() {
   const quer = pad.acaoNova || toque?.acaoNova || (dentro && toque?.sairNovo);
   pad.acaoNova = false; if (toque) { toque.acaoNova = false; toque.sairNovo = false; }
   if (quer && contexto) contexto.fazer();
-  if (toque?.foneNovo) { toque.foneNovo = false; if (!deco.aberto) fone.abrir(); }
+  if (toque?.foneNovo) { toque.foneNovo = false; if (!decoCasa?.ativo) fone.abrir(); }
   if (emCasa || emLugar) return; // lá dentro não tem aviso de lugar da cidade
   // chegou num lugar novo: aviso com o nome
   for (const l of mundo.lugares) {
@@ -1109,7 +1081,7 @@ function posicionarCamera(k, dt, andando = false) {
   }
   if (emCasa || emLugar) { // casa de bonecas: da frente e levemente por cima (3ª pessoa inclinada), sem teto
     const cx = dois ? dois.x : j.pos.x, cz = dois ? dois.z : j.pos.z, af = dois ? Math.min(4, dois.afastar) : 0;
-    camera.st.vista = emLugar?.vista?.(j.pos) ?? { pos: [cx, 5.6 + af * 0.7, cz + 8.6 + af * 0.8], alvo: [cx, 1.1, cz - 1.2] };
+    camera.st.vista = decoCasa?.ativo && emCasa ? decoCasa.vista() : emLugar?.vista?.(j.pos) ?? { pos: [cx, 5.6 + af * 0.7, cz + 8.6 + af * 0.8], alvo: [cx, 1.1, cz - 1.2] };
     camera.posicionar({ P: j.pos }, k, dt);
     ceu.seguir(j.pos.x, j.pos.z);
     mundo.visibilidade(j.pos.x, j.pos.z);
@@ -1245,6 +1217,7 @@ function passo(dt, ultimo) {
     mundo.atualizar(dt, t);
     natal?.atualizar(dt, t, j.pos, !emCasa && !emLugar && !dentro);
     if (emLugar) emLugar.atualizar(dt, t);
+    if (emCasa) decoCasa?.passo(dt, t);
     saidaPelaPorta();
     regras();
     posicionarCamera(Math.min(1, dt * 6), dt, andando);
@@ -1467,13 +1440,11 @@ if (params.has("teste")) window.teste = {
   get profissao() { return rabisco.profissao ?? null; },
   posVeiculo(i, x, z, ang) { const v = veiculos[i]; v.pos.set(x, v.pos.y, z); v.ang = ang; v.vel = 0; animarVeiculo(v, 0, 0); if (dentro === v) j.pos.set(x, 0.07, z); },
   especial(segurar = true) { entradaTeste = { acel: entradaTeste?.acel ?? 0, virar: entradaTeste?.virar ?? 0, especial: segurar, especialNovo: segurar }; },
-  get emCasa() { return emCasa ? { numero: emCasa.c.lote.numero, planta: emCasa.int.id, pontos: emCasa.int.pontos.map((p) => ({ id: p.id, comodo: p.comodo, escolha: p.escolha, mundo: p.mundo, parede: Boolean(p.parede) })) } : null; },
-  get deco() { return deco; },
+  get emCasa() { return emCasa ? { numero: emCasa.c.lote.numero, planta: emCasa.int.id, moveis: decoCasa.estado.moveis.map((m) => ({ ...m })), papel: decoCasa.estado.papel, piso: decoCasa.estado.piso } : null; },
+  get decorar() { return decoCasa; }, get casa() { return casaM; },
   entrarCasa(n = salvo.casa) { const c = mundo.casas.find((k) => k.lote.numero === n); if (dentro) sair(); entrarCasa(c, true); },
   sairCasa() { sairCasa(true); },
-  irAoPonto(id) { const p = emCasa.int.pontos.find((q) => q.id === id); j.pos.set(p.pe[0], 0.07, p.pe[1]); j.vel.set(0, 0, 0); },
-  decorar(id, escolha) { pontoDeco = emCasa.int.pontos.find((q) => q.id === id); confirmarDeco(escolha); },
-  lista(id) { return listaDoPonto(emCasa.int.pontos.find((q) => q.id === id)); },
+  morarAqui(n) { morarAqui(mundo.casas.find((k) => k.lote.numero === n)); },
   verificar: (id) => verificar(id), plantas: () => Object.keys(PLANTAS),
   memoria() { return { ...r3.info.memory }; },
   // geometrias ainda ligadas à cena (as que saíram da cena precisam ter sido liberadas: senão é vazamento)

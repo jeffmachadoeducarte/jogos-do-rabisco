@@ -132,5 +132,8 @@ Object.assign(FALAS_PT, {
   "rp-presente-abriu": "Que presente bom! Volte amanhã para abrir outro.",
   "rp-presente-sete": "Sete dias seguidos! Presente especial com bônus!",
 });
+// casa decorável (casa-dados.js): boas-vindas, como decorar, móvel trocado, pronto e o enfeite de Natal; quem fala é a anfitriã
+const { FALAS_CASA } = await import(`data:text/javascript,${encodeURIComponent(readFileSync(new URL("./casa-dados.js", import.meta.url), "utf8").replace(/^import .*$/m, ""))}`);
+Object.assign(FALAS_PT, FALAS_CASA);
 writeFileSync(new URL("./falas.json", import.meta.url), JSON.stringify({ pt: FALAS_PT }, null, 1) + "\n");
 console.log(`${Object.keys(FALAS_PT).length} falas em português`);
