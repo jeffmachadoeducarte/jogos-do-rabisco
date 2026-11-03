@@ -3,7 +3,7 @@
 // Para incluir uma parceira nova: pôr a foto em assets/parceiros/ (webp leve, recortada só na fachada: de canto
 // a canto e do chão ao topo, sem céu nem rua) e acrescentar uma linha aqui. O prédio pega a proporção da foto.
 // Trocou a foto de uma parceira? Suba o número do ?v= dela.
-//  - instagram (opcional): só com o @ confirmado pelo dono do jogo. Nas fachadas inventadas aparece sozinho no letreiro.
+//  - instagram (opcional): só com o @ confirmado pelo dono do jogo. Na Rabiscolândia aparece na placa da fachada (jogos/rabiscopolis/placas-instagram.js).
 //  - nome: como aparece no passaporte e no mapa · foto: caminho a partir da raiz do site
 //  - larguraMax (opcional): largura máxima do prédio (a J.E é mais estreita para caber o pátio de carros ao lado)
 //  - tipo: "carros" | "academia" | "moda" | "contabilidade" | "presentes" | "joias" | "confeccao" | "reciclagem" |

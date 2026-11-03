@@ -129,7 +129,8 @@ const LETREIROS = {
     texto(c, "Speedy Soluções", w / 2 + h * 0.5, h * 0.46, w - h * 1.6, h * 0.62, { peso: 800, estilo: "italic", cor: "#ffffff" });
   },
 };
-// etiqueta do @ no canto de baixo do letreiro (só para quem tem o campo instagram em src/parceiros.js)
+// etiqueta do @ no canto de baixo do letreiro, só na "foto" do Kart. Na Rabiscolândia o @ tem placa própria na fachada
+// (jogos/rabiscopolis/placas-instagram.js)
 function etiquetaInstagram(c, w, h, instagram) {
   if (!instagram) return;
   const t = `@${instagram}`, a = h * 0.17;
@@ -138,7 +139,7 @@ function etiquetaInstagram(c, w, h, instagram) {
   c.fillStyle = "#ffffff"; c.beginPath(); c.roundRect(x, y, lg, a, a / 2); c.fill();
   c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = "#151515"; c.fillText(t, x + lg / 2, y + a / 2 + a * 0.04);
 }
-export function desenharLetreiro(c, id, w, h, { instagram = null } = {}) { c.clearRect(0, 0, w, h); LETREIROS[id](c, w, h); etiquetaInstagram(c, w, h, instagram); }
+export function desenharLetreiro(c, id, w, h) { c.clearRect(0, 0, w, h); LETREIROS[id](c, w, h); }
 
 // ---------------------------------------------------------------- fachada inteira, para a foto do Kart
 function vitrine(c, x, y, w, h, moldurar, fundo = "#a9dcf7") {
