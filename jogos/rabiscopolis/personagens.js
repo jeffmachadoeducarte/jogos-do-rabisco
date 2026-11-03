@@ -98,7 +98,9 @@ const CORPOS = {
 
 // ---------- montagem do morador
 // corAcessorio: cor do laço (padrão rosa) · tenis: cor do tênis (padrão: pela semente)
-export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome = "", semente = 0, vovo = false, escala = 0.78, acessorio = null, corAcessorio = null, tenis = null } = {}) {
+// simples: o boneco inteiro vira uma malha de cor + o rosto (sem a sombrinha redonda): para quem só fica parado esperando
+// (os que pedem as missões de Natal, num lugar já cheio), custa 2 chamadas de desenho em vez de ~9; os bracinhos não acenam
+export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome = "", semente = 0, vovo = false, escala = 0.78, acessorio = null, corAcessorio = null, tenis = null, simples = false } = {}) {
   const grupo = new THREE.Group();
   grupo.scale.setScalar(escala); // um pouco menores que o Rabisco (ele é o herói)
   const raiz = new THREE.Group(); // pulinho, estica e achata
@@ -130,7 +132,7 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
   }
 
   // acessórios (vieram da Rabiscópolis): laço, óculos, gravata, chapéu de palha, boné, capacete de bombeiro, touca de chef
-  if (acessorio) enfeitarMorador(raiz, acessorio, info, PERNA, corAcessorio);
+  if (acessorio) enfeitarMorador(raiz, acessorio, info, PERNA, corAcessorio, !simples);
 
   // bracinhos (pivô no ombro) e perninhas com tênis (pivô no quadril)
   const braco = (s) => {
@@ -148,10 +150,11 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
     return p;
   };
   const bE = braco(1), bD = braco(-1), pE = perna(1), pD = perna(-1);
-  for (const parte of [corpo, bE, bD, pE, pD]) mesclar(parte); // por dentro nada mexe: vira poucas malhas
+  if (simples) raiz.traverse((o) => { if (o.isMesh) o.castShadow = false; }); // tudo com a mesma sombra: uma malha só
+  for (const parte of simples ? [raiz] : [corpo, bE, bD, pE, pD]) mesclar(parte); // por dentro nada mexe: vira poucas malhas
   grupo.traverse((o) => { if (o.isMesh) o.castShadow = false; }); // a sombrinha redonda basta
-  const sombra = sombraBlob(0.55, 0.3);
-  grupo.add(sombra);
+  const sombra = simples ? new THREE.Object3D() : sombraBlob(0.55, 0.3);
+  if (!simples) grupo.add(sombra);
   grupo.userData = { tipo, nome, altura: (PERNA + info.alto) * escala };
 
   let fase = semente * 1.7, tempo = semente * 3.1, piscar = 2 + (semente % 3), aceno = 0, pulinho = 0, vy = 0, py = 0, juntas = false;
@@ -204,7 +207,7 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
 }
 
 // ---------- acessórios dos moradores das missões
-function enfeitarMorador(raiz, qual, info, PERNA, corA = null) {
+function enfeitarMorador(raiz, qual, info, PERNA, corA = null, juntar = true) {
   const r = info.larg, topo = PERNA + info.rostoY + 0.36, frente = info.plano ?? r;
   const g = new THREE.Group(); raiz.add(g);
   if (qual === "laco") {
@@ -225,8 +228,12 @@ function enfeitarMorador(raiz, qual, info, PERNA, corA = null) {
     const copa = malha(new THREE.SphereGeometry(r + 0.02, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(cor));
     copa.position.y = topo; if (qual === "chef") copa.scale.set(1, 1.9, 1); g.add(copa);
     if (qual === "capacete") { const placa = malha(geoCaixaRedonda(0.2, 0.16, 0.04, 0.03), mat(0xffcc1f)); placa.position.set(0, topo + 0.14, r + 0.02); g.add(placa); }
+  } else if (qual === "gorro") { // gorro de Natal (missões de Natal): barra branca, cone vermelho caindo para o lado e pompom
+    const barra = malha(new THREE.CylinderGeometry(r + 0.05, r + 0.05, 0.14, 16), mat(0xffffff)); barra.position.y = topo + 0.03; g.add(barra);
+    const cone = malha(new THREE.ConeGeometry(r * 0.92, 0.6, 12), mat(0xd62839)); cone.position.set(0.07, topo + 0.36, -0.02); cone.rotation.z = -0.38; g.add(cone);
+    const pom = malha(new THREE.SphereGeometry(0.1, 8, 6), mat(0xffffff)); pom.position.set(0.22, topo + 0.62, -0.02); g.add(pom);
   }
-  mesclar(g);
+  if (juntar) mesclar(g);
 }
 
 // ---------- Vovó Lápis (para as entregas: fica esperando na porta de casa e reage quando recebe)

@@ -96,9 +96,9 @@ const fonteMoveis = readFileSync(new URL("./moveis.js", import.meta.url), "utf8"
 const versos = [...fonteMoveis.matchAll(/\{ texto: "([^"]+)", ref: "([^"]+)" \}/g)];
 versos.forEach(([, texto, ref], i) => { FALAS_PT[`rp-versiculo-${i + 1}`] = `${texto} ${ref.replace(/^baseado/, "Baseado")}.`; });
 // Fatia 5: missões (quem pede, quem recebe e, nas bíblicas, o versículo em paráfrase)
-const { MISSOES } = await import(`data:text/javascript,${encodeURIComponent(readFileSync(new URL("./missoes-dados.js", import.meta.url), "utf8"))}`);
+const { MISSOES, MISSOES_NATAL = [] } = await import(`data:text/javascript,${encodeURIComponent(readFileSync(new URL("./missoes-dados.js", import.meta.url), "utf8"))}`);
 // (as missões que vieram da Rabiscópolis reaproveitam as falas gravadas cid-* quando o texto é o mesmo: voz.pedido/voz.fim)
-for (const m of MISSOES) {
+for (const m of [...MISSOES, ...MISSOES_NATAL]) { // as de Natal (natal.js) também
   if (!m.voz?.pedido) FALAS_PT[`rp-m-${m.id}-pedido`] = m.pedido;
   if (!m.voz?.fim) FALAS_PT[`rp-m-${m.id}-fim`] = m.fim;
   // parabéns/oração com o NOME DA CRIANÇA: "Parabéns, {nome}! ..." vira pre ("Parabéns,") + nome gravado + pos (rp-m-<id>-fim-pre/-pos)
@@ -112,6 +112,9 @@ for (const m of MISSOES) {
     for (const q of E.falas ?? []) if (q.texto && q.voz?.startsWith("rp-")) FALAS_PT[q.voz] = q.texto;
   }
 }
+// Natal na cidade (natal.js): o "Feliz Natal" da praça e o desfile de Natal da BT Models
+const { FALAS_NATAL } = await import(`data:text/javascript,${encodeURIComponent(readFileSync(new URL("./natal.js", import.meta.url), "utf8"))}`);
+Object.assign(FALAS_PT, FALAS_NATAL);
 // propaganda das empresas parceiras (a anfitriã, no fim das missões com parceiro)
 const { PROPAGANDA, falaDaPropaganda } = await import(`data:text/javascript,${encodeURIComponent(readFileSync(new URL("./propaganda.js", import.meta.url), "utf8"))}`);
 for (const id of Object.keys(PROPAGANDA)) FALAS_PT[`rp-prop-${id}`] = falaDaPropaganda(id);

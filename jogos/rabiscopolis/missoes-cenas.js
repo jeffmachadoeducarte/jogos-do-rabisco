@@ -2,12 +2,14 @@
 // fica parado nela e o botão faz cada parte, com uma câmera de cena.
 //   "pet"  · Marlon Máquinas: cada garrafa sobe a esteira, entra no container e sai separada em três caixas (rótulo, tampa, flocos)
 //   "obra" · Speedy Soluções: andaime e poeira; sai a frente antiga, entram os perfis de alumínio e depois a pele de vidro da Kids II
+//   "presepio" · Natal: as 7 peças do presépio entram uma por vez na praça, com a história do nascimento de Jesus
 // Só anda enquanto é a etapa atual: fim() desfaz tudo que for da cena (também quando a criança larga a missão).
 //
 //   const c = criarCena("pet", ctx);   c.contexto(p)  c.atualizar(dt, t, p)  c.alvo()  c.texto()  c.info()  c.fim()
 
 import { THREE, mat, malha, texturaCanvas, mesclar } from "./base3d.js";
 import { cx as pc } from "./blocos.js";
+import { PRESEPIO } from "./natal.js";
 
 // grupo com o mesmo lugar e giro do prédio: dentro dele vale a coordenada da fachada (frente em +z)
 function noPredio(ctx, lugarId) {
@@ -201,4 +203,54 @@ function cenaObra(ctx) {
   };
 }
 
-export function criarCena(nome, ctx) { return ({ pet: cenaPet, obra: cenaObra })[nome](ctx); }
+// ------------------------------------------------------------------ o presépio da praça (modo Natal: natal-cidade.js monta as peças)
+// O Rabisco fica na marca dourada, de frente para o estábulo; cada botão põe a próxima peça (com um pulinho) e a anfitriã conta
+// aquele pedaço da história. Entre uma peça e outra, um tempinho para a fala (sem pressa e sem errar). Largou no meio: as peças
+// saem de novo (ou voltam todas, se o presépio já tinha sido montado antes).
+const ORDEM_PRESEPIO = ["maria", "jose", "menino", "pastores", "ovelhas", "estrela", "magos"];
+function cenaPresepio(ctx) {
+  const N = ctx.natal?.(), { E, sons, falar, dizer, M } = ctx;
+  const jaFeita = ctx.salvo.missoesFeitas?.includes(M.id);
+  const [mx, mz] = PRESEPIO.marca, centro = [PRESEPIO.x, PRESEPIO.z];
+  const g = new THREE.Group(); ctx.temp(g);
+  const marca = marcaChao(0xffcc1f); marca.position.set(mx, 0.14, mz); g.add(marca);
+  N?.presepio.esconderTudo();
+  let preso = false, feitas = 0, ocupada = 0, tFecha = 0, tBraco = 0;
+  const total = ORDEM_PRESEPIO.length;
+  const camera = () => ({ pos: [centro[0] + 4.2, 4.3, centro[1] + 11.5], alvo: [centro[0] - 0.4, 1.9, centro[1] + 0.6] });
+  function colocar() {
+    if (ocupada > 0 || feitas >= total) return;
+    const id = ORDEM_PRESEPIO[feitas], f = E.falas[feitas + 1];
+    ctx.tirarDaCabeca(id);
+    N?.presepio.mostrar(feitas);
+    feitas++; tBraco = 0.5; sons.moeda?.();
+    dizer("Rabiscolândia", f.texto, 6200); falar(f.voz);
+    ocupada = Math.min(5.5, 1.6 + f.texto.length * 0.035);
+    if (feitas >= total) { tFecha = ocupada + 0.4; sons.vitoria?.(); ctx.confete?.(); }
+  }
+  function chegar() {
+    preso = true; marca.visible = false;
+    ctx.vista(camera());
+    ctx.travar({ x: mx, z: mz, dir: Math.PI, modo: "parado", segundos: 1e6, rotulo: "⭐ Colocar a peça", aoAcao: colocar, posar: (rb, dt) => { tBraco = Math.max(0, tBraco - dt); bracos(rb, Math.sin(Math.min(1, tBraco / 0.5) * Math.PI) * 0.8); } });
+    const f = E.falas[0]; dizer("Rabiscolândia", f.texto, 5600); falar(f.voz);
+    ocupada = 2.2;
+  }
+  return {
+    contexto(p) { return !preso && Math.hypot(p.x - mx, p.z - mz) < 2.6 ? { rotulo: "⭐ Montar o presépio", fazer: chegar } : null; },
+    atualizar(dt, t) {
+      marca.scale.setScalar(1 + Math.sin(t * 4) * 0.08);
+      ocupada = Math.max(0, ocupada - dt);
+      if (tFecha > 0) { tFecha -= dt; if (tFecha <= 0) ctx.fim(); }
+    },
+    alvo() { return preso ? null : { x: mx, z: mz, emoji: "⭐" }; },
+    texto() { return preso ? `Monte o presépio: ${feitas} de ${total}` : "Vá até a marca dourada, na frente do presépio"; },
+    info() { return { x: mx, z: mz, preso, feitas, total, ocupada: ocupada > 0 }; },
+    fim() {
+      if (preso) { ctx.destravar(); ctx.vista(null); }
+      // largou no meio: as peças saem (ou voltam todas, se já tinha montado antes)
+      if (feitas < total) { N?.presepio.esconderTudo(); if (jaFeita) N?.presepio.mostrarTudo(); }
+    },
+  };
+}
+
+export function criarCena(nome, ctx) { return ({ pet: cenaPet, obra: cenaObra, presepio: cenaPresepio })[nome](ctx); }

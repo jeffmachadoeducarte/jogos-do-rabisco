@@ -770,3 +770,76 @@ export const PROIBIDAS = ["arma", "revólver", "pistola", "tiro", "matar", "mort
 export const PESSOAS_PORTA = [
   { pessoa: "carina", nome: "Diretora Carina", unidade: "kids1", escola: [-4.5, 1.5], oi: { fala: "cid-carina-oi", texto: "Esta é a Diretora Carina, da Educarte Kids I!" } },
 ];
+
+// ---- Natal na cidade (só com o modo Natal ligado: natal.js; missoes.js junta estas às de sempre). Ficam à parte para a
+// cidade fora da época continuar igualzinha (Passaporte, contagem e testes das missões de sempre).
+// Orçamento de desenho do celular (a praça e a rua da Gala já estavam no limite): quem pede o presépio é o anjinho, uma peça
+// de presépio (uma malha só, natal-cidade.js · anjo), e o Clipe da Gala é simples: true (criarMorador: 2 malhas).
+//  - natalPresepio: juntar as 7 peças do presépio pela cidade e montar na praça, perto da árvore (cena "presepio" de
+//    missoes-cenas.js: cada botão põe uma peça e a anfitriã conta a história do nascimento de Jesus)
+//  - natalPresentes (Gala Presentes): embrulhar três presentes na loja e entregar cada um para uma criança da cidade
+//  - natalDesfile (BT Models): o desfile de Natal, com os amigos do estojo fantasiados (o mesmo salão do desfile de fantasias)
+export const MISSOES_NATAL = [
+  {
+    id: "natalPresepio", titulo: "O presépio da praça", icone: "⭐", tipo: "biblica", natal: true,
+    npcs: { anjo: { nome: "Anjinho do Presépio", tipo: "anjo", x: -5.4, z: 26.2, rot: 0.3 } },
+    pedido: "Oi, Rabisco! Vamos montar o presépio da praça? As peças se espalharam pela cidade: Maria, José, o menino Jesus na manjedoura, os pastores, as ovelhinhas, a estrela e os magos. Siga a setinha, junte todas e traga para cá!",
+    etapas: [
+      { tipo: "pegar", itens: [
+        { id: "maria", nome: "Maria", emoji: "👩", x: -14, z: -13 },
+        { id: "estrela", nome: "a estrela", emoji: "⭐", x: 12, z: -57.5 },
+        { id: "magos", nome: "os magos", emoji: "👑", x: 104.5, z: 6 },
+        { id: "pastores", nome: "os pastores", emoji: "🧑‍🌾", x: 30, z: 66 },
+        { id: "ovelhas", nome: "as ovelhinhas", emoji: "🐑", x: -14, z: 118 },
+        { id: "menino", nome: "o menino Jesus na manjedoura", emoji: "👶", x: -102, z: 57.5 },
+        { id: "jose", nome: "José", emoji: "👨", x: -76, z: -5.8 },
+      ], fala: "Todas as peças do presépio! Agora volte para a praça e monte o presépio perto da árvore de Natal.", voz: "rp-m-natalPresepio-pegou" },
+      { tipo: "cena", cena: "presepio", ate: "anjo", falas: [
+        { texto: "Chegou a hora de montar o presépio! A cada botão, uma peça vai para o lugar, e eu conto a história do Natal.", voz: "rp-m-natalPresepio-montar" },
+        { texto: "Esta é Maria. Um anjo contou que ela ia ser a mamãe do menino Jesus, o Filho de Deus.", voz: "rp-m-natalPresepio-maria" },
+        { texto: "Este é José. Ele e Maria viajaram juntos até a cidadezinha de Belém.", voz: "rp-m-natalPresepio-jose" },
+        { texto: "Em Belém não tinha lugar na hospedaria. O menino Jesus nasceu ali, e Maria deitou o bebê numa manjedoura, com muito amor.", voz: "rp-m-natalPresepio-menino" },
+        { texto: "No campo, os pastores cuidavam das ovelhas de noite. Um anjo apareceu e contou a notícia: nasceu o Salvador!", voz: "rp-m-natalPresepio-pastores" },
+        { texto: "Os pastores foram depressa até Belém, com as ovelhinhas, para conhecer o menino Jesus.", voz: "rp-m-natalPresepio-ovelhas" },
+        { texto: "Lá no céu, brilhou uma estrela muito especial.", voz: "rp-m-natalPresepio-estrela" },
+        { texto: "E os magos, que vinham de longe, seguiram a estrela e trouxeram presentes para Jesus.", voz: "rp-m-natalPresepio-magos" },
+      ] },
+    ],
+    fim: "O presépio está pronto! O Natal é a festa do nascimento de Jesus, o maior presente de Deus para nós.",
+    fimNome: "Parabéns, {nome}! O presépio está pronto! O Natal é a festa do nascimento de Jesus, o maior presente de Deus para nós.",
+    verso: { texto: "Hoje nasceu para vocês o Salvador, que é Cristo, o Senhor!", ref: "baseado em Lucas 2.11" },
+  },
+  {
+    id: "natalPresentes", titulo: "Presentes de Natal da Gala", icone: "🎁", tipo: "biblica", parceiro: "gala-presentes", natal: true,
+    npcs: {
+      clipe: { nome: "Clipe Vermelho, da Gala Presentes", tipo: "clipe", cor: 0xd62839, x: -43, z: 23.2, rot: -Math.PI / 2, acessorio: "gorro", simples: true },
+      k1: { nome: "Giz Rosinha", tipo: "giz", cor: 0xff9fc8, x: 9.5, z: 30.5, rot: Math.PI, escala: 0.6, acessorio: "laco" },
+      k2: { nome: "Caderninho Azul", tipo: "caderno", cor: 0x2f8fe8, x: -20, z: 78, escala: 0.6, acessorio: "bone" },
+      k3: { nome: "Borrachinha Lilás", tipo: "borracha", casa: 6, escala: 0.6 },
+    },
+    pedido: "Rabisco, a Gala Presentes preparou presentes de Natal para três crianças da cidade! Embrulhe o ursinho, a bola e o livrinho aqui na calçada da loja e entregue cada presente para a criança certa.",
+    etapas: [
+      { tipo: "pegar", itens: [
+        { id: "urso", nome: "o ursinho", emoji: "🧸", rotulo: "🎁 Embrulhar o ursinho", x: -43.5, z: 26.5 },
+        { id: "bola", nome: "a bola", emoji: "⚽", rotulo: "🎁 Embrulhar a bola", x: -43.5, z: 21.5 },
+        { id: "livro", nome: "o livrinho", emoji: "📘", rotulo: "🎁 Embrulhar o livrinho", x: -43.5, z: 18.5 },
+      ], fala: "Presentes embrulhados, com laço de fita! O ursinho é da Giz Rosinha, na praça; a bola é do Caderninho Azul, no parquinho; e o livrinho é da Borrachinha Lilás, na casa seis.", voz: "rp-m-natalPresentes-pegou" },
+      { tipo: "entregar", rotulo: "🎁 Entregar", oque: "os presentes", icone: "🎁", entregas: [{ item: "urso", ate: "k1" }, { item: "bola", ate: "k2" }, { item: "livro", ate: "k3" }], fala: "Feliz Natal! Obrigado pelo presente!", voz: "rp-m-natalPresentes-obrigado" },
+    ],
+    fim: "Que Natal alegre! Cada criança ganhou um presente embrulhado com carinho. Presentear alguém é um jeito de mostrar o amor de Deus.",
+    fimNome: "Muito bem, {nome}! Que Natal alegre! Cada criança ganhou um presente embrulhado com carinho. Presentear alguém é um jeito de mostrar o amor de Deus.",
+    verso: { texto: "Deus amou tanto o mundo que deu o seu Filho, Jesus: o maior presente de todos.", ref: "baseado em João 3.16" },
+  },
+  {
+    id: "natalDesfile", titulo: "Desfile de Natal da BT Models", icone: "🎄", tipo: "biblica", parceiro: "bt-models", natal: true,
+    npcs: { produtora: { nome: "Produtora Clipe Verde", tipo: "clipe", cor: 0x2bb24c, escola: [-4.6, -1.2], unidade: "parceiro-bt-models", acessorio: "gorro" } },
+    pedido: "Rabisco, hoje tem desfile de Natal na BT Models! Os amigos do estojo vão desfilar fantasiados de estrela, de pastorzinho, de árvore de Natal e de anjinho. Entre, prepare a passarela e chame cada amigo na hora certa!",
+    etapas: [
+      { tipo: "evento", evento: "desfilou", lugar: "parceiro-bt-models", texto: "Entre na BT Models e faça o desfile de Natal" },
+      { tipo: "voltar", ate: "produtora" },
+    ],
+    fim: "Que desfile de Natal lindo! A estrela, o pastorzinho e o anjinho lembram a noite em que Jesus nasceu.",
+    fimNome: "Muito bem, {nome}! Que desfile de Natal lindo! A estrela, o pastorzinho e o anjinho lembram a noite em que Jesus nasceu.",
+    verso: { texto: "Os anjos cantaram: glória a Deus nas alturas, e paz na terra!", ref: "baseado em Lucas 2.14" },
+  },
+];

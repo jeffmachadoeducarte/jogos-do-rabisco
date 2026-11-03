@@ -18,6 +18,7 @@ import { HINOS } from "../../src/radio/hinos.js";
 import { montarAulas } from "./aulas-sala.js";
 import { montarBella, montarRise, montarCrescente } from "./parceiras-dentro.js";
 import { montarTeatro, montarSalao } from "./parceiras-palcos.js";
+import { natalAtivo, FALAS_NATAL } from "./natal.js";
 
 const W = 14, D = 9, ALT = 3;
 export const SALAS = {
@@ -40,6 +41,9 @@ export const SALAS = {
   "parceiro-bt-models": { nome: "BT Models", piso: 0x2c2d35, parede: 0x23242b, acento: 0xe7c35a, profissao: null, propria: montarSalao, fala: "rp-desfile-entrar", boasVindas: "Bem-vindo à BT Models! Hoje tem desfile de fantasias. Chegue nas marcas brilhantes para preparar a passarela." },
   "parceiro-rise-up": { nome: "Academia Rise Up", piso: 0x4a4e55, parede: 0xf1ebe0, acento: 0xff7a00, profissao: null, fala: "cid-rise-donos", boasVindas: "Bem-vindo à Academia Rise Up! A Camila e o Robert são casados e são os donos da academia. Os dois dão as boas-vindas! Aqui a gente cuida do corpo que Deus nos deu. Corra na esteira e levante o halter!" },
 };
+// modo Natal (natal.js): na BT Models o desfile é de Natal, menos com a missão do desfile de fantasias de sempre ativa
+if (natalAtivo()) Object.assign(SALAS["parceiro-bt-models"], { fala: "rp-natal-desfile-entrar", boasVindas: FALAS_NATAL["rp-natal-desfile-entrar"],
+  dica: { missao: "parceiro-bt-models", fala: SALAS["parceiro-bt-models"].fala, texto: SALAS["parceiro-bt-models"].boasVindas } });
 export const IDS_SALAS = Object.keys(SALAS);
 export const origemSala = (id) => [IDS_SALAS.indexOf(id) * 40 - 180, 0, 1200];
 

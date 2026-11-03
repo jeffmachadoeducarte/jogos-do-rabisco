@@ -22,6 +22,8 @@ import { criarCamera } from "./camera.js";
 import { criarCeu } from "./ceu.js";
 import { criarVeiculo, animarVeiculo, criarTransito, atualizarTransito, atualizarSemaforos, luzDe } from "./veiculos.js";
 import { criarMissoes } from "./missoes.js";
+import { natalAtivo } from "./natal.js";
+import { criarNatal } from "./natal-cidade.js";
 import { criarPatioJE, enfeitarCarro } from "./je-patio.js";
 import { criarJogador2 } from "./jogador2.js";
 import { CODIGOS_J2, TECLAS_J1_EXTRA } from "../../src/motor/jogadores.js";
@@ -238,6 +240,7 @@ let hud, minimapa, mapaGrande, balao, bussola, caixa;
 const j = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), noChao: true, coyote: 0, buffer: 0, dir: 0 };
 const veiculos = []; let garagem = null; // veículo chamado pelo Rabifone (só um por vez)
 let transito = [], moradores = [], vovo = null, missoes = null, j2 = null, patioJE = null;
+let natal = null; // Natal na cidade (natal.js: de 1º/12 a 6/1, ou ?natal=1): luzes, árvore, presépio e música da praça
 let dentro = null, contexto = null, salvo = carregar(), alvoMapa = null;
 let mapaLigado = false; // minimapa do canto: escondido ao começar; M, L3 e a ⚙️ mostram e escondem
 let emCasa = null, deco = null, fade = null; const interiores = {}; // casa por dentro (montada uma vez por planta)
@@ -320,6 +323,7 @@ function iniciar() {
   patioJE = criarPatioJE(cena, { solidos: mundo.solidos }); // pátio de carros da J.E (montado só de perto)
   criarMoradores();
   aplicarCasa();
+  natal = natalAtivo() ? criarNatal(cena, { mundo, ceu, toque: qualidade.perfil.toque, salvo: () => salvo, falar: (k) => { radio?.pausarPorFala(true); falar(k); }, dizer: (...a) => dizer(...a), ocupado: () => Boolean(emCasa || emLugar || oracao || trava || missoes?.ativa) }) : null;
   missoes = criarMissoes({
     cena, rabisco, vovo, salvo, sons, dizer: (...a) => dizer(...a),
     salvar: (d) => { Object.assign(salvo, { missoesFeitas: d.missoesFeitas, selos: d.selos }); salvar(salvo); },
@@ -342,6 +346,7 @@ function iniciar() {
     // cenas das parceiras na rua (máquina do Marlon, obra da Kids II): lugares do mundo, prender o Rabisco e câmera de cena
     lugares: () => mundo.lugares, frenteKids2: (f) => mundo.frenteKids2(f),
     travar: (o) => apiLugar().travar(o), destravar: () => apiLugar().destravar(), vista: (v) => { camera.st.vista = v; },
+    natal: () => natal, // o presépio da praça (cena da missão de Natal)
   });
   // a Speedy já trocou a frente da Kids II (salvo: missão feita): continua trocada depois de recarregar
   if (missoes.feitas.includes("parceiro-speedy-solucoes")) mundo.frenteKids2(3);
@@ -448,6 +453,7 @@ function parar() {
   radioUI?.sairDoCarro();
   if (r3) { r3.dispose(); r3 = null; }
   veiculos.length = 0; transito = []; patioJE = null; moradores = []; vovo = null; garagem = null; missoes = null;
+  natal?.pararMusica(); natal = null;
   jogo.palco.querySelector('.escolha-j2-rp')?.remove(); j2 = null;
   dentro = null; contexto = null; alvoMapa = null; oracao = null; trava = null;
   motor.desligar();
@@ -1136,6 +1142,7 @@ function passo(dt, ultimo) {
     missoes?.atualizar(dt, t);
     patioJE?.atualizar(j.pos.x, j.pos.z);
     mundo.atualizar(dt, t);
+    natal?.atualizar(dt, t, j.pos, !emCasa && !emLugar && !dentro);
     if (emLugar) emLugar.atualizar(dt, t);
     saidaPelaPorta();
     regras();
@@ -1369,7 +1376,7 @@ if (params.has("teste")) window.teste = {
   corCasa(hex) { trocarCorCasa(hex); },
   get corParedes() { const c = mundo.casas.find((k) => k.lote.numero === salvo.casa); return c?.grupo.userData.paredes.userData.cor; },
   get radio() { return radio; }, get radioUI() { return radioUI; }, get avisoRadio() { return avisoRadio; }, falar: (k) => falar(k),
-  get missoes() { return missoes; }, get patioJE() { return patioJE; },
+  get missoes() { return missoes; }, get patioJE() { return patioJE; }, get natal() { return natal; },
   get roda() { return roda ? { ...roda, y: j.pos.y } : null; }, subirRoda: () => subirRoda(), descerRoda: () => descerRoda(),
   get trava() { return trava ? { pose: trava.pose ?? null, t: trava.t } : null; },
   get oracao() { return oracao ? { i: oracao.i, total: ORACAO.length, painel: !painelOracao.hidden, texto: painelOracao.textContent } : null; },
