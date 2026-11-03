@@ -94,6 +94,19 @@ export const sons = {
   erro() { nota(N("E4"), 0, 0.14, { onda: 0.5, vol: 0.06 }); nota(N("C4"), 0.14, 0.25, { onda: 0.5, vol: 0.06 }); },
   cano() { ["G4", "D4", "G3", "D3", "G2"].forEach((n, i) => nota(N(n), i * 0.07, 0.09, { onda: 0.5, vol: 0.08 })); ruido(0, 0.35, { vol: 0.05, freq: 800 }); },
   pulo() { nota(N("C4"), 0, 0.2, { onda: 0.25, vol: 0.1, ate: N("C6"), solta: 0.08 }); },
+  // truques e carinhos dos bichinhos da Rabiscolândia: um chiptune curtinho para cada bicho (onda de pulso, original)
+  bichinho(tipo = "au") {
+    const f = {
+      au: () => { nota(N("E5"), 0, 0.08, { onda: 0.25, vol: 0.09, ate: N("A4") }); nota(N("G5"), 0.13, 0.1, { onda: 0.25, vol: 0.09, ate: N("C5") }); },
+      miau: () => nota(N("A5"), 0, 0.34, { onda: 0.5, vol: 0.07, ate: N("E5"), solta: 0.2 }),
+      pulinho: () => [0, 0.09, 0.18].forEach((t, i) => nota(N(["C5", "E5", "G5"][i]), t, 0.07, { onda: 0.125, vol: 0.08 })),
+      quack: () => { nota(N("C5"), 0, 0.09, { onda: 0.5, vol: 0.09, ate: N("G4") }); nota(N("C5"), 0.12, 0.09, { onda: 0.5, vol: 0.09, ate: N("G4") }); },
+      bee: () => nota(N("D5"), 0, 0.4, { onda: 0.125, vol: 0.07, ate: N("F5"), solta: 0.15 }),
+      plim: () => ["G5", "C6", "E6"].forEach((n, i) => nota(N(n), i * 0.07, 0.1, { onda: 0.25, vol: 0.08 })),
+    };
+    (f[tipo] ?? f.au)();
+    nota(N("C7"), 0.3, 0.12, { onda: 0.125, vol: 0.05, solta: 0.1 });
+  },
   buzina() { for (const t of [0, 0.32]) { nota(N("F4"), t, 0.22, { onda: 0.5, vol: 0.09 }); nota(N("A4"), t, 0.22, { onda: 0.25, vol: 0.07 }); } },
   estouro() { ruido(0, 0.12, { vol: 0.25, freq: 2500 }); nota(N("C6"), 0, 0.1, { onda: 0.125, vol: 0.06, ate: N("C4") }); },
   nota(i) { const escala = ["C5", "D5", "E5", "G5", "A5", "C6", "D6", "E6"]; nota(N(escala[i % escala.length]), 0, 0.25, { onda: 0.25, vol: 0.09, solta: 0.2 }); },

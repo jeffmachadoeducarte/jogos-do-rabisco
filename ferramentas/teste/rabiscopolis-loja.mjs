@@ -87,7 +87,7 @@ const CONTADOR = "Number(document.querySelector('.rbc-contador b')?.textContent)
   ok((await t.ev("teste.contexto")) === "🎨 Entrar no Ateliê", `na porta do Ateliê a ação é "${await t.ev("teste.contexto")}"`);
   await tecla(t, "KeyF"); await espera(900);
   ok(await t.ev("teste.atelie.aberto"), "F abriu a loja");
-  ok(await t.ev("document.querySelectorAll('.atl-aba').length") === 5 && await t.ev("document.querySelectorAll('.atl-item').length") >= 4, "loja com 5 abas e as peças da aba");
+  ok(await t.ev("document.querySelectorAll('.atl-aba').length") === 6 && await t.ev("document.querySelectorAll('.atl-item').length") >= 4, "loja com 6 abas (a última é a dos Bichinhos) e as peças da aba");
   ok(Number(await t.ev("document.querySelector('.atl-saldo b').textContent")) === 25, "o saldo aparece na loja");
   ok(await t.ev("teste.atelie.rabisco != null && teste.atelie.palco != null"), "prévia do Rabisco girando na vitrine");
   // navegar pelo teclado prova a peça no Rabisco da vitrine (sem comprar)

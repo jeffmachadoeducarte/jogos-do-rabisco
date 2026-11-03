@@ -12,7 +12,8 @@ import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
 import { criarPalco3D, THREE } from "../../src/motor3d/palco3d.js";
 import { toon, comContorno } from "../../src/motor3d/toon.js";
 import { PECAS, vestirPecas, prepararRoupa } from "./meu-rabisco.js";
-import { CATEGORIAS, NOME_LOJA, itensDaLoja, pinturaPorId, VEICULOS_PINTAVEIS, TEMPORADAS } from "./atelie.js";
+import { CATEGORIAS, NOME_LOJA, itensDaLoja, pinturaPorId, VEICULOS_PINTAVEIS, TEMPORADAS, precoBichinho, temBichinho } from "./atelie.js";
+import { criarModeloBichinho, bichinhoPorId } from "./bichinho-modelo.js";
 import { criarVeiculo } from "./veiculos.js";
 import { tem } from "../../src/motor/rabiscoins.js";
 import { ICONE_MOEDA, somCompra, somFalta } from "../../src/motor/rabiscoins-ui.js";
@@ -24,6 +25,7 @@ const VISTAS = {
   oculos: [[0, 1.55, 3.0], [0, 1.5, 0]],
   mochila: [[0, 1.1, 4.5], [0, 1.0, 0]],
   veiculo: [[6.2, 3.6, 7.6], [0, 1.0, 0]],
+  bichinho: [[0, 1.25, 4.4], [0, 0.78, 0]],
 };
 
 export function criarAtelie(onde, cb) {
@@ -37,13 +39,14 @@ export function criarAtelie(onde, cb) {
       <div class="atl-abas" role="tablist"></div>
       <div class="atl-itens"></div>
       <div class="atl-rodape"><button type="button" class="atl-acao" data-foco></button><button type="button" class="atl-ok deco-ok" data-foco>✓ Pronto</button></div>
+      <div class="atl-nomepet" hidden><label>Nome do bichinho <input class="atl-campo" maxlength="10" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="Dê um nome" data-foco></label></div>
       <small class="atl-dica"></small>
     </div></div>`;
   onde.append(raiz);
   raiz.addEventListener("pointerdown", (e) => e.stopPropagation());
   const vista = raiz.querySelector(".atl-vista"), abasEl = raiz.querySelector(".atl-abas"), itensEl = raiz.querySelector(".atl-itens");
   const acaoEl = raiz.querySelector(".atl-acao"), dicaEl = raiz.querySelector(".atl-dica"), provandoEl = raiz.querySelector(".atl-provando");
-  let cat = CATEGORIAS[0].id, sel = null, foco = null, palco = null, rb = null, carro = null, giro = 0, parado = 0, arrastando = null, camAtual = null;
+  let cat = CATEGORIAS[0].id, sel = null, foco = null, palco = null, rb = null, carro = null, pet = null, petT = 0, giro = 0, parado = 0, arrastando = null, camAtual = null;
 
   const botao = (html, cls, aoClicar) => { const b = document.createElement("button"); b.type = "button"; b.className = cls; b.setAttribute("data-foco", ""); b.innerHTML = html; b.addEventListener("click", (e) => { e.stopPropagation(); aoClicar(); }); return b; };
   const moeda = (n) => `<span class="atl-preco">${ICONE_MOEDA}${n}</span>`;
@@ -51,6 +54,7 @@ export function criarAtelie(onde, cb) {
   // cartões da aba: o original primeiro (de graça) e as peças da loja
   function cartoes() {
     const itens = itensDaLoja();
+    if (cat === "bichinho") return itens.filter((i) => i.cat === "bichinho").map((i) => ({ ...i, preco: precoBichinho(i) }));
     if (cat !== "veiculo") {
       const p = PECAS[cat], orig = p.opcoes.find((o) => o.id === p.original);
       return [{ id: `orig:${cat}`, original: true, slot: cat, opcao: orig.id, nome: orig.nome, amostra: orig.amostra, preco: 0 }, ...itens.filter((i) => i.cat === cat)];
@@ -63,7 +67,7 @@ export function criarAtelie(onde, cb) {
     return out;
   }
   const comprado = (it) => it.original || tem(it.id);
-  const usando = (it) => (it.veiculo ? (cb.pinturas()?.[it.veiculo] ?? null) === it.pintura : cb.escolha()[it.slot] === it.opcao);
+  const usando = (it) => (it.bichinho ? cb.bichinho?.()?.atual === it.bichinho : it.veiculo ? (cb.pinturas()?.[it.veiculo] ?? null) === it.pintura : cb.escolha()[it.slot] === it.opcao);
 
   function desenharSaldo() { raiz.querySelector(".atl-saldo b").textContent = String(cb.saldo()); }
   function desenharAbas() {
@@ -78,7 +82,7 @@ export function criarAtelie(onde, cb) {
     itensEl.replaceChildren(...lista.map((it) => {
       const meu = comprado(it), uso = usando(it), selec = sel?.id === it.id;
       const selo = it.temporada ? `<span class="atl-selo" title="${TEMPORADAS[it.temporada]?.nome ?? ""}">${TEMPORADAS[it.temporada]?.selo ?? "⭐"}</span>` : "";
-      const rodape = uso ? `<span class="atl-estado usando">${it.veiculo ? "✓ Usando" : "✓ Vestido"}</span>` : meu ? `<span class="atl-estado seu">${it.original ? "De graça" : "É seu!"}</span>` : moeda(it.preco);
+      const rodape = uso ? `<span class="atl-estado usando">${it.veiculo ? "✓ Usando" : it.bichinho ? "✓ Com você" : "✓ Vestido"}</span>` : meu ? `<span class="atl-estado seu">${it.original ? "De graça" : "É seu!"}</span>` : it.bichinho && !it.preco ? `<span class="atl-estado seu">🎁 De graça!</span>` : moeda(it.preco);
       const b = botao(`${selo}<span class="mrb-amostra" style="background:linear-gradient(135deg, ${hex(it.amostra[0])} 50%, ${hex(it.amostra[1])} 50%)"></span><span class="atl-nome">${it.nome}</span>${rodape}`,
         `atl-item${selec ? " selecionado" : ""}${uso ? " usando" : ""}${meu ? "" : " a-venda"}`, () => { selecionar(it); focar(acaoEl); });
       b.dataset.id = it.id; b.setAttribute("aria-pressed", String(selec));
@@ -93,6 +97,15 @@ export function criarAtelie(onde, cb) {
     if (!it) { acaoEl.hidden = true; return; }
     acaoEl.hidden = false;
     const s = cb.saldo();
+    if (it.bichinho) {
+      if (usando(it)) { acaoEl.innerHTML = "↩ Deixar em casa"; acaoEl.classList.add("tirar"); }
+      else if (comprado(it)) { acaoEl.innerHTML = "🐾 Levar comigo"; acaoEl.classList.add("vestir"); }
+      else if (!it.preco) { acaoEl.innerHTML = "🎁 Ganhar de graça"; acaoEl.classList.add("trocar"); }
+      else if (s >= it.preco) { acaoEl.innerHTML = `Trocar por ${moeda(it.preco)}`; acaoEl.classList.add("trocar"); }
+      else { acaoEl.innerHTML = `Faltam ${moeda(it.preco - s)}`; acaoEl.classList.add("falta"); }
+      dicaEl.textContent = comprado(it) || s >= it.preco ? "Ele segue o Rabisco pela cidade. Toque nele para ver um truque!" : "Ajude os amigos nas missões para ganhar Rabiscoins!";
+      return;
+    }
     if (usando(it)) {
       if (it.original) { acaoEl.innerHTML = it.veiculo ? "✓ Já está assim" : "✓ Já está vestido"; acaoEl.classList.add("vestir"); }
       else { acaoEl.innerHTML = it.veiculo ? "↩ Voltar à de fábrica" : "↩ Tirar"; acaoEl.classList.add("tirar"); }
@@ -101,16 +114,44 @@ export function criarAtelie(onde, cb) {
     else { acaoEl.innerHTML = `Faltam ${moeda(it.preco - s)}`; acaoEl.classList.add("falta"); }
     dicaEl.textContent = comprado(it) || s >= it.preco ? (it.veiculo ? "A pintura vale no veículo chamado pelo Rabifone 📱" : "Arraste o Rabisco para ver de todos os lados") : "Ajude os amigos nas missões para ganhar Rabiscoins!";
   }
+  const nomeDoBichinho = (id) => cb.bichinho?.()?.nomes?.[id] ?? "";
+  const nomeEl = raiz.querySelector(".atl-nomepet"), campoEl = raiz.querySelector(".atl-campo");
+  // o nome do bichinho (plaquinha pequena na cidade): só aparece para os que já são seus
+  function desenharNome() {
+    const ver = sel?.bichinho && comprado(sel);
+    nomeEl.hidden = !ver;
+    if (ver) campoEl.value = nomeDoBichinho(sel.bichinho);
+  }
+  campoEl.addEventListener("input", () => {
+    if (!sel?.bichinho) return;
+    cb.nomearBichinho?.(sel.bichinho, campoEl.value.trim().replace(/\s+/g, " ").slice(0, 10));
+    provandoEl.textContent = nomeDoBichinho(sel.bichinho) || sel.nome;
+  });
   function selecionar(it) {
     sel = it;
     for (const b of itensEl.querySelectorAll(".atl-item")) { const s = b.dataset.id === it.id; b.classList.toggle("selecionado", s); b.setAttribute("aria-pressed", String(s)); }
-    provandoEl.textContent = it.original ? "" : comprado(it) ? it.nome : `Provando: ${it.nome}`;
+    provandoEl.textContent = it.bichinho ? (comprado(it) ? nomeDoBichinho(it.bichinho) || it.nome : it.nome) : it.original ? "" : comprado(it) ? it.nome : `Provando: ${it.nome}`;
+    desenharNome();
     desenharAcao();
     mostrar3D();
   }
   function fazer() {
     const it = sel;
     if (!it) return;
+    if (it.bichinho) {
+      if (usando(it)) cb.escolherBichinho(null);
+      else if (comprado(it)) { cb.escolherBichinho(it.bichinho); cb.falar?.("rp-atelie-vestiu"); }
+      else {
+        const primeiro = !temBichinho(), r = cb.comprar(it);
+        if (!r?.ok) { somFalta(); cb.falar?.("rp-atelie-falta"); acaoEl.classList.remove("treme"); void acaoEl.offsetWidth; acaoEl.classList.add("treme"); return; }
+        somCompra(); cb.confete?.();
+        cb.escolherBichinho(it.bichinho);
+        cb.falar?.(primeiro ? "rp-bichinho-primeiro" : "rp-atelie-comprou");
+        desenharSaldo();
+      }
+      desenharItens(); selecionar(it); focar(acaoEl);
+      return;
+    }
     if (usando(it)) {
       if (it.original) return;
       if (it.veiculo) cb.pintar(it.veiculo, null); else cb.vestir(it.slot, PECAS[it.slot].original);
@@ -152,6 +193,11 @@ export function criarAtelie(onde, cb) {
     camAtual = { pos: new THREE.Vector3(...VISTAS.camiseta[0]), alvo: new THREE.Vector3(...VISTAS.camiseta[1]) };
     palco.aoQuadro((dt) => {
       rb.atualizar(dt, { modo: "parado" });
+      if (pet && cat === "bichinho") { // o bichinho anda no lugar, para, senta e ganha um coração (ciclo de 9 s)
+        petT += dt;
+        const c = petT % 9, anda = c < 3.6, senta = c > 4.6 && c < 8.2, k = senta ? Math.min(1, (c - 4.6) * 2.5) : 0;
+        pet.posar({ fase: petT * 7, vel: anda ? 1 : 0, sentado: c > 8.2 ? Math.max(0, 1 - (c - 8.2) * 2.5) : k, olhar: Math.sin(petT * 0.8) * 0.5, abanar: senta ? 1 : 0.3, coracao: senta && c > 5.4 && c < 7.8 ? Math.sin((c - 5.4) / 2.4 * Math.PI) : 0, t: petT, recolher: senta ? 0.4 : 0 });
+      }
       if (!arrastando) {
         parado = Math.max(0, parado - dt);
         if (giro != null && !parado) giravel().rotation.y += dt * 0.75;
@@ -162,11 +208,12 @@ export function criarAtelie(onde, cb) {
     });
   }
   // arrastar com o dedo/mouse vira a vitrine na mão (depois de soltar, espera um pouco e volta a girar sozinha)
-  const giravel = () => (carro ? carro.g : rb?.grupo);
+  const giravel = () => (carro ? carro.g : pet && cat === "bichinho" ? pet.grupo : rb?.grupo);
   vista.addEventListener("pointerdown", (e) => { const g = giravel(); if (!g) return; arrastando = { x: e.clientX, y0: g.rotation.y }; vista.setPointerCapture?.(e.pointerId); });
   vista.addEventListener("pointermove", (e) => { const g = giravel(); if (arrastando && g) g.rotation.y = arrastando.y0 + (e.clientX - arrastando.x) * 0.012; });
   const solta = () => { if (arrastando) { arrastando = null; parado = 2.5; } };
   vista.addEventListener("pointerup", solta); vista.addEventListener("pointercancel", solta);
+  function tirarPet() { if (!pet) return; pet.liberar(); pet = null; }
   function tirarCarro() { if (!carro) return; carro.g.removeFromParent(); carro.g.traverse((o) => { if (o.isMesh && !o.geometry.userData.compartilhada) o.geometry.dispose(); }); carro = null; }
   function mostrar3D() {
     if (!palco || !rb) return;
@@ -189,13 +236,25 @@ export function criarAtelie(onde, cb) {
       }
       return;
     }
+    if (cat === "bichinho") {
+      tirarCarro();
+      rb.grupo.visible = false; palco.base.visible = true;
+      if (it?.bichinho && pet?.id !== it.bichinho) {
+        tirarPet();
+        pet = criarModeloBichinho(it.bichinho);
+        pet.grupo.scale.setScalar(2.5); pet.grupo.rotation.y = 0.6; petT = 0;
+        palco.cena.add(pet.grupo);
+      }
+      return;
+    }
+    tirarPet();
     tirarCarro();
     rb.grupo.visible = true; palco.base.visible = true;
     const e = { ...cb.escolha() };
     if (it?.slot) e[it.slot] = it.opcao;
     vestirPecas(rb, e);
   }
-  function desmontar3D() { tirarCarro(); palco?.destruir(); palco = null; rb = null; }
+  function desmontar3D() { tirarPet(); tirarCarro(); palco?.destruir(); palco = null; rb = null; }
 
   function focar(el) {
     foco?.classList.remove("rf-foco");
@@ -226,9 +285,9 @@ export function criarAtelie(onde, cb) {
     confirmar() { foco?.click(); },
     // para os testes e as fotos
     aba(c) { trocarAba(c); },
-    escolher(id) { const it = cartoes().find((i) => i.id === id || i.opcao === id || i.pintura === id); if (it) selecionar(it); return Boolean(it); },
+    escolher(id) { const it = cartoes().find((i) => i.id === id || i.opcao === id || i.pintura === id || i.bichinho === id); if (it) selecionar(it); return Boolean(it); },
     fazer,
-    girar(ang) { const g = carro ? carro.g : rb?.grupo; if (!g) return; if (ang == null) { giro = 0; parado = 0; } else { giro = null; g.rotation.y = ang; } },
+    girar(ang) { const g = giravel(); if (!g) return; if (ang == null) { giro = 0; parado = 0; } else { giro = null; g.rotation.y = ang; } },
     // anda o foco pela tela: pega o item mais perto na direção pedida (o item focado já fica provado)
     navegar(dx, dy) {
       const itens = [...raiz.querySelectorAll("[data-foco]")].filter((e) => e.offsetParent !== null && !e.hidden);

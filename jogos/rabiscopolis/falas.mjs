@@ -125,6 +125,7 @@ Object.assign(FALAS_PT, {
   "rp-atelie-vestiu": "Ficou muito bonito!",
   "rp-atelie-falta": "Ainda faltam algumas Rabiscoins. Ajude os amigos nas missões para juntar mais!",
   "rp-atelie-pintura": "Pintura nova! Chame o veículo pelo Rabifone para passear com ela.",
+  "rp-bichinho-primeiro": "Que fofura! Você ganhou o seu primeiro bichinho! Ele vai passear com o Rabisco e, se você tocar nele, faz um truque. Que tal dar um nome a ele?",
 });
 // Presente do dia (o baú de cada dia: diario.js); quem fala é a anfitriã
 Object.assign(FALAS_PT, {
