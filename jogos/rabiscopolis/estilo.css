@@ -333,3 +333,20 @@ html.modo-tv .atl-cartao { transform: scale(1.1); }
   .rf-tela[data-app="presente"] { padding: 8px; }
   .rf-dia.sete { flex-direction: column; gap: 0; }
 }
+/* Rabifone com muitos apps (Presente, Ateliê, Álbum, Trabalhar, Desafios...): a tela inicial vira grade de 3 colunas na TV
+   e, no celular deitado, o aparelho fica largo com 6 colunas de ícones menores, tudo à vista sem rolar */
+.rf-tela[data-app="inicio"] .rf-grade { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.rf-tela[data-app="inicio"] .rf-grade .rf-app:last-child:nth-child(odd) { grid-column: auto; }
+.rf-tela[data-app="inicio"] .rf-app { padding: 8px 2px 6px; font-size: 15px; line-height: 1.1; text-align: center; border-width: 3px; border-radius: 16px; }
+.rf-tela[data-app="inicio"] .rf-icone { width: 56px; height: 56px; font-size: 31px; border-radius: 15px; border-width: 3px; }
+@media (max-height: 520px) and (orientation: landscape) {
+  .rf-aparelho { width: min(560px, 66vw); aspect-ratio: auto; height: 86vh; border-radius: 30px; padding: 10px 12px 8px; }
+  .rf-topo { justify-content: flex-start; gap: 14px; padding: 0 12px 4px; }
+  .rf-topo > :last-child { margin-left: auto; }
+  .rf-tela[data-app="inicio"] { padding: 8px; }
+  .rf-tela[data-app="inicio"] .rf-grade { grid-template-columns: repeat(6, 1fr); gap: 10px 7px; padding-top: 2px; }
+  .rf-tela[data-app="inicio"] .rf-app { padding: 8px 1px 6px; font-size: 14px; gap: 4px; border-radius: 14px; box-shadow: 0 3px 0 var(--tinta); }
+  .rf-tela[data-app="inicio"] .rf-icone { width: 52px; height: 52px; font-size: 29px; border-radius: 14px; }
+  .rf-botoes { padding-top: 6px; }
+  .rf-botoes button { height: 34px; }
+}
