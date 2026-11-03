@@ -693,8 +693,15 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
     const capacete = "teste.rabisco.tronco.children.some((c) => c.children.some((q) => q.userData.mk === 'pintura'))";
     if (tipo === "moto") {
       ok(await t.ev(capacete) && (await t.ev("teste.rabisco.tronco.rotation.x")) > 0.3, "moto: o Rabisco pilota de capacete, inclinado para a frente");
-      await t.ev("teste.volante(1, 0.8)"); await espera(900);
-      ok(Math.abs(await t.ev("teste.dentro.inclina")) > 0.1, `moto: inclina na curva (${(await t.ev("teste.dentro.inclina")).toFixed(2)} rad)`);
+      // depois do trecho anterior a moto pode ter parado num muro (parada ela não inclina, de propósito): põe na rua
+      // aberta da praça, acelera em linha reta até ter velocidade de verdade (espera por CONDIÇÃO, em tempo de jogo, não por relógio) e só então curva,
+      // medindo o PICO da inclinação durante a curva
+      await t.ev("(() => { const v = teste.dentro; v.pos.set(-20, 0.03, 52.8); v.ang = Math.PI / 2; v.vel = 0; v.virar = 0; })(); teste.volante(1, 0)");
+      const veloz = await ate(t, "teste.dentro.vel > 8", 30000, 100);
+      await t.ev("teste.volante(1, 0.8)");
+      let pico = 0; const fimCurva = Date.now() + 30000, tCurva = await t.ev("teste.tempo");
+      while (Date.now() < fimCurva && (await t.ev("teste.tempo")) - tCurva < 3 && pico <= 0.1) pico = Math.max(pico, Math.abs(await t.ev("teste.dentro.inclina")));
+      ok(veloz && pico > 0.1, `moto: inclina na curva (pico ${pico.toFixed(2)} rad, a ${(await t.ev("teste.dentro.vel")).toFixed(1)} m/s)`);
       await t.ev("teste.volante(null)"); await espera(2500);
     }
     await t.ev("teste.sair()"); await espera(200);
