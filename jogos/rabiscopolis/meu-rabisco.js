@@ -369,6 +369,11 @@ export function ajustarUniforme(rb) {
   const rosto = Boolean(rb.roupas?.rosto || rb.roupasRP?.rosto);
   const cabeca = Boolean(rb.roupas?.cabeca || rb.roupasRP?.cabeca || rb.emCapacete);
   rb.rp.vis = { sapatos: !botas, oculos: !rosto, chapeu: !cabeca };
+  // boné/chapéu do uniforme some sob o capacete da moto (como o chapéu do Ateliê) e volta ao descer
+  for (const o of [...(rb.roupasRP?.cabeca ?? []), ...(rb.roupas?.cabeca?.objs ?? [])]) {
+    if (rb.emCapacete && o.visible) { o.visible = false; o.userData.sobCapacete = true; }
+    else if (!rb.emCapacete && o.userData.sobCapacete) { o.visible = true; delete o.userData.sobCapacete; }
+  }
   if (rb.rp.juntar) fundir(rb);
   else for (const [slot, gs] of Object.entries(rb.rp.grupos)) for (const g of gs) g.visible = rb.rp.vis[slot] !== false;
   const ch = opcaoDe("chapeu", rb.rp.atual.chapeu);

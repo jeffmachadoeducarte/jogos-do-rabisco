@@ -334,7 +334,7 @@ const SALA_BONITA = `(() => { const d = teste.decorar, c = d.catalogo, out = [];
   // a casa por dentro fica escondida na rua: não custa nenhuma chamada (o resto da rua varia com o trânsito passando)
   const custoCasa = await t.ev("(() => { const g = teste.casa.grupo; let n = 0; g.traverse((o) => { if (o.isMesh) { let v = true; for (let p = o; p; p = p.parent) if (!p.visible) v = false; if (v) n++; } }); return n; })()");
   ok(custoCasa === 0, `celular, rua do Bairro das Casas: a casa decorada não desenha nada lá fora (${custoCasa} malhas); rua ${rua.join(", ")} chamadas, e antes de a casa existir ${ruaAntes.join(", ")}`);
-  console.log(Math.max(...rua) <= 180 ? "✓" : "⚠", `celular, rua do Bairro das Casas ≤ 180: pior ângulo ${Math.max(...rua)} (o excesso já existia antes da casa: ${Math.max(...ruaAntes)})`);
+  ok(Math.max(...rua) <= 180, `celular, rua do Bairro das Casas ≤ 180: pior ângulo ${Math.max(...rua)} (antes de a casa existir: ${Math.max(...ruaAntes)})`);
   ok(!(await t.transborda()), "a página não transborda no celular");
   const errs = errosDeVerdade(t);
   ok(errs.length === 0, `celular: sem erro de console${errs.length ? ": " + errs.slice(0, 4).join(" | ") : ""}`);

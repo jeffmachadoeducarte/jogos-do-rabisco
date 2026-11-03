@@ -67,8 +67,17 @@ export function criarDesafios(cena, ctx) {
   const letreiro = (texto, w, h, cor, fundo = "#ffffff") => {
     const tex = texturaCanvas(512, Math.round(512 * h / w), (c, cw, ch) => { c.fillStyle = fundo; c.fillRect(0, 0, cw, ch); c.strokeStyle = cor; c.lineWidth = 14; c.strokeRect(7, 7, cw - 14, ch - 14); c.fillStyle = cor; c.font = `800 ${Math.round(ch * 0.5)}px system-ui,sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(texto, cw / 2, ch / 2 + 4); });
     texs.push(tex);
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
-    m.castShadow = false; return guardar(m);
+    // placa de dois lados numa malha só: a face de trás é a mesma placa girada meia-volta (com DoubleSide o texto saía espelhado de um lado)
+    const frente = new THREE.PlaneGeometry(w, h), tras = new THREE.PlaneGeometry(w, h).rotateY(Math.PI), geo = new THREE.BufferGeometry();
+    for (const nome of ["position", "normal", "uv"]) {
+      const a = frente.attributes[nome], b = tras.attributes[nome], arr = new Float32Array(a.array.length + b.array.length);
+      arr.set(a.array); arr.set(b.array, a.array.length); geo.setAttribute(nome, new THREE.BufferAttribute(arr, a.itemSize));
+    }
+    const n = frente.attributes.position.count;
+    geo.setIndex([...frente.index.array, ...Array.from(tras.index.array, (i) => i + n)]);
+    frente.dispose(); tras.dispose();
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex }));
+    m.userData.doisLados = texto; m.castShadow = false; return guardar(m);
   };
 
   // placa de recordes: em pé, ao lado da bandeira, virada para onde a criança chega
@@ -173,7 +182,7 @@ export function criarDesafios(cena, ctx) {
     portico(est, GB.x, 0, GB.z, 7, 4, 0, COR.laranja);
     fechar(est); g.add(est);
     g.add(guardar(criarPlaca("barco", B.x + 2.6, B.z, Math.PI)));
-    const pL = letreiro("LARGADA", 4.2, 0.8, "#ff7a00"); pL.position.set(GB.x, 4.6, GB.z); pL.rotation.y = Math.PI; // lido de quem vem do norte (o barquinho sai da beira) g.add(pL);
+    const pL = letreiro("LARGADA", 4.2, 0.8, "#ff7a00"); pL.position.set(GB.x, 4.6, GB.z); pL.rotation.y = Math.PI; g.add(pL); // lido dos dois lados (o barquinho sai da beira)
     const geo = new THREE.CylinderGeometry(0.55, 0.8, 1.5, 8), mt = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const im = new THREE.InstancedMesh(geo, mt, BARCO.boias.length); im.frustumCulled = false; im.castShadow = false;
     g.add(guardar(im)); D3.barco = { grupo: g, centro: [0, 200], raio: 70, boias: im };

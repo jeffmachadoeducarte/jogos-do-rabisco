@@ -54,7 +54,7 @@ export const DESAFIOS = [
     x: CAMPO_PULA.x0 + LARGADA_PULA.u - 2.5, z: CAMPO_PULA.z0 + LARGADA_PULA.v, partes: "checkpoint", total: 2 },
   { id: "heli", nome: "Argolas do helicóptero", icone: "🚁", meio: "de helicóptero", emoji: "🏁", tempos: { ouro: 75, prata: 100, bronze: 140 },
     x: HELI.bandeira.x, z: HELI.bandeira.z, partes: "argola", total: HELI.argolas.length },
-  { id: "barco", nome: "Corrida de barco", icone: "🚣", meio: "de barquinho", emoji: "🏁", tempos: { ouro: 45, prata: 65, bronze: 95 },
+  { id: "barco", nome: "Corrida de barco", icone: "🚣", meio: "de barquinho", emoji: "🏁", tempos: { ouro: 50, prata: 65, bronze: 95 },
     x: BARCO.bandeira.x, z: BARCO.bandeira.z, partes: "boia", total: BARCO.boias.length },
 ];
 export const desafio = (id) => DESAFIOS.find((d) => d.id === id);
