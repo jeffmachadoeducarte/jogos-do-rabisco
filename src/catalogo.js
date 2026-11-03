@@ -104,11 +104,12 @@ export const faixas = [
 ];
 
 // ------------------------------------------------------------------ O que aparece no portal
-// Por enquanto o portal mostra SÓ estes jogos, nesta ordem (cidade livre e corrida de kart).
+// Por enquanto o portal mostra SÓ estes jogos, nesta ordem. O Rabisco Kart saiu do ar em 03/11/2026 (foco na Rabiscolândia):
+// para voltar, acrescente "rabisco-kart" de novo.
 // Os demais continuam no catálogo acima e nas pastas jogos/ (abrem por link direto): estão só escondidos.
 // Para voltar com um jogo: acrescente o id aqui. Para voltar com todos, troque por `null`
 // (e restaure as faixas de idade em index.html e src/app.js, que foram retiradas da tela inicial).
-export const JOGOS_NO_AR = ["rabiscopolis", "rabisco-kart"];
+export const JOGOS_NO_AR = ["rabiscopolis"];
 
 // Jogos no ar, sem repetição (alguns estão em mais de uma faixa), na ordem de JOGOS_NO_AR.
 export const jogosNoAr = (() => {

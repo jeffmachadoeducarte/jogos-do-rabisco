@@ -1,5 +1,5 @@
 // Rabiscolândia: a placa do @ do Instagram na frente do prédio de cada parceira (src/parceiros.js).
-// Mesma placa nas 12: moldura de blocos na cor da parceira, ícone de câmera numa etiqueta colorida e o @ escuro em fundo claro.
+// Mesma placa nas 12: moldura de blocos na cor da parceira, ícone do Instagram (desenhado em vetor) e o @ escuro em fundo claro.
 // Cada uma fica numa faixa livre da fachada, na altura que a câmera da rua enxerga (sem cobrir letreiro, porta nem janela).
 // Custo: todas usam UMA textura e UM material; a mesclagem de cada bloco junta a placa numa malha só, então cada placa na
 // tela é no máximo uma chamada de desenho a mais. A moldura entra na malha de cores lisas do bloco (nenhuma chamada a mais).
@@ -31,22 +31,20 @@ const PLACAS = {
   "speedy-solucoes": { x: 0, y: 4.43, z: 0.14, w: 8, h: 0.84, cor: 0x2f8fe8 },
 };
 
-// câmera de máquina antiga (corpo, visor em cima, lente grande): desenho nosso, sem lembrar o logotipo de nenhuma rede
-function camera(c, cx, cy, a, cor) {
-  const w = a, h = a * 0.68, x = cx - w / 2, y = cy - h / 2 + a * 0.07;
-  c.fillStyle = cor;
-  c.beginPath(); c.roundRect(x, y, w, h, a * 0.11); c.fill();
-  c.beginPath(); c.roundRect(cx - a * 0.2, y - a * 0.14, a * 0.4, a * 0.24, a * 0.05); c.fill();
-  c.beginPath(); c.roundRect(x + a * 0.08, y - a * 0.07, a * 0.17, a * 0.12, a * 0.03); c.fill();
-  c.globalCompositeOperation = "destination-out"; // a lente é um aro vazado: aparece a cor da etiqueta
-  c.beginPath(); c.arc(cx, y + h / 2, a * 0.23, 0, 7); c.fill();
-  c.globalCompositeOperation = "source-over";
-  c.beginPath(); c.arc(cx, y + h / 2, a * 0.12, 0, 7); c.fill();
-}
-// texto escuro ou claro, o que dá mais contraste com a cor de fundo
-function tintaSobre(hex) {
-  const q = new THREE.Color(hex), lum = 0.2126 * q.r + 0.7152 * q.g + 0.0722 * q.b;
-  return lum > 0.3 ? ESCURO : "#ffffff";
+// glifo do Instagram em vetor: quadrado de cantos redondos com degradê (amarelo embaixo à esquerda → rosa → roxo em cima à direita),
+// contorno branco, círculo central só de contorno e o pontinho no canto de cima
+function iconeInstagram(c, x, y, a) {
+  const g = c.createLinearGradient(x, y + a, x + a, y);
+  g.addColorStop(0, "#fdc830"); g.addColorStop(0.25, "#f7771c"); g.addColorStop(0.5, "#e1306c");
+  g.addColorStop(0.75, "#c13584"); g.addColorStop(1, "#5851db");
+  c.fillStyle = g;
+  c.beginPath(); c.roundRect(x, y, a, a, a * 0.28); c.fill();
+  c.strokeStyle = c.fillStyle = "#ffffff"; c.lineCap = "round";
+  c.lineWidth = a * 0.075;
+  const m = a * 0.14;
+  c.beginPath(); c.roundRect(x + m, y + m, a - m * 2, a - m * 2, a * 0.2); c.stroke();
+  c.beginPath(); c.arc(x + a / 2, y + a / 2, a * 0.2, 0, 7); c.stroke();
+  c.beginPath(); c.arc(x + a * 0.73, y + a * 0.27, a * 0.05, 0, 7); c.fill();
 }
 // a fonte é o maior tamanho em que o @ cabe (na largura e na altura): nunca corta nem espreme
 function medirTexto(c, t, largura, altura) {
@@ -63,12 +61,9 @@ function desenharPlaca(c, x0, y0, w, h, cor, arroba) {
   c.save();
   c.beginPath(); c.rect(x0, y0, w, h); c.clip();
   c.fillStyle = CLARO; c.fillRect(x0, y0, w, h);
-  // etiqueta colorida da câmera, encostada na esquerda. A lente vazada precisa de camada própria para não furar a placa
-  const et = h * 1.08, fundo = `#${new THREE.Color(cor).getHexString()}`;
-  c.fillStyle = fundo; c.fillRect(x0, y0, et, h);
-  const k = document.createElement("canvas"); k.width = Math.ceil(et); k.height = Math.ceil(h);
-  camera(k.getContext("2d"), et / 2, h / 2, h * 0.72, tintaSobre(cor));
-  c.drawImage(k, x0, y0);
+  // o ícone do Instagram encostado na esquerda, bem grande; a cor da parceira fica na moldura de blocos
+  const et = h * 1.08, ic = h * 0.88;
+  iconeInstagram(c, x0 + (et - ic) / 2, y0 + (h - ic) / 2, ic);
   // o @, centrado no que sobra
   const folga = h * 0.2, area = w - et - folga * 2, alto = h * 0.84;
   const { px, m } = medirTexto(c, arroba, area, alto);
