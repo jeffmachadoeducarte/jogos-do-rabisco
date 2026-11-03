@@ -253,7 +253,7 @@ export function criarMissoes(ctx) {
     ativa = M; etapa = 0; levando = []; carona = null; aviso = 0; // missão nova: as dicas podem aparecer na hora
     calmoAte = Date.now() + 7000; // a propaganda da missão anterior não corta o pedido desta
     for (const nid of Object.keys(M.npcs)) voltarAoLugar(npcDe(M, nid));
-    clearTimeout(concluir.t2);
+    pararSerie(); // fala de conclusão da missão anterior não toca por cima do pedido
     // o pedido é para o Rabisco ir/fazer algo: sempre "Rabisco", nunca o nome da criança
     falar(M.voz?.pedido ?? `rp-m-${M.id}-pedido`);
     dizer(quemFala(M, M.npcs[M.quem].nome), M.pedido, 6500);
@@ -299,15 +299,32 @@ export function criarMissoes(ctx) {
     dizer("Rabiscolândia", `${P.texto}<span class="prop-insta">📸 ${parc.nome} · @${parc.instagram}</span>`, msFala(falaDaPropaganda(id)) + 1500);
     return true;
   }
-  function agendarPropaganda(M) {
-    if (!PROPAGANDA[M.parceiro]) return;
-    // de volta para a cidade: se estiver numa sala, orando ou ouvindo o pedido da missão seguinte, espera acabar
-    const tentar = (resta) => {
-      if (!ctx.ocupado?.() && !est.orando && Date.now() >= calmoAte) mostrarPropaganda(M.parceiro);
-      else if (resta > 0) tPropaganda = setTimeout(() => tentar(resta - 1), 1500);
-    };
-    clearTimeout(tPropaganda);
-    tPropaganda = setTimeout(() => tentar(40), atrasoPropaganda(M));
+  // Fala da anfitriã ao concluir, em fila: cada passo só começa quando o áudio do anterior ACABA (evento `ended`),
+  // com o balão sincronizado à voz. Se o MP3 falhar ou estiver mudo, espera o tempo estimado (msFala) e segue.
+  // Sair da missão ou aceitar outra cancela a fila (pararSerie), para fala velha não tocar por cima.
+  let serie = 0;
+  const dormir = (ms) => new Promise((r) => { tPropaganda = setTimeout(r, ms); });
+  function pararSerie() { serie++; clearTimeout(tPropaganda); }
+  async function falarSerie(passos) {
+    const meu = ++serie;
+    for (const p of passos) {
+      if (meu !== serie) return;
+      if (p.quando) { // propaganda: de volta para a cidade (não em sala, nem orando, nem ouvindo o pedido de outra missão)
+        let resta = 40;
+        while (meu === serie && !p.quando() && resta-- > 0) await dormir(1500);
+        if (meu !== serie || resta < 0) return;
+      }
+      const cap = msFala(p.texto) * 2 + 4000; // só vale se o áudio nunca terminar (rede parada)
+      dizer(p.nome, p.html, cap);
+      await p.tocar();
+      if (meu !== serie) return;
+      const r = await Promise.race([ctx.aguardarFim ? ctx.aguardarFim() : false, dormir(cap).then(() => "cap")]);
+      if (meu !== serie) return;
+      if (r === false) await dormir(msFala(p.texto)); // sem áudio de verdade: segue pelo tempo estimado
+      if (meu !== serie) return;
+      dizer(p.nome, p.html, 2800); // a voz acabou: o balão fica mais um pouco e some
+      await dormir(350);
+    }
   }
   const atrasoPropaganda = (M) => (M.verso ? 5400 + msFala(`${M.verso.texto} ${M.verso.ref}`) : (M.agradece?.ms ?? 0) + msFala(textoFim(M)));
   function concluir() {
@@ -321,21 +338,22 @@ export function criarMissoes(ctx) {
     for (const pl of plantas) if (pl.missao === M.id && pl.sprite.parent) grupo.remove(pl.sprite); // os brotos ficam crescendo na horta
     levando = []; carona = null;
     const ult = M.etapas.at(-1), destino = ult.ate ?? M.quem;
-    clearTimeout(concluir.t); clearTimeout(concluir.t2);
+    const passos = [];
     if (M.agradece) {
       // quem recebeu agradece com o nome da criança ("Obrigada, Alice! ..."); depois a anfitriã diz o fim
-      const A = M.agradece, nm = ctx.nome?.();
-      dizer(quemFala(M, M.npcs[destino]?.nome ?? "Rabiscolândia"), nm ? A.texto.replace("{nome}", nm) : A.textoSem, A.ms);
-      Promise.resolve(ctx.falarNome?.(A.pre, A.pos)).then((ok) => { if (!ok) falar(A.neutra); });
-      concluir.t2 = setTimeout(() => { falarFim(M); dizer("Rabiscolândia", textoFim(M), 6500); }, A.ms);
-      agendarPropaganda(M);
+      const A = M.agradece, nm = ctx.nome?.(), tx = nm ? A.texto.replace("{nome}", nm) : A.textoSem;
+      passos.push({ nome: quemFala(M, M.npcs[destino]?.nome ?? "Rabiscolândia"), html: tx, texto: tx,
+        tocar: () => Promise.resolve(ctx.falarNome?.(A.pre, A.pos)).then((ok) => { if (!ok) falar(A.neutra); }) });
+      passos.push({ nome: "Rabiscolândia", html: textoFim(M), texto: textoFim(M), tocar: () => falarFim(M) });
     } else {
-      // a fala com nome pode esperar um MP3 no ar acabar: a propaganda só conta o tempo depois que o fim começou
-      falarFim(M).then(() => agendarPropaganda(M));
-      dizer(quemFala(M, ultimoReceptor ?? M.npcs[destino]?.nome ?? "Rabiscolândia"), textoFim(M), 5200);
+      passos.push({ nome: quemFala(M, ultimoReceptor ?? M.npcs[destino]?.nome ?? "Rabiscolândia"), html: textoFim(M), texto: textoFim(M), tocar: () => falarFim(M) });
     }
     ultimoReceptor = null;
-    if (M.verso) concluir.t = setTimeout(() => { falar(`rp-m-${M.id}-verso`); dizer(`📖 ${M.titulo}`, `${M.verso.texto} <i>(${M.verso.ref})</i>`, 7500); }, 5400);
+    if (M.verso) passos.push({ nome: `📖 ${M.titulo}`, html: `${M.verso.texto} <i>(${M.verso.ref})</i>`, texto: `${M.verso.texto} ${M.verso.ref}`, tocar: () => falar(`rp-m-${M.id}-verso`) });
+    const parc = PARCEIROS.find((p) => p.id === M.parceiro), P = PROPAGANDA[M.parceiro];
+    if (parc && P) passos.push({ nome: "Rabiscolândia", html: `${P.texto}<span class="prop-insta">📸 ${parc.nome} · @${parc.instagram}</span>`, texto: falaDaPropaganda(M.parceiro),
+      quando: () => !ctx.ocupado?.() && !est.orando, tocar: () => falar(`rp-prop-${M.parceiro}`) });
+    falarSerie(passos);
     ativa = null; etapa = 0;
     api.ultimaConcluida = M.id;
     ctx.aoConcluir?.(M);
@@ -529,7 +547,7 @@ export function criarMissoes(ctx) {
     return { icone: ativa.icone, titulo: ativa.titulo, passo: t };
   }
   function largar() {
-    clearTimeout(concluir.t2);
+    pararSerie();
     if (!ativa) return;
     const M = ativa;
     if (est.orando) ctx.pararOracao?.();
@@ -821,6 +839,7 @@ export function criarMissoes(ctx) {
   const ondePede = (id) => { const M = MISSOES.find((x) => x.id === id); const d = M.npcs[M.quem]; return d.tipo === "vovo" ? { x: vovo.grupo.position.x, z: vovo.grupo.position.z } : { x: d.x, z: d.z }; };
   const api = {
     MISSOES, contexto, atualizar, alvo, aceitar, texto, largar, ondePede, grupo, mostrarPropaganda, atrasoPropaganda,
+    concluirParaTeste: (id) => { if (!ativa && !aceitar(id)) return false; if (ativa?.id !== id) return false; concluir(); return true; }, // só para os testes (?teste): pula direto para o fim
     get ativa() { return ativa?.id ?? null; }, get etapa() { return etapa; }, get feitas() { return [...feitas]; },
     get levando() { return [...levando]; }, get carona() { return Boolean(carona); },
     npc: (mid, id) => { const n = npcDe(MISSOES.find((x) => x.id === mid), id); const [x, z] = npcPos(n); return { x, z, y: n.g.position.y, festa: n.festa, seguindo: Boolean(n.seguindo), visivel: n.g.visible, montado: true }; },

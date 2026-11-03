@@ -15,7 +15,7 @@ import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
 import { criarCasca, el } from "../../src/motor/casca.js";
 import { sons, motor } from "../../src/motor/sons.js";
 import { Engrenagem } from "../../src/motor/engrenagem.js";
-import { falar, falarNome, preCarregarFalas } from "../../src/motor/voz.js";
+import { falar, falarNome, aguardarFim, preCarregarFalas } from "../../src/motor/voz.js";
 import { montarMundo } from "./mundo.js";
 import { criarFisica, VEL } from "./fisica.js";
 import { criarCamera } from "./camera.js";
@@ -323,7 +323,7 @@ function iniciar() {
     salvar: (d) => { Object.assign(salvo, { missoesFeitas: d.missoesFeitas, selos: d.selos }); salvar(salvo); },
     falar: (k) => { radio?.pausarPorFala(true); falar(k); },
     // fala emendada com o nome da criança (banco assets/voz/nomes); false sem cadastro/nome gravado
-    falarNome: (pre, pos) => { radio?.pausarPorFala(true); return falarNome(pre, pos); }, nome: nomeCrianca,
+    falarNome: (pre, pos) => { radio?.pausarPorFala(true); return falarNome(pre, pos); }, aguardarFim, nome: nomeCrianca,
     confete: () => jogo.confete?.(),
     pos: () => j.pos, veiculoAtual: () => dentro, ocupado: () => Boolean(emCasa || emLugar || atelieUI?.aberto),
     raio: () => (qualidade.perfil.toque ? 35 : 45),

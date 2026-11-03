@@ -75,6 +75,22 @@ function fimSemSilencio(b) {
   return Math.max(0.05, i / b.sampleRate + 0.03);
 }
 const mp3Tocando = () => tocando && !tocando.paused && !tocando.ended;
+let fimSeq = 0; // instante (relógio do Web Audio) em que acaba a última sequência emendada
+
+// Espera a fala que está no ar acabar (MP3 solto ou sequência emendada). Resolve true se acabou de verdade,
+// false se não havia nada tocando (mudo, MP3 que falhou, navegador bloqueou): quem chama usa um tempo estimado.
+export function aguardarFim() {
+  if (mp3Tocando()) {
+    const a = tocando;
+    return new Promise((r) => {
+      const fim = (v) => () => { for (const e of ["ended", "pause", "error"]) a.removeEventListener(e, fns[e]); r(v); };
+      const fns = { ended: fim(true), pause: fim(true), error: fim(false) };
+      for (const e of Object.keys(fns)) a.addEventListener(e, fns[e], { once: true });
+    });
+  }
+  if (ctx && fimSeq > ctx.currentTime && fontesAtivas.length) return new Promise((r) => setTimeout(() => r(true), (fimSeq - ctx.currentTime) * 1000 + 80));
+  return Promise.resolve(false);
+}
 
 // Toca as chaves em sequência, emendadas. Espera um MP3 solto que estiver no ar acabar. Resolve false se faltar algum trecho.
 export async function falarSequencia(chaves) {
@@ -94,6 +110,7 @@ export async function falarSequencia(chaves) {
     t += dur - 0.01; // leve sobreposição: emenda sem clique nem buraco
     fontesAtivas.push(f);
   }
+  fimSeq = t + 0.01;
   return true;
 }
 
