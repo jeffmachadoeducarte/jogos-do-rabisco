@@ -49,7 +49,14 @@ export function catalogo() {
 export const temBichinho = () => BICHINHOS.some((b) => tem(ID_BICHINHO(b.id)));
 export const precoBichinho = (item) => (temBichinho() ? item.preco : 0);
 // o que aparece na loja agora: fora de época só se já foi comprado
-export const itensDaLoja = (data = new Date()) => { const meus = comprados(); return catalogo().filter((i) => temporadaAtiva(i.temporada, data) || meus.has(i.id)); };
+// o "hoje" da loja: o relógio do aparelho; para testar, ?natal=1 vale 10 de dezembro e ?teste&hoje=AAAA-MM-DD vale aquele dia
+export function dataDaLoja(busca = globalThis.location?.search ?? "", agora = new Date()) {
+  const p = new URLSearchParams(busca);
+  if (p.has("teste") && /^\d{4}-\d{2}-\d{2}$/.test(p.get("hoje") ?? "")) { const [a, m, d] = p.get("hoje").split("-").map(Number); return new Date(a, m - 1, d, 12); }
+  if (p.get("natal") === "1") return new Date(agora.getFullYear(), 11, 10, 12);
+  return agora;
+}
+export const itensDaLoja = (data = dataDaLoja()) => { const meus = comprados(); return catalogo().filter((i) => temporadaAtiva(i.temporada, data) || meus.has(i.id)); };
 // roupa do Ateliê: comprou? (as de graça valem sempre)
 export const possui = (slot, id) => { const o = opcaoDe(slot, id); return Boolean(o) && (!o.preco || tem(idLoja(slot, id))); };
 export const pinturaPorId = (id) => PINTURAS.find((p) => p.id === id) ?? null;

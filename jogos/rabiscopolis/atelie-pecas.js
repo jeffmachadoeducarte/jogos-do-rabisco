@@ -20,7 +20,7 @@ import { THREE as G, toon } from "../../src/motor3d/toon.js";
 import { ROUPAS } from "../../src/motor3d/roupas3d.js";
 
 // cores do Rabisco 3D (as mesmas de meu-rabisco.js) e algumas a mais da paleta da escola
-const C = { ciano: 0x00bdff, rosa: 0xf14ba8, laranja: 0xff6400, pele: 0xffe5cf, branco: 0xffffff, tinta: 0x151515, escuro: 0x2a2a33, verde: 0x2bb24c, roxo: 0x8e6cff, amarelo: 0xffcc1f, marinho: 0x2f3d8c, dourado: 0xf2b81f };
+const C = { ciano: 0x00bdff, rosa: 0xf14ba8, laranja: 0xff6400, pele: 0xffe5cf, branco: 0xffffff, tinta: 0x151515, escuro: 0x2a2a33, verde: 0x2bb24c, roxo: 0x8e6cff, amarelo: 0xffcc1f, marinho: 0x2f3d8c, dourado: 0xf2b81f, vermelho: 0xd62828, verdeNatal: 0x1f7a3a };
 export const CORES_LOJA = C;
 
 // ---------------------------------------------------------------- camisetas
@@ -92,8 +92,32 @@ function cartola(rb, ajuda) {
   return [g];
 }
 
+// gorro de Papai Noel: cone vermelho caído para o lado, barra e pompom brancos (cobre a ponta do lápis)
+function gorroNoel(rb, ajuda) {
+  const g = noTronco(rb, 4.7), b = { comContorno: ajuda.comContorno };
+  pc(new G.CylinderGeometry(0.64, 0.66, 0.24, 32), C.branco, g, { ...b, borda: 0.03, y: 0.04 });
+  const ponta = new G.Group(); ponta.position.y = 0.16; ponta.rotation.z = -0.5; g.add(ponta);
+  pc(new G.ConeGeometry(0.66, 1.3, 28), C.vermelho, ponta, { ...b, borda: 0.035, y: 0.65 });
+  const pompom = pc(new G.SphereGeometry(0.17, 14, 12), C.branco, g, { ...b, borda: 0.025 });
+  pompom.position.set(Math.sin(0.5) * 1.3 + 0.02, 0.16 + Math.cos(0.5) * 1.3 - 0.05, 0);
+  return [g];
+}
+// laço e fita dourados por cima de uma mochila retangular de presente
+function mochilaPresente(rb, a) {
+  const g = a.mochilaRetangular(rb, { corpo: C.vermelho, bolso: C.verdeNatal, alca: C.dourado });
+  const ZM = -0.97, b = { comContorno: a.comContorno };
+  pc(new G.BoxGeometry(0.11, 1.5, 0.03), C.dourado, g, { ...b, borda: 0, y: 2.68 - 2.15, z: ZM });
+  pc(new G.BoxGeometry(0.84, 0.11, 0.03), C.dourado, g, { ...b, borda: 0, y: 3.0 - 2.15, z: ZM });
+  for (const s of [-1, 1]) {
+    const l = pc(new G.ConeGeometry(0.12, 0.3, 4), C.dourado, g, { ...b, borda: 0.015, x: s * 0.14, y: 3.3 - 2.15, z: ZM - 0.04 });
+    l.rotation.z = s * -1.1;
+  }
+  pc(new G.SphereGeometry(0.07, 10, 8), C.dourado, g, { ...b, borda: 0.01, y: 3.28 - 2.15, z: ZM - 0.05 });
+  return g;
+}
+
 export function pecasDaLoja(ajuda) {
-  const { mochilaRetangular, oculos, lenteOval, lenteRetangular } = ajuda;
+  const { mochilaRetangular, oculos, lenteOval, lenteRetangular, lenteForma, formaEstrela } = ajuda;
   return {
     camiseta: { nome: "Camiseta", icone: "👕", original: "original", dica: "A logo e o rostinho ficam sempre iguais", opcoes: [
       { id: "original", nome: "Azul original", amostra: [C.ciano, C.rosa] },
@@ -102,6 +126,7 @@ export function pecasDaLoja(ajuda) {
       { id: "verde", nome: "Camiseta verde", amostra: [C.verde, C.amarelo], preco: 45, monta: (rb) => camiseta(rb, { corpo: C.verde, manga: C.amarelo, punho: C.verde }) },
       { id: "roxa", nome: "Camiseta roxa", amostra: [C.roxo, C.rosa], preco: 60, monta: (rb) => camiseta(rb, { corpo: C.roxo, manga: C.rosa, punho: C.roxo }) },
       { id: "listrada", nome: "Listrada de marinheiro", amostra: [C.marinho, C.branco], preco: 90, monta: (rb) => camiseta(rb, { corpo: C.marinho, manga: C.branco, punho: C.marinho, listras: [[2.46, 2.53], [2.66, 2.73], [2.84, 2.9], [3.36, 3.42]] }) },
+      { id: "natal", nome: "Camiseta de Natal", amostra: [C.vermelho, C.branco], preco: 80, temporada: "natal", monta: (rb) => camiseta(rb, { corpo: C.vermelho, manga: C.branco, punho: C.verdeNatal, listras: [[2.46, 2.53], [2.62, 2.69], [2.78, 2.85], [2.94, 3.0], [3.36, 3.42]] }) },
     ] },
     chapeu: { nome: "Chapéu", icone: "🧢", original: "original", dica: "Boné de outra cor ou chapéu por cima", opcoes: [
       { id: "original", nome: "Boné laranja", amostra: [C.laranja, C.laranja] },
@@ -110,16 +135,19 @@ export function pecasDaLoja(ajuda) {
       { id: "bone-roxo", nome: "Boné roxo", amostra: [C.roxo, C.roxo], preco: 35, monta: (rb) => trocarBone(rb, C.roxo), desmonta: voltarBone },
       { id: "chapeu-sol", nome: "Chapéu de sol", amostra: [0xf3d27a, C.rosa], preco: 70, escondeAba: true, monta: (rb) => ROUPAS["chapeu-palha"].monta(rb, {}) },
       { id: "cartola", nome: "Cartola de mágico", amostra: [C.escuro, C.rosa], preco: 120, escondeAba: true, monta: (rb) => cartola(rb, ajuda) },
+      { id: "gorro-noel", nome: "Gorro de Papai Noel", amostra: [C.vermelho, C.branco], preco: 50, temporada: "natal", escondeAba: true, monta: (rb) => gorroNoel(rb, ajuda) },
       { id: "coroa", nome: "Coroa dourada", amostra: [C.amarelo, C.rosa], preco: 200, monta: (rb) => ROUPAS.coroa.monta(rb, {}) },
     ] },
     mochila: { opcoes: [
       { id: "dino", nome: "Mochila dinossauro", amostra: [C.verde, C.laranja], preco: 100, monta: (rb) => [mochilaDino(rb, ajuda)] },
       { id: "foguete", nome: "Mochila foguete", amostra: [C.branco, C.laranja], preco: 180, monta: (rb) => [mochilaFoguete(rb, ajuda)] },
+      { id: "presente", nome: "Mochila de presente", amostra: [C.vermelho, C.dourado], preco: 110, temporada: "natal", monta: (rb) => [mochilaPresente(rb, ajuda)] },
     ] },
     oculos: { opcoes: [
       { id: "grandao", nome: "Óculos grandão", amostra: [0xbfe9ff, C.rosa], preco: 40, monta: (rb) => [oculos(rb, { forma: () => lenteOval(0x9fdcff, C.rosa, { r: 0.25, esticar: 1.1 }), aro: C.rosa })] },
       { id: "tresd", nome: "Óculos 3D", amostra: [0xe8413c, C.ciano], preco: 60, monta: (rb) => { let i = 0; return [oculos(rb, { forma: () => lenteRetangular(i++ % 2 ? 0xe8413c : 0x19c3e6, C.branco), aro: C.branco, brilho: false })]; } },
       { id: "piloto", nome: "Óculos de piloto", amostra: [0x1d2633, C.dourado], preco: 90, monta: (rb) => [oculos(rb, { forma: () => lenteOval(0x24313f, C.dourado, { r: 0.23, esticar: 1.32 }), aro: C.dourado })] },
+      { id: "estrela-natal", nome: "Óculos de estrela", amostra: [C.amarelo, C.dourado], preco: 70, temporada: "natal", monta: (rb) => [oculos(rb, { forma: () => lenteForma(formaEstrela(0.27), C.amarelo, C.dourado, 1), aro: C.dourado })] },
     ] },
   };
   function mochilaDino(rb, a) {
@@ -159,6 +187,7 @@ export const PINTURAS = [
   { id: "carro-dourado", veiculo: "carro", nome: "Carro dourado", cor: 0xf2b81f, preco: 160 },
   { id: "moto-azul", veiculo: "moto", nome: "Moto azul", cor: 0x1f7fe0, preco: 60 },
   { id: "barco-rosa", veiculo: "barco", nome: "Barquinho rosa", cor: 0xf59ac0, cor2: 0xffffff, preco: 30 },
+  { id: "carro-natal", veiculo: "carro", nome: "Carro de Natal", cor: 0xd62828, cor2: 0xf2b81f, friso: 0x1f7a3a, preco: 150, temporada: "natal" },
   { id: "heli-laranja", veiculo: "heli", nome: "Helicóptero laranja", cor: 0xff7a00, cor2: 0xffcc1f, preco: 120 },
 ];
 export const VEICULOS_PINTAVEIS = { carro: { nome: "Carro", icone: "🚗", original: 0xec2e8c }, moto: { nome: "Moto", icone: "🏍️", original: 0xc8141c }, barco: { nome: "Barquinho", icone: "🚣", original: 0xffcc1f }, heli: { nome: "Helicóptero", icone: "🚁", original: 0x00b5f0 } };

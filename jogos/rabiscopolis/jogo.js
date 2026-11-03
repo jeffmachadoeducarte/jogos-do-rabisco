@@ -479,10 +479,12 @@ function iniciar() {
   requestAnimationFrame(quadro);
   setTimeout(() => { falar("rp-intro"); dizer("Rabiscolândia", salvo.casa != null ? "Bem-vindo de volta! Sua casa está esperando no Bairro das Casas." : "Que cidade grande! Escolha uma casa no Bairro das Casas e use o Rabifone 📱 para chamar um carro."); }, 700);
   // primeira entrada do dia com o presente esperando: a anfitriã avisa depois da fala de boas-vindas (sem cortar)
-  if (diario.deveAvisar()) setTimeout(() => aguardarFim().then(() => setTimeout(avisarPresente, 350)), 1900);
+  if (diario.deveAvisar()) setTimeout(() => aguardarFim().then(() => setTimeout(() => avisarPresente(), 350)), 1900);
 }
 function avisarPresente() {
   if (!vivo || bauDia?.estado !== "fechado") return;
+  // não atropela quem já está numa missão, dentro de um lugar/casa ou num veículo (o baú continua lá, é só o aviso que fica quieto)
+  if (emCasa || emLugar || missoes?.ativa || profissoes?.ativa || desafios?.ativo || dentro) return;
   radio?.pausarPorFala(true); falar("rp-presente-aviso");
   dizer("Rabiscolândia", "Tem presente do dia esperando por você! 🎁", 4200);
 }
@@ -510,12 +512,38 @@ function parar() {
 // O Rabisco oficial (rabisco3d.js, sem mudar) tem ~165 peças. As que não mexem entre si são juntadas em cada
 // articulação (corpo, tronco, quadris, joelhos, ombros e cotovelos): ~30 chamadas. Boné e aba ficam soltos
 // (roupas3d.js mexe neles). O rosto chega depois (rosto3d.json): junta de novo quando ele aparecer.
+// A logo em relevo da camiseta são 8 adesivos de cilindro (cores diferentes, mesma textura, um por camada): 8 chamadas por
+// Rabisco. Viram UMA malha, com a cor de cada camada nos vértices (a ordem das camadas dentro da malha é a mesma de antes).
+function fundirLogo(rb) {
+  const camadas = rb.tronco.children.filter((m) => m.isMesh && m.material.isMeshBasicMaterial && m.material.map && m.material.transparent && m.geometry.type === "CylinderGeometry" && m.renderOrder >= 1 && m.renderOrder <= 8).sort((a, b) => a.renderOrder - b.renderOrder);
+  if (camadas.length < 2 || !camadas.every((m) => m.material.map === camadas[0].material.map)) return;
+  const pos = [], uv = [], cor = [], nrm = [];
+  for (const m of camadas) {
+    m.updateMatrix();
+    const g = m.geometry.toNonIndexed(); g.applyMatrix4(m.matrix);
+    const n = g.attributes.position.count, c = m.material.color;
+    pos.push(...g.attributes.position.array); uv.push(...g.attributes.uv.array); nrm.push(...g.attributes.normal.array);
+    for (let i = 0; i < n; i++) cor.push(c.r, c.g, c.b);
+    g.dispose();
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute("normal", new THREE.Float32BufferAttribute(nrm, 3));
+  geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); geo.setAttribute("color", new THREE.Float32BufferAttribute(cor, 3));
+  const mat = new THREE.MeshBasicMaterial({ map: camadas[0].material.map, transparent: true, depthWrite: false, vertexColors: true });
+  const fundida = new THREE.Mesh(geo, mat); fundida.renderOrder = 1; fundida.userData.logoFundida = true; fundida.userData.mesclada = true;
+  rb.tronco.add(fundida);
+  for (const m of camadas) { m.removeFromParent(); m.geometry.dispose(); m.material.dispose(); }
+}
 function otimizarRabisco(rb, vale = () => rabisco === rb) {
+  if (!rb.tronco.children.some((m) => m.userData.logoFundida)) fundirLogo(rb);
   for (const o of [rb.bone, rb.pivoAba, rb.aba]) if (o) o.userData.dinamico = true;
   // a mochila original fica em malhas à parte (rb.rp.mochila, de meu-rabisco.js): dá para escondê-la ao trocar de mochila
   const juntas = new Set([rb.rp?.mochila, rb.corpo, rb.tronco, rb.pernaE.quadril, rb.pernaE.joelho, rb.pernaD.quadril, rb.pernaD.joelho, rb.bracoE.ombro, rb.bracoE.cotovelo, rb.bracoD.ombro, rb.bracoD.cotovelo].filter(Boolean));
   const juntar = () => { if (vale()) mesclar(rb.grupo, { juntas }); };
   juntar();
+  // o rosto chega pela rede: junta no instante em que ele é montado (e não só nos relógios abaixo)
+  const montarRosto = rb.montarRosto;
+  if (montarRosto && !rb.rostoJunta) { rb.rostoJunta = true; rb.montarRosto = function (...a) { const r = montarRosto.apply(this, a); juntar(); return r; }; }
   for (const ms of [1500, 4000, 9000]) setTimeout(juntar, ms);
 }
 
@@ -980,8 +1008,9 @@ function chamarVeiculo(tipo, cor) {
   if (emCasa || emLugar) { dizer("Rabifone", "Saia para a rua para chamar um veículo: ele estaciona lá fora."); return null; }
   if (garagem) { cena.remove(garagem.g, garagem.parado); veiculos.splice(veiculos.indexOf(garagem), 1); garagem = null; }
   // pintura do Ateliê: moto, barquinho e helicóptero saem na cor comprada (o carro pintado tem botão próprio na Garagem)
-  const pint = tipo !== "carro" ? pinturaDe(salvo, tipo) : null;
+  let pint = tipo !== "carro" ? pinturaDe(salvo, tipo) : null;
   if (pint) cor = pint.cor;
+  else if (tipo === "carro") { const pc = pinturaDe(salvo, "carro"); if (pc && pc.cor === cor) pint = pc; } // carro pintado: faixa e friso da pintura
   const v = criarVeiculo(tipo, cor, null, pint);
   if (tipo === "barco") {
     const lago = [LAGO, LAGO2].find((l) => Math.hypot(l.x - j.pos.x, l.z - j.pos.z) < l.r + 14);

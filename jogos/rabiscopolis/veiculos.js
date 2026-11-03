@@ -14,7 +14,7 @@ export const CORES_CARRO = [0xec2e8c, 0x00b5f0, 0xff7a00, 0x58c43a, 0x8e6cff, 0x
 // pintura: { cor, cor2 } do Ateliê para o helicóptero e o barquinho (os outros já vêm na cor pedida)
 export function criarVeiculo(tipo = "carro", cor = CORES_CARRO[0], enfeite = null, pintura = null) {
   const fab = { onibus: onibusFofo, heli: () => helicoptero(pintura), je: carroJE, ambulancia, sorvete: vanSorvete, bombeiro: caminhaoBombeiro, reciclagem: caminhaoReciclagem, bici: () => bicicleta(cor), patinete: () => patinete(cor), barco: () => barquinho(pintura), trator, moto: () => motoEsportiva(cor), jetski: () => jetSki(cor), lancha: () => lancha(cor) }[tipo];
-  const g0 = fab ? fab() : carroFofo(cor);
+  const g0 = fab ? fab() : carroFofo(cor, tipo === "carro" ? pintura : null);
   const g = enfeite?.(g0) ?? g0; // o enfeite pode trocar o carro (ex.: o carro novo da J.E sai igual ao do pátio)
   if (tipo === "jetski") Object.assign(g.userData, { posar: posarPiloto, aoSair: soltarPose }); // senta como na moto (sem capacete)
   if (tipo === "heli") g.rotation.order = "YXZ"; // inclina para a frente/lados sem embolar o giro
