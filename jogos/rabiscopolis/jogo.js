@@ -455,7 +455,7 @@ function iniciar() {
     aoAbrir: () => { teclas.clear(); toque.zerar(); },
   });
   // o bichinho que acompanha o Rabisco (só vale se foi trocado no Pet Shop: a carteira guarda o que é dele)
-  bichinho = criarBichinho(cena, { j, fis, sons });
+  bichinho = criarBichinho(cena, { j, fis, sons, cam });
   aplicarBichinho();
   caixa.addEventListener("pointerdown", (ev) => { if (ev.target === r3?.domElement && bichinho?.tocou(ev.clientX, ev.clientY, cam, r3.domElement)) bichinho.truque(); });
   atualizarHud();

@@ -4,7 +4,7 @@
 //  - vai junto no veículo (carro e moto) e reaparece ao descer;
 //  - o nome vira uma plaquinha menor que a do Rabisco e fica salvo; a ação perto dele faz um truque;
 //  - tudo continua depois de recarregar a página;
-//  - custo de desenho: no máximo +2 chamadas por causa do bichinho (praça, celular).
+//  - custo de desenho: no máximo +1 chamada (a plaquinha do nome vai dentro da malha) por causa do bichinho (praça, celular).
 // Uso: node --experimental-websocket ferramentas/teste/rabiscopolis-bichinho.mjs <http://localhost:porta> [pasta das fotos]
 import { mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -160,10 +160,9 @@ const andar = async (t, m, iy = 1) => {
   for (const [nome, [x, z, yaw]] of Object.entries({ "praça": [0, 33, Math.PI], "frente da loja": [17, 20, Math.PI / 2] })) {
     await t.ev(`teste.ir(${x}, ${z}); teste.olhar(${yaw}); teste.bichinho.reaparecer()`); await espera(900);
     com[nome] = (await t.ev("teste.medir().total")).calls;
-    ok(com[nome] - sem[nome] <= 2, `celular, ${nome}: bichinho com nome custa +${com[nome] - sem[nome]} (${sem[nome]} → ${com[nome]}) (≤ +2)`);
+    ok(com[nome] - sem[nome] <= 1, `celular, ${nome}: bichinho com nome custa +${com[nome] - sem[nome]} (${sem[nome]} → ${com[nome]}) (≤ +1)`);
   }
-  // o teto do celular é 180 na praça: a base (sem o bichinho) é que decide se sobra folga; o bichinho em si custa no máximo +2
-  console.log(`  (praça no celular: ${sem["praça"]} sem o bichinho, ${com["praça"]} com ele; teto 180)`);
+  ok(com["praça"] <= 180, `celular, praça com o bichinho: ${com["praça"]} chamadas (≤ 180)`);
   await t.foto(OUT + "celular-praca.png");
   ok(t.erros.filter((e) => !/assets\/voz\/(rp-|nomes\/)|favicon|fonts\.g/.test(e)).length === 0, "sem erro de console no celular");
   await t.fechar();

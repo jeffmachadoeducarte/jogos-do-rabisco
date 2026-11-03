@@ -11,7 +11,7 @@
 // Tudo original, no estilo de blocos do jogo (plástico liso com a linha clara na beira de cada caixa).
 
 import { THREE } from "../../src/motor3d/toon.js";
-import { plasticoVC } from "./blocos.js";
+import { comArestas, placaBloco } from "./blocos.js";
 
 const C = { tinta: 0x151515, branco: 0xffffff, rosa: 0xff8fb8, rosaForte: 0xf14ba8 };
 
@@ -115,8 +115,10 @@ const MODELOS = {
 };
 
 const _m = new THREE.Matrix4(), _p = new THREE.Matrix4(), _t1 = new THREE.Matrix4(), _t2 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _v = new THREE.Vector3(), _s = new THREE.Vector3(), _n = new THREE.Matrix3();
-let materialVC = null;
-const material = () => (materialVC ??= plasticoVC({ specular: new THREE.Color(0x2c2c2c), shininess: 36, side: THREE.FrontSide }));
+// A plaquinha do nome vai DENTRO da malha do bichinho (um quadrilátero que olha para a câmera, com o texto num atlas
+// de canvas no canal de uv 1): o bichinho com nome continua custando 1 chamada de desenho só. O corpo lê um pixel
+// branco do atlas, então as cores por vértice não mudam.
+const ATLAS_W = 384, ATLAS_H = 128, PLACA_H = 112;
 
 export function criarModeloBichinho(id) {
   const modelo = MODELOS[id]?.() ?? MODELOS.cachorro();
@@ -135,15 +137,25 @@ export function criarModeloBichinho(id) {
     }
     faixa[p.id].fim = pos.length / 3;
   }
+  const nCorpo = pos.length / 3;
+  const uv1 = [];
+  for (let i = 0; i < nCorpo; i++) uv1.push(0.5, 1 - (PLACA_H + 8) / ATLAS_H); // pixel branco da faixa de baixo
+  for (let i = 0; i < 6; i++) { pos.push(0, 0, 0); nrm.push(0, 0, 1); uv.push(0.5, 0.5); cor.push(1, 1, 1); }
+  uv1.push(0, 1 - PLACA_H / ATLAS_H, 1, 1 - PLACA_H / ATLAS_H, 1, 1, 0, 1 - PLACA_H / ATLAS_H, 1, 1, 0, 1);
   const base = new Float32Array(pos), baseN = new Float32Array(nrm);
+  const atlas = document.createElement("canvas"); atlas.width = ATLAS_W; atlas.height = ATLAS_H;
+  const actx = atlas.getContext("2d"); actx.fillStyle = "#fff"; actx.fillRect(0, 0, ATLAS_W, ATLAS_H);
+  const tex = new THREE.CanvasTexture(atlas); tex.channel = 1; tex.colorSpace = THREE.SRGBColorSpace; tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter;
+  const mat = comArestas(new THREE.MeshPhongMaterial({ vertexColors: true, map: tex, specular: 0x2c2c2c, shininess: 36 }));
   const geo = new THREE.BufferGeometry();
   const aPos = new THREE.BufferAttribute(new Float32Array(pos), 3).setUsage(THREE.DynamicDrawUsage);
   const aNrm = new THREE.BufferAttribute(new Float32Array(nrm), 3).setUsage(THREE.DynamicDrawUsage);
   geo.setAttribute("position", aPos); geo.setAttribute("normal", aNrm);
   geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
   geo.setAttribute("color", new THREE.Float32BufferAttribute(cor, 3));
+  geo.setAttribute("uv1", new THREE.Float32BufferAttribute(uv1, 2));
   geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.4, 0), 1.1); // a pose mexe nos vértices: caixa fixa e folgada
-  const malha = new THREE.Mesh(geo, material());
+  const malha = new THREE.Mesh(geo, mat);
   malha.castShadow = false; malha.receiveShadow = true; malha.userData.dinamico = true;
   const grupo = new THREE.Group();
   grupo.add(malha);
@@ -233,6 +245,35 @@ export function criarModeloBichinho(id) {
     aPos.needsUpdate = true; aNrm.needsUpdate = true;
   }
   posar({});
-  const liberar = () => { geo.dispose(); grupo.removeFromParent(); };
-  return { id, grupo, malha, posar, liberar, tipoPasso: modelo.passo };
+
+  // ---- plaquinha do nome (dentro da malha): texto = "" esconde
+  let comNome = false;
+  const L = 0.25, A = 0.073; // meia largura e meia altura (m, antes da escala do bichinho): 0,5 x 0,146
+  function definirNome(texto) {
+    comNome = Boolean(texto);
+    if (comNome) {
+      actx.fillStyle = "#fff"; actx.fillRect(0, 0, ATLAS_W, ATLAS_H);
+      const t = placaBloco(texto, { cor: "#8e6cff", w: ATLAS_W, h: PLACA_H });
+      try { actx.drawImage(t.image, 0, 0, ATLAS_W, PLACA_H); } catch { /* sem imagem ainda */ }
+      t.dispose();
+      tex.needsUpdate = true;
+    } else escreverPlaca(null, 0);
+  }
+  const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _w = new THREE.Matrix4();
+  function escreverPlaca(cam, y) {
+    const A_ = aPos.array, B_ = aNrm.array, i0 = nCorpo * 3;
+    if (!cam || !comNome) { for (let i = i0; i < i0 + 18; i++) A_[i] = 0; aPos.needsUpdate = true; return; }
+    malha.updateWorldMatrix(true, false);
+    _w.copy(malha.matrixWorld).invert();
+    const dir = (v, x, yy, z) => v.set(x, yy, z).applyQuaternion(cam.quaternion).transformDirection(_w);
+    const dx = dir(_a, 1, 0, 0), dy = dir(_b, 0, 1, 0);
+    const c = [[-1, -1], [1, -1], [1, 1], [-1, -1], [1, 1], [-1, 1]];
+    c.forEach(([u, v], k) => {
+      A_[i0 + k * 3] = dx.x * u * L + dy.x * v * A; A_[i0 + k * 3 + 1] = y + dx.y * u * L + dy.y * v * A; A_[i0 + k * 3 + 2] = dx.z * u * L + dy.z * v * A;
+      B_[i0 + k * 3] = 0; B_[i0 + k * 3 + 1] = 0; B_[i0 + k * 3 + 2] = 1;
+    });
+    aPos.needsUpdate = true;
+  }
+  const liberar = () => { geo.dispose(); mat.dispose(); tex.dispose(); grupo.removeFromParent(); };
+  return { id, grupo, malha, posar, liberar, definirNome, plaqueta: escreverPlaca, get comNome() { return comNome; }, tipoPasso: modelo.passo };
 }

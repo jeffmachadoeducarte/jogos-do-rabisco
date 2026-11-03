@@ -13,37 +13,27 @@
 //   const b = criarBichinho(cena, { j, fis, sons, salvo: () => salvo });
 //   b.definir(id|null, nome); b.atualizar(dt, t, { dentro, emCasa, emLugar, roda, j2ativo, noChao }); b.truque(); b.perto(raio)
 
-import { THREE, placa } from "./base3d.js";
+import { THREE } from "./base3d.js";
 import { criarModeloBichinho, bichinhoPorId } from "./bichinho-modelo.js";
 
 const ESCALA = 1.0;
 const angDif = (a, b) => { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; };
 const TRUQUES = ["giro", "flip", "festa"];
 
-export function criarBichinho(cena, { j, fis, sons, aoFalar = null }) {
+export function criarBichinho(cena, { j, fis, sons, cam }) {
   const raiz = new THREE.Group();
   raiz.visible = false;
   cena.add(raiz);
-  let mod = null, id = null, nome = "", plaquinha = null;
+  let mod = null, id = null, nome = "";
   // estado do bichinho
   const e = { x: 0, z: 0, y: 0, yaw: 0, vel: 0, fase: 0, sentado: 0, yoff: 0, vy: 0, olhar: 0, abanar: 0.3, coracao: 0, flip: 0, giro: 0, recolher: 0 };
   let quieto = 0, rv = 0, anterior = null, seguindo = false, preso = 0, tCarinho = 20, carinho = null, truque = null, nTruque = 0;
   let tPulo = 7, noChaoAntes = true, naCarona = null, escondido = false, ultimoModo = "rua", t0 = 0;
   const lado = 1;
 
-  function plaqueta() {
-    if (!mod) return;
-    if (!nome) { if (plaquinha) plaquinha.visible = false; return; }
-    if (!plaquinha) {
-      plaquinha = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false }));
-      plaquinha.scale.set(0.5, 0.146, 1); plaquinha.position.y = 0.95; plaquinha.renderOrder = 6;
-      raiz.add(plaquinha);
-    }
-    plaquinha.material.map?.dispose();
-    plaquinha.material.map = placa(nome, { cor: "#8e6cff", w: 384, h: 112 });
-    plaquinha.material.needsUpdate = true;
-    plaquinha.visible = true;
-  }
+  // a plaquinha do nome é um quadrilátero dentro da malha do bichinho (bichinho-modelo.js): não custa chamada de desenho
+  const plaqueta = () => { mod?.definirNome(nome); };
+  const olharPlaca = (y) => mod?.plaqueta(cam, y);
   function definir(novo, nomeNovo = "") {
     if (novo && !bichinhoPorId(novo)) novo = null;
     const mudou = novo !== id;
@@ -190,7 +180,7 @@ export function criarBichinho(cena, { j, fis, sons, aoFalar = null }) {
     raiz.position.set(e.x, e.y + e.yoff, e.z);
     raiz.rotation.y = e.yaw + e.giro;
     mod.posar({ fase: e.fase, vel: e.vel > 3.8 ? 2 : e.vel > 0.25 ? 1 : 0, sentado: e.sentado, pulo: 0, flip: e.flip, olhar: e.olhar, abanar: e.abanar, coracao: e.coracao, t, recolher: e.recolher });
-    if (plaquinha) plaquinha.position.y = 0.92 - e.sentado * 0.1;
+    olharPlaca(0.92 - e.sentado * 0.1);
     g.visible = true;
   }
 
@@ -217,7 +207,7 @@ export function criarBichinho(cena, { j, fis, sons, aoFalar = null }) {
     e.fase += dt * Math.abs(v.vel) * 0.3;
     e.abanar += ((Math.abs(v.vel) > 2 ? 1 : 0.3) - e.abanar) * Math.min(1, dt * 4);
     mod.posar({ fase: 0, vel: 0, sentado: e.sentado, olhar: Math.sin(t0 * 0.7) * 0.25, abanar: e.abanar, coracao: 0, t: t0 });
-    if (plaquinha) plaquinha.position.y = 0.82;
+    olharPlaca(0.82);
   }
   function descer() {
     if (naCarona && naCarona !== "oculto") { naCarona.g.remove(raiz); cena.add(raiz); }
@@ -236,11 +226,11 @@ export function criarBichinho(cena, { j, fis, sons, aoFalar = null }) {
     return Math.hypot(px - cx, py - cy) < 46;
   }
   function perto(raio = 3) { return Boolean(mod) && raiz.visible && !naCarona && !escondido && Math.hypot(e.x - j.pos.x, e.z - j.pos.z) < raio; }
-  function liberar() { if (mod) mod.liberar(); raiz.removeFromParent(); plaquinha?.material.map?.dispose(); plaquinha?.material.dispose(); mod = null; }
+  function liberar() { if (mod) mod.liberar(); raiz.removeFromParent(); mod = null; }
   return {
     definir, atualizar, truque: truqueAgora, perto, tocou, liberar, reaparecer,
     get id() { return id; }, get nome() { return nome; }, get raiz() { return raiz; }, get modelo() { return mod; },
-    get info() { return mod ? { id, nome, x: e.x, z: e.z, y: e.y, yaw: e.yaw, vel: e.vel, sentado: e.sentado, visivel: raiz.visible, naCarona: naCarona ? (naCarona === "oculto" ? "oculto" : naCarona.tipo) : null, truque: truque?.tipo ?? null, carinho: Boolean(carinho), coracao: e.coracao, rv, placa: plaquinha?.visible ? { y: plaquinha.position.y, w: plaquinha.scale.x } : null } : null; },
+    get info() { return mod ? { id, nome, x: e.x, z: e.z, y: e.y, yaw: e.yaw, vel: e.vel, sentado: e.sentado, visivel: raiz.visible, naCarona: naCarona ? (naCarona === "oculto" ? "oculto" : naCarona.tipo) : null, truque: truque?.tipo ?? null, carinho: Boolean(carinho), coracao: e.coracao, rv, placa: mod.comNome ? { y: 0.9, w: 0.5 } : null } : null; },
     // para os testes: força o carinho agora
     carinho() { if (mod && !carinho) { carinho = { t: 0, dur: 2.4, pulou: 0 }; } },
   };
