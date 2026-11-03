@@ -31,6 +31,7 @@
 // Unidade: o Rabisco tem 1,8 de altura. x para a direita, z para baixo (vista de cima). dir = para onde a fachada olha.
 
 import { PARCEIROS } from "../../src/parceiros.js";
+import { AREAS_DESAFIOS } from "./desafios-dados.js";
 
 export const BORDA = 400;
 // a grade dos blocos começa em -450 (9 × 9): assim as divisas do miolo continuam em ±50, ±150 e ±250, como antes
@@ -329,6 +330,7 @@ const sobrepoe = (a, b, folga = 0) => a.x0 < b.x1 + folga && a.x1 > b.x0 - folga
 export const PEGADAS_FIXAS = [
   ...LUGARES.filter((l) => l.pegada).map((l) => ({ id: l.id, nova: l.parceiroNovo || l.loja, ...pegadaDe(l.x, l.z, l.dir, l.pegada[0], l.pegada[1], l.recuo) })),
   { id: "atelie-frente", nova: true, ...FRENTE_ATELIE },
+  ...AREAS_DESAFIOS.map((r) => ({ ...r, nova: true })), // Desafios de obstáculos (desafios-dados.js): sem árvore nem prédio de enchimento em cima
   ...LOTES.map((l) => ({ id: l.id, ...pegadaDe(l.x, l.z, l.dir, LOTE.w, LOTE.d, LOTE.recuo) })),
   { id: "praca", x0: PRACA.x - PRACA.r - 2, x1: PRACA.x + PRACA.r + 2, z0: PRACA.z - PRACA.r - 2, z1: PRACA.z + PRACA.r + 2 },
   ...PRACAS_NOVAS.map((p) => ({ id: p.id, x0: p.x - p.r - 2, x1: p.x + p.r + 2, z0: p.z - p.r - 2, z1: p.z + p.r + 2 })),

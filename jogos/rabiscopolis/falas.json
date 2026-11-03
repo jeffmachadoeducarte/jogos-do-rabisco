@@ -345,6 +345,12 @@
   "rp-atelie-pintura": "Pintura nova! Chame o veículo pelo Rabifone para passear com ela.",
   "rp-presente-aviso": "Tem presente do dia esperando por você!",
   "rp-presente-abriu": "Que presente bom! Volte amanhã para abrir outro.",
-  "rp-presente-sete": "Sete dias seguidos! Presente especial com bônus!"
+  "rp-presente-sete": "Sete dias seguidos! Presente especial com bônus!",
+  "rp-des-pula": "Pula-telhados! Passe pelo pórtico e pule de telhado em telhado. Se cair, volta ao último checkpoint.",
+  "rp-des-heli": "Argolas do helicóptero! Suba bem alto e voe por todas as argolas.",
+  "rp-des-barco": "Corrida de barco! Passe pelo pórtico e contorne todas as boias no lago.",
+  "rp-des-bronze": "Medalha de bronze! Muito bem!",
+  "rp-des-prata": "Medalha de prata! Que rápido!",
+  "rp-des-ouro": "Medalha de ouro! Você é um campeão!"
  }
 }

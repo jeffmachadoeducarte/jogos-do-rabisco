@@ -93,6 +93,9 @@ export const sons = {
   volta() { ["C5", "G5", "C6"].forEach((n, i) => nota(N(n), i * 0.1, 0.18, { onda: 0.25, vol: 0.09 })); },
   erro() { nota(N("E4"), 0, 0.14, { onda: 0.5, vol: 0.06 }); nota(N("C4"), 0.14, 0.25, { onda: 0.5, vol: 0.06 }); },
   cano() { ["G4", "D4", "G3", "D3", "G2"].forEach((n, i) => nota(N(n), i * 0.07, 0.09, { onda: 0.5, vol: 0.08 })); ruido(0, 0.35, { vol: 0.05, freq: 800 }); },
+  // Desafios da Rabiscolândia: checkpoint (dois bipes subindo) e chegada (fanfarra curtinha), 8-bit originais
+  checkpoint() { nota(N("E5"), 0, 0.07, { onda: 0.25, vol: 0.09, solta: 0.02 }); nota(N("B5"), 0.08, 0.1, { onda: 0.25, vol: 0.09, solta: 0.02 }); nota(N("E6"), 0.17, 0.2, { onda: 0.25, vol: 0.08, solta: 0.15 }); },
+  chegada() { [["G4", 0], ["C5", 0.09], ["E5", 0.18], ["G5", 0.27]].forEach(([n, t]) => nota(N(n), t, 0.1, { onda: 0.5, vol: 0.08 })); nota(N("C6"), 0.4, 0.5, { onda: 0.5, vol: 0.08, solta: 0.4 }); nota(N("E6"), 0.4, 0.5, { onda: 0.25, vol: 0.05, solta: 0.4 }); nota(N("C4"), 0.4, 0.5, { onda: "tri", vol: 0.25, solta: 0.4 }); },
   pulo() { nota(N("C4"), 0, 0.2, { onda: 0.25, vol: 0.1, ate: N("C6"), solta: 0.08 }); },
   buzina() { for (const t of [0, 0.32]) { nota(N("F4"), t, 0.22, { onda: 0.5, vol: 0.09 }); nota(N("A4"), t, 0.22, { onda: 0.25, vol: 0.07 }); } },
   estouro() { ruido(0, 0.12, { vol: 0.25, freq: 2500 }); nota(N("C6"), 0, 0.1, { onda: 0.125, vol: 0.06, ate: N("C4") }); },

@@ -17,6 +17,7 @@ const APPS = [
   { id: "meurabisco", icone: "✏️", nome: "Meu Rabisco", cor: "#00b5f0" },
   { id: "atelie", icone: "🎨", nome: "Ateliê", cor: "#8e6cff" },
   { id: "presente", icone: "🎁", nome: "Presente", titulo: "Presente do dia", cor: "#ffcc1f" },
+  { id: "desafios", icone: "🏁", nome: "Desafios", cor: "#ff7a00" },
 ];
 const VEICULOS = [
   { tipo: "carro", cor: 0xec2e8c, nome: "Carro rosa", emoji: "🚗" },
@@ -79,6 +80,9 @@ export function criarRabifone(onde, cb) {
         tela.insertBefore(p, lista);
         lista.append(botao(`<span class="rf-emoji">🛍️</span>Abrir a loja`, () => { api.fechar(); cb.aoAtelie?.("abrir"); }));
         lista.append(botao(`<span class="rf-emoji">🧭</span>Mostrar o caminho`, () => { cb.aoAtelie?.("caminho"); api.fechar(); }));
+      } else if (id === "desafios") {
+        const p = document.createElement("p"); p.textContent = "Corra contra o relógio e ganhe medalhas! Escolha para ver o caminho."; tela.insertBefore(p, lista);
+        for (const d of cb.desafios?.() ?? []) lista.append(botao(`<span class="rf-emoji">${d.icone}</span><span class="rf-missao">${d.nome}<small>${d.melhor != null ? `Recorde ${d.melhor.toFixed(1)} s ${{ bronze: "🥉", prata: "🥈", ouro: "🥇" }[d.medalha] ?? ""}` : "Ainda sem recorde"}</small></span>`, () => { cb.aoDesafio?.(d.id); api.fechar(); }));
       } else if (id === "presente") {
         mostrarPresente(lista);
       } else if (id === "meurabisco") {

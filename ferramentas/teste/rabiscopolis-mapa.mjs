@@ -11,7 +11,8 @@ const raiz = new URL("../../", import.meta.url);
 const texto = (p) => readFileSync(new URL(p, raiz), "utf8");
 const parceirosSrc = texto("src/parceiros.js");
 const urlParceiros = `data:text/javascript,${encodeURIComponent(parceirosSrc)}`;
-const mapaSrc = texto("jogos/rabiscopolis/mapa.js").replace(/from\s+["']\.\.\/\.\.\/src\/parceiros\.js["']/, `from "${urlParceiros}"`);
+const urlDesafios = `data:text/javascript,${encodeURIComponent(texto("jogos/rabiscopolis/desafios-dados.js"))}`; // dados puros dos Desafios (mapa.js reserva as áreas deles)
+const mapaSrc = texto("jogos/rabiscopolis/mapa.js").replace(/from\s+["']\.\.\/\.\.\/src\/parceiros\.js["']/, `from "${urlParceiros}"`).replace(/from\s+["']\.\/desafios-dados\.js["']/, `from "${urlDesafios}"`);
 const M = await import(`data:text/javascript,${encodeURIComponent(mapaSrc)}`);
 const { PARCEIROS } = await import(urlParceiros);
 

@@ -132,5 +132,8 @@ Object.assign(FALAS_PT, {
   "rp-presente-abriu": "Que presente bom! Volte amanhã para abrir outro.",
   "rp-presente-sete": "Sete dias seguidos! Presente especial com bônus!",
 });
+// Desafios de obstáculos (desafios-dados.js): a anfitriã fala na 1ª vez de cada desafio e na medalha
+const { FALAS_DESAFIOS } = await import(`data:text/javascript,${encodeURIComponent(readFileSync(new URL("./desafios-dados.js", import.meta.url), "utf8"))}`);
+Object.assign(FALAS_PT, FALAS_DESAFIOS);
 writeFileSync(new URL("./falas.json", import.meta.url), JSON.stringify({ pt: FALAS_PT }, null, 1) + "\n");
 console.log(`${Object.keys(FALAS_PT).length} falas em português`);
