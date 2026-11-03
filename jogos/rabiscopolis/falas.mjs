@@ -126,5 +126,11 @@ Object.assign(FALAS_PT, {
   "rp-atelie-falta": "Ainda faltam algumas Rabiscoins. Ajude os amigos nas missões para juntar mais!",
   "rp-atelie-pintura": "Pintura nova! Chame o veículo pelo Rabifone para passear com ela.",
 });
+// Presente do dia (o baú de cada dia: diario.js); quem fala é a anfitriã
+Object.assign(FALAS_PT, {
+  "rp-presente-aviso": "Tem presente do dia esperando por você!",
+  "rp-presente-abriu": "Que presente bom! Volte amanhã para abrir outro.",
+  "rp-presente-sete": "Sete dias seguidos! Presente especial com bônus!",
+});
 writeFileSync(new URL("./falas.json", import.meta.url), JSON.stringify({ pt: FALAS_PT }, null, 1) + "\n");
 console.log(`${Object.keys(FALAS_PT).length} falas em português`);
