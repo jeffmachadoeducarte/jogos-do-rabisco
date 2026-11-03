@@ -23,7 +23,7 @@ export const PARCEIROS = [
   // não confundir com a Bella Cat Make Biju (id bella-cat): esta é a fábrica de uniformes escolares e vestuário profissional,
   // de Itajaí, que tem a Educarte entre os clientes. A fachada é inventada, sem o logotipo real.
   { id: "bella-company", nome: "Bella Company", foto: "assets/parceiros/bella-company.webp?v=1", tipo: "confeccao", instagram: "somosbellacompany" },
-  { id: "marlon-maquinas", nome: "Marlon Máquinas", foto: "assets/parceiros/marlon-maquinas.webp?v=1", tipo: "reciclagem", instagram: "marlonmaquinas" },
+  { id: "marlon-maquinas", nome: "Marlon Máquinas", foto: "assets/parceiros/marlon-maquinas.webp?v=2", tipo: "reciclagem", instagram: "marlonmaquinas" },
   { id: "cafe-com-deus-pai-kids", nome: "Café com Deus Pai Kids", foto: "assets/parceiros/cafe-com-deus-pai-kids.webp?v=1", tipo: "livraria", instagram: "cafecomdeuspai" },
   { id: "ballet-e-cia", nome: "Ballet e Cia", foto: "assets/parceiros/ballet-e-cia.webp?v=1", tipo: "ballet", instagram: "balleteciaitajai" },
   { id: "bt-models", nome: "BT Models", foto: "assets/parceiros/bt-models.webp?v=1", tipo: "agencia", instagram: "btmodels.agency" },

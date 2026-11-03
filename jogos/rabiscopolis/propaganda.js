@@ -14,7 +14,7 @@ export const PROPAGANDA = {
   "gala-presentes": { texto: "Gala Presentes: cestas e buquês em Itajaí e região, com entrega rápida!", arroba: "arroba gala ponto presentes" },
   "see-love-joias": { texto: "See Love Semijoias: semijoias e acessórios.", arroba: "arroba See Love semijoias" },
   "bella-company": { texto: "Bella Company: uniformes escolares do berçário ao ensino médio, em Itajaí. Feito com cuidado. Para quem importa.", arroba: "arroba somos Bella Company" },
-  "marlon-maquinas": { texto: "Marlon Máquinas: especialistas em reciclagem de plásticos.", arroba: "arroba marlon máquinas" },
+  "marlon-maquinas": { texto: "Marlon Máquinas, especialista em máquinas para reciclagem.", arroba: "arroba marlon máquinas" },
   "cafe-com-deus-pai-kids": { texto: "Café com Deus Pai Kids: devocional para crianças.", arroba: "arroba café com Deus Pai" },
   "ballet-e-cia": { texto: "Ballet e Cia: ballet e jazz, com a Professora Samira. Em cada passo, aprendendo e crescendo juntos.", arroba: "arroba ballet e cia Itajaí" },
   "bt-models": { texto: "BT Models: agência de campanhas publicitárias e desfiles, em Balneário Camboriú.", arroba: "arroba BT Models ponto agency" },

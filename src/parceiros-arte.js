@@ -215,7 +215,7 @@ const FOTOS = {
     c.fillStyle = "#ef7d1a"; c.fillRect(px + 90, H - 200, 450, 190);
     c.fillStyle = "#c85f0a"; for (let x = px + 110; x < px + 530; x += 46) c.fillRect(x, H - 188, 16, 166);
     c.fillStyle = "#c9d2da"; c.beginPath(); c.moveTo(px + 140, H - 290); c.lineTo(px + 300, H - 290); c.lineTo(px + 260, H - 200); c.lineTo(px + 180, H - 200); c.fill();
-    texto(c, "PET", px + 400, H - 110, 200, 74, { cor: "#ffffff", contorno: "#7a3b05" });
+    texto(c, "UNIKA", px + 390, H - 110, 220, 74, { cor: "#ffffff", contorno: "#7a3b05" });
     for (let i = 0; i < 7; i++) { c.fillStyle = ["#7fd3f2", "#58c43a", "#bfe6ff"][i % 3]; c.fillRect(px + 170 + i * 15, H - 322 + (i % 2) * 14, 11, 34); }
     vitrine(c, 760, fy + 40, 210, 130, "#ffffff"); portaDesenho(c, 800, fy + 190, 130, H - fy - 190, "#2e9e57");
   },

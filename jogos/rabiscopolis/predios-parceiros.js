@@ -289,12 +289,13 @@ export function marlonMaquinas(l) {
   pc(g, CW + 0.3, 0.25, CD + 0.3, 0x2a2d31, mx, 0.24, mz, F);
   for (let i = 0; i < 14; i++) pc(g, 0.2, CH - 0.34, 0.06, escuro(LJ, 0.78), mx - CW / 2 + 0.4 + i * ((CW - 0.8) / 13), 0.37 + CH / 2, mz + CD / 2 + 0.02, F);
   for (const q of [-1, 1]) for (const k of [0, 1]) pc(g, 0.32, 0.32, 0.1, 0xc9ced8, mx + q * (CW / 2 - 0.2), 0.55 + k * (CH - 0.4), mz + CD / 2 + 0.06, F); // cantoneiras do container
-  // painel de controle e botão verde/vermelho, placa PET
+  // painel de controle e botão verde/vermelho
   pc(g, 1.4, 1.1, 0.14, 0xe7ecef, mx + 2.3, 1.75, mz + CD / 2 + 0.1, F);
   pc(g, 0.26, 0.26, 0.08, 0x2fbf4f, mx + 2.0, 1.95, mz + CD / 2 + 0.2, F); pc(g, 0.26, 0.26, 0.08, 0xe0342b, mx + 2.6, 1.95, mz + CD / 2 + 0.2, F); pc(g, 1.0, 0.24, 0.08, 0x2a2d31, mx + 2.3, 1.48, mz + CD / 2 + 0.2, F);
-  // letras PET de blocos na lateral do container (sem textura)
-  const letra = (x0, m) => m.forEach((ln, i) => [...ln].forEach((c, j) => { if (c === "#") pc(g, 0.17, 0.17, 0.06, 0xffffff, x0 + j * 0.18, 2.55 - i * 0.18, mz + CD / 2 + 0.08, F); }));
-  letra(mx - 2.7, ["###", "# #", "###", "#  ", "#  "]); letra(mx - 1.8, ["###", "#  ", "## ", "#  ", "###"]); letra(mx - 0.9, ["###", " # ", " # ", " # ", " # "]);
+  // letras UNIKA de blocos na lateral do container (sem textura)
+  const letra = (x0, m) => m.forEach((ln, i) => [...ln].forEach((c, j) => { if (c === "#") pc(g, 0.15, 0.15, 0.06, 0xffffff, x0 + j * 0.16, 2.6 - i * 0.16, mz + CD / 2 + 0.08, F); }));
+  [["#   #", "#   #", "#   #", "#   #", " ### "], ["#   #", "##  #", "# # #", "#  ##", "#   #"], ["#####", "  #  ", "  #  ", "  #  ", "#####"], ["#   #", "#  # ", "###  ", "#  # ", "#   #"], [" ### ", "#   #", "#####", "#   #", "#   #"]]
+    .forEach((m, k) => letra(mx - 3.4 + k * 0.96, m));
   // funil, de cima para baixo cada vez mais estreito
   const fx = mx - 2.2, ft = 0.37 + CH;
   [[2.8, 2.4], [2.4, 2.1], [2.0, 1.7], [1.5, 1.3]].forEach(([w, d], i) => pc(g, w, 0.28, d, 0xc9d2da, fx, ft + 1.0 - i * 0.28, mz));
