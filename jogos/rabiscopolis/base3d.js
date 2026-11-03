@@ -253,7 +253,8 @@ export function lojaParceira(p, aoMudar, { foto = p.foto, d = LOJA.d, larguraMax
   g.userData.fotoOk = false;
   comRecorte(matL, `../../${foto}`, m.recorte, (t) => { g.userData.fotoOk = true; g.userData.aoFoto?.(t); }, () => g.userData.aoFalhar?.());
   // térreo: vitrines de ponta a ponta com porta no meio, cada marca com um detalhe da fachada real
-  const yV = 1.95, nV = p.nome === "Bella Cat Make Biju" ? 2 : 3, hV = ly - lh / 2 - 1.05;
+  // (J.E e Bella Cat: vitrine mais baixa, a faixa de parede entre ela e o letreiro é da placa do @, em placas-instagram.js)
+  const yV = 1.95, nV = p.nome === "Bella Cat Make Biju" ? 2 : 3, hV = ly - lh / 2 - 1.05 - (p.nome === "J.E Multimarcas" ? 1.3 : p.nome === "Bella Cat Make Biju" ? 1.25 : 0);
   for (let i = 0; i < nV; i++) {
     const x = nV === 3 ? (i - 1) * (w / 3.1) : (i ? 1 : -1) * w * 0.31, lV = nV === 3 ? w / 3.7 : w * 0.26;
     z(x, 0.65 + hV / 2 + 0.15, lV + 0.3, hV + 0.3, 0.16);
@@ -262,7 +263,7 @@ export function lojaParceira(p, aoMudar, { foto = p.foto, d = LOJA.d, larguraMax
   }
   if (p.nome === "J.E Multimarcas") { // risquinhas de cor da marca e luminárias
     [m.acento2, 0x2fa7e8, m.acento].forEach((c, i) => cx(g, 0.5, 0.6, 0.12, c, -w / 2 + 0.7 + i * 0.6, 0.3 + yV + 1.4, 0.04, { sombra: false }));
-    for (const s of [-1, 0, 1]) cx(g, 0.5, 0.26, 0.4, 0, s * w / 3.1, 0.8 + hV + 0.32, 0.2, { material: MAT.lampada, sombra: false });
+    for (const s of [-1, 1]) cx(g, 0.5, 0.26, 0.4, 0, s * w / 3.1, 0.8 + hV + 0.32, 0.2, { material: MAT.lampada, sombra: false });
   } else if (p.nome === "Bella Cat Make Biju") { // loja aberta: porta larga, vitrines claras e árvore de flores
     cx(g, w * 0.3, hV + 0.2, 0.14, 0x1d1f27, 0, 0.8 + hV / 2 - 0.1, 0.1, { sombra: false });
     cx(g, w * 0.26, 0.5, 0.2, 0xff9ec4, 0, 1.5, 0.18, { sombra: false }); cx(g, 1.3, 1.4, 0.3, 0xffd6e8, w * 0.1, 1.6, 0.25, { sombra: false }); cx(g, 1.3, 1.4, 0.3, 0xffc0da, -w * 0.08, 1.6, 0.25, { sombra: false });

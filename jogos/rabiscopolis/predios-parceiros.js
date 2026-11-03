@@ -10,7 +10,7 @@ import { THREE, matNovo, malha, mat, MAT, texturaCanvas } from "./base3d.js";
 import { cx as pc, claro, escuro, telhadoDegraus } from "./blocos.js";
 import { novo, sol, janelas, porta, toldo } from "./predios.js";
 import { desenharLetreiro } from "../../src/parceiros-arte.js";
-import { PARCEIROS } from "../../src/parceiros.js";
+import { placaInstagram } from "./placas-instagram.js";
 
 const F = { sombra: false };
 const D_ = { sombra: false, detalhe: true };
@@ -55,12 +55,11 @@ function vitrine(g, { x, w, a, b, cor, prof, divisoes = 0, luz = true }) {
 }
 // letreiro: caixa com moldura e a arte inventada, que brilha um pouco para ler de longe e de noite
 export function letreiro(g, id, { w, h, x = 0, y, z = 0, cor }) {
-  const op = { instagram: PARCEIROS.find((q) => q.id === id)?.instagram ?? null };
   pc(g, w + 0.44, h + 0.44, 0.32, cor, x, y, z + 0.16, F);
   const larg = 1024, alt = Math.round((larg * h) / w);
-  const t = texturaCanvas(larg, alt, (c, a, b) => desenharLetreiro(c, id, a, b, op));
+  const t = texturaCanvas(larg, alt, (c, a, b) => desenharLetreiro(c, id, a, b));
   // o nome usa a fonte do jogo: se ela ainda estava chegando, redesenha
-  if (document.fonts?.status !== "loaded") document.fonts?.ready.then(() => { desenharLetreiro(t.image.getContext("2d"), id, larg, alt, op); t.needsUpdate = true; });
+  if (document.fonts?.status !== "loaded") document.fonts?.ready.then(() => { desenharLetreiro(t.image.getContext("2d"), id, larg, alt); t.needsUpdate = true; });
   const p = new THREE.Mesh(new THREE.PlaneGeometry(w, h), matNovo({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.5 }));
   p.position.set(x, y, z + 0.33); g.add(p);
   return p;
@@ -126,7 +125,7 @@ function laco(g, x, y, z, s, cor) {
 }
 export function galaPresentes(l) {
   const S = novo(), g = S.grupo, W = 16, H = 7.4, D = 8.5, prof = 1.1, CR = 0xfff1d6, VM = 0xc8234f, OU = 0xf2b632;
-  const vaos = [{ x: -5, w: 5, a: 0.9, b: 3.45 }, { x: 5, w: 5, a: 0.9, b: 3.45 }];
+  const vaos = [{ x: -5, w: 5, a: 0.9, b: 3.3 }, { x: 5, w: 5, a: 0.9, b: 3.3 }];
   casco(g, { W, H, D, prof, cor: CR, beiral: VM, rodape: escuro(CR, 0.72) });
   parede(g, { W, y1: H, prof, cor: CR, vaos });
   pc(g, W + 0.14, 0.7, 0.14, escuro(CR, 0.72), 0, 0.35, 0.04, F);
@@ -142,9 +141,11 @@ export function galaPresentes(l) {
     for (const dx of [-1.5, 0, 1.5]) laco(g, v.x + dx, v.b - 0.42, z0 - 0.1, 0.42, dx ? VM : OU);
   }
   porta(g, { z: 0.05, w: 2.6, h: 3.2, cor: VM });
-  const t = toldo(W - 0.6, VM, 0xfff6e0); t.position.set(0, 4.5, 0.08); g.add(t);
+  // toldo só em cima das vitrines: o meio da fachada é da placa do @
+  for (const s of [-1, 1]) { const t = toldo(3.65, VM, 0xfff6e0); t.position.set(s * 5.875, 4.5, 0.08); g.add(t); }
+  placaInstagram(g, "gala-presentes");
   // letreiro, com faixas de fita dourada nos cantos (parede embrulhada)
-  letreiro(g, "gala-presentes", { w: 12.4, h: 2.3, y: 5.95, cor: OU });
+  letreiro(g, "gala-presentes", { w: 12.4, h: 2.15, y: 6.1, cor: OU });
   for (const s of [-1, 1]) { pc(g, 0.5, H, 0.1, OU, s * (W / 2 - 0.25), H / 2, 0.05, F); laco(g, s * (W / 2 - 0.25), 5.95, 0.14, 1.05, VM); }
   for (const s of [-1, 1]) vaso(g, s * 2, 0.85, VM, 0x4cb83f, 0xffcc1f);
   // a caixa gigante no telhado, com laço de duas orelhas
@@ -162,7 +163,7 @@ const b = (v) => v.b - v.a;
 // ==================================================================== See Love Semijoias: loja de semijoias e acessórios, azul-noite e dourada, diamante no alto
 export function seeLoveJoias(l) {
   const S = novo(), g = S.grupo, W = 14, H = 7.8, D = 8.5, prof = 1.0, NV = 0x1f2a44, OU = 0xd9b35a;
-  const vaos = [{ x: -4.4, w: 3.8, a: 1.05, b: 3.9 }, { x: 4.4, w: 3.8, a: 1.05, b: 3.9 }];
+  const vaos = [{ x: -4.4, w: 3.8, a: 1.05, b: 3.6 }, { x: 4.4, w: 3.8, a: 1.05, b: 3.6 }];
   casco(g, { W, H, D, prof, cor: NV, beiral: OU, rodape: 0x141c33 });
   parede(g, { W, y1: H, prof, cor: NV, vaos });
   pc(g, W + 0.14, 0.7, 0.14, 0x141c33, 0, 0.35, 0.04, F);
@@ -190,7 +191,8 @@ export function seeLoveJoias(l) {
     }
   }
   porta(g, { z: 0.05, w: 2.4, h: 3.5, cor: OU });
-  letreiro(g, "see-love-joias", { w: 10.8, h: 2.15, y: 6.25, cor: OU });
+  letreiro(g, "see-love-joias", { w: 10.8, h: 2.15, y: 6.4, cor: OU });
+  placaInstagram(g, "see-love-joias");
   // lanterninhas ao lado da porta e cordão dourado de entrada
   for (const s of [-1, 1]) { pc(g, 0.3, 0.5, 0.3, OU, s * 2.7, 3.2, 0.25, F); pc(g, 0.2, 0.34, 0.2, 0, s * 2.7, 3.2, 0.27, { ...F, material: MAT.lampada }); vaso(g, s * 2.7, 0.9, OU, 0x2f7f49); }
   // diamante gigante de blocos sobre uma base: silhueta de brilhante (ponta em baixo, coroa em cima), com faces mais claras no meio
@@ -218,7 +220,7 @@ function camisaBlocos(g, x, y, z, cor, gola, escala = 1) {
 }
 export function bellaCompany(l) {
   const S = novo(), g = S.grupo, W = 18, H = 7.6, D = 9.5, prof = 1.15, CL = 0xdff1f7, AZ = 0x1f6fa8, RS = 0xec2e8c;
-  const vaos = [{ x: -5.7, w: 5.7, a: 0.85, b: 3.55 }, { x: 5.7, w: 5.7, a: 0.85, b: 3.55 }];
+  const vaos = [{ x: -5.7, w: 5.7, a: 0.85, b: 3.45 }, { x: 5.7, w: 5.7, a: 0.85, b: 3.45 }];
   casco(g, { W, H, D, prof, cor: CL, beiral: AZ, rodape: AZ });
   parede(g, { W, y1: H, prof, cor: CL, vaos });
   pc(g, W + 0.14, 0.7, 0.14, AZ, 0, 0.35, 0.04, F);
@@ -235,8 +237,10 @@ export function bellaCompany(l) {
     }
   }
   porta(g, { z: 0.05, w: 2.8, h: 3.2, cor: AZ });
-  const t = toldo(W - 0.6, AZ, 0xffffff); t.position.set(0, 4.55, 0.08); g.add(t);
-  letreiro(g, "bella-company", { w: 14.2, h: 2.3, y: 6.05, cor: 0xffffff });
+  // toldo só em cima das vitrines: o meio da fachada é da placa do @
+  for (const s of [-1, 1]) { const t = toldo(4.15, AZ, 0xffffff); t.position.set(s * 6.625, 4.55, 0.08); g.add(t); }
+  letreiro(g, "bella-company", { w: 14.2, h: 2.2, y: 6.2, cor: 0xffffff });
+  placaInstagram(g, "bella-company");
   // fita métrica correndo pela fachada (amarela com marcas)
   pc(g, W, 0.3, 0.08, 0xffd23f, 0, 4.6, 0.03, F);
   for (let x = -W / 2 + 0.5; x < W / 2; x += 1) pc(g, 0.06, 0.18, 0.1, 0x151515, x, 4.65, 0.04, F);
@@ -259,7 +263,7 @@ export function bellaCompany(l) {
 // ==================================================================== Marlon Máquinas: galpão com o portão aberto e a máquina de picar PET
 export function marlonMaquinas(l) {
   const S = novo(), g = S.grupo, W = 23, H = 8.2, D = 15.5, prof = 7.4, CZ = 0x7f96a3, VD = 0x2e9e57, CN = 0xf2f4f5, LJ = 0xef7d1a;
-  const PX = -3.5, PW = 14, PH = 5.3;
+  const PX = -3.5, PW = 14, PH = 4.1; // portão mais baixo: entre a verga e o letreiro fica a placa do @
   const lado = (x, w) => pc(g, w, H, prof, CZ, x, H / 2, -prof / 2);
   casco(g, { W, H, D, prof, cor: CZ, beiral: VD, rodape: 0x4c5c67 });
   lado((-W / 2 + PX - PW / 2) / 2, PX - PW / 2 + W / 2); lado((PX + PW / 2 + W / 2) / 2, W / 2 - (PX + PW / 2));
@@ -277,12 +281,13 @@ export function marlonMaquinas(l) {
   }
   for (let x = -W / 2 + 0.4; x < W / 2; x += 0.9) pc(g, 0.3, H, 0.06, escuro(CZ, 0.86), x, H / 2, -D - 0.01, F);
   // batentes do portão listrados de amarelo e preto, verga e porta de enrolar recolhida no alto
-  for (const s of [-1, 1]) for (let i = 0; i < 7; i++) pc(g, 0.34, 0.76, 0.2, i % 2 ? 0x17181c : 0xffd23f, PX + s * (PW / 2 + 0.17), 0.38 + i * 0.76, 0.09, F);
+  for (const s of [-1, 1]) for (let i = 0; i < 5; i++) pc(g, 0.34, 0.82, 0.2, i % 2 ? 0x17181c : 0xffd23f, PX + s * (PW / 2 + 0.17), 0.41 + i * 0.82, 0.09, F);
   pc(g, PW + 0.7, 0.42, 0.5, 0x3b444b, PX, PH + 0.2, 0.05, F);
   for (let i = 0; i < 3; i++) pc(g, PW - 0.1, 0.2, 0.08, 0xa8b4bd, PX, PH - 0.12 - i * 0.24, -0.16, F);
   for (const x of [-5, 0, 5]) pc(g, 2.4, 0.12, 0.5, 0, PX + x, PH - 0.1, -3, { ...F, material: MAT.lampada });
   // letreiro acima do portão
-  letreiro(g, "marlon-maquinas", { w: 13.6, h: 2.05, x: PX, y: 6.8, cor: 0xffd23f });
+  letreiro(g, "marlon-maquinas", { w: 13.6, h: 2.05, x: PX, y: 7, cor: 0xffd23f });
+  placaInstagram(g, "marlon-maquinas");
   // ---- a máquina: um container laranja de picar garrafa PET, com funil em cima, esteira e saco de flocos
   const mx = PX - 0.9, mz = -4.3, CW = 7.8, CH = 2.8, CD = 2.8;
   pc(g, CW, CH, CD, LJ, mx, 0.12 + CH / 2 + 0.25, mz);
@@ -358,7 +363,7 @@ function estanteLivros(g, x, y0, z, w, h, cor = 0xb0702f) {
   }
 }
 export function cafeComDeusPaiKids(l) {
-  const S = novo(), g = S.grupo, W = 16, H = 6.6, D = 9.5, prof = 1.5, AM = 0xffe9b8, AZ = 0x3f9fd0, LJ = 0xf28a2e, MD = 0xb0702f;
+  const S = novo(), g = S.grupo, W = 16, H = 8, D = 9.5, prof = 1.5, AM = 0xffe9b8, AZ = 0x3f9fd0, LJ = 0xf28a2e, MD = 0xb0702f;
   const vaos = [{ x: -5.1, w: 5.2, a: 0.8, b: 3.6 }, { x: 5.1, w: 5.2, a: 0.8, b: 3.6 }];
   casco(g, { W, H, D, prof, cor: AM, beiral: AZ, rodape: MD });
   parede(g, { W, y1: H, prof, cor: AM, vaos });
@@ -377,7 +382,8 @@ export function cafeComDeusPaiKids(l) {
   // porta de madeira com vidro e arquinho em degraus
   porta(g, { z: 0.05, w: 2.4, h: 3.1, cor: MD, vidro: false });
   [[3.2, 3.32], [2.6, 3.54], [1.8, 3.74]].forEach(([w, y]) => pc(g, w, 0.22, 0.16, AZ, 0, y, 0.08, F));
-  letreiro(g, "cafe-com-deus-pai-kids", { w: 12.4, h: 2.15, y: 5.0, cor: AZ });
+  letreiro(g, "cafe-com-deus-pai-kids", { w: 12.4, h: 2.15, y: 6.4, cor: AZ });
+  placaInstagram(g, "cafe-com-deus-pai-kids");
   // telhado de casinha em degraus (duas águas), telhas azuis e frontão amarelo
   telhadoDegraus(g, W, D, AZ, H + 0.42, -D / 2, { camadas: 5, alt: 0.55, beiral: 0.3 });
   // livro aberto gigante, inclinado para a rua, no alto do telhado, em cima de um suporte
@@ -411,7 +417,7 @@ export function balletECia(l) {
   const T = 4.55, prof = 1.5; // altura do térreo e fundo dos vãos
   const PW = 7.2, PH = 4.05; // boca de palco
   const vaosT = [{ x: -7.15, w: 3.5, a: 0.95, b: 3.75 }, { x: 0, w: PW, a: 0, b: PH }, { x: 7.15, w: 3.5, a: 0.95, b: 3.75 }];
-  const vaosS = [{ x: -6.3, w: 5, a: T + 0.42, b: H - 0.75 }, { x: 0, w: 5, a: T + 0.42, b: H - 0.75 }, { x: 6.3, w: 5, a: T + 0.42, b: H - 0.75 }];
+  const vaosS = [{ x: -6.3, w: 5, a: T + 2, b: H - 0.75 }, { x: 0, w: 5, a: T + 2, b: H - 0.75 }, { x: 6.3, w: 5, a: T + 2, b: H - 0.75 }]; // a faixa de parede de baixo é da placa do @
   casco(g, { W, H, D, prof, cor: R, beiral: VN, rodape: VN });
   parede(g, { W, y1: T, prof, cor: R, vaos: vaosT });
   parede(g, { W, y0: T, y1: H, prof, cor: claro(R, 0.3), vaos: vaosS });
@@ -474,6 +480,7 @@ export function balletECia(l) {
   const Ly = H + 2.0, Lw = 13.4, Lh = 2.5;
   for (const q of [-1, 1]) pc(g, 0.5, 2.5, 0.5, VN, q * (Lw / 2 - 1), H + 1.1, -0.45);
   letreiro(g, "ballet-e-cia", { w: Lw, h: Lh, y: Ly, z: -0.2, cor: OU });
+  placaInstagram(g, "ballet-e-cia");
   [[Lw + 1.8, 0.34], [Lw - 1.4, 0.3], [6.2, 0.3], [2.6, 0.32]].forEach(([w, a], i) => pc(g, w, a, 0.42, i % 2 ? claro(OU, 0.35) : OU, 0, Ly + Lh / 2 + 0.38 + i * 0.32, -0.2, F));
   laco(g, 0, Ly + Lh / 2 + 1.95, -0.18, 1.5, 0xff9ec0); // laço de fita no alto do frontão
   // braços que saem do letreiro, com a sapatilha gigante pendurada (par: uma em cada ponta do prédio)
@@ -559,9 +566,11 @@ export function btModels(l) {
   }
   // ---- 1º andar: painéis de campanha gigantes em arte abstrata e letreiro
   const CY = T + 1.42;
-  [[-6.2, 0xe6396b, 0xffd23f, 0x17181c, 2], [-2.1, 0x2f8fe8, 0xffffff, OU, 1], [2.1, 0xffb01f, 0x17181c, 0xec2e8c, 0], [6.2, 0x7a4fd1, 0xe7ffd8, 0xffd23f, 1]]
+  [[-6.2, 0xe6396b, 0xffd23f, 0x17181c, 2], [6.2, 0x7a4fd1, 0xe7ffd8, 0xffd23f, 1]]
     .forEach(([x, f, a, c, t]) => { cartazAbstrato(g, x, CY, 3.3, 2.15, 0.06, f, a, c, t); pc(g, 3.7, 0.08, 0.26, 0, x, CY + 1.27, 0.18, { ...F, material: MAT.lampada }); });
   letreiro(g, "bt-models", { w: 11, h: 1.72, y: H - 1.02, cor: OU });
+  placaInstagram(g, "bt-models"); // entre os dois painéis de campanha, com a sua luminária
+  pc(g, 5.4, 0.08, 0.26, 0, 0, 6.72, 0.18, { ...F, material: MAT.lampada });
   for (const q of [-1, 1]) pc(g, 0.2, H - T, 0.2, OU, q * (W / 2 - 0.12), (H + T) / 2, 0.04, F);
   // no telhado, torre de refletores (de campanha) com a treliça
   const Y = H + 0.42, Z = -D / 2;
@@ -587,7 +596,7 @@ function cavalete(g, x, z) {
   }
 }
 export function speedySolucoes(l) {
-  const S = novo(), g = S.grupo, W = 17, H = 7.8, D = 9.5, prof = 2.1, GF = 0x3a4653, AL = 0xc3ccd4, T = 4.6;
+  const S = novo(), g = S.grupo, W = 17, H = 7.8, D = 9.5, prof = 2.1, GF = 0x3a4653, AL = 0xc3ccd4, T = 3.75;
   casco(g, { W, H, D, prof, cor: GF, beiral: AL, rodape: 0x262e36 });
   // térreo: vão de ponta a ponta com a oficina atrás da pele de vidro; em cima, painéis de vidro azulado (opaco por fora)
   for (const q of [-1, 1]) pc(g, 0.4, H, prof, GF, q * (W / 2 - 0.2), H / 2, -prof / 2);
@@ -616,14 +625,15 @@ export function speedySolucoes(l) {
   pc(g, 3.4, 3.28, 0.06, 0, 0, 1.68, 0.06, { ...F, material: VIDRO_FORTE }); pc(g, 0.08, 3.28, 0.1, AL, 0, 1.68, 0.06, F);
   for (const q of [-1, 1]) pc(g, 0.09, 1.3, 0.14, 0x20262c, q * 0.34, 1.65, 0.15, F);
   // marquise de vidro e alumínio sobre a porta
-  pc(g, 6, 0.1, 1.5, 0, 0, 3.8, 0.75, { ...F, material: VIDRO_FORTE }); pc(g, 6.1, 0.14, 0.12, AL, 0, 3.8, 1.5, F);
-  for (const q of [-1, 1]) pc(g, 0.12, 0.14, 1.5, AL, q * 3, 3.8, 0.75, F);
+  pc(g, 6, 0.1, 1.5, 0, 0, 3.65, 0.75, { ...F, material: VIDRO_FORTE }); pc(g, 6.1, 0.14, 0.12, AL, 0, 3.65, 1.5, F);
+  for (const q of [-1, 1]) pc(g, 0.12, 0.14, 1.5, AL, q * 3, 3.65, 0.75, F);
   // andar de cima: painéis azulados (espelho) com grade de perfis, e o letreiro por cima
   const pa = T + 0.05, pb = H - 0.2;
   pc(g, W - 0.2, pb - pa, 0.08, 0x6fb5dd, 0, (pa + pb) / 2, 0.03, F);
   for (let i = 0; i <= colunas; i++) pc(g, i % 2 ? 0.08 : 0.14, pb - pa, 0.14, AL, -ww / 2 + (ww * i) / colunas, (pa + pb) / 2, 0.06, F);
   pc(g, W - 0.2, 0.14, 0.16, AL, 0, pa, 0.05, F); pc(g, W - 0.2, 0.14, 0.16, AL, 0, pb, 0.05, F);
-  letreiro(g, "speedy-solucoes", { w: 11.4, h: 2.05, y: (pa + pb) / 2 + 0.05, z: 0.08, cor: AL });
+  letreiro(g, "speedy-solucoes", { w: 11.4, h: 2.05, y: 6.28, z: 0.08, cor: AL });
+  placaInstagram(g, "speedy-solucoes");
   // cavaletes com placas de vidro dos dois lados da entrada
   cavalete(g, -5.4, 0.72); cavalete(g, 5.4, 0.72);
   // perfis de alumínio empilhados no telhado e um cavalete grande com vidros

@@ -6,6 +6,7 @@
 // Cada função devolve { grupo, solidos } com os retângulos de colisão em coordenadas locais.
 
 import { THREE, matNovo, mat, malha, caixa, caixaRedonda, geoCaixaRedonda, MAT, MAT_LAGO, TEX, letreiro, lojaParceira, arvoreReal, texturaCanvas, mesclar, r as rnd } from "./base3d.js";
+import { placaInstagram } from "./placas-instagram.js";
 import { cx as pc, degraus, disco, emBlocos, claro, escuro, comRecorte, telhadoDegraus, frontaoDegraus } from "./blocos.js";
 import { carregarTextura, aleatorio } from "../../src/motor3d/toon.js";
 import { cerquinha } from "./casas.js";
@@ -322,6 +323,7 @@ export function lojaDeParceiro(l, aoMudar) {
   const S = novo();
   const loja = lojaParceira(l.parceiro, aoMudar);
   S.grupo.add(loja);
+  placaInstagram(loja, l.parceiro.id);
   S.loja = loja;
   return S;
 }
@@ -341,14 +343,15 @@ export function escritorioCrescente(l) {
   for (const s of [-1, 1]) { const v = caixa(3.4, 1.9, 0.2, MAT.janela, { sombra: false }); v.position.set(s * 4.6, 1.85, 0.08); g.add(v); const m = caixa(3.7, 2.2, 0.14, mat(DOURADO), { sombra: false }); m.position.set(s * 4.6, 1.85, 0.02); g.add(m); }
   janelas(g, { w: W - 1, andares: 1, z: 0.04, y0: 8.75, jh: 1.6, cor: DOURADO, colunas: 5 });
   // banner (letreiro): moldura dourada e a arte da marca, que "brilha" um pouco para ler de longe e de noite
-  const bw = W - 2.2, bh = bw / 3;
-  const moldura = caixa(bw + 0.5, bh + 0.5, 0.3, mat(DOURADO), { sombra: false }); moldura.position.set(0, 6.0, 0.15); g.add(moldura);
+  const bw = W - 4.6, bh = bw / 3, by = 6.65;
+  const moldura = caixa(bw + 0.5, bh + 0.5, 0.3, mat(DOURADO), { sombra: false }); moldura.position.set(0, by, 0.15); g.add(moldura);
   const mBanner = matNovo({ color: MARROM });
-  const banner = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh), mBanner); banner.position.set(0, 6.0, 0.31); banner.userData.dinamico = true; g.add(banner);
+  const banner = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh), mBanner); banner.position.set(0, by, 0.31); banner.userData.dinamico = true; g.add(banner);
   new THREE.TextureLoader().load(`../../${l.parceiro.foto}`, (t) => {
     t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
     Object.assign(mBanner, { map: t, emissiveMap: t, emissiveIntensity: 0.4 }); mBanner.color.set(0xffffff); mBanner.emissive.set(0xffffff); mBanner.needsUpdate = true;
   });
+  placaInstagram(g, l.parceiro.id); // entre a marquise e o banner
   // marquise dourada sobre a porta, com dois pilarzinhos
   const marq = caixaRedonda(4.4, 0.3, 1.8, mat(DOURADO)); marq.position.set(0, 3.35, 0.9); g.add(marq);
   for (const x of [-1.95, 1.95]) { const p = malha(new THREE.CylinderGeometry(0.12, 0.12, 3.2, 8), mat(MARROM_ESC), { sombra: false }); p.position.set(x, 1.6, 1.6); g.add(p); }
