@@ -459,10 +459,12 @@ function iniciar() {
   requestAnimationFrame(quadro);
   setTimeout(() => { falar("rp-intro"); dizer("Rabiscolândia", salvo.casa != null ? "Bem-vindo de volta! Sua casa está esperando no Bairro das Casas." : "Que cidade grande! Escolha uma casa no Bairro das Casas e use o Rabifone 📱 para chamar um carro."); }, 700);
   // primeira entrada do dia com o presente esperando: a anfitriã avisa depois da fala de boas-vindas (sem cortar)
-  if (diario.deveAvisar()) setTimeout(() => aguardarFim().then(() => setTimeout(avisarPresente, 350)), 1900);
+  if (diario.deveAvisar()) setTimeout(() => aguardarFim().then(() => setTimeout(() => avisarPresente(), 350)), 1900);
 }
 function avisarPresente() {
   if (!vivo || bauDia?.estado !== "fechado") return;
+  // não atropela quem já está numa missão, dentro de um lugar/casa ou num veículo (o baú continua lá, é só o aviso que fica quieto)
+  if (emCasa || emLugar || missoes?.ativa || dentro) return;
   radio?.pausarPorFala(true); falar("rp-presente-aviso");
   dizer("Rabiscolândia", "Tem presente do dia esperando por você! 🎁", 4200);
 }
