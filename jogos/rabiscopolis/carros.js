@@ -295,6 +295,36 @@ export function caminhaoBombeiro() {
   Object.assign(g.userData, { rodas, seta, volante, luzes, canhao, jato, motorista: assentos[0], carona: assentos[1], especial: "agua" });
   return g;
 }
+// caminhão da reciclagem (profissão "Ajudante do Marlon Máquinas", profissoes.js): cabine verde e caçamba aberta atrás,
+// com o símbolo de reciclar; o que ele recolhe vai para g.userData.carga (montado e desmontado pela profissão)
+export function caminhaoReciclagem() {
+  const g = new THREE.Group(), verde = 0x2e9e57;
+  const cab = perfil([[3.4, 0.5], [3.55, 0.9, 3.5, 1.4], [3.2, 1.6], [1.4, 1.6], [1.3, 1.1], [-3.4, 1.1], [-3.5, 0.5]], [2.3, -2.2], 0.5);
+  g.add(corpoExtrudado(cab, 2.5, mat(verde), 0.16));
+  const teto = caixaRedonda(2.5, 0.9, 1.5, mat(verde)); teto.position.set(0, 2.05, 2.15); g.add(teto);
+  const pb = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.6), vidro); pb.position.set(0, 2.0, 2.95); pb.rotation.x = -0.4; g.add(pb);
+  // caçamba: fundo e paredes baixas, amarelas por dentro
+  const fundo = caixa(2.5, 0.12, 4.4, mat(0x3b444b)); fundo.position.set(0, 1.16, -1.3); g.add(fundo);
+  for (const s of [-1, 1]) { const p = caixa(0.12, 0.8, 4.4, mat(0xffd23f)); p.position.set(s * 1.19, 1.6, -1.3); g.add(p); }
+  const tras = caixa(2.5, 0.8, 0.12, mat(0xffd23f)); tras.position.set(0, 1.6, -3.45); g.add(tras);
+  const frenteC = caixa(2.5, 1.0, 0.12, mat(0xffd23f)); frenteC.position.set(0, 1.7, 0.85); g.add(frenteC);
+  // símbolo de reciclar dos dois lados (três setinhas verdes num disco branco)
+  for (const s of [-1, 1]) {
+    const d = malha(new THREE.CircleGeometry(0.42, 18), mat(0xffffff), { sombra: false }); d.position.set(s * 1.26, 1.62, -1.3); d.rotation.y = s * Math.PI / 2; g.add(d);
+    for (let k = 0; k < 3; k++) { const a = (k / 3) * Math.PI * 2, f = malha(new THREE.ConeGeometry(0.11, 0.26, 3), mat(verde), { sombra: false }); f.position.set(s * 1.27, 1.62 + Math.cos(a) * 0.22, -1.3 + Math.sin(a) * 0.22); f.rotation.x = a + Math.PI / 2; g.add(f); }
+  }
+  const faixa = caixa(2.54, 0.2, 7.0, mat(0xffffff), { sombra: false }); faixa.position.set(0, 1.0, 0); g.add(faixa);
+  const assentos = [new THREE.Vector3(0.55, 1.55, 1.9), new THREE.Vector3(-0.55, 1.55, 1.9)];
+  for (const a of assentos) { const s = caixaRedonda(0.8, 0.24, 0.8, mat(0x2f3440)); s.position.set(a.x, 1.42, a.z - 0.05); g.add(s); }
+  const volante = malha(new THREE.TorusGeometry(0.24, 0.05, 8, 18), mat(0x262626)); volante.position.set(0.55, 1.95, 2.5); volante.rotation.x = -1.0; volante.userData.dinamico = true; g.add(volante);
+  for (const x of [-0.8, 0.8]) { const f = malha(new THREE.CircleGeometry(0.2, 16), farol, { sombra: false }); f.position.set(x, 1.0, 3.56); g.add(f); }
+  const carga = new THREE.Group(); carga.position.set(0, 1.22, -1.3); carga.userData.dinamico = true; g.add(carga);
+  const rodas = rodasPadrao(g, [[-1.2, null, 2.3], [1.2, null, 2.3], [-1.2, null, -2.2], [1.2, null, -2.2]], 0.55, 0xdfe6ee);
+  const seta = seta3D(4.0); g.add(seta);
+  mesclar(g, { juntas: new Set(rodas) });
+  Object.assign(g.userData, { rodas, seta, volante, carga, motorista: assentos[0], carona: assentos[1], especial: "buzina" });
+  return g;
+}
 // bicicleta e patinete: leves, cabem na calçada (o Rabisco pedala / fica em pé)
 export function bicicleta(cor = 0xec2e8c) {
   const g = new THREE.Group();

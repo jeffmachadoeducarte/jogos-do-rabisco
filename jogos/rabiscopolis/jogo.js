@@ -22,6 +22,7 @@ import { criarCamera } from "./camera.js";
 import { criarCeu } from "./ceu.js";
 import { criarVeiculo, animarVeiculo, criarTransito, atualizarTransito, atualizarSemaforos, luzDe } from "./veiculos.js";
 import { criarMissoes } from "./missoes.js";
+import { criarProfissoes } from "./profissoes.js";
 import { natalAtivo } from "./natal.js";
 import { criarNatal } from "./natal-cidade.js";
 import { criarPatioJE, enfeitarCarro } from "./je-patio.js";
@@ -244,7 +245,7 @@ let r3, cena, cam, ceu, mundo, fis, camera, rabisco, relogio, qualidade, vivo = 
 let hud, minimapa, mapaGrande, balao, bussola, caixa;
 const j = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), noChao: true, coyote: 0, buffer: 0, dir: 0 };
 const veiculos = []; let garagem = null; // veículo chamado pelo Rabifone (só um por vez)
-let transito = [], moradores = [], vovo = null, missoes = null, j2 = null, patioJE = null;
+let transito = [], moradores = [], vovo = null, missoes = null, profissoes = null, j2 = null, patioJE = null;
 let natal = null; // Natal na cidade (natal.js: de 1º/12 a 6/1, ou ?natal=1): luzes, árvore, presépio e música da praça
 let dentro = null, contexto = null, salvo = carregar(), alvoMapa = null;
 let mapaLigado = false; // minimapa do canto: escondido ao começar; M, L3 e a ⚙️ mostram e escondem
@@ -361,6 +362,13 @@ function iniciar() {
   });
   // a Speedy já trocou a frente da Kids II (salvo: missão feita): continua trocada depois de recarregar
   if (missoes.feitas.includes("parceiro-speedy-solucoes")) mundo.frenteKids2(3);
+  // profissões curtas (profissoes.js): turno de ~3 a 4 minutos que rende Rabiscoins por tarefa, com uniforme e veículo do trabalho
+  profissoes = criarProfissoes({ cena, sons, dizer: (...a) => dizer(...a), falar: (k) => { radio?.pausarPorFala(true); falar(k); }, aguardarFim, confete: () => jogo.confete?.(),
+    pos: () => j.pos, veiculoAtual: () => dentro, chamarVeiculo, raio: () => (qualidade.perfil.toque ? 35 : 45), salvo: () => salvo, salvar: () => salvar(salvo),
+    vestir: (id) => vestir(id, false), tirar: () => (PROFISSOES[salvo.roupas?.[0]] ? vestir(salvo.roupas[0], false) : tirarUniforme(false)),
+    ganhar: (q, m, rotulo) => { const r = Rabiscoins.ganhar(q, m); if (r.ganhou > 0) contadorMoedas?.ganhou(r.ganhou, { rotulo, alvo: r.saldo }); return r; },
+    propaganda: (id) => missoes?.mostrarPropaganda(id), casaFrente: (n) => mundo.casas.find((k) => k.lote.numero === n)?.frente ?? null,
+    ocupado: () => Boolean(emCasa || emLugar || oracao || trava || roda), missaoAtiva: () => missoes?.ativa });
 
   // HUD
   hud = el("div", { class: "hud-rp" });
@@ -409,6 +417,8 @@ function iniciar() {
     infoCasa: () => ({ tem: salvo.casa != null, nome: salvo.casa != null ? `Casa ${salvo.casa}` : "" }),
     coresCasa: () => CORES_PAREDE,
     // a Missão do dia vem primeiro, com a estrela (enquanto o extra de hoje não saiu)
+    trabalho: () => profissoes.lista(),
+    aoTrabalho: (acao, id) => { if (acao === "comecar") profissoes.comecar(id); else if (acao === "terminar") profissoes.terminar(); else if (acao === "caminho") { const a = profissoes.caminhoBase(id); if (a) { alvoMapa = a; dizer("Rabifone", "Siga a setinha até o ponto de trabalho 💼!", 2800); } } },
     missoes: () => { const dd = missaoDoDiaAgora(), extra = dd && !diario.extraPagoHoje() ? EXTRA_DIA : 0;
       const lista = missoes.MISSOES.map((m) => ({ id: m.id, titulo: m.titulo, icone: m.icone, tipo: m.tipo, feita: missoes.feitas.includes(m.id), doDia: m.id === dd ? extra : 0 }));
       return { lista: [...lista.filter((m) => m.doDia), ...lista.filter((m) => !m.doDia)], ativa: missoes.ativa }; },
@@ -476,7 +486,7 @@ function parar() {
   emLugar = null; solidosDentro = []; for (const k of Object.keys(salas)) delete salas[k];
   radioUI?.sairDoCarro();
   if (r3) { r3.dispose(); r3 = null; }
-  veiculos.length = 0; transito = []; patioJE = null; moradores = []; vovo = null; garagem = null; missoes = null;
+  veiculos.length = 0; transito = []; patioJE = null; moradores = []; vovo = null; garagem = null; missoes = null; profissoes = null;
   natal?.pararMusica(); natal = null;
   jogo.palco.querySelector('.escolha-j2-rp')?.remove(); j2 = null;
   dentro = null; contexto = null; alvoMapa = null; oracao = null; trava = null;
@@ -621,15 +631,15 @@ function sairCasa(imediato = false) {
   imediato ? fazer() : escurecer(fazer);
 }
 // ------------------------------------------------------------------ Lugares por dentro (Fatia 3): profissões
-function vestir(id) {
+function vestir(id, guardar = true) {
   vestirProfissao(rabisco, id);
   // cada peça vira poucas malhas (por dentro ela não mexe)
   for (const r of Object.values(rabisco.roupas ?? {})) for (const o of r.objs) mesclar(o);
   for (const objs of Object.values(rabisco.roupasRP ?? {})) for (const o of objs) mesclar(o);
   ajustarUniforme(rabisco); // botas e óculos do uniforme mandam nos sapatos e nos óculos escolhidos
-  salvo.roupas = [id]; salvar(salvo);
+  if (guardar) { salvo.roupas = [id]; salvar(salvo); } // o uniforme do turno (profissoes.js) não fica guardado
 }
-function tirarUniforme() { tirarProfissao(rabisco); ajustarUniforme(rabisco); salvo.roupas = []; salvar(salvo); }
+function tirarUniforme(guardar = true) { tirarProfissao(rabisco); ajustarUniforme(rabisco); if (guardar) { salvo.roupas = []; salvar(salvo); } }
 // ------------------------------------------------------------------ Rabiscoins e Ateliê Ponta do Lápis
 // missão concluída: a 1ª vez rende GANHO.missao.primeira; repetir, GANHO.missao.repetida (atelie.js). O ganho aparece no
 // contador do HUD com as moedinhas voando e o som (rabiscoins-ui.js); a fala da conclusão segue sem interrupção.
@@ -995,7 +1005,7 @@ function chamarVeiculo(tipo, cor) {
     dizer("Rabifone", `${tipo === "jetski" ? "O jet ski" : "A lancha"} chegou na beira da água! Chegue perto e aperte a ação.`, 3200);
     return v;
   }
-  const R = tipo === "onibus" ? 4.6 : tipo === "heli" ? 5 : tipo === "bombeiro" ? 5 : 3.4, RMAX = tipo === "heli" ? 9.5 : tipo === "bombeiro" ? 8 : 5.9;
+  const R = tipo === "onibus" ? 4.6 : tipo === "heli" ? 5 : ["bombeiro", "reciclagem"].includes(tipo) ? 5 : 3.4, RMAX = tipo === "heli" ? 9.5 : ["bombeiro", "reciclagem"].includes(tipo) ? 8 : 5.9;
   let ponto = null;
   for (let r = R; r < RMAX && !ponto; r += 0.4) for (let a = 0; a < 6.28 && !ponto; a += 0.39) {
     const ang = j.dir + Math.PI / 2 + a, x = j.pos.x + Math.sin(ang) * r, z = j.pos.z + Math.cos(ang) * r;
@@ -1064,7 +1074,7 @@ function regras() {
     else if (p) contexto = { rotulo: p.escolha ? "🛋️ Trocar" : "🛋️ Decorar", fazer: () => abrirDeco(p) };
   } else if (dentro) contexto = { rotulo: "🚪 Sair", fazer: sair };
   else if (roda) contexto = roda.podeDescer ? { rotulo: "🎡 Descer", fazer: () => descerRoda() } : { rotulo: "🎡 Passeando…", fazer: () => {} };
-  else if ((contexto = missoes?.contexto() ?? null)) { /* missão: pedir, pegar, entregar, plantar */ }
+  else if ((contexto = profissoes?.contexto() ?? (profissoes?.ativa ? null : missoes?.contexto()) ?? null)) { /* profissão (turno) ou missão: pedir, pegar, entregar, plantar */ }
   else if (bauDia?.perto(j.pos)) contexto = { rotulo: "🎁 Abrir o presente", fazer: () => abrirPresente() };
   else if (Math.hypot(RODA.x - j.pos.x, RODA.z - 6.5 - j.pos.z) < 3.4) contexto = { rotulo: "🎡 Andar na roda-gigante", fazer: () => subirRoda() };
   else {
@@ -1239,6 +1249,7 @@ function passo(dt, ultimo) {
     j2?.passo(dt, t);
     atualizarMoradores(dt);
     missoes?.atualizar(dt, t);
+    profissoes?.atualizar(dt, t);
     bauDia?.atualizar(dt, t, j.pos, emCasa || emLugar ? -1 : qualidade.perfil.toque ? 35 : 45);
     verificarDia(dt);
     patioJE?.atualizar(j.pos.x, j.pos.z);
@@ -1338,7 +1349,7 @@ function atualizarAcaoJ2() {
 }
 // faixa da missão ativa (embaixo do nome da cidade): o que fazer agora
 function atualizarMissaoHud() {
-  const box = hud.querySelector(".missao-rp"), m = !emCasa && !emLugar ? missoes?.texto() : null;
+  const box = hud.querySelector(".missao-rp"), m = !emCasa && !emLugar ? profissoes?.texto() ?? missoes?.texto() : null;
   if (!m) { box.hidden = true; return; }
   const html = `<b>${m.icone} ${m.titulo}</b><span>${m.passo}</span>`;
   if (box.innerHTML !== html) box.innerHTML = html;
@@ -1357,7 +1368,7 @@ function atualizarBotaoAcao() {
   if (b.innerHTML !== html) b.innerHTML = html;
 }
 function atualizarBussola() {
-  const a = alvoMapa ?? (!emCasa && !emLugar ? missoes?.alvo() : null);
+  const a = alvoMapa ?? (!emCasa && !emLugar ? profissoes?.alvo() ?? missoes?.alvo() : null);
   if (!a) { bussola.hidden = true; return; }
   bussola.hidden = false;
   const ang = Math.atan2(a.x - j.pos.x, a.z - j.pos.z);
@@ -1481,7 +1492,7 @@ if (params.has("teste")) window.teste = {
   corCasa(hex) { trocarCorCasa(hex); },
   get corParedes() { const c = mundo.casas.find((k) => k.lote.numero === salvo.casa); return c?.grupo.userData.paredes.userData.cor; },
   get radio() { return radio; }, get radioUI() { return radioUI; }, get avisoRadio() { return avisoRadio; }, falar: (k) => falar(k),
-  get missoes() { return missoes; }, get patioJE() { return patioJE; }, get natal() { return natal; },
+  get missoes() { return missoes; }, get profissoes() { return profissoes; }, get patioJE() { return patioJE; }, get natal() { return natal; },
   get roda() { return roda ? { ...roda, y: j.pos.y } : null; }, subirRoda: () => subirRoda(), descerRoda: () => descerRoda(),
   get trava() { return trava ? { pose: trava.pose ?? null, t: trava.t } : null; },
   get oracao() { return oracao ? { i: oracao.i, total: ORACAO.length, painel: !painelOracao.hidden, texto: painelOracao.textContent } : null; },

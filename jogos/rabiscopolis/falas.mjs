@@ -132,5 +132,8 @@ Object.assign(FALAS_PT, {
   "rp-presente-abriu": "Que presente bom! Volte amanhã para abrir outro.",
   "rp-presente-sete": "Sete dias seguidos! Presente especial com bônus!",
 });
+// profissões curtas (profissoes-dados.js): explicação na 1ª vez, tarefas e fim do turno; quem fala é a anfitriã
+const { FALAS_TRABALHO } = await import(`data:text/javascript,${encodeURIComponent(readFileSync(new URL("./profissoes-dados.js", import.meta.url), "utf8"))}`);
+Object.assign(FALAS_PT, FALAS_TRABALHO);
 writeFileSync(new URL("./falas.json", import.meta.url), JSON.stringify({ pt: FALAS_PT }, null, 1) + "\n");
 console.log(`${Object.keys(FALAS_PT).length} falas em português`);
