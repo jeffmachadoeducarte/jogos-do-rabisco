@@ -229,5 +229,34 @@ const CONTADOR = "Number(document.querySelector('.rbc-contador b')?.textContent)
   await t.fechar();
 }
 
+// ================================================================ roupas de Natal: só na época
+{
+  const NATAL = ["gorro-noel", "natal", "estrela-natal", "presente", "carro-natal"];
+  const t = await abrir("about:blank", { largura: 1280, altura: 720 });
+  const abrirNoDia = async (dia) => { await t.cmd("Page.navigate", { url: `${URL_JOGO}&hoje=${dia}` }); await esperarJogo(t); };
+  const naLoja = () => t.ev(`import("/jogos/rabiscopolis/atelie.js").then((m) => JSON.stringify(m.itensDaLoja().map((i) => i.opcao ?? i.pintura)))`);
+  const natalNaLoja = async () => { const l = JSON.parse(await naLoja()); return NATAL.filter((n) => l.includes(n)); };
+  await t.cmd("Page.navigate", { url: URL_JOGO }); await esperarJogo(t); await t.ev("localStorage.clear()");
+  await abrirNoDia("2026-11-03");
+  ok((await natalNaLoja()).length === 0, "fora da época (3/11): nenhuma peça de Natal na loja");
+  await abrirNoDia("2026-12-10");
+  ok((await natalNaLoja()).length === NATAL.length, `em dezembro: as ${NATAL.length} peças de Natal aparecem (${(await natalNaLoja()).join(", ")})`);
+  const precos = JSON.parse(await t.ev(`import("/jogos/rabiscopolis/atelie.js").then((m) => JSON.stringify(m.itensDaLoja().filter((i) => ${JSON.stringify(NATAL)}.includes(i.opcao ?? i.pintura)).map((i) => i.preco)))`));
+  ok(precos.every((p) => p >= 40 && p <= 150), `preços de Natal entre 40 e 150 (${precos.join(", ")})`);
+  await t.ev("teste.Rabiscoins.ganhar(500, 'teste'); teste.abrirAtelie('chapeu'); teste.atelie.escolher('gorro-noel'); teste.atelie.fazer(); teste.atelie.fechar()"); await espera(400);
+  ok(await t.ev("teste.pecas.chapeu") === "gorro-noel", "trocou e vestiu o gorro de Papai Noel");
+  await abrirNoDia("2026-02-20");
+  const resto = await natalNaLoja();
+  ok(resto.length === 1 && resto[0] === "gorro-noel", `fora da época, só aparece para quem já trocou (${resto.join(", ")})`);
+  ok(await t.ev("teste.pecas.chapeu") === "gorro-noel", "e o gorro continua vestido");
+  await abrirNoDia("2027-01-06");
+  ok((await natalNaLoja()).length === NATAL.length, "6 de janeiro ainda é época de Natal");
+  await abrirNoDia("2027-01-07");
+  ok((await natalNaLoja()).length === 1, "7 de janeiro: a época acabou");
+  const er = errosDeVerdade(t);
+  ok(!er.length, `sem erro de console ${er.slice(0, 3).join(" | ")}`);
+  await t.fechar();
+}
+
 console.log(falhas ? `${falhas} falha(s)` : "tudo certo");
 process.exit(falhas ? 1 : 0);

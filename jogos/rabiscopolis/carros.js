@@ -59,7 +59,7 @@ function corpoExtrudado(forma, largura, material, _chanfro = 0, { passo = 0.34, 
   return malha(geoCaixas(lista), material);
 }
 
-export function carroFofo(cor = 0xec2e8c) {
+export function carroFofo(cor = 0xec2e8c, pintura = null) {
   const g = new THREE.Group();
   const lata = mat(cor);
   const claro = mat(new THREE.Color(cor).lerp(new THREE.Color(0xffffff), 0.55).getHex());
@@ -70,7 +70,7 @@ export function carroFofo(cor = 0xec2e8c) {
   ], [1.42, -1.42], 0.42);
   const corpo = corpoExtrudado(forma, 2.25, lata, 0.12); corpo.position.y = 0; g.add(corpo);
   // faixa no capô e no porta-malas
-  for (const [z, comp, y] of [[1.45, 1.0, 1.25], [-1.55, 0.7, 1.33]]) { const f = caixa(0.4, 0.04, comp, mat(0xffffff), { sombra: false }); f.position.set(0, y, z); f.rotation.x = z > 0 ? 0.09 : 0; g.add(f); }
+  for (const [z, comp, y] of [[1.45, 1.0, 1.25], [-1.55, 0.7, 1.33]]) { const f = caixa(0.4, 0.04, comp, mat(pintura?.cor2 ?? 0xffffff), { sombra: false }); f.position.set(0, y, z); f.rotation.x = z > 0 ? 0.09 : 0; g.add(f); }
   // saia clara embaixo (dá o "tom de brinquedo")
   const saia = caixaRedonda(2.32, 0.2, 2.6, claro); saia.position.set(0, 0.5, 0); g.add(saia);
   // para-choques redondos
@@ -99,7 +99,7 @@ export function carroFofo(cor = 0xec2e8c) {
   for (const x of [0.5, -0.5]) {
     const a = caixaRedonda(0.78, 0.24, 0.8, mat(0xfff4e0)); a.position.set(x, 1.24, -0.45); g.add(a);
     const e = caixaRedonda(0.78, 0.62, 0.2, mat(0xfff4e0)); e.position.set(x, 1.6, -0.92); e.rotation.x = -0.12; g.add(e);
-    const friso = caixa(0.8, 0.07, 0.22, mat(0xec2e8c), { sombra: false }); friso.position.set(x, 1.87, -0.95); g.add(friso);
+    const friso = caixa(0.8, 0.07, 0.22, mat(pintura?.friso ?? 0xec2e8c), { sombra: false }); friso.position.set(x, 1.87, -0.95); g.add(friso);
     assentos.push(new THREE.Vector3(x, 1.32, -0.42));
   }
   // volante (solto: o jogo encaixa nas mãos do Rabisco)
