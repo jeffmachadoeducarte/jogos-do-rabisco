@@ -294,3 +294,38 @@ html.modo-tv .mrb-cartao { transform: scale(1.1); }
   .atl-dica { display: none; } .atl-provando { font-size: 13px; bottom: 4px; }
 }
 html.modo-tv .atl-cartao { transform: scale(1.1); }
+
+/* Presente do dia (Rabifone): calendário de 7 dias e a Missão do dia (diario.js) */
+.rf-icone { position: relative; }
+.rf-bolinha { position: absolute; top: -9px; right: -9px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--rosa); color: #fff; border: 3px solid var(--tinta); font: 900 13px var(--texto); font-style: normal; animation: rf-pulsa 1.4s ease-in-out infinite; }
+.rf-dias { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 2px 0 8px; }
+.rf-dia { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 2px 4px; background: #fff; border: 3px solid var(--tinta); border-radius: 14px; box-shadow: 0 3px 0 var(--tinta); font-family: var(--texto); color: var(--tinta); }
+.rf-dia small { font-size: 11px; font-weight: 800; }
+.rf-dia .rf-dia-icone { font-size: 20px; line-height: 1.1; }
+.rf-dia b { font-size: 13px; font-weight: 900; color: #8a4b00; }
+.rf-dia.pego { background: #c8f2b8; }
+.rf-dia.pego b { color: #1f6d12; }
+.rf-dia.hoje { background: #ffe066; outline: 4px solid var(--rosa); outline-offset: 1px; animation: rf-pulsa 1.4s ease-in-out infinite; }
+.rf-dia.sete { grid-column: span 2; flex-direction: row; justify-content: center; gap: 6px; background: linear-gradient(135deg, #fff3b0, #ffd23f); }
+.rf-dia.sete.pego { background: #c8f2b8; }
+.rf-dia.sete small::after { content: " · bônus!"; }
+@keyframes rf-pulsa { 50% { transform: scale(1.07); } }
+@media (prefers-reduced-motion: reduce) { .rf-dia.hoje, .rf-bolinha { animation: none; } }
+.rf-tela p.rf-dica { font-size: 12px; font-weight: 700; opacity: 0.85; }
+.rf-tela[data-app="presente"] h3 { font-size: 21px; white-space: nowrap; }
+.rf-md { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; background: #fff8d6; border: 4px solid var(--tinta); border-radius: 20px; font-family: var(--texto); color: var(--tinta); }
+.rf-md b { font-size: 15px; color: #8a4b00; }
+.rf-md span { font-size: 17px; font-weight: 800; }
+.rf-md small { font-size: 12px; font-weight: 700; }
+.rf-item-dodia { background: #fff3b0; }
+.rf-item-missao small:has(.rf-dodia) { opacity: 1; }
+.rf-dodia { color: #8a4b00; }
+@media (max-height: 520px) {
+  .rf-dias { gap: 4px; } .rf-dia { padding: 3px 1px; border-width: 2px; border-radius: 10px; }
+  .rf-dia small { font-size: 9px; } .rf-dia .rf-dia-icone { font-size: 15px; } .rf-dia b { font-size: 11px; }
+  .rf-tela p.rf-dica { font-size: 10px; }
+  .rf-tela[data-app="presente"] h3 { font-size: 15px; margin-bottom: 4px; }
+  .rf-tela[data-app="presente"] p { font-size: 11px; margin-bottom: 5px; }
+  .rf-tela[data-app="presente"] { padding: 8px; }
+  .rf-dia.sete { flex-direction: column; gap: 0; }
+}
