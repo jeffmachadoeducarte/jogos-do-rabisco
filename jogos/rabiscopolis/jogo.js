@@ -29,6 +29,7 @@ import { criarJogador2 } from "./jogador2.js";
 import { CODIGOS_J2, TECLAS_J1_EXTRA } from "../../src/motor/jogadores.js";
 import { criarMorador, criarVovo } from "./personagens.js";
 import { criarRabifone } from "./rabifone.js";
+import { criarAlbumUI } from "./album-ui.js";
 import { criarMeuRabisco } from "./meu-rabisco-ui.js";
 import { prepararRoupa, vestirPecas, escolhaSalva, ajustarUniforme } from "./meu-rabisco.js";
 import { criarToque } from "./toque.js";
@@ -120,7 +121,7 @@ function teclasDe(acao) {
 const tem = (acao) => teclasDe(acao).some((k) => teclas.has(k));
 const ehAcao = (acao, code) => teclasDe(acao).includes(code);
 const pad = { x: 0, y: 0, gx: 0, pulo: false, puloNovo: false, acaoNova: false };
-let toque = null, fone = null, meuRb = null, atelieUI = null, contadorMoedas = null;
+let toque = null, fone = null, meuRb = null, atelieUI = null, contadorMoedas = null, albumUI = null;
 // Presente do dia e Missão do dia (diario.js, diario-bau.js). ?teste&hoje=2026-11-03 (ou teste.hoje = "...") troca a data
 let diario = null, bauDia = null, diaVisto = null, tDia = 0, doDia = { dia: null, id: null };
 let hojeTeste = params.has("teste") && diaValido(params.get("hoje")) ? params.get("hoje") : null;
@@ -328,14 +329,11 @@ function iniciar() {
   patioJE = criarPatioJE(cena, { solidos: mundo.solidos }); // pátio de carros da J.E (montado só de perto)
   criarMoradores();
   aplicarCasa();
-<<<<<<< HEAD
   natal = natalAtivo() ? criarNatal(cena, { mundo, ceu, toque: qualidade.perfil.toque, salvo: () => salvo, falar: (k) => { radio?.pausarPorFala(true); falar(k); }, dizer: (...a) => dizer(...a), ocupado: () => Boolean(emCasa || emLugar || oracao || trava || missoes?.ativa) }) : null;
-=======
-  diario = criarDiario({ salvo: () => salvo, salvar: () => salvar(salvo), ganhar: (q, m) => Rabiscoins.ganhar(q, m), hoje: () => hojeTeste ?? diaDe() });
+  diario = criarDiario({ salvo: () => salvo, salvar: () => salvar(salvo), ganhar: (q, m) => Rabiscoins.ganhar(q, m), hoje: () => hojeTeste ?? diaDe(), aoAbrir: () => albumUI?.bau() });
   bauDia = criarBau(cena);
   diaVisto = diario.hoje(); doDia = { dia: null, id: null };
   montarBauDoDia();
->>>>>>> worktree-agent-a953e4a112547597d
   missoes = criarMissoes({
     cena, rabisco, vovo, salvo, sons, dizer: (...a) => dizer(...a),
     salvar: (d) => { Object.assign(salvo, { missoesFeitas: d.missoesFeitas, selos: d.selos }); salvar(salvo); },
@@ -397,7 +395,10 @@ function iniciar() {
     aoConfirmar: (e) => confirmarDeco(e),
     aoCancelar: (orig) => { if (emCasa && pontoDeco) colocar(emCasa.int, pontoDeco, orig); pontoDeco = null; },
   });
+  // Álbum de figurinhas (album-ui.js): lugar/loja visitada, missão concluída e baú do dia dão figurinha
+  albumUI = criarAlbumUI({ caixa, salvo: () => salvo, salvar: () => salvar(salvo), ganhar: (q, m) => Rabiscoins.ganhar(q, m), falar: (k) => { radio?.pausarPorFala(true); falar(k); }, aguardarFim, contador: () => contadorMoedas, confete: () => jogo.confete?.(), hoje: () => diario.hoje() });
   fone = criarRabifone(caixa, {
+    montarAlbum: (tela, lista, o) => albumUI.montar(tela, lista, o),
     hora: () => ceu.horaAtual,
     aoAbrir: () => { teclas.clear(); toque.zerar(); },
     aoGaragem: (tipo, cor) => chamarVeiculo(tipo, cor),
@@ -639,6 +640,7 @@ function tirarUniforme() { tirarProfissao(rabisco); ajustarUniforme(rabisco); sa
 // Missão do dia: + EXTRA_DIA na primeira conclusão do dia (diario.js), com o "+15 ⭐" logo depois do ganho normal.
 function ganharMissao(M) {
   if (!M?.id) return;
+  albumUI?.missao(M.id); // figurinha do versículo e de quem pediu
   const r = recompensa(motivoMissao(M.id), GANHO.missao);
   const extra = diario?.pagarExtra(M.id, candidatosDoDia(diario.hoje())) ?? 0;
   if (r.ganhou > 0) setTimeout(() => contadorMoedas?.ganhou(r.ganhou, { alvo: r.saldo }), 900);
@@ -756,6 +758,7 @@ const apiLugar = () => ({
 });
 function entrarLugar(id, imediato = false) {
   if (emCasa || emLugar || dentro || !SALAS[id]) return;
+  albumUI?.visitou(id); // entrar na loja/lugar também dá a figurinha
   const fazer = () => {
     if (!salas[id]) { salas[id] = montarSala(id, { idade: idadeCrianca() }); cena.add(salas[id].grupo); }
     const s = salas[id];
@@ -1092,7 +1095,7 @@ function regras() {
   // chegou num lugar novo: aviso com o nome
   for (const l of mundo.lugares) {
     const d = Math.hypot(l.x - j.pos.x, l.z - j.pos.z);
-    if (d < l.raio * 0.7 && regras.ultimo !== l.id) { regras.ultimo = l.id; dizer(l.bairro || "Rabiscolândia", `${l.nome}`, 2200); }
+    if (d < l.raio * 0.7 && regras.ultimo !== l.id) { regras.ultimo = l.id; albumUI?.visitou(l.id); dizer(l.bairro || "Rabiscolândia", `${l.nome}`, 2200); }
   }
   if (alvoMapa && Math.hypot(alvoMapa.x - j.pos.x, alvoMapa.z - j.pos.z) < 5) alvoMapa = null;
 }
@@ -1462,7 +1465,7 @@ if (params.has("teste")) window.teste = {
   adiantarBau(seg = 5) { for (let k = 0; k < seg / 0.05 && bauDia?.estado === "abrindo"; k++) bauDia.atualizar(0.05, relogio.elapsedTime, j.pos, 99); }, // pula a animação de abrir
   get hoje() { return diario?.hoje() ?? null; }, set hoje(d) { hojeTeste = diaValido(d) ? d : null; tDia = 0; verificarDia(0); },
   get missaoDoDia() { return missaoDoDiaAgora(); }, candidatosDoDia: () => candidatosDoDia(diario.hoje()), get texMarcaDoDia() { return texMarcaDoDia(); },
-  get atelie() { return atelieUI; }, abrirAtelie: (c) => abrirAtelie(c), get contadorMoedas() { return contadorMoedas; }, ganharMissao: (id) => ganharMissao({ id }), Rabiscoins,
+  get album() { return albumUI; }, get atelie() { return atelieUI; }, abrirAtelie: (c) => abrirAtelie(c), get contadorMoedas() { return contadorMoedas; }, ganharMissao: (id) => ganharMissao({ id }), Rabiscoins,
   get garagemAtual() { return garagem; },
   entrarLugar(id) { if (dentro) sair(); if (emCasa) sairCasa(true); entrarLugar(id, true); },
   sairLugar() { sairLugar(true); },
