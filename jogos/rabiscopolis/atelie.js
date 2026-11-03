@@ -9,6 +9,7 @@
 import { PECAS, SLOTS, opcaoDe, idLoja } from "./meu-rabisco.js";
 import { PINTURAS, VEICULOS_PINTAVEIS } from "./atelie-pecas.js";
 import { tem, comprados } from "../../src/motor/rabiscoins.js";
+import { BICHINHOS, ID_BICHINHO } from "./bichinho-modelo.js";
 
 export const NOME_LOJA = "Ateliê Ponta do Lápis";
 // ganhos: concluir missão (a 1ª vez rende mais; repetir, um pouquinho). Item barato sai em 1 ou 2 missões; o mais caro, em umas 10.
@@ -30,6 +31,7 @@ export const CATEGORIAS = [
   { id: "oculos", nome: "Óculos", icone: "🕶️" },
   { id: "mochila", nome: "Mochilas", icone: "🎒" },
   { id: "veiculo", nome: "Pinturas", icone: "🎨" },
+  { id: "bichinho", nome: "Bichinhos", icone: "🐾" }, // Pet Shop: o 1º bichinho sai de graça (precoBichinho)
 ];
 
 // catálogo inteiro (todas as temporadas): roupas pagas de cada slot + pinturas
@@ -40,8 +42,12 @@ export function catalogo() {
     itens.push({ id: idLoja(slot, o.id), cat: slot, slot, opcao: o.id, nome: o.nome, preco: o.preco, temporada: o.temporada ?? null, amostra: o.amostra });
   }
   for (const p of PINTURAS) itens.push({ id: `rabiscolandia:pintura:${p.id}`, cat: "veiculo", veiculo: p.veiculo, pintura: p.id, nome: p.nome, preco: p.preco, temporada: p.temporada ?? null, amostra: [p.cor, p.cor2 ?? 0xffffff] });
+  for (const b of BICHINHOS) itens.push({ id: ID_BICHINHO(b.id), cat: "bichinho", bichinho: b.id, nome: b.nome, preco: b.preco, temporada: null, amostra: [b.cores[0], b.cores[1]] });
   return itens;
 }
+// bichinho: o primeiro de cada criança sai de graça (quem ainda não tem nenhum paga 0); os outros custam o preço do catálogo
+export const temBichinho = () => BICHINHOS.some((b) => tem(ID_BICHINHO(b.id)));
+export const precoBichinho = (item) => (temBichinho() ? item.preco : 0);
 // o que aparece na loja agora: fora de época só se já foi comprado
 export const itensDaLoja = (data = new Date()) => { const meus = comprados(); return catalogo().filter((i) => temporadaAtiva(i.temporada, data) || meus.has(i.id)); };
 // roupa do Ateliê: comprou? (as de graça valem sempre)

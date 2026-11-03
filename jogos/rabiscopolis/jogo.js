@@ -47,6 +47,8 @@ import { criarSorveteUI } from "./sorvete-ui.js";
 import { criarRadioRabisco, criarAvisoRadio } from "./radio-rabisco.js";
 import { criarRadioUI } from "../../src/radio/radio-ui.js";
 import { criarAtelie } from "./atelie-ui.js";
+import { criarBichinho } from "./bichinho.js";
+import { ID_BICHINHO } from "./bichinho-modelo.js";
 import { possui, pinturaDe, GANHO, motivoMissao, NOME_LOJA, temporadaAtiva } from "./atelie.js";
 import { criarDiario, diaDe, valido as diaValido, dataDe, PREMIOS, EXTRA_DIA } from "./diario.js";
 import { criarBau, texMarcaDoDia, somBonus } from "./diario-bau.js";
@@ -123,7 +125,7 @@ function teclasDe(acao) {
 const tem = (acao) => teclasDe(acao).some((k) => teclas.has(k));
 const ehAcao = (acao, code) => teclasDe(acao).includes(code);
 const pad = { x: 0, y: 0, gx: 0, pulo: false, puloNovo: false, acaoNova: false };
-let toque = null, fone = null, meuRb = null, atelieUI = null, contadorMoedas = null, albumUI = null;
+let toque = null, fone = null, meuRb = null, atelieUI = null, contadorMoedas = null, albumUI = null, bichinho = null;
 // Presente do dia e Missão do dia (diario.js, diario-bau.js). ?teste&hoje=2026-11-03 (ou teste.hoje = "...") troca a data
 let diario = null, bauDia = null, diaVisto = null, tDia = 0, doDia = { dia: null, id: null };
 let hojeTeste = params.has("teste") && diaValido(params.get("hoje")) ? params.get("hoje") : null;
@@ -444,10 +446,18 @@ function iniciar() {
     vestir: (slot, id) => vestirDoAtelie(slot, id),
     pintar: (veiculo, id) => { salvo.pinturas = { ...(salvo.pinturas ?? {}), [veiculo]: id }; if (!id) delete salvo.pinturas[veiculo]; salvar(salvo); },
     comprar: (item) => comprarNaCarteira(item.id, item.preco),
+    // Pet Shop (bichinho.js): qual bichinho vai com o Rabisco e o nome de cada um (salvo.bichinho = { atual, nomes })
+    bichinho: () => salvo.bichinho ?? { atual: null, nomes: {} },
+    escolherBichinho: (id) => escolherBichinho(id),
+    nomearBichinho: (id, nome) => nomearBichinho(id, nome),
     falar: (k) => { radio?.pausarPorFala(true); falar(k); },
     confete: () => jogo.confete?.(),
     aoAbrir: () => { teclas.clear(); toque.zerar(); },
   });
+  // o bichinho que acompanha o Rabisco (só vale se foi trocado no Pet Shop: a carteira guarda o que é dele)
+  bichinho = criarBichinho(cena, { j, fis, sons, cam });
+  aplicarBichinho();
+  caixa.addEventListener("pointerdown", (ev) => { if (ev.target === r3?.domElement && bichinho?.tocou(ev.clientX, ev.clientY, cam, r3.domElement)) bichinho.truque(); });
   atualizarHud();
   contadorMoedas = criarContador(hud.querySelector(".chip-rp").parentElement, { camada: caixa });
 
@@ -478,6 +488,7 @@ function parar() {
   if (r3) { r3.dispose(); r3 = null; }
   veiculos.length = 0; transito = []; patioJE = null; moradores = []; vovo = null; garagem = null; missoes = null; profissoes = null;
   natal?.pararMusica(); natal = null;
+  bichinho?.liberar(); bichinho = null;
   jogo.palco.querySelector('.escolha-j2-rp')?.remove(); j2 = null;
   dentro = null; contexto = null; alvoMapa = null; oracao = null; trava = null;
   motor.desligar();
@@ -744,6 +755,12 @@ function vestirDoAtelie(slot, id) {
   vestirPecas(rabisco, escolhaSalva(salvo, possui), { juntar: true });
   return true;
 }
+function aplicarBichinho() {
+  const b = salvo.bichinho, id = b?.atual && Rabiscoins.tem(ID_BICHINHO(b.atual)) ? b.atual : null;
+  bichinho?.definir(id, id ? b.nomes?.[id] ?? "" : "");
+}
+function escolherBichinho(id) { salvo.bichinho = { nomes: {}, ...salvo.bichinho, atual: id }; salvar(salvo); aplicarBichinho(); }
+function nomearBichinho(id, nome) { const b = (salvo.bichinho = { atual: null, ...salvo.bichinho, nomes: { ...salvo.bichinho?.nomes } }); if (nome) b.nomes[id] = nome; else delete b.nomes[id]; salvar(salvo); aplicarBichinho(); }
 function abrirAtelie(cat = null) {
   if (atelieUI.aberto) return;
   fone?.fechar(); meuRb?.fechar();
@@ -1062,6 +1079,7 @@ function regras() {
     if (v) contexto = { rotulo: ROT[v.tipo] ?? "🚗 Entrar", fazer: () => entrar(v) };
     else if (lp) contexto = { rotulo: `🚪 Entrar: ${SALAS[lp.id].nome}`, fazer: () => entrarLugar(lp.id) };
     else if (pertoDoAtelie()) contexto = { rotulo: "🎨 Entrar no Ateliê", fazer: () => abrirAtelie() };
+    else if (bichinho?.perto(1.8) && !mundo.casas.some((k) => Math.hypot(k.frente[0] - j.pos.x, k.frente[1] - j.pos.z) < 4.5 || Math.hypot(k.porta[0] - j.pos.x, k.porta[1] - j.pos.z) < 3)) contexto = { rotulo: "🐾 Truque", fazer: () => bichinho.truque() };
     else {
       const c = mundo.casas.find((k) => Math.hypot(k.frente[0] - j.pos.x, k.frente[1] - j.pos.z) < 4.5 || Math.hypot(k.porta[0] - j.pos.x, k.porta[1] - j.pos.z) < 3);
       if (c && c.lote.numero !== salvo.casa) contexto = { rotulo: "🏠 Morar aqui?", fazer: () => morarAqui(c) };
@@ -1225,6 +1243,7 @@ function passo(dt, ultimo) {
       v.g.userData.seta.visible = v !== dentro && d < 9;
     }
     j2?.passo(dt, t);
+    bichinho?.atualizar(dt, t, { dentro, emCasa: Boolean(emCasa), emLugar: Boolean(emLugar), roda: Boolean(roda), j2ativo: Boolean(j2?.ativo) });
     atualizarMoradores(dt);
     missoes?.atualizar(dt, t);
     profissoes?.atualizar(dt, t);
@@ -1449,7 +1468,7 @@ if (params.has("teste")) window.teste = {
   adiantarBau(seg = 5) { for (let k = 0; k < seg / 0.05 && bauDia?.estado === "abrindo"; k++) bauDia.atualizar(0.05, relogio.elapsedTime, j.pos, 99); }, // pula a animação de abrir
   get hoje() { return diario?.hoje() ?? null; }, set hoje(d) { hojeTeste = diaValido(d) ? d : null; tDia = 0; verificarDia(0); },
   get missaoDoDia() { return missaoDoDiaAgora(); }, candidatosDoDia: () => candidatosDoDia(diario.hoje()), get texMarcaDoDia() { return texMarcaDoDia(); },
-  get album() { return albumUI; }, get atelie() { return atelieUI; }, abrirAtelie: (c) => abrirAtelie(c), get contadorMoedas() { return contadorMoedas; }, ganharMissao: (id) => ganharMissao({ id }), Rabiscoins,
+  get album() { return albumUI; }, get bichinho() { return bichinho; }, get atelie() { return atelieUI; }, abrirAtelie: (c) => abrirAtelie(c), get contadorMoedas() { return contadorMoedas; }, ganharMissao: (id) => ganharMissao({ id }), Rabiscoins,
   get garagemAtual() { return garagem; },
   entrarLugar(id) { if (dentro) sair(); if (emCasa) sairCasa(true); entrarLugar(id, true); },
   sairLugar() { sairLugar(true); },
