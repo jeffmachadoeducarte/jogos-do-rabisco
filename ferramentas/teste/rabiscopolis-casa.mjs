@@ -303,7 +303,8 @@ const SALA_BONITA = `(() => { const d = teste.decorar, c = d.catalogo, out = [];
   ok(!(await t.ev(`${D}.mao`)) && await t.ev(`${D}.noBau('cadeira')`) === 2, "celular: 📦 Guardar devolveu a cadeira ao baú");
   // troca pelo toque: sem saldo recusa, com saldo vai
   await t.toque(".cd-barra [data-a=catalogo]"); await ate(t, `${D}.catalogo.aberto`, 4000);
-  await t.toque(".casa-cat-rp .atl-aba[data-cat=enfeites]"); await ate(t, `${D}.catalogo.cat === 'enfeites'`, 3000);
+  // o 1º toque logo depois de o catálogo abrir às vezes não vira clique no Chrome sem janela (como no "Pôr na casa" acima): tenta 2 vezes
+  for (let i = 0; i < 2 && !(await t.ev(`${D}.catalogo.cat === 'enfeites'`)); i++) { await t.toque(".casa-cat-rp .atl-aba[data-cat=enfeites]"); await ate(t, `${D}.catalogo.cat === 'enfeites'`, 3000); }
   await t.toque(".casa-cat-rp .atl-item[data-id=vaso]"); await espera(300);
   ok(await t.ev(`${D}.catalogo.cat === 'enfeites' && ${D}.catalogo.selecionado?.id === 'vaso'`), "celular: tocou na aba Enfeites e no vaso");
   await t.toque(".casa-cat-rp .atl-acao"); await espera(300);

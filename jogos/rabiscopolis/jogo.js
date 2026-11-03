@@ -318,7 +318,7 @@ function iniciar() {
   criarPlaca();
   if (salvo.roupas?.[0] && PROFISSOES[salvo.roupas[0]]) setTimeout(() => vestir(salvo.roupas[0]), 0);
   // celular: neblina mais perto, menos blocos e carros desenhados
-  if (qualidade.perfil.toque) { mundo.alcance = 95; mundo.detalheAte = 35; cena.fog.far = 95; cena.fog.near = 40; }
+  if (qualidade.perfil.toque) { mundo.alcance = 95; mundo.detalheAte = 35; mundo.semaforoAte = 55; cena.fog.far = 95; cena.fog.near = 40; }
   j.pos.set(LARGADA.x, 0.07, LARGADA.z); j.vel.set(0, 0, 0); j.dir = LARGADA.dir; camera.st.yaw = LARGADA.dir;
   for (const v of VAGAS) { const q = criarVeiculo(v.tipo, v.cor); q.pos.set(v.x, 0.03, v.z); q.ang = v.ang; cena.add(q.g, q.parado); animarVeiculo(q, 0, 0); veiculos.push(q); }
   transito = criarTransito(cena);
