@@ -24,6 +24,7 @@ import { criarVeiculo, animarVeiculo, criarTransito, atualizarTransito, atualiza
 import { criarMissoes } from "./missoes.js";
 import { criarProfissoes } from "./profissoes.js";
 import { natalAtivo } from "./natal.js";
+import { criarDesafios } from "./desafios.js";
 import { criarNatal } from "./natal-cidade.js";
 import { criarPatioJE, enfeitarCarro } from "./je-patio.js";
 import { criarJogador2 } from "./jogador2.js";
@@ -240,6 +241,7 @@ let hud, minimapa, mapaGrande, balao, bussola, caixa;
 const j = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), noChao: true, coyote: 0, buffer: 0, dir: 0 };
 const veiculos = []; let garagem = null; // veículo chamado pelo Rabifone (só um por vez)
 let transito = [], moradores = [], vovo = null, missoes = null, profissoes = null, j2 = null, patioJE = null;
+let desafios = null; // Desafios de obstáculos (desafios.js): Pula-telhados, Argolas do helicóptero e Corrida de barco
 let natal = null; // Natal na cidade (natal.js: de 1º/12 a 6/1, ou ?natal=1): luzes, árvore, presépio e música da praça
 let dentro = null, contexto = null, salvo = carregar(), alvoMapa = null;
 let mapaLigado = false; // minimapa do canto: escondido ao começar; M, L3 e a ⚙️ mostram e escondem
@@ -415,6 +417,8 @@ function iniciar() {
       const lista = missoes.MISSOES.map((m) => ({ id: m.id, titulo: m.titulo, icone: m.icone, tipo: m.tipo, feita: missoes.feitas.includes(m.id), doDia: m.id === dd ? extra : 0 }));
       return { lista: [...lista.filter((m) => m.doDia), ...lista.filter((m) => !m.doDia)], ativa: missoes.ativa }; },
     presente: () => infoPresente(),
+    desafios: () => desafios?.lista() ?? [],
+    aoDesafio: (id) => { const d = desafios.lista().find((q) => q.id === id); alvoMapa = { x: d.x, z: d.z, emoji: d.icone }; dizer("Rabifone", `Siga a setinha até a bandeira: ${d.nome}!`, 3000); },
     aoPresente: (acao) => { if (acao === "caminho" && bauDia?.estado === "fechado") { alvoMapa = { x: bauDia.pos.x, z: bauDia.pos.z, emoji: "🎁" }; dizer("Rabifone", "Siga a setinha até o presente do dia!", 2800); } },
     aoMissao: (acao, id) => {
       if (acao === "largar") { missoes.largar(); dizer("Passaporte", "Tudo bem! Dá para voltar quando quiser.", 2400); return; }
@@ -460,6 +464,12 @@ function iniciar() {
   caixa.addEventListener("pointerdown", (ev) => { if (ev.target === r3?.domElement && bichinho?.tocou(ev.clientX, ev.clientY, cam, r3.domElement)) bichinho.truque(); });
   atualizarHud();
   contadorMoedas = criarContador(hud.querySelector(".chip-rp").parentElement, { camada: caixa });
+  desafios = criarDesafios(cena, {
+    caixa, mundo, jogador: j, salvo: () => salvo, salvar: () => salvar(salvo), sons, falar: (k) => { radio?.pausarPorFala(true); falar(k); }, dizer: (...a) => dizer(...a),
+    veiculo: () => dentro, ocupado: () => Boolean(emCasa || emLugar || oracao || trava || roda), vezes: (m) => Rabiscoins.vezes(m),
+    pagar: (qtd, motivo, rotulo) => { const r = Rabiscoins.ganhar(qtd, motivo); setTimeout(() => contadorMoedas?.ganhou(r.ganhou, { rotulo, alvo: r.saldo }), 900); return r.ganhou; },
+    alvo: (a) => { alvoMapa = a; },
+  });
 
   new ResizeObserver(ajustar).observe(caixa);
   ajustar();
@@ -489,6 +499,7 @@ function parar() {
   veiculos.length = 0; transito = []; patioJE = null; moradores = []; vovo = null; garagem = null; missoes = null; profissoes = null;
   natal?.pararMusica(); natal = null;
   bichinho?.liberar(); bichinho = null;
+  desafios?.destruir(); desafios = null;
   jogo.palco.querySelector('.escolha-j2-rp')?.remove(); j2 = null;
   dentro = null; contexto = null; alvoMapa = null; oracao = null; trava = null;
   motor.desligar();
@@ -1252,6 +1263,7 @@ function passo(dt, ultimo) {
     patioJE?.atualizar(j.pos.x, j.pos.z);
     mundo.atualizar(dt, t);
     natal?.atualizar(dt, t, j.pos, !emCasa && !emLugar && !dentro);
+    desafios?.atualizar(dt, t);
     if (emLugar) emLugar.atualizar(dt, t);
     if (emCasa) decoCasa?.passo(dt, t);
     saidaPelaPorta();
@@ -1488,7 +1500,7 @@ if (params.has("teste")) window.teste = {
   corCasa(hex) { trocarCorCasa(hex); },
   get corParedes() { const c = mundo.casas.find((k) => k.lote.numero === salvo.casa); return c?.grupo.userData.paredes.userData.cor; },
   get radio() { return radio; }, get radioUI() { return radioUI; }, get avisoRadio() { return avisoRadio; }, falar: (k) => falar(k),
-  get missoes() { return missoes; }, get profissoes() { return profissoes; }, get patioJE() { return patioJE; }, get natal() { return natal; },
+  get missoes() { return missoes; }, get profissoes() { return profissoes; }, get patioJE() { return patioJE; }, get natal() { return natal; }, get desafios() { return desafios; },
   get roda() { return roda ? { ...roda, y: j.pos.y } : null; }, subirRoda: () => subirRoda(), descerRoda: () => descerRoda(),
   get trava() { return trava ? { pose: trava.pose ?? null, t: trava.t } : null; },
   get oracao() { return oracao ? { i: oracao.i, total: ORACAO.length, painel: !painelOracao.hidden, texto: painelOracao.textContent } : null; },

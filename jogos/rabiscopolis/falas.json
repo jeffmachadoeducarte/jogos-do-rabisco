@@ -370,6 +370,12 @@
   "rp-trab-reciclagem-explica": "Agora você é ajudante do Marlon Máquinas! Dirija o caminhão da reciclagem, pare nos pontos de coleta para recolher as garrafas e os recicláveis e depois leve tudo até o galpão.",
   "rp-trab-reciclagem-fim": "Turno completo! Tudo chegou no galpão para virar coisa nova, e você ganhou o bônus do turno. Cuidar da cidade é cuidar do mundo que Deus criou.",
   "rp-trab-bombeiro-explica": "Agora você é bombeiro mirim! Os focos são de mentira, só fumaça colorida. Chegue pertinho e aperte o botão da mangueira. E tem um gatinho na árvore esperando ajuda!",
-  "rp-trab-bombeiro-fim": "Turno completo! A fumaça sumiu, o gatinho está no chão, e você ganhou o bônus do turno. Bombeiro cuida de todo mundo."
+  "rp-trab-bombeiro-fim": "Turno completo! A fumaça sumiu, o gatinho está no chão, e você ganhou o bônus do turno. Bombeiro cuida de todo mundo.",
+  "rp-des-pula": "Pula-telhados! Passe pelo pórtico e pule de telhado em telhado. Se cair, volta ao último checkpoint.",
+  "rp-des-heli": "Argolas do helicóptero! Suba bem alto e voe por todas as argolas.",
+  "rp-des-barco": "Corrida de barco! Passe pelo pórtico e contorne todas as boias no lago.",
+  "rp-des-bronze": "Medalha de bronze! Muito bem!",
+  "rp-des-prata": "Medalha de prata! Que rápido!",
+  "rp-des-ouro": "Medalha de ouro! Você é um campeão!"
  }
 }
