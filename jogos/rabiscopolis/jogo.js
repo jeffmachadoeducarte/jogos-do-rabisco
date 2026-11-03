@@ -44,7 +44,9 @@ import { criarSorveteUI } from "./sorvete-ui.js";
 import { criarRadioRabisco, criarAvisoRadio } from "./radio-rabisco.js";
 import { criarRadioUI } from "../../src/radio/radio-ui.js";
 import { criarAtelie } from "./atelie-ui.js";
-import { possui, pinturaDe, GANHO, motivoMissao, NOME_LOJA } from "./atelie.js";
+import { possui, pinturaDe, GANHO, motivoMissao, NOME_LOJA, temporadaAtiva } from "./atelie.js";
+import { criarDiario, diaDe, valido as diaValido, dataDe, PREMIOS, EXTRA_DIA } from "./diario.js";
+import { criarBau, texMarcaDoDia, somBonus } from "./diario-bau.js";
 import * as Rabiscoins from "../../src/motor/rabiscoins.js";
 import { recompensa, comprar as comprarNaCarteira, saldo as saldoRabiscoins } from "../../src/motor/rabiscoins.js";
 import { criarContador } from "../../src/motor/rabiscoins-ui.js";
@@ -73,7 +75,7 @@ const ORACAO = [
 ];
 const ESPERA_REPETIR = 4.5; // segundos depois da voz até seguir sozinho (a criança repete junto)
 // falas gravadas (chaves rp-*; o texto fica em falas.mjs → falas.json, para gerar depois)
-const FALAS = ["rp-titulo", "rp-intro", "rp-casa", "rp-casa-pre", "rp-casa-pos", "rp-carro", "rp-onibus", "rp-garagem", "rp-noite", "rp-dia"];
+const FALAS = ["rp-titulo", "rp-intro", "rp-presente-aviso", "rp-casa", "rp-casa-pre", "rp-casa-pos", "rp-carro", "rp-onibus", "rp-garagem", "rp-noite", "rp-dia"];
 
 const jogo = criarCasca({
   titulo: "Rabiscolândia",
@@ -119,6 +121,9 @@ const tem = (acao) => teclasDe(acao).some((k) => teclas.has(k));
 const ehAcao = (acao, code) => teclasDe(acao).includes(code);
 const pad = { x: 0, y: 0, gx: 0, pulo: false, puloNovo: false, acaoNova: false };
 let toque = null, fone = null, meuRb = null, atelieUI = null, contadorMoedas = null;
+// Presente do dia e Missão do dia (diario.js, diario-bau.js). ?teste&hoje=2026-11-03 (ou teste.hoje = "...") troca a data
+let diario = null, bauDia = null, diaVisto = null, tDia = 0, doDia = { dia: null, id: null };
+let hojeTeste = params.has("teste") && diaValido(params.get("hoje")) ? params.get("hoje") : null;
 addEventListener("keydown", (e) => {
   if (jogo.estado !== "jogando" || jogo.pausado) return;
   if (e.target?.matches?.("input, textarea")) return; // digitando o nome no Meu Rabisco
@@ -324,6 +329,10 @@ function iniciar() {
   criarMoradores();
   aplicarCasa();
   natal = natalAtivo() ? criarNatal(cena, { mundo, ceu, toque: qualidade.perfil.toque, salvo: () => salvo, falar: (k) => { radio?.pausarPorFala(true); falar(k); }, dizer: (...a) => dizer(...a), ocupado: () => Boolean(emCasa || emLugar || oracao || trava || missoes?.ativa) }) : null;
+  diario = criarDiario({ salvo: () => salvo, salvar: () => salvar(salvo), ganhar: (q, m) => Rabiscoins.ganhar(q, m), hoje: () => hojeTeste ?? diaDe() });
+  bauDia = criarBau(cena);
+  diaVisto = diario.hoje(); doDia = { dia: null, id: null };
+  montarBauDoDia();
   missoes = criarMissoes({
     cena, rabisco, vovo, salvo, sons, dizer: (...a) => dizer(...a),
     salvar: (d) => { Object.assign(salvo, { missoesFeitas: d.missoesFeitas, selos: d.selos }); salvar(salvo); },
@@ -336,6 +345,8 @@ function iniciar() {
     distRua, luzDe, semaforos: () => mundo.semaforos,
     chamarCarro: () => chamarVeiculo("carro", 0x00b5f0),
     aoConcluir: (M) => { alvoMapa = null; ganharMissao(M); },
+    // Missão do dia: a estrela no lugar do "!" até o extra do dia sair
+    marcaDoDia: (id) => (id === missaoDoDiaAgora() && !diario?.extraPagoHoje() ? texMarcaDoDia() : null),
     pos2: () => (j2?.aPe ? j2.pos : null),
     // missões que vieram da Rabiscópolis: casas (quem espera na porta), idade (escola da criança), patinhos do lago
     patioJE,
@@ -397,7 +408,12 @@ function iniciar() {
     veiculosExtra: () => { const p = pinturaDe(salvo, "carro"); return p ? [{ tipo: "carro", cor: p.cor, nome: p.nome, emoji: "🎨" }] : []; },
     infoCasa: () => ({ tem: salvo.casa != null, nome: salvo.casa != null ? `Casa ${salvo.casa}` : "" }),
     coresCasa: () => CORES_PAREDE,
-    missoes: () => ({ lista: missoes.MISSOES.map((m) => ({ id: m.id, titulo: m.titulo, icone: m.icone, tipo: m.tipo, feita: missoes.feitas.includes(m.id) })), ativa: missoes.ativa }),
+    // a Missão do dia vem primeiro, com a estrela (enquanto o extra de hoje não saiu)
+    missoes: () => { const dd = missaoDoDiaAgora(), extra = dd && !diario.extraPagoHoje() ? EXTRA_DIA : 0;
+      const lista = missoes.MISSOES.map((m) => ({ id: m.id, titulo: m.titulo, icone: m.icone, tipo: m.tipo, feita: missoes.feitas.includes(m.id), doDia: m.id === dd ? extra : 0 }));
+      return { lista: [...lista.filter((m) => m.doDia), ...lista.filter((m) => !m.doDia)], ativa: missoes.ativa }; },
+    presente: () => infoPresente(),
+    aoPresente: (acao) => { if (acao === "caminho" && bauDia?.estado === "fechado") { alvoMapa = { x: bauDia.pos.x, z: bauDia.pos.z, emoji: "🎁" }; dizer("Rabifone", "Siga a setinha até o presente do dia!", 2800); } },
     aoMissao: (acao, id) => {
       if (acao === "largar") { missoes.largar(); dizer("Passaporte", "Tudo bem! Dá para voltar quando quiser.", 2400); return; }
       const o = missoes.ondePede(id); alvoMapa = { x: o.x, z: o.z, emoji: "❗" };
@@ -442,9 +458,17 @@ function iniciar() {
   posicionarCamera(1, 0);
   requestAnimationFrame(quadro);
   setTimeout(() => { falar("rp-intro"); dizer("Rabiscolândia", salvo.casa != null ? "Bem-vindo de volta! Sua casa está esperando no Bairro das Casas." : "Que cidade grande! Escolha uma casa no Bairro das Casas e use o Rabifone 📱 para chamar um carro."); }, 700);
+  // primeira entrada do dia com o presente esperando: a anfitriã avisa depois da fala de boas-vindas (sem cortar)
+  if (diario.deveAvisar()) setTimeout(() => aguardarFim().then(() => setTimeout(avisarPresente, 350)), 1900);
+}
+function avisarPresente() {
+  if (!vivo || bauDia?.estado !== "fechado") return;
+  radio?.pausarPorFala(true); falar("rp-presente-aviso");
+  dizer("Rabiscolândia", "Tem presente do dia esperando por você! 🎁", 4200);
 }
 function parar() {
   vivo = false;
+  bauDia = null; diario = null;
   if (meuRb?.aberto) meuRb.fechar();
   if (atelieUI?.aberto) atelieUI.fechar();
   contadorMoedas?.destruir(); contadorMoedas = null;
@@ -635,10 +659,83 @@ function tirarUniforme() { tirarProfissao(rabisco); ajustarUniforme(rabisco); sa
 // ------------------------------------------------------------------ Rabiscoins e Ateliê Ponta do Lápis
 // missão concluída: a 1ª vez rende GANHO.missao.primeira; repetir, GANHO.missao.repetida (atelie.js). O ganho aparece no
 // contador do HUD com as moedinhas voando e o som (rabiscoins-ui.js); a fala da conclusão segue sem interrupção.
+// Missão do dia: + EXTRA_DIA na primeira conclusão do dia (diario.js), com o "+15 ⭐" logo depois do ganho normal.
 function ganharMissao(M) {
   if (!M?.id) return;
   const r = recompensa(motivoMissao(M.id), GANHO.missao);
-  if (r.ganhou > 0) setTimeout(() => contadorMoedas?.ganhou(r.ganhou), 900);
+  const extra = diario?.pagarExtra(M.id, candidatosDoDia(diario.hoje())) ?? 0;
+  if (r.ganhou > 0) setTimeout(() => contadorMoedas?.ganhou(r.ganhou, { alvo: r.saldo }), 900);
+  if (extra > 0) setTimeout(() => contadorMoedas?.ganhou(extra, { rotulo: "⭐ Missão do dia", alvo: r.saldo + extra }), 2500);
+}
+// ------------------------------------------------------------------ Presente do dia e Missão do dia (diario.js)
+// missões que a criança consegue fazer agora: da época do ano (temporada), liberadas (disponivel) e com quem pede na cidade
+function candidatosDoDia(h) {
+  return (missoes?.MISSOES ?? []).filter((M) => {
+    if (M.temporada && !temporadaAtiva(M.temporada, dataDe(h))) return false;
+    if (typeof M.disponivel === "function") { try { if (!M.disponivel({ idade: idadeCrianca(), casa: salvo.casa })) return false; } catch { return false; } }
+    const d = M.npcs?.[M.quem ?? Object.keys(M.npcs)[0]];
+    return Boolean(d) && (d.tipo === "vovo" || (Number.isFinite(d.x) && Number.isFinite(d.z)));
+  }).map((M) => M.id);
+}
+function missaoDoDiaAgora() {
+  const h = diario?.hoje();
+  if (!h || !missoes) return null;
+  if (doDia.dia !== h) doDia = { dia: h, id: diario.missaoDoDia(candidatosDoDia(h)) };
+  return doDia.id;
+}
+// onde o baú aparece: no portão da casa escolhida (de frente para a rua) ou, sem casa, na praça,
+// entre o gramado e a calçada do lado da largada (longe do meio da praça e da frente do Ateliê)
+const BAU_PRACA = { x: 3.5, z: 25.5, rot: -0.44 };
+function lugarDoBau() {
+  const c = salvo.casa != null ? mundo.casas.find((k) => k.lote.numero === salvo.casa) : null;
+  if (c) {
+    const [dx, dz] = c.lote.dir;
+    // do lado do portão, na calçada em frente à cerca (à vista da rua); se não couber, no quintal ao lado da porta
+    const pontos = [[c.frente, 1.3, 2.6], [c.frente, 1.3, 3.4], [c.porta, 1.8, 2.4], [c.porta, 2.2, 2.8], [c.porta, 3.0, 2.2]];
+    for (const [[ox, oz], fr, lado] of pontos) for (const s of [1, -1]) {
+      const x = ox + dx * fr - dz * s * lado, z = oz + dz * fr + dx * s * lado;
+      if (!fis.bate(x, z, 0.3, 0.6)) return { x, z, rot: c.lote.rot, onde: "casa" };
+    }
+  }
+  return { ...BAU_PRACA, onde: "praca" };
+}
+function montarBauDoDia() {
+  if (!bauDia || bauDia.estado === "abrindo") return;
+  bauDia.mostrar(false, mundo.solidos);
+  if (!diario.estado().disponivel) return;
+  const L = lugarDoBau();
+  bauDia.colocar(L.x, L.z, L.rot); bauDia.onde = L.onde;
+  bauDia.mostrar(true, mundo.solidos);
+}
+// a data mudou (meia-noite com o jogo aberto, ou o teste trocou): baú novo e Missão do dia nova
+function verificarDia(dt) {
+  tDia -= dt;
+  if (tDia > 0 || !diario) return;
+  tDia = 2;
+  const h = diario.hoje();
+  if (h !== diaVisto && bauDia?.estado !== "abrindo") { diaVisto = h; doDia = { dia: null, id: null }; montarBauDoDia(); } // abrindo: espera acabar
+}
+function abrirPresente() {
+  if (!bauDia || bauDia.estado !== "fechado") return null;
+  const antes = saldoRabiscoins();
+  const r = diario.abrir();
+  if (!r) { bauDia.mostrar(false, mundo.solidos); return null; }
+  j.dir = Math.atan2(bauDia.pos.x - j.pos.x, bauDia.pos.z - j.pos.z); // o Rabisco olha para o baú
+  if (alvoMapa?.emoji === "🎁") alvoMapa = null;
+  bauDia.abrir(() => {
+    contadorMoedas?.ganhou(r.qtd, { rotulo: r.bonus ? "⭐ 7 dias!" : "🎁", alvo: antes + r.qtd });
+    if (r.bonus) { setTimeout(() => somBonus(), 700); jogo.confete?.(); }
+  });
+  radio?.pausarPorFala(true);
+  falar(r.bonus ? "rp-presente-sete" : "rp-presente-abriu");
+  dizer("Presente do dia", r.bonus ? `Sete dias seguidos! Presente especial: ${r.qtd} Rabiscoins!` : `Que presente bom! ${r.qtd} Rabiscoins. Volte amanhã para abrir outro.`, 4200);
+  return r;
+}
+function infoPresente() {
+  const e = diario?.estado();
+  if (!e) return {};
+  const id = missaoDoDiaAgora(), M = id ? missoes.MISSOES.find((m) => m.id === id) : null;
+  return { ...e, premios: PREMIOS, missao: M ? { id: M.id, icone: M.icone, titulo: M.titulo, extra: EXTRA_DIA, feita: diario.extraPagoHoje() } : null };
 }
 // veste a peça (Meu Rabisco ou Ateliê) e guarda; peça paga só se já foi comprada
 function vestirDoAtelie(slot, id) {
@@ -775,6 +872,7 @@ function morarAqui(c) {
   salvo.casa = c.lote.numero; salvo.corCasa = c.lote.hex;
   salvar(salvo);
   aplicarCasa();
+  montarBauDoDia(); // o presente do dia (se ainda está esperando) muda para a porta da casa nova
   sons.vitoria?.();
   jogo.confete?.();
   const n = nomeCrianca();
@@ -994,6 +1092,7 @@ function regras() {
   } else if (dentro) contexto = { rotulo: "🚪 Sair", fazer: sair };
   else if (roda) contexto = roda.podeDescer ? { rotulo: "🎡 Descer", fazer: () => descerRoda() } : { rotulo: "🎡 Passeando…", fazer: () => {} };
   else if ((contexto = missoes?.contexto() ?? null)) { /* missão: pedir, pegar, entregar, plantar */ }
+  else if (bauDia?.perto(j.pos)) contexto = { rotulo: "🎁 Abrir o presente", fazer: () => abrirPresente() };
   else if (Math.hypot(RODA.x - j.pos.x, RODA.z - 6.5 - j.pos.z) < 3.4) contexto = { rotulo: "🎡 Andar na roda-gigante", fazer: () => subirRoda() };
   else {
     const v = pertoDeVeiculo();
@@ -1167,6 +1266,8 @@ function passo(dt, ultimo) {
     j2?.passo(dt, t);
     atualizarMoradores(dt);
     missoes?.atualizar(dt, t);
+    bauDia?.atualizar(dt, t, j.pos, emCasa || emLugar ? -1 : qualidade.perfil.toque ? 35 : 45);
+    verificarDia(dt);
     patioJE?.atualizar(j.pos.x, j.pos.z);
     mundo.atualizar(dt, t);
     natal?.atualizar(dt, t, j.pos, !emCasa && !emLugar && !dentro);
@@ -1381,6 +1482,10 @@ if (params.has("teste")) window.teste = {
   get modo() { return emCasa ? "casa" : emLugar ? "lugar" : dentro ? "veiculo" : "rua"; },
   get emLugar() { return emLugar ? { id: emLugar.id, est: emLugar.est, interativos: emLugar.interativos.map((i) => ({ id: i.id, rotulo: i.rotulo, pos: i.pos })) } : null; },
   get sorveteUI() { return sorveteUI; },
+  get diario() { return diario; }, get bau() { return bauDia?.info() ?? null; }, abrirPresente: () => abrirPresente(), get presente() { return infoPresente(); },
+  adiantarBau(seg = 5) { for (let k = 0; k < seg / 0.05 && bauDia?.estado === "abrindo"; k++) bauDia.atualizar(0.05, relogio.elapsedTime, j.pos, 99); }, // pula a animação de abrir
+  get hoje() { return diario?.hoje() ?? null; }, set hoje(d) { hojeTeste = diaValido(d) ? d : null; tDia = 0; verificarDia(0); },
+  get missaoDoDia() { return missaoDoDiaAgora(); }, candidatosDoDia: () => candidatosDoDia(diario.hoje()), get texMarcaDoDia() { return texMarcaDoDia(); },
   get atelie() { return atelieUI; }, abrirAtelie: (c) => abrirAtelie(c), get contadorMoedas() { return contadorMoedas; }, ganharMissao: (id) => ganharMissao({ id }), Rabiscoins,
   get garagemAtual() { return garagem; },
   entrarLugar(id) { if (dentro) sair(); if (emCasa) sairCasa(true); entrarLugar(id, true); },

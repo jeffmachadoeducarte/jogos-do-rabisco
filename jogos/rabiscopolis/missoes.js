@@ -456,7 +456,8 @@ export function criarMissoes(ctx) {
       const vis = n === caronaNpc() || (daMissao && Math.hypot(p.x - x, p.z - z) < R);
       if (!n.fixo) n.g.visible = vis;
       if (n.extras) n.extras.visible = Math.hypot(p.x - n.casa[0], p.z - n.casa[1]) < R && (n.casaExtras ? ativa === n.M : daMissao);
-      if (n.marca) { const pede = !feitas.has(n.M.id) && !ativa; n.marca.visible = pede && (n.fixo && !n.fachada ? n.g.visible : vis); n.marca.position.set(x, n.g.position.y + (n.bicho ? 1.6 : n.m?.altura ?? 1.4) + 0.75 + Math.sin(t * 4) * 0.12, z); }
+      // Missão do dia (diario.js): ctx.marcaDoDia(id) dá a estrela no lugar do "!" (aparece também se já foi feita)
+      if (n.marca) { const dia = ctx.marcaDoDia?.(n.M.id) ?? null, tx = dia ?? marcaTex(); if (n.marca.material.map !== tx) { n.marca.material.map = tx; n.marca.material.needsUpdate = true; } const pede = (!feitas.has(n.M.id) || Boolean(dia)) && !ativa; n.marca.visible = pede && (n.fixo && !n.fachada ? n.g.visible : vis); n.marca.position.set(x, n.g.position.y + (n.bicho ? 1.6 : n.m?.altura ?? 1.4) + 0.75 + Math.sin(t * 4) * 0.12, z); }
       if (!vis && !n.fixo) continue;
       if (n.m && !n.fixo) {
         // parado: vira para o Rabisco quando ele chega perto
