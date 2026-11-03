@@ -51,7 +51,7 @@ export function sorteio(dia, n) {
   return idx;
 }
 
-export function criarDiario({ salvo, salvar, ganhar, hoje = () => diaDe() }) {
+export function criarDiario({ salvo, salvar, ganhar, hoje = () => diaDe(), aoAbrir = null }) {
   const dados = () => {
     const s = salvo();
     if (!s.diario || typeof s.diario !== "object" || Array.isArray(s.diario)) s.diario = {};
@@ -87,6 +87,7 @@ export function criarDiario({ salvo, salvar, ganhar, hoje = () => diaDe() }) {
     D.bau = e.hoje; D.seq = e.seq;
     guardar();
     ganhar(e.premio, MOTIVO_BAU);
+    aoAbrir?.(e); // o Álbum dá a figurinha surpresa (album-ui.js)
     return { qtd: e.premio, seq: e.seq, bonus: e.seq === 7 };
   }
   // a anfitriã avisa uma vez por dia, na primeira entrada, se o presente está esperando

@@ -135,5 +135,13 @@ Object.assign(FALAS_PT, {
 // casa decorável (casa-dados.js): boas-vindas, como decorar, móvel trocado, pronto e o enfeite de Natal; quem fala é a anfitriã
 const { FALAS_CASA } = await import(`data:text/javascript,${encodeURIComponent(readFileSync(new URL("./casa-dados.js", import.meta.url), "utf8").replace(/^import .*$/m, ""))}`);
 Object.assign(FALAS_PT, FALAS_CASA);
+// Álbum de figurinhas (album-ui.js): a anfitriã só fala na primeira figurinha e ao completar uma página
+Object.assign(FALAS_PT, {
+  "rp-album-primeira": "Sua primeira figurinha! Todas ficam guardadas no Álbum, no Rabifone.",
+  "rp-album-pagina-parceiros": "Página completa! Você conheceu todos os parceiros da cidade. Ganhou Rabiscoins de bônus!",
+  "rp-album-pagina-amigos": "Página completa! Você conheceu todos os amigos da cidade. Ganhou Rabiscoins de bônus!",
+  "rp-album-pagina-versiculos": "Página completa! Você juntou todos os versículos. Ganhou Rabiscoins de bônus!",
+  "rp-album-pagina-lugares": "Página completa! Você visitou todos os lugares da cidade. Ganhou Rabiscoins de bônus!",
+});
 writeFileSync(new URL("./falas.json", import.meta.url), JSON.stringify({ pt: FALAS_PT }, null, 1) + "\n");
 console.log(`${Object.keys(FALAS_PT).length} falas em português`);

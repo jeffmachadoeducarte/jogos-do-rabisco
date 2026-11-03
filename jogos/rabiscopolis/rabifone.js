@@ -17,6 +17,7 @@ const APPS = [
   { id: "meurabisco", icone: "✏️", nome: "Meu Rabisco", cor: "#00b5f0" },
   { id: "atelie", icone: "🎨", nome: "Ateliê", cor: "#8e6cff" },
   { id: "presente", icone: "🎁", nome: "Presente", titulo: "Presente do dia", cor: "#ffcc1f" },
+  { id: "album", icone: "📒", nome: "Álbum", titulo: "Álbum de figurinhas", cor: "#58c43a" },
 ];
 const VEICULOS = [
   { tipo: "carro", cor: 0xec2e8c, nome: "Carro rosa", emoji: "🚗" },
@@ -81,6 +82,8 @@ export function criarRabifone(onde, cb) {
         lista.append(botao(`<span class="rf-emoji">🧭</span>Mostrar o caminho`, () => { cb.aoAtelie?.("caminho"); api.fechar(); }));
       } else if (id === "presente") {
         mostrarPresente(lista);
+      } else if (id === "album") {
+        cb.montarAlbum?.(tela, lista, { botao }); // Álbum de figurinhas (album-ui.js)
       } else if (id === "meurabisco") {
         api.fechar(); cb.aoMeuRabisco?.(); return;
       } else if (id === "passaporte") {
