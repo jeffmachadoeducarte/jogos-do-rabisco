@@ -160,11 +160,14 @@ const andar = async (t, m, iy = 1) => {
   for (const [nome, [x, z, yaw]] of Object.entries({ "praça": [0, 33, Math.PI], "frente da loja": [17, 20, Math.PI / 2] })) {
     await t.ev(`teste.ir(${x}, ${z}); teste.olhar(${yaw}); teste.bichinho.reaparecer()`); await espera(900);
     com[nome] = (await t.ev("teste.medir().total")).calls;
+    // o custo é medido no mesmo instante, com o bichinho escondido (o trânsito andando mexia ±3 entre uma medida e outra)
+    sem[nome] = await t.ev("(() => { const r = teste.bichinho.raiz, v = r.visible; r.visible = false; const c = teste.medir().total.calls; r.visible = v; return c; })()");
     ok(com[nome] - sem[nome] <= 1, `celular, ${nome}: bichinho com nome custa +${com[nome] - sem[nome]} (${sem[nome]} → ${com[nome]}) (≤ +1)`);
   }
   ok(com["praça"] <= 180, `celular, praça com o bichinho: ${com["praça"]} chamadas (≤ 180)`);
   await t.foto(OUT + "celular-praca.png");
-  ok(t.erros.filter((e) => !/assets\/voz\/(rp-|nomes\/)|favicon|fonts\.g/.test(e)).length === 0, "sem erro de console no celular");
+  const errosCel = t.erros.filter((e) => !/assets\/voz\/(rp-|nomes\/)|favicon|fonts\.g/.test(e));
+  ok(errosCel.length === 0, `sem erro de console no celular${errosCel.length ? ": " + errosCel.slice(0, 3).join(" | ") : ""}`);
   await t.fechar();
 }
 console.log(falhas ? `\n${falhas} falha(s)` : "\ntudo certo");
