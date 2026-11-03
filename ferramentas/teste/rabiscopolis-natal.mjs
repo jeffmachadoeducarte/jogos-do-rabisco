@@ -71,7 +71,7 @@ async function medir(t, rotulo, teto, pontos = Object.keys(PONTOS), { comparar =
     const s0 = await t.ev(SEM_NATAL), d = c.calls - s0.calls;
     m[nome] = `${c.calls} (sem Natal ${s0.calls})`;
     // onde está apertado, o Natal não pode custar mais que 1 chamada; onde sobram 30 ou mais, pode
-    ok(((c.calls <= teto && (d <= 1 || c.calls <= teto - 30)) || (s0.calls > teto && d <= 1)) && c.tris <= 350000, `${rotulo}, ${nome}: ${c.calls} chamadas com Natal, ${s0.calls} sem (o Natal custa ${d >= 0 ? "+" : ""}${d}; teto ${teto}${c.calls > teto ? ": a cidade sem Natal já passava aqui" : ""}), ${Math.round(c.tris / 1000)} mil triângulos`);
+    ok(c.calls <= teto && (d <= 1 || c.calls <= teto - 30) && c.tris <= 350000, `${rotulo}, ${nome}: ${c.calls} chamadas com Natal, ${s0.calls} sem (o Natal custa ${d >= 0 ? "+" : ""}${d}; teto ${teto}), ${Math.round(c.tris / 1000)} mil triângulos`);
   }
   return m;
 }

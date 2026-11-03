@@ -481,8 +481,10 @@ function iniciar() {
   // primeira entrada do dia com o presente esperando: a anfitriã avisa depois da fala de boas-vindas (sem cortar)
   if (diario.deveAvisar()) setTimeout(() => aguardarFim().then(() => setTimeout(() => avisarPresente(), 350)), 1900);
 }
-function avisarPresente() {
+function avisarPresente(tentativa = 0) {
   if (!vivo || bauDia?.estado !== "fechado") return;
+  // propaganda de parceira no balão: espera ela acabar em vez de cobrir o nome e o @ (tenta por até ~30 s)
+  if (balao?.classList.contains("ativo") && balao.querySelector(".prop-insta")) { if (tentativa < 20) setTimeout(() => avisarPresente(tentativa + 1), 1500); return; }
   // não atropela quem já está numa missão, dentro de um lugar/casa ou num veículo (o baú continua lá, é só o aviso que fica quieto)
   if (emCasa || emLugar || missoes?.ativa || profissoes?.ativa || desafios?.ativo || dentro) return;
   radio?.pausarPorFala(true); falar("rp-presente-aviso");
@@ -1109,7 +1111,9 @@ function regras() {
     else contexto = { rotulo: "🛋️ Decorar", fazer: () => decoCasa.entrar([j.pos.x, j.pos.z]) };
   } else if (dentro) contexto = { rotulo: "🚪 Sair", fazer: sair };
   else if (roda) contexto = roda.podeDescer ? { rotulo: "🎡 Descer", fazer: () => descerRoda() } : { rotulo: "🎡 Passeando…", fazer: () => {} };
-  else if ((contexto = profissoes?.contexto() ?? (profissoes?.ativa ? null : missoes?.contexto()) ?? null)) { /* profissão (turno) ou missão: pedir, pegar, entregar, plantar */ }
+  // em turno, só a profissão; com missão em andamento, a missão vem antes do "💼 Trabalhar" (a marca do portão do galpão fica
+  // perto da base da reciclagem); sem nenhuma das duas, o "Trabalhar" da base vem antes do pedido de missão de quem está ao lado
+  else if ((contexto = (profissoes?.ativa ? profissoes.contexto() : missoes?.ativa ? missoes.contexto() ?? profissoes?.contexto() : profissoes?.contexto() ?? missoes?.contexto()) ?? null)) { /* profissão (turno) ou missão: pedir, pegar, entregar, plantar */ }
   else if (bauDia?.perto(j.pos)) contexto = { rotulo: "🎁 Abrir o presente", fazer: () => abrirPresente() };
   else if (Math.hypot(RODA.x - j.pos.x, RODA.z - 6.5 - j.pos.z) < 3.4) contexto = { rotulo: "🎡 Andar na roda-gigante", fazer: () => subirRoda() };
   else {

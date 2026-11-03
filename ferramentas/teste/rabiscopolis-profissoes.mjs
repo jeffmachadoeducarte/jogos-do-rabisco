@@ -100,7 +100,7 @@ try {
   await t.foto(`${OUT}rabifone-trabalhar.png`);
   await t.ev("teste.fone.fechar()");
   const apps = await t.ev("(() => { teste.fone.abrir(); const n = document.querySelectorAll('.rf-app').length; const tem = [...document.querySelectorAll('.rf-app')].some((b) => b.textContent.includes('Trabalhar')); teste.fone.fechar(); return { n, tem }; })()");
-  ok(apps.tem && apps.n === 9, `o app 💼 Trabalhar aparece na tela inicial (${apps.n} apps)`);
+  ok(apps.tem && apps.n === 11, `o app 💼 Trabalhar aparece na tela inicial (${apps.n} de 11 apps)`);
 
   // ---- Entregador da Speedy: ponto 💼 da cidade
   const bases = await t.ev(`${P}.bases()`);

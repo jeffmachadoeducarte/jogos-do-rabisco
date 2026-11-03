@@ -177,23 +177,25 @@ export function criarAlbumUI({ caixa, salvo, salvar, ganhar, falar, aguardarFim,
     if (rodando) return; rodando = true;
     try {
       while (fila.length) {
-        const { r, atraso } = fila.shift();
+        const { r, atraso, calada } = fila.shift();
         if (atraso) await espera(atraso);
-        const fala = r.pagina ? FALAS.pagina(r.pagina.id) : r.primeira ? FALAS.primeira : null;
+        // figurinha que vem da missão: fica calada (o cartão voa igual); a fala da conclusão, o versículo e a propaganda
+        // tocam em fila e nada pode entrar no meio nem depois delas
+        const fala = calada ? null : r.pagina ? FALAS.pagina(r.pagina.id) : r.primeira ? FALAS.primeira : null;
         await mostrar(r);
         if (fala) { await esperarFala(); falar?.(fala); }
       }
     } finally { rodando = false; }
   }
   // resultados de album.ganhar(): só as novas entram na fila
-  function chegou(lista, atraso = 0) {
-    for (const r of lista) if (r?.nova) fila.push({ r, atraso });
+  function chegou(lista, atraso = 0, calada = false) {
+    for (const r of lista) if (r?.nova) fila.push({ r, atraso, calada });
     if (fila.length) rodar();
   }
   return {
     album, montar, chegou,
     visitou: (lugarId) => chegou(album.visitou(lugarId), 600),
-    missao: (id) => chegou(album.missao(id), 3200),
+    missao: (id) => chegou(album.missao(id), 3200, true),
     // o baú do dia: uma figurinha surpresa (depois da animação do baú e do ganho de moedas)
     bau: () => { const id = album.surpresa(hoje()); if (id) chegou([album.ganhar(id)], 3000); },
     get emFila() { return fila.length + (rodando ? 1 : 0); },

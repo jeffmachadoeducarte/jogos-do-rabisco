@@ -87,7 +87,8 @@ ok(!MISSOES.some((m) => /\{nome\}/.test(m.pedido)) && !MISSOES.some((m) => m.ped
 // ---- missões dos bairros novos e do Mar Azul (cidade 2x maior): o dobro de missões, espalhadas, e as do mar só de barco
 {
   const parceirosUrl = `data:text/javascript,${encodeURIComponent(readFileSync(`${RAIZ}src/parceiros.js`, "utf8"))}`;
-  const M2 = await import(`data:text/javascript,${encodeURIComponent(readFileSync(`${JOGO}mapa.js`, "utf8").replace(/from\s+["']\.\.\/\.\.\/src\/parceiros\.js["']/, `from "${parceirosUrl}"`))}`);
+  const desafiosUrl = `data:text/javascript,${encodeURIComponent(readFileSync(`${JOGO}desafios-dados.js`, "utf8"))}`; // mapa.js reserva as áreas dos Desafios
+  const M2 = await import(`data:text/javascript,${encodeURIComponent(readFileSync(`${JOGO}mapa.js`, "utf8").replace(/from\s+["']\.\.\/\.\.\/src\/parceiros\.js["']/, `from "${parceirosUrl}"`).replace(/from\s+["']\.\/desafios-dados\.js["']/, `from "${desafiosUrl}"`))}`);
   const ANTES = 26; // missões que existiam antes da cidade crescer
   ok(MISSOES.length >= ANTES * 2, `${MISSOES.length} missões (eram ${ANTES}: pelo menos o dobro)`);
   const novas = MISSOES.slice(ANTES);

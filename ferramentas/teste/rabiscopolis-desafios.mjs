@@ -396,7 +396,8 @@ async function medidas(t, teto, rotuloTela) {
     res[nome] = `${com.calls} (${d >= 0 ? "+" : ""}${d})`;
     ok(com.calls <= teto, `${rotuloTela}, ${nome}: ${com.calls} chamadas (≤ ${teto}); os desafios custam ${d}`);
     ok(d <= 14, `${rotuloTela}, ${nome}: os desafios acrescentam no máximo 14 chamadas (acrescentam ${d})`);
-    if (nome === "praça") ok(d === 0, "na praça os desafios não custam nenhuma chamada (somem de longe)");
+    // na praça os grupos dos desafios ficam escondidos; a diferença de ±1 que sobra é o trânsito andando entre as duas medidas
+    if (nome === "praça") { const vis = await ev("Object.values(teste.desafios.grupos).filter((x) => x.visible).length"); ok(vis === 0 && d <= 0, `na praça os desafios não custam nenhuma chamada (somem de longe: ${vis} grupos à vista, diferença ${d})`); }
   }
   // no ar, entre as argolas, e no barco
   const iheli = await ev("teste.veiculos.findIndex((v) => v.tipo === 'heli')");
