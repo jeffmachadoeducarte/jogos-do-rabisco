@@ -12,6 +12,7 @@ import { casa } from "./casas.js";
 import { degraus } from "./blocos.js";
 import { marEAreia, pier, postoSalvaVidas, quiosqueCoco, rodaGigante, enfeitesOrla } from "./orla.js";
 import { aleatorio } from "../../src/motor3d/toon.js";
+import { atelie } from "./atelie-predio.js";
 
 // local (lx, lz) de um grupo girado em rot (múltiplos de 90°) → mundo (igual a cidade.js · mundoDe)
 export const mundoDe = (ox, oz, rot, lx, lz) => [ox + lx * Math.cos(rot) + lz * Math.sin(rot), oz - lx * Math.sin(rot) + lz * Math.cos(rot)];
@@ -240,6 +241,9 @@ export function montarMundo(cena) {
   const rnd2 = aleatorio(5081);
   const fabricaNova = { floricultura: P.floricultura, pizzaria: P.pizzaria, farmacia: P.farmacia, brinquedos: P.brinquedos, museu: P.museu, observatorio: P.observatorio, salvavidas: postoSalvaVidas, quiosque: quiosqueCoco };
   for (const l of LUGARES.filter((q) => q.novo && fabricaNova[q.id])) por(fabricaNova[l.id](l), l.x - l.dir[0] * l.recuo, l.z - l.dir[1] * l.recuo, l.rot);
+  // Ateliê Ponta do Lápis (loja de visual): a porta em coordenadas do mundo, para a ação "entrar na loja"
+  { const l = LUGARES.find((q) => q.id === "atelie"), ox = l.x - l.dir[0] * l.recuo, oz = l.z - l.dir[1] * l.recuo, S = por(atelie(l), ox, oz, l.rot);
+    Object.assign(lugares.find((q) => q.id === "atelie"), { porta: mundoDe(ox, oz, l.rot, ...S.porta), topo: topoDe(S.grupo) }); }
   for (const pc of PRACAS_NOVAS) { const S = por(P.praca(pc.r), pc.x, pc.z, 0); anima.aguas.push(S.agua); anima.jatos.push(S.jato); }
   for (const p of PREDIOS_NOVOS) {
     const [dx, dz] = p.dir, meia = (Math.abs(dx) > 0.5 ? p.x1 - p.x0 : p.z1 - p.z0) / 2;

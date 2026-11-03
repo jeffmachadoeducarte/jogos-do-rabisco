@@ -154,9 +154,10 @@ export function onibusFofo() {
 }
 // helicoptero(): azul e rosa (cores do Rabisco), cabine redonda com bolha de vidro, cauda com hélice traseira,
 // esquis brancos e rotor de 4 pás. userData: rotor, rotorCauda (giram), rodas = [], seta, motorista, carona, volante.
-export function helicoptero() {
+// pintura (Ateliê): { cor, cor2 } troca o azul da lataria e o rosa dos detalhes
+export function helicoptero(pintura = null) {
   const g = new THREE.Group();
-  const AZUL = 0x00b5f0, ROSA = 0xec2e8c;
+  const AZUL = pintura?.cor ?? 0x00b5f0, ROSA = pintura?.cor2 ?? 0xec2e8c;
   // cabine de blocos: assoalho, paredes baixas azuis com faixa rosa, nariz em degraus e a caixa de vidro por cima
   // (o Rabisco aparece pilotando de qualquer lado). Por dentro é oca: banco e painel ficam à mostra.
   pc(g, 2.4, 0.4, 3.0, AZUL, 0, 0.98, 0); pc(g, 2.0, 0.3, 0.5, AZUL, 0, 1.0, 1.7); pc(g, 1.4, 0.3, 0.4, ROSA, 0, 1.3, 2.3);
@@ -322,12 +323,14 @@ export function patinete(cor = 0x00b5f0) {
   return g;
 }
 // barquinho de pedal (só anda no lago): casco redondo amarelo com faixa ciano e um patinho na frente
-export function barquinho() {
+// pintura (Ateliê): { cor, cor2 } troca o amarelo do casco e o ciano da borda (o patinho continua amarelo)
+export function barquinho(pintura = null) {
   const g = new THREE.Group();
+  const CASCO = pintura?.cor ?? 0xffcc1f, BORDA = pintura?.cor2 ?? 0x00b5f0;
   // casco oco em degraus: fundo, costado amarelo e borda ciano
-  pc(g, 1.9, 0.2, 2.7, 0xffcc1f, 0, 0.12, 0); pc(g, 2.3, 0.28, 3.2, 0xffcc1f, 0, 0.3, 0);
-  for (const s of [-1, 1]) { pc(g, 0.24, 0.26, 3.5, 0xffcc1f, s * 1.2, 0.56, 0); pc(g, 0.3, 0.12, 3.6, 0x00b5f0, s * 1.2, 0.74, 0); }
-  for (const s of [-1, 1]) { pc(g, 2.6, 0.26, 0.24, 0xffcc1f, 0, 0.56, s * 1.7); pc(g, 2.7, 0.12, 0.3, 0x00b5f0, 0, 0.74, s * 1.7); }
+  pc(g, 1.9, 0.2, 2.7, CASCO, 0, 0.12, 0); pc(g, 2.3, 0.28, 3.2, CASCO, 0, 0.3, 0);
+  for (const s of [-1, 1]) { pc(g, 0.24, 0.26, 3.5, CASCO, s * 1.2, 0.56, 0); pc(g, 0.3, 0.12, 3.6, BORDA, s * 1.2, 0.74, 0); }
+  for (const s of [-1, 1]) { pc(g, 2.6, 0.26, 0.24, CASCO, 0, 0.56, s * 1.7); pc(g, 2.7, 0.12, 0.3, BORDA, 0, 0.74, s * 1.7); }
   const banco = caixaRedonda(1.6, 0.18, 0.5, mat(0xffffff)); banco.position.set(0, 0.55, -0.3); g.add(banco);
   const pescoco = malha(new THREE.CapsuleGeometry(0.18, 0.6, 4, 10), mat(0xffcc1f)); pescoco.position.set(0, 1.0, 1.55); pescoco.rotation.x = 0.3; g.add(pescoco);
   const cab = malha(new THREE.SphereGeometry(0.32, 14, 10), mat(0xffcc1f)); cab.position.set(0, 1.45, 1.75); g.add(cab);

@@ -11,8 +11,9 @@ import { ROTAS } from "./mapa.js";
 
 export const CORES_CARRO = [0xec2e8c, 0x00b5f0, 0xff7a00, 0x58c43a, 0x8e6cff, 0xffcc1f];
 // veículo que o Rabisco pode dirigir: { g, tipo, pos, ang, vel, virar, giro, comp (meio comprimento), larg }
-export function criarVeiculo(tipo = "carro", cor = CORES_CARRO[0], enfeite = null) {
-  const fab = { onibus: onibusFofo, heli: helicoptero, je: carroJE, ambulancia, sorvete: vanSorvete, bombeiro: caminhaoBombeiro, bici: () => bicicleta(cor), patinete: () => patinete(cor), barco: barquinho, trator, moto: () => motoEsportiva(cor), jetski: () => jetSki(cor), lancha: () => lancha(cor) }[tipo];
+// pintura: { cor, cor2 } do Ateliê para o helicóptero e o barquinho (os outros já vêm na cor pedida)
+export function criarVeiculo(tipo = "carro", cor = CORES_CARRO[0], enfeite = null, pintura = null) {
+  const fab = { onibus: onibusFofo, heli: () => helicoptero(pintura), je: carroJE, ambulancia, sorvete: vanSorvete, bombeiro: caminhaoBombeiro, bici: () => bicicleta(cor), patinete: () => patinete(cor), barco: () => barquinho(pintura), trator, moto: () => motoEsportiva(cor), jetski: () => jetSki(cor), lancha: () => lancha(cor) }[tipo];
   const g0 = fab ? fab() : carroFofo(cor);
   const g = enfeite?.(g0) ?? g0; // o enfeite pode trocar o carro (ex.: o carro novo da J.E sai igual ao do pátio)
   if (tipo === "jetski") Object.assign(g.userData, { posar: posarPiloto, aoSair: soltarPose }); // senta como na moto (sem capacete)
@@ -30,7 +31,7 @@ export function criarVeiculo(tipo = "carro", cor = CORES_CARRO[0], enfeite = nul
   }
   parado.visible = false;
   if (tipo === "heli") parado.rotation.order = "YXZ";
-  return { g, parado, tipo, cor: tipo === "heli" ? 0x00b5f0 : cor, pos: new THREE.Vector3(), ang: 0, vel: 0, virar: 0, giro: 0, batida: 0, buzina: 0, comp: medidas[0], larg: medidas[1], vmax: medidas[2], alt: 0.03, vs: 0, rotor: 0 };
+  return { g, parado, tipo, cor: tipo === "heli" ? pintura?.cor ?? 0x00b5f0 : cor, pos: new THREE.Vector3(), ang: 0, vel: 0, virar: 0, giro: 0, batida: 0, buzina: 0, comp: medidas[0], larg: medidas[1], vmax: medidas[2], alt: 0.03, vs: 0, rotor: 0 };
 }
 export function animarVeiculo(v, dt, t) {
   v.g.position.copy(v.pos);

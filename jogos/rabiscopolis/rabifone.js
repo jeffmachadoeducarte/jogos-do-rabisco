@@ -1,5 +1,6 @@
-// Rabiscolândia: o Rabifone, o celular do jogo. Menu HTML com 6 apps (Casa, Garagem, Mapa, Dia/Noite, o Passaporte
-// das missões, com os selos, e o Meu Rabisco, que abre a tela de vestir o Rabisco) que dá para
+// Rabiscolândia: o Rabifone, o celular do jogo. Menu HTML com 7 apps (Casa, Garagem, Mapa, Dia/Noite, o Passaporte
+// das missões, com os selos, o Meu Rabisco, que abre a tela de vestir o Rabisco, e o Ateliê, com o saldo de Rabiscoins e a
+// loja de visual) que dá para
 // usar no toque, no mouse, no teclado (setas, Enter, Esc) e no controle (direcional, A confirma, B volta): os itens
 // têm data-foco e o foco anda pela grade, como nos menus da casca.
 //
@@ -13,6 +14,7 @@ const APPS = [
   { id: "hora", icone: "🌗", nome: "Dia/Noite", cor: "#8e6cff" },
   { id: "passaporte", icone: "📘", nome: "Passaporte", cor: "#ff7a00" },
   { id: "meurabisco", icone: "✏️", nome: "Meu Rabisco", cor: "#00b5f0" },
+  { id: "atelie", icone: "🎨", nome: "Ateliê", cor: "#8e6cff" },
 ];
 const VEICULOS = [
   { tipo: "carro", cor: 0xec2e8c, nome: "Carro rosa", emoji: "🚗" },
@@ -62,11 +64,18 @@ export function criarRabifone(onde, cb) {
       const lista = document.createElement("div"); lista.className = "rf-lista"; tela.append(lista);
       if (id === "garagem") {
         const p = document.createElement("p"); p.textContent = "Escolha e ele aparece do seu lado!"; tela.insertBefore(p, lista);
-        for (const v of VEICULOS) lista.append(botao(`<span class="rf-emoji">${v.emoji}</span>${v.nome}`, () => { cb.aoGaragem?.(v.tipo, v.cor); api.fechar(); }));
+        for (const v of [...(cb.veiculosExtra?.() ?? []), ...VEICULOS]) lista.append(botao(`<span class="rf-emoji">${v.emoji}</span>${v.nome}`, () => { cb.aoGaragem?.(v.tipo, v.cor); api.fechar(); }));
       } else if (id === "hora") {
         for (const o of HORAS) lista.append(botao(`<span class="rf-emoji">${o.emoji}</span>${o.nome}`, () => { cb.aoHora?.(o.h); api.fechar(); }));
       } else if (id === "mapa") {
         cb.aoMapa?.(); api.fechar(); return;
+      } else if (id === "atelie") {
+        // Ateliê Ponta do Lápis: o saldo de Rabiscoins, abrir a loja e o caminho até o prédio (ao lado da praça)
+        const p = document.createElement("p");
+        p.innerHTML = `Você tem <b class="rf-moedas">${cb.saldo?.() ?? 0}</b> Rabiscoins. Ganhe mais ajudando nas missões!`;
+        tela.insertBefore(p, lista);
+        lista.append(botao(`<span class="rf-emoji">🛍️</span>Abrir a loja`, () => { api.fechar(); cb.aoAtelie?.("abrir"); }));
+        lista.append(botao(`<span class="rf-emoji">🧭</span>Mostrar o caminho`, () => { cb.aoAtelie?.("caminho"); api.fechar(); }));
       } else if (id === "meurabisco") {
         api.fechar(); cb.aoMeuRabisco?.(); return;
       } else if (id === "passaporte") {

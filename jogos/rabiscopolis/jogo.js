@@ -41,6 +41,11 @@ import { vestirProfissao, tirarProfissao, PROFISSOES } from "./roupas-rp.js";
 import { criarSorveteUI } from "./sorvete-ui.js";
 import { criarRadioRabisco, criarAvisoRadio } from "./radio-rabisco.js";
 import { criarRadioUI } from "../../src/radio/radio-ui.js";
+import { criarAtelie } from "./atelie-ui.js";
+import { possui, pinturaDe, GANHO, motivoMissao, NOME_LOJA } from "./atelie.js";
+import * as Rabiscoins from "../../src/motor/rabiscoins.js";
+import { recompensa, comprar as comprarNaCarteira, saldo as saldoRabiscoins } from "../../src/motor/rabiscoins.js";
+import { criarContador } from "../../src/motor/rabiscoins-ui.js";
 import { RUAS, segmentos, LOTES, VAGAS, LARGADA, LUGARES, LAGO, PARQUE, PRACA, FAZENDA, BORDA, MORADORES, distRua, PRAIA, LAGO2, HELIPONTO, MAR, ORLA, ILHA, PIERS, RODA, PRACAS_NOVAS } from "./mapa.js";
 void PARQUE;
 
@@ -111,7 +116,7 @@ function teclasDe(acao) {
 const tem = (acao) => teclasDe(acao).some((k) => teclas.has(k));
 const ehAcao = (acao, code) => teclasDe(acao).includes(code);
 const pad = { x: 0, y: 0, gx: 0, pulo: false, puloNovo: false, acaoNova: false };
-let toque = null, fone = null, meuRb = null;
+let toque = null, fone = null, meuRb = null, atelieUI = null, contadorMoedas = null;
 addEventListener("keydown", (e) => {
   if (jogo.estado !== "jogando" || jogo.pausado) return;
   if (e.target?.matches?.("input, textarea")) return; // digitando o nome no Meu Rabisco
@@ -128,6 +133,13 @@ addEventListener("keydown", (e) => {
     if (mapa[e.code]) { deco.navegar(...mapa[e.code]); e.preventDefault(); return; }
     if (e.code === "Enter" || e.code === "Space" || e.code === "KeyF") { deco.confirmar(); e.preventDefault(); return; }
     if (e.code === "Escape" || e.code === "Backspace") { deco.cancelar(); e.preventDefault(); }
+    return;
+  }
+  if (atelieUI?.aberto) {
+    const mapa = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], KeyA: [-1, 0], KeyD: [1, 0], KeyW: [0, -1], KeyS: [0, 1] };
+    if (mapa[e.code]) { atelieUI.navegar(...mapa[e.code]); e.preventDefault(); return; }
+    if (e.code === "Enter" || e.code === "Space" || e.code === "KeyF") { atelieUI.confirmar(); e.preventDefault(); return; }
+    if (e.code === "Escape" || e.code === "Backspace") { atelieUI.voltar(); e.preventDefault(); }
     return;
   }
   if (meuRb?.aberto) {
@@ -153,6 +165,10 @@ addEventListener("keydown", (e) => {
   if (e.code.startsWith("Arrow")) e.preventDefault();
 });
 addEventListener("keyup", (e) => teclas.delete(e.code));
+// Esc com o Ateliê aberto fecha a loja (antes da pausa da casca, que também ouve o Esc)
+addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && atelieUI?.aberto && !jogo.pausado) { e.preventDefault(); e.stopImmediatePropagation(); atelieUI.voltar(); }
+}, { capture: true });
 function lerControle({ segura, apertou, eixoX, eixoY }) {
   if (sorveteUI?.aberto) {
     if (apertou.esq) sorveteUI.navegar(-1, 0); if (apertou.dir) sorveteUI.navegar(1, 0);
@@ -164,6 +180,12 @@ function lerControle({ segura, apertou, eixoX, eixoY }) {
     if (apertou.esq) deco.navegar(-1, 0); if (apertou.dir) deco.navegar(1, 0);
     if (apertou.cima) deco.navegar(0, -1); if (apertou.baixo) deco.navegar(0, 1);
     if (apertou.confirma) deco.confirmar(); else if (apertou.voltar) deco.cancelar();
+    return;
+  }
+  if (atelieUI?.aberto) {
+    if (apertou.esq) atelieUI.navegar(-1, 0); if (apertou.dir) atelieUI.navegar(1, 0);
+    if (apertou.cima) atelieUI.navegar(0, -1); if (apertou.baixo) atelieUI.navegar(0, 1);
+    if (apertou.confirma) atelieUI.confirmar(); else if (apertou.voltar) atelieUI.voltar();
     return;
   }
   if (meuRb?.aberto) {
@@ -285,7 +307,7 @@ function iniciar() {
   cena.add(rabisco.grupo);
   prepararRoupa(rabisco);
   otimizarRabisco(rabisco);
-  vestirPecas(rabisco, escolhaSalva(salvo), { juntar: true }); // depois do 1º mesclar: a mochila original só se esconde
+  vestirPecas(rabisco, escolhaSalva(salvo, possui), { juntar: true }); // depois do 1º mesclar: a mochila original só se esconde
   criarPlaca();
   if (salvo.roupas?.[0] && PROFISSOES[salvo.roupas[0]]) setTimeout(() => vestir(salvo.roupas[0]), 0);
   // celular: neblina mais perto, menos blocos e carros desenhados
@@ -303,11 +325,11 @@ function iniciar() {
     // fala emendada com o nome da criança (banco assets/voz/nomes); false sem cadastro/nome gravado
     falarNome: (pre, pos) => { radio?.pausarPorFala(true); return falarNome(pre, pos); }, nome: nomeCrianca,
     confete: () => jogo.confete?.(),
-    pos: () => j.pos, veiculoAtual: () => dentro, ocupado: () => Boolean(emCasa || emLugar),
+    pos: () => j.pos, veiculoAtual: () => dentro, ocupado: () => Boolean(emCasa || emLugar || atelieUI?.aberto),
     raio: () => (qualidade.perfil.toque ? 35 : 45),
     distRua, luzDe, semaforos: () => mundo.semaforos,
     chamarCarro: () => chamarVeiculo("carro", 0x00b5f0),
-    aoConcluir: () => { alvoMapa = null; },
+    aoConcluir: (M) => { alvoMapa = null; ganharMissao(M); },
     pos2: () => (j2?.aPe ? j2.pos : null),
     // missões que vieram da Rabiscópolis: casas (quem espera na porta), idade (escola da criança), patinhos do lago
     patioJE,
@@ -343,7 +365,7 @@ function iniciar() {
     salvo: () => salvo, salvar: (d) => salvar(d), crianca: () => { try { return window.Familia?.crianca?.() || null; } catch { return null; } },
     otimizar: (rb) => otimizarRabisco(rb, () => j2?.modelo?.c?.rabisco === rb),
     veiculo: () => dentro, yaw: () => camera.st.yaw, caronaDaMissao: () => missoes?.carona,
-    travado: () => Boolean(fone?.aberto || deco?.aberto || sorveteUI?.aberto || meuRb?.aberto),
+    travado: () => Boolean(fone?.aberto || deco?.aberto || sorveteUI?.aberto || meuRb?.aberto || atelieUI?.aberto),
   });
   acaoJ2 = el("div", { class: "acao-j2-rp", hidden: "" }); caixa.append(acaoJ2);
   fade = el("div", { class: "fade-rp" }); caixa.append(fade);
@@ -361,6 +383,11 @@ function iniciar() {
     aoHora: (h) => mudarHora(h),
     aoMapa: () => alternarMapa(true),
     aoMeuRabisco: () => meuRb.abrir(),
+    // Ateliê: o saldo, o caminho até a loja e a loja aberta de qualquer lugar (bom para a TV e o controle)
+    saldo: () => saldoRabiscoins(),
+    aoAtelie: (acao) => { if (acao === "abrir") abrirAtelie(); else { const l = mundo.lugares.find((q) => q.id === "atelie"); alvoMapa = { x: l.x, z: l.z, emoji: "🎨" }; dizer("Rabifone", `Siga a setinha até o ${NOME_LOJA}, ao lado da praça!`, 3000); } },
+    // carro com a pintura do Ateliê: aparece no alto da Garagem
+    veiculosExtra: () => { const p = pinturaDe(salvo, "carro"); return p ? [{ tipo: "carro", cor: p.cor, nome: p.nome, emoji: "🎨" }] : []; },
     infoCasa: () => ({ tem: salvo.casa != null, nome: salvo.casa != null ? `Casa ${salvo.casa}` : "" }),
     coresCasa: () => CORES_PAREDE,
     missoes: () => ({ lista: missoes.MISSOES.map((m) => ({ id: m.id, titulo: m.titulo, icone: m.icone, tipo: m.tipo, feita: missoes.feitas.includes(m.id) })), ativa: missoes.ativa }),
@@ -379,14 +406,27 @@ function iniciar() {
   });
   // Meu Rabisco: mochila, fone, sapatos, calça e óculos (meu-rabisco.js); a escolha vale na hora e fica no aparelho
   meuRb = criarMeuRabisco(caixa, {
-    escolha: () => escolhaSalva(salvo),
+    escolha: () => escolhaSalva(salvo, possui), possui,
     nomeCadastro: () => (nomeCrianca() ? nomeDaPlaca() : null),
     nomeSalvo: () => salvo.nomeRabisco,
-    aoEscolher: (slot, id) => { salvo.meuRabisco = { ...salvo.meuRabisco, [slot]: id }; salvar(salvo); vestirPecas(rabisco, escolhaSalva(salvo), { juntar: true }); },
+    aoEscolher: (slot, id) => { vestirDoAtelie(slot, id); },
     aoNome: (n) => { salvo.nomeRabisco = n; salvar(salvo); atualizarPlaca(); },
     aoAbrir: () => { teclas.clear(); toque.zerar(); },
   });
+  // Ateliê Ponta do Lápis (atelie-ui.js): comprar com Rabiscoins, vestir e pintar os veículos
+  atelieUI = criarAtelie(caixa, {
+    escolha: () => escolhaSalva(salvo, possui),
+    pinturas: () => Object.fromEntries(["carro", "moto", "barco", "heli"].map((v) => [v, pinturaDe(salvo, v)?.id ?? null])),
+    saldo: () => saldoRabiscoins(),
+    vestir: (slot, id) => vestirDoAtelie(slot, id),
+    pintar: (veiculo, id) => { salvo.pinturas = { ...(salvo.pinturas ?? {}), [veiculo]: id }; if (!id) delete salvo.pinturas[veiculo]; salvar(salvo); },
+    comprar: (item) => comprarNaCarteira(item.id, item.preco),
+    falar: (k) => { radio?.pausarPorFala(true); falar(k); },
+    confete: () => jogo.confete?.(),
+    aoAbrir: () => { teclas.clear(); toque.zerar(); },
+  });
   atualizarHud();
+  contadorMoedas = criarContador(hud.querySelector(".chip-rp").parentElement, { camada: caixa });
 
   new ResizeObserver(ajustar).observe(caixa);
   ajustar();
@@ -399,6 +439,8 @@ function iniciar() {
 function parar() {
   vivo = false;
   if (meuRb?.aberto) meuRb.fechar();
+  if (atelieUI?.aberto) atelieUI.fechar();
+  contadorMoedas?.destruir(); contadorMoedas = null;
   emCasa = null; for (const k of Object.keys(interiores)) delete interiores[k];
   emLugar = null; solidosDentro = []; for (const k of Object.keys(salas)) delete salas[k];
   radioUI?.sairDoCarro();
@@ -556,6 +598,29 @@ function vestir(id) {
   salvo.roupas = [id]; salvar(salvo);
 }
 function tirarUniforme() { tirarProfissao(rabisco); ajustarUniforme(rabisco); salvo.roupas = []; salvar(salvo); }
+// ------------------------------------------------------------------ Rabiscoins e Ateliê Ponta do Lápis
+// missão concluída: a 1ª vez rende GANHO.missao.primeira; repetir, GANHO.missao.repetida (atelie.js). O ganho aparece no
+// contador do HUD com as moedinhas voando e o som (rabiscoins-ui.js); a fala da conclusão segue sem interrupção.
+function ganharMissao(M) {
+  if (!M?.id) return;
+  const r = recompensa(motivoMissao(M.id), GANHO.missao);
+  if (r.ganhou > 0) setTimeout(() => contadorMoedas?.ganhou(r.ganhou), 900);
+}
+// veste a peça (Meu Rabisco ou Ateliê) e guarda; peça paga só se já foi comprada
+function vestirDoAtelie(slot, id) {
+  if (!possui(slot, id)) return false;
+  salvo.meuRabisco = { ...salvo.meuRabisco, [slot]: id }; salvar(salvo);
+  vestirPecas(rabisco, escolhaSalva(salvo, possui), { juntar: true });
+  return true;
+}
+function abrirAtelie(cat = null) {
+  if (atelieUI.aberto) return;
+  fone?.fechar(); meuRb?.fechar();
+  atelieUI.abrir(cat);
+  radio?.pausarPorFala(true); falar("rp-atelie-entrar");
+  dizer(NOME_LOJA, "Escolha e o Rabisco já prova! Aperte o botão grande para trocar suas Rabiscoins ou vestir.", 4200);
+}
+const pertoDoAtelie = () => { const l = mundo.lugares.find((q) => q.id === "atelie"); return l && Math.hypot(l.x - j.pos.x, l.z - j.pos.z) < 3.2; };
 // parabéns por missão/aula concluída: a narradora fala o NOME DA CRIANÇA (rp-xxx-pre + nome gravado + rp-xxx-pos); sem
 // cadastro ou sem o nome no banco, a fala neutra rp-xxx, sem nome e sem "Rabisco". `chave` = "rp-xxx" (-pre/-pos/neutra).
 function parabens(chave, depois, ms, quem = "Rabiscolândia") {
@@ -697,6 +762,7 @@ function entrar(v) {
   j.vel.set(0, 0, 0);
   v.g.add(rabisco.grupo); const a = v.g.userData.motorista; rabisco.grupo.position.set(a.x, a.y - 2.0 * rabisco.escala, a.z); rabisco.grupo.rotation.set(0, 0, 0);
   v.g.userData.aoEntrar?.(rabisco); // moto: põe o capacete
+  rabisco.emCapacete = v.tipo === "moto"; ajustarUniforme(rabisco); // (o chapéu do Ateliê fica guardado embaixo dele)
   v.g.userData.seta.visible = false;
   sons.pisao();
   camera.st.manual = 0;
@@ -737,6 +803,7 @@ function sair() {
   toque?.especial(null);
   cena.add(rabisco.grupo); rabisco.grupo.visible = true;
   v.g.userData.aoSair?.(rabisco); // moto: tira o capacete
+  rabisco.emCapacete = false; ajustarUniforme(rabisco);
   j.pos.set(v.pos.x + ox, v.tipo === "heli" && !noTelhado ? Math.max(0.07, v.alt) : 0.07, v.pos.z + oz); j.vel.set(0, 0, 0); j.dir = v.ang;
   rabisco.grupo.position.copy(j.pos); rabisco.grupo.rotation.set(0, j.dir, 0);
   j2?.sair(v, v.pos.x - ox, v.pos.z - oz); // o jogador 2 desce do outro lado
@@ -793,13 +860,16 @@ function chamarVeiculo(tipo, cor) {
   if (dentro) { dizer("Rabifone", "Saia do veículo para chamar outro."); return null; }
   if (emCasa || emLugar) { dizer("Rabifone", "Saia para a rua para chamar um veículo: ele estaciona lá fora."); return null; }
   if (garagem) { cena.remove(garagem.g, garagem.parado); veiculos.splice(veiculos.indexOf(garagem), 1); garagem = null; }
-  const v = criarVeiculo(tipo, cor);
+  // pintura do Ateliê: moto, barquinho e helicóptero saem na cor comprada (o carro pintado tem botão próprio na Garagem)
+  const pint = tipo !== "carro" ? pinturaDe(salvo, tipo) : null;
+  if (pint) cor = pint.cor;
+  const v = criarVeiculo(tipo, cor, null, pint);
   if (tipo === "barco") {
     const lago = [LAGO, LAGO2].find((l) => Math.hypot(l.x - j.pos.x, l.z - j.pos.z) < l.r + 14);
     if (!lago) { dizer("Rabifone", "O barquinho só anda no lago: vá ao Parque do Lago ou à Praia!"); return null; }
     if (garagem) { cena.remove(garagem.g, garagem.parado); veiculos.splice(veiculos.indexOf(garagem), 1); }
     const a = Math.atan2(j.pos.x - lago.x, j.pos.z - lago.z), r = lago.r - 3;
-    const vb = criarVeiculo("barco");
+    const vb = criarVeiculo("barco", cor, null, pint);
     vb.pos.set(lago.x + Math.sin(a) * r, 0.03, lago.z + Math.cos(a) * r); vb.ang = a + Math.PI / 2;
     animarVeiculo(vb, 0, 0); cena.add(vb.g, vb.parado); veiculos.push(vb); garagem = vb;
     dizer("Rabifone", "O barquinho chegou na beira do lago! Chegue perto e aperte a ação.", 3000);
@@ -857,7 +927,7 @@ function entrada() {
   if (entradaTeste) { ix = entradaTeste.virar; iy = entradaTeste.acel; }
   const m = Math.hypot(ix, iy);
   if (m > 1) { ix /= m; iy /= m; }
-  if (fone?.aberto || deco?.aberto || sorveteUI?.aberto || meuRb?.aberto) ix = iy = 0;
+  if (fone?.aberto || deco?.aberto || sorveteUI?.aberto || meuRb?.aberto || atelieUI?.aberto) ix = iy = 0;
   return { ix, iy, m };
 }
 function regras() {
@@ -896,6 +966,7 @@ function regras() {
     const ROT = { onibus: "🚌 Dirigir", heli: "🚁 Pilotar", bici: "🚲 Pedalar", moto: "🏍️ Pilotar", patinete: "🛴 Andar", barco: "🚣 Remar", jetski: "🌊 Pilotar", lancha: "🚤 Pilotar", trator: "🚜 Dirigir", bombeiro: "🚒 Dirigir", ambulancia: "🚑 Dirigir", sorvete: "🍦 Dirigir" };
     if (v) contexto = { rotulo: ROT[v.tipo] ?? "🚗 Entrar", fazer: () => entrar(v) };
     else if (lp) contexto = { rotulo: `🚪 Entrar: ${SALAS[lp.id].nome}`, fazer: () => entrarLugar(lp.id) };
+    else if (pertoDoAtelie()) contexto = { rotulo: "🎨 Entrar no Ateliê", fazer: () => abrirAtelie() };
     else {
       const c = mundo.casas.find((k) => Math.hypot(k.frente[0] - j.pos.x, k.frente[1] - j.pos.z) < 4.5 || Math.hypot(k.porta[0] - j.pos.x, k.porta[1] - j.pos.z) < 3);
       if (c && c.lote.numero !== salvo.casa) contexto = { rotulo: "🏠 Morar aqui?", fazer: () => morarAqui(c) };
@@ -1274,6 +1345,8 @@ if (params.has("teste")) window.teste = {
   get modo() { return emCasa ? "casa" : emLugar ? "lugar" : dentro ? "veiculo" : "rua"; },
   get emLugar() { return emLugar ? { id: emLugar.id, est: emLugar.est, interativos: emLugar.interativos.map((i) => ({ id: i.id, rotulo: i.rotulo, pos: i.pos })) } : null; },
   get sorveteUI() { return sorveteUI; },
+  get atelie() { return atelieUI; }, abrirAtelie: (c) => abrirAtelie(c), get contadorMoedas() { return contadorMoedas; }, ganharMissao: (id) => ganharMissao({ id }), Rabiscoins,
+  get garagemAtual() { return garagem; },
   entrarLugar(id) { if (dentro) sair(); if (emCasa) sairCasa(true); entrarLugar(id, true); },
   sairLugar() { sairLugar(true); },
   irAoInterativo(iid) { const it = emLugar.interativos.find((i) => i.id === iid); j.pos.set(it.pos[0], 0.07, it.pos[1]); j.vel.set(0, 0, 0); },

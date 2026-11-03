@@ -4,13 +4,14 @@
 // e no da cidade) e fica guardada. Funciona no toque, no mouse, no teclado (setas, Enter, Esc) e no controle (direcional,
 // A confirma, B volta), como o Rabifone: os itens têm data-foco.
 //
-//   const mr = criarMeuRabisco(caixa, { escolha(), nomeCadastro(), nomeSalvo(), aoEscolher(slot, id), aoNome(texto), aoAbrir(), aoFechar() });
+//   const mr = criarMeuRabisco(caixa, { escolha(), possui(slot, id), nomeCadastro(), nomeSalvo(), aoEscolher(slot, id), aoNome(texto), aoAbrir(), aoFechar() });
+// (possui: peças do Ateliê já compradas aparecem junto com as de graça; a camiseta e o chapéu ficam no Ateliê)
 //   mr.abrir(); mr.navegar(dx, dy); mr.confirmar(); mr.voltar(); mr.fechar();
 
 import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
 import { criarPalco3D, THREE } from "../../src/motor3d/palco3d.js";
 import { toon, comContorno } from "../../src/motor3d/toon.js";
-import { PECAS, ORDEM, vestirPecas, prepararRoupa } from "./meu-rabisco.js";
+import { PECAS, ORDEM, vestirPecas, prepararRoupa, opcoesVisiveis } from "./meu-rabisco.js";
 
 const hex = (c) => `#${c.toString(16).padStart(6, "0")}`;
 const ALTURA = 2.2; // do Rabisco da tela (pés em y = 0)
@@ -54,7 +55,7 @@ export function criarMeuRabisco(onde, cb) {
   }
   function desenharOpcoes() {
     const p = PECAS[aba];
-    opcoesEl.replaceChildren(...p.opcoes.map((o) => {
+    opcoesEl.replaceChildren(...opcoesVisiveis(aba, cb.possui).map((o) => { // as do Ateliê só depois de compradas
       const sel = escolha[aba] === o.id;
       const b = botao(`<span class="mrb-amostra" style="background:linear-gradient(135deg, ${hex(o.amostra[0])} 50%, ${hex(o.amostra[1])} 50%)"></span><span class="mrb-on">${o.nome}</span>${sel ? '<span class="mrb-ok-sel">✓</span>' : ""}`, `mrb-op${sel ? " escolhida" : ""}`, () => escolher(aba, o.id));
       b.dataset.id = o.id; b.dataset.slot = aba; b.setAttribute("aria-pressed", String(sel));

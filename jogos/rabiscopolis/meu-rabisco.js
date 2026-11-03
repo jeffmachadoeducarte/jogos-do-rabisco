@@ -19,7 +19,9 @@
 //   escolhaSalva(salvo) → escolha válida (o que não existe volta para o original)
 
 import { THREE, toon, comContorno } from "../../src/motor3d/toon.js";
+import { ROUPAS } from "../../src/motor3d/roupas3d.js";
 import { mesclar } from "./base3d.js";
+import { pecasDaLoja } from "./atelie-pecas.js";
 
 const G = THREE;
 // cores do próprio Rabisco 3D (rabisco3d.js): assim a peça nova parece do mesmo desenho
@@ -297,13 +299,26 @@ export const PECAS = {
     { id: "espelhado", nome: "Espelhado", amostra: [0x8ee8ff, C.rosa], monta: (rb) => [oculos(rb, { forma: () => lenteOval(0x8ee8ff, C.rosa, { r: 0.22, esticar: 1.25 }), aro: C.rosa })] },
   ] },
 };
+// abas da tela Meu Rabisco (de graça) · SLOTS: tudo o que o Rabisco veste, com a camiseta e o chapéu do Ateliê (atelie-pecas.js)
 export const ORDEM = ["mochila", "fone", "sapatos", "calca", "oculos"];
-export const ESCOLHA_PADRAO = Object.freeze(Object.fromEntries(ORDEM.map((s) => [s, PECAS[s].original])));
+// peças do Ateliê Ponta do Lápis (pagas em Rabiscoins): slots novos e opções a mais nos de antes
+for (const [slot, def] of Object.entries(pecasDaLoja({ C, pc, noTronco, linha, mochilaRetangular, alcasDeOmbro, oculos, lenteOval, lenteForma, lenteRetangular, formaCoracao, formaEstrela, comContorno }))) {
+  if (PECAS[slot]) PECAS[slot].opcoes.push(...def.opcoes); else PECAS[slot] = def;
+}
+export const SLOTS = [...ORDEM, "camiseta", "chapeu"];
+export const ESCOLHA_PADRAO = Object.freeze(Object.fromEntries(SLOTS.map((s) => [s, PECAS[s].original])));
+export const opcaoDe = (slot, id) => PECAS[slot]?.opcoes.find((o) => o.id === id) ?? null;
+// id da peça paga na carteira de Rabiscoins (src/motor/rabiscoins.js)
+export const idLoja = (slot, id) => `rabiscolandia:${slot}:${id}`;
 
-// sem opção inventada: o que não existe (ou veio de uma versão antiga) volta para o original
-export function escolhaSalva(salvo) {
+// sem opção inventada: o que não existe (ou veio de uma versão antiga) volta para o original; peça paga só vale se foi
+// comprada (possui(slot, id); sem a função, nenhuma peça paga vale)
+export function escolhaSalva(salvo, possui = null) {
   const e = { ...ESCOLHA_PADRAO };
-  for (const s of ORDEM) { const v = salvo?.meuRabisco?.[s]; if (PECAS[s].opcoes.some((o) => o.id === v)) e[s] = v; }
+  for (const s of SLOTS) {
+    const v = salvo?.meuRabisco?.[s], o = opcaoDe(s, v);
+    if (o && (!o.preco || possui?.(s, v))) e[s] = v;
+  }
   return e;
 }
 
@@ -311,7 +326,7 @@ export function escolhaSalva(salvo) {
 // Antes do primeiro mesclar: embrulha a mochila original (rabisco3d.js marca em rb.partes) num grupo para poder escondê-la.
 // Devolve o grupo (entra no `juntas` do mesclar: a mochila fica em malhas próprias, que dá para esconder depois).
 export function prepararRoupa(rb) {
-  rb.rp = { atual: { ...ESCOLHA_PADRAO }, grupos: {}, mochila: null };
+  rb.rp = { atual: { ...ESCOLHA_PADRAO }, grupos: {}, mochila: null, boneOrig: rb.bone && rb.aba ? { bone: rb.bone.material, aba: rb.aba.material } : null };
   const partes = rb.partes?.mochila ?? [];
   if (!partes.length) return null;
   const g = new G.Group();
@@ -327,11 +342,12 @@ function soltar(grupos) {
 // soltas (a prévia da tela Meu Rabisco, que não tem pressa)
 export function vestirPecas(rb, escolha, { juntar = false } = {}) {
   if (!rb.rp) prepararRoupa(rb);
-  for (const slot of ORDEM) {
+  for (const slot of SLOTS) {
     const id = escolha?.[slot] ?? ESCOLHA_PADRAO[slot];
     if (rb.rp.atual[slot] === id) continue;
     soltar(rb.rp.grupos[slot] ?? []); delete rb.rp.grupos[slot];
-    const op = PECAS[slot].opcoes.find((o) => o.id === id);
+    opcaoDe(slot, rb.rp.atual[slot])?.desmonta?.(rb); // boné de outra cor: volta o laranja
+    const op = opcaoDe(slot, id);
     if (!op) continue;
     if (op.monta) {
       const gs = op.monta(rb);
@@ -343,12 +359,22 @@ export function vestirPecas(rb, escolha, { juntar = false } = {}) {
   if (rb.rp.mochila) rb.rp.mochila.visible = rb.rp.atual.mochila === "original";
   ajustarUniforme(rb);
 }
-// uniforme de profissão por cima: botas escondem os sapatos escolhidos; óculos do uniforme escondem os de sol
+// uniforme de profissão por cima: botas escondem os sapatos escolhidos; óculos do uniforme escondem os de sol; chapéu do
+// uniforme e o capacete da moto (rb.emCapacete) escondem o chapéu do Ateliê. A aba do boné some sob chapéu que a cobriria.
 export function ajustarUniforme(rb) {
   if (!rb.rp) return;
   const botas = Boolean(rb.roupas?.pes);
   const rosto = Boolean(rb.roupas?.rosto || rb.roupasRP?.rosto);
+  const cabeca = Boolean(rb.roupas?.cabeca || rb.roupasRP?.cabeca || rb.emCapacete);
   for (const g of rb.rp.grupos.sapatos ?? []) g.visible = !botas;
   for (const g of rb.rp.grupos.oculos ?? []) g.visible = !rosto;
+  for (const g of rb.rp.grupos.chapeu ?? []) g.visible = !cabeca;
+  const ch = opcaoDe("chapeu", rb.rp.atual.chapeu);
+  if (rb.pivoAba && !rb.emCapacete) {
+    const uniformeEsconde = Boolean(rb.roupasRP?.cabeca) || Boolean(rb.roupas?.cabeca && ROUPAS[rb.roupas.cabeca.id]?.escondeAba);
+    rb.pivoAba.visible = !uniformeEsconde && !(ch?.escondeAba && !cabeca);
+  }
 }
 export const escolhaAtual = (rb) => ({ ...(rb.rp?.atual ?? ESCOLHA_PADRAO) });
+// peças da tela Meu Rabisco: as de graça e as do Ateliê que a criança já comprou
+export const opcoesVisiveis = (slot, possui) => PECAS[slot].opcoes.filter((o) => !o.preco || possui?.(slot, o.id));

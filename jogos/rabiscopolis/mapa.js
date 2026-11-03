@@ -230,6 +230,11 @@ LUGARES.push(
   N("ilha", "Ilha da Alegria", 0, 344, 0, -1, { raio: 16, recuo: 0, bairro: "Ilha da Alegria" }),
   N("roda", "Roda-Gigante Alegria", 0, 370, 0, -1, { raio: 10, recuo: 0, bairro: "Ilha da Alegria" }),
 );
+// Ateliê Ponta do Lápis (loja de visual do Rabisco, paga em Rabiscoins; atelie.js): no Centro, a leste da praça, de frente
+// para ela, num terreno que estava livre. novo: montado no fim (a cidade de antes não muda de lugar); loja: a pegada também.
+LUGARES.push(L("atelie", "Ateliê Ponta do Lápis", 24, 20, -1, 0, { pegada: [16, 10], recuo: 1, raio: 12, bairro: "Centro", novo: true, loja: true }));
+// a frente do Ateliê (entre a praça e a porta) fica sem árvore nem poste
+export const FRENTE_ATELIE = { x0: 18.5, x1: 25, z0: 13, z1: 27 };
 export const lugar = (id) => LUGARES.find((l) => l.id === id);
 // praças dos bairros novos (iguais à do Centro: chafariz, canteiros, bancos e árvores)
 export const PRACAS_NOVAS = ["pracaIpes", "pracaPalmeiras", "pracaEstrelas"].map((id) => ({ id, x: lugar(id).x, z: lugar(id).z, r: 16 }));
@@ -322,7 +327,8 @@ function semente(s) {
 }
 const sobrepoe = (a, b, folga = 0) => a.x0 < b.x1 + folga && a.x1 > b.x0 - folga && a.z0 < b.z1 + folga && a.z1 > b.z0 - folga;
 export const PEGADAS_FIXAS = [
-  ...LUGARES.filter((l) => l.pegada).map((l) => ({ id: l.id, nova: l.parceiroNovo, ...pegadaDe(l.x, l.z, l.dir, l.pegada[0], l.pegada[1], l.recuo) })),
+  ...LUGARES.filter((l) => l.pegada).map((l) => ({ id: l.id, nova: l.parceiroNovo || l.loja, ...pegadaDe(l.x, l.z, l.dir, l.pegada[0], l.pegada[1], l.recuo) })),
+  { id: "atelie-frente", nova: true, ...FRENTE_ATELIE },
   ...LOTES.map((l) => ({ id: l.id, ...pegadaDe(l.x, l.z, l.dir, LOTE.w, LOTE.d, LOTE.recuo) })),
   { id: "praca", x0: PRACA.x - PRACA.r - 2, x1: PRACA.x + PRACA.r + 2, z0: PRACA.z - PRACA.r - 2, z1: PRACA.z + PRACA.r + 2 },
   ...PRACAS_NOVAS.map((p) => ({ id: p.id, x0: p.x - p.r - 2, x1: p.x + p.r + 2, z0: p.z - p.r - 2, z1: p.z + p.r + 2 })),

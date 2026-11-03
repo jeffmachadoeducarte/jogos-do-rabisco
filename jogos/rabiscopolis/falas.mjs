@@ -115,5 +115,13 @@ for (const m of MISSOES) {
 // propaganda das empresas parceiras (a anfitriã, no fim das missões com parceiro)
 const { PROPAGANDA, falaDaPropaganda } = await import(`data:text/javascript,${encodeURIComponent(readFileSync(new URL("./propaganda.js", import.meta.url), "utf8"))}`);
 for (const id of Object.keys(PROPAGANDA)) FALAS_PT[`rp-prop-${id}`] = falaDaPropaganda(id);
+// Ateliê Ponta do Lápis (loja de visual paga em Rabiscoins: atelie.js); quem fala é a anfitriã
+Object.assign(FALAS_PT, {
+  "rp-atelie-entrar": "Bem-vindo ao Ateliê Ponta do Lápis! Escolha uma roupa nova para o Rabisco ou uma pintura para os seus veículos.",
+  "rp-atelie-comprou": "Que escolha linda! Agora é sua.",
+  "rp-atelie-vestiu": "Ficou muito bonito!",
+  "rp-atelie-falta": "Ainda faltam algumas Rabiscoins. Ajude os amigos nas missões para juntar mais!",
+  "rp-atelie-pintura": "Pintura nova! Chame o veículo pelo Rabifone para passear com ela.",
+});
 writeFileSync(new URL("./falas.json", import.meta.url), JSON.stringify({ pt: FALAS_PT }, null, 1) + "\n");
 console.log(`${Object.keys(FALAS_PT).length} falas em português`);
