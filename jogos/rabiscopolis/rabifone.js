@@ -1,10 +1,11 @@
-// Rabiscolândia: o Rabifone, o celular do jogo. Menu HTML com 7 apps (Casa, Garagem, Mapa, Dia/Noite, o Passaporte
-// das missões, com os selos, o Meu Rabisco, que abre a tela de vestir o Rabisco, e o Ateliê, com o saldo de Rabiscoins e a
-// loja de visual) que dá para
+// Rabiscolândia: o Rabifone, o celular do jogo. Menu HTML com 8 apps (Casa, Garagem, Mapa, Dia/Noite, o Passaporte
+// das missões, com os selos, o Meu Rabisco, que abre a tela de vestir o Rabisco, o Ateliê, com o saldo de Rabiscoins e a
+// loja de visual, e o Presente do dia, com o calendário de 7 dias do baú e a Missão do dia) que dá para
 // usar no toque, no mouse, no teclado (setas, Enter, Esc) e no controle (direcional, A confirma, B volta): os itens
 // têm data-foco e o foco anda pela grade, como nos menus da casca.
 //
-//   const fone = criarRabifone(caixa, { aoGaragem(tipo, cor), aoHora(h), aoMapa(), aoMeuRabisco(), aoCasa(acao), infoCasa() });
+//   const fone = criarRabifone(caixa, { aoGaragem(tipo, cor), aoHora(h), aoMapa(), aoMeuRabisco(), aoCasa(acao), infoCasa(),
+//     presente() → { disponivel, voltou, pegoHoje, seq, pegos: [7], premios: [7], missao: { id, icone, titulo, extra, feita } | null }, aoPresente(acao) });
 //   fone.abrir(); fone.fechar(); fone.navegar(dx, dy); fone.confirmar(); fone.voltar();
 
 const APPS = [
@@ -15,6 +16,7 @@ const APPS = [
   { id: "passaporte", icone: "📘", nome: "Passaporte", cor: "#ff7a00" },
   { id: "meurabisco", icone: "✏️", nome: "Meu Rabisco", cor: "#00b5f0" },
   { id: "atelie", icone: "🎨", nome: "Ateliê", cor: "#8e6cff" },
+  { id: "presente", icone: "🎁", nome: "Presente", titulo: "Presente do dia", cor: "#ffcc1f" },
 ];
 const VEICULOS = [
   { tipo: "carro", cor: 0xec2e8c, nome: "Carro rosa", emoji: "🚗" },
@@ -56,11 +58,12 @@ export function criarRabifone(onde, cb) {
     tela.dataset.app = id ?? "inicio";
     if (!id) {
       const grade = document.createElement("div"); grade.className = "rf-grade";
-      for (const a of APPS) grade.append(botao(`<span class="rf-icone" style="background:${a.cor}">${a.icone}</span><span>${a.nome}</span>`, () => mostrar(a.id), "rf-app"));
+      const novo = cb.presente?.()?.disponivel; // bolinha no app quando o presente de hoje está esperando
+      for (const a of APPS) grade.append(botao(`<span class="rf-icone" style="background:${a.cor}">${a.icone}${a.id === "presente" && novo ? '<i class="rf-bolinha" aria-label="presente esperando">1</i>' : ""}</span><span>${a.nome}</span>`, () => mostrar(a.id), "rf-app"));
       tela.append(grade);
     } else {
       const t = APPS.find((a) => a.id === id);
-      const h = document.createElement("h3"); h.innerHTML = `${t.icone} ${t.nome}`; tela.append(h);
+      const h = document.createElement("h3"); h.innerHTML = `${t.icone} ${t.titulo ?? t.nome}`; tela.append(h);
       const lista = document.createElement("div"); lista.className = "rf-lista"; tela.append(lista);
       if (id === "garagem") {
         const p = document.createElement("p"); p.textContent = "Escolha e ele aparece do seu lado!"; tela.insertBefore(p, lista);
@@ -76,6 +79,8 @@ export function criarRabifone(onde, cb) {
         tela.insertBefore(p, lista);
         lista.append(botao(`<span class="rf-emoji">🛍️</span>Abrir a loja`, () => { api.fechar(); cb.aoAtelie?.("abrir"); }));
         lista.append(botao(`<span class="rf-emoji">🧭</span>Mostrar o caminho`, () => { cb.aoAtelie?.("caminho"); api.fechar(); }));
+      } else if (id === "presente") {
+        mostrarPresente(lista);
       } else if (id === "meurabisco") {
         api.fechar(); cb.aoMeuRabisco?.(); return;
       } else if (id === "passaporte") {
@@ -86,8 +91,8 @@ export function criarRabifone(onde, cb) {
         tela.insertBefore(p, lista);
         if (ativa) lista.append(botao(`<span class="rf-emoji">🛑</span>Largar a missão de agora`, () => { cb.aoMissao?.("largar"); api.fechar(); }));
         for (const m of ms) {
-          const b = botao(`<span class="rf-emoji">${m.icone}</span><span class="rf-missao">${m.titulo}<small>${m.tipo === "biblica" ? "📖 História da Bíblia" : "🏙️ Cidadania"}</small></span><span class="rf-selo${m.feita ? " feito" : ""}">${m.feita ? "✅" : m.id === ativa ? "▶️" : "🧭"}</span>`, () => { if (m.id !== ativa) cb.aoMissao?.("caminho", m.id); api.fechar(); }, "rf-item-missao");
-          b.dataset.missao = m.id;
+          const b = botao(`<span class="rf-emoji">${m.icone}</span><span class="rf-missao">${m.titulo}<small>${m.doDia ? `<b class="rf-dodia">⭐ Missão do dia · +${m.doDia} extra</b>` : m.tipo === "biblica" ? "📖 História da Bíblia" : "🏙️ Cidadania"}</small></span><span class="rf-selo${m.feita ? " feito" : ""}">${m.feita ? "✅" : m.id === ativa ? "▶️" : "🧭"}</span>`, () => { if (m.id !== ativa) cb.aoMissao?.("caminho", m.id); api.fechar(); }, "rf-item-missao");
+          b.dataset.missao = m.id; if (m.doDia) b.classList.add("rf-item-dodia");
           lista.append(b);
         }
       } else if (id === "casa") {
@@ -101,6 +106,37 @@ export function criarRabifone(onde, cb) {
       }
     }
     focar(tela.querySelector("[data-foco]"));
+  }
+  // Presente do dia: o calendário de 7 dias (o que já pegou nesta volta, o de hoje e os que faltam, com o bônus no 7º),
+  // o caminho até o baú e a Missão do dia com o extra
+  function mostrarPresente(lista) {
+    const P = cb.presente?.() ?? {}, premios = P.premios ?? [];
+    const p = document.createElement("p");
+    p.textContent = P.disponivel ? `Seu presente de hoje está esperando! É o dia ${P.seq} de 7.` : P.pegoHoje ? "Presente de hoje aberto! Amanhã tem outro." : "Amanhã tem presente novo esperando por você!";
+    tela.insertBefore(p, lista);
+    const cal = document.createElement("div"); cal.className = "rf-dias"; cal.setAttribute("role", "list");
+    premios.forEach((v, i) => {
+      const hoje = P.disponivel && i === P.seq - 1, pego = P.pegos?.[i];
+      const d = document.createElement("div");
+      d.className = `rf-dia${pego ? " pego" : ""}${hoje ? " hoje" : ""}${i === 6 ? " sete" : ""}`;
+      d.setAttribute("role", "listitem");
+      d.dataset.dia = String(i + 1);
+      d.setAttribute("aria-label", `Dia ${i + 1}: ${v} Rabiscoins${pego ? ", já pegou" : hoje ? ", é hoje" : ""}`);
+      d.innerHTML = `<small>Dia ${i + 1}</small><span class="rf-dia-icone">${pego ? "✅" : hoje ? "🎁" : i === 6 ? "⭐" : "🔒"}</span><b>+${v}</b>`;
+      cal.append(d);
+    });
+    tela.insertBefore(cal, lista);
+    const dica = document.createElement("p"); dica.className = "rf-dica";
+    dica.textContent = "Dias seguidos rendem mais. Faltou um dia? Tudo bem: recomeça do dia 1 e você não perde nada.";
+    tela.insertBefore(dica, lista);
+    if (P.disponivel) lista.append(botao(`<span class="rf-emoji">🧭</span>Mostrar o caminho do presente`, () => { cb.aoPresente?.("caminho"); api.fechar(); }));
+    const M = P.missao;
+    if (M) {
+      const box = document.createElement("div"); box.className = "rf-md";
+      box.innerHTML = `<b>⭐ Missão do dia</b><span>${M.icone} ${M.titulo}</span><small>${M.feita ? "✅ Feita hoje! Amanhã tem outra." : `+${M.extra} Rabiscoins extra na primeira vez hoje`}</small>`;
+      lista.append(box);
+      if (!M.feita) lista.append(botao(`<span class="rf-emoji">🧭</span>Ir para a Missão do dia`, () => { cb.aoMissao?.("caminho", M.id); api.fechar(); }));
+    }
   }
   // paleta de cores da casa por fora
   function mostrarCores() {
