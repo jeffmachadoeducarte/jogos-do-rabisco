@@ -1,5 +1,5 @@
 // Rabiscolândia: músicas das cenas das parceiras (a valsa do ensaio e a da apresentação da Ballet e Cia, a marchinha do desfile
-// da BT Models). Composições próprias, tocadas na hora com osciladores no estilo 8-bit. O relógio é o da página, e cada nota vira
+// da BT Models) e do Natal (a música da praça e a marchinha do desfile de Natal). Composições próprias, tocadas na hora com osciladores no estilo 8-bit. O relógio é o da página, e cada nota vira
 // nós de áudio só quando chega a hora dela (nada por quadro); elas saem por um volume próprio, ligado ao volume geral.
 //
 //   const m = criarSequencia(VALSA);  m.iniciar();  m.atualizar() (a cada quadro);  m.batida() (em que batida está);  m.parar();
@@ -77,6 +77,8 @@ export function criarSequencia({ bpm, trilhas, volume = 0.75 }) {
         }
       });
     },
+    // volume relativo (0 a 1) sobre o volume da música: a da praça sobe e desce com a distância
+    volume(v) { if (saida && ac) saida.gain.setTargetAtTime(volume * Math.max(0, Math.min(1, v)), ac.currentTime, 0.15); },
     parar(saidaS = 0.5) {
       ligado = false;
       if (saida && ac) { const s = saida; s.gain.setTargetAtTime(0, ac.currentTime, saidaS / 3); setTimeout(() => s.disconnect(), saidaS * 2000); }
@@ -125,5 +127,41 @@ export const DESFILE = { bpm: 120, trilhas: [
   { onda: "pulso", vol: 0.075, laco: 16, notas: juntar(MELODIA4, 4) },
   { onda: "tri", vol: 0.22, laco: 16, notas: BAIXO4.flatMap(([a, b], c) => [0, 1, 2, 3, 4, 5, 6, 7].flatMap((i) => [c * 4 + i / 2, 0.42, i % 4 === 2 ? b : a])) },
   { onda: "chiado", vol: 0.035, laco: 1, notas: [0.5, 0.12, 7000], solto: 1 },
+  { onda: "chiado", vol: 0.05, laco: 2, notas: [1, 0.16, 2600], solto: 1 },
+] };
+
+// ---- Natal (modo Natal, natal.js). Composições próprias, nenhuma canção conhecida: melodia, harmonia e ritmo inventados aqui.
+// A da praça ("Luzes na Praça"): 4 por 4, em fá maior, 16 compassos; baixo de marchinha, dedilhado e um guizo leve no contratempo.
+const NF = { C4: 60, D4: 62, E4: 64, F4: 65, G4: 67, A4: 69, Bb4: 70, C5: 72, D5: 74, E5: 76, F5: 77, G5: 79, A5: 81, Bb5: 82, C6: 84 };
+const MEL_PRACA = [
+  [[1, NF.C5], [1, NF.F5], [0.5, NF.E5], [0.5, NF.F5], [1, NF.G5]], [[1.5, NF.A5], [0.5, NF.G5], [1, NF.F5], [1, NF.D5]],
+  [[1, NF.Bb4], [1, NF.D5], [0.5, NF.C5], [0.5, NF.Bb4], [1, NF.A4]], [[1, NF.G4], [0.5, NF.A4], [0.5, NF.Bb4], [2, NF.C5]],
+  [[1, NF.C5], [1, NF.F5], [0.5, NF.E5], [0.5, NF.F5], [1, NF.G5]], [[1, NF.A5], [1, NF.C6], [0.5, NF.Bb5], [0.5, NF.A5], [1, NF.G5]],
+  [[1, NF.F5], [0.5, NF.E5], [0.5, NF.D5], [1, NF.G5], [1, NF.E5]], [[3, NF.F5]],
+  [[1, NF.A5], [0.5, NF.Bb5], [0.5, NF.A5], [1, NF.G5], [1, NF.F5]], [[1, NF.G5], [0.5, NF.A5], [0.5, NF.G5], [1, NF.F5], [1, NF.E5]],
+  [[1, NF.F5], [1, NF.D5], [0.5, NF.E5], [0.5, NF.F5], [1, NF.G5]], [[3, NF.C5]],
+  [[1, NF.D5], [1, NF.F5], [1.5, NF.Bb5], [0.5, NF.A5]], [[1, NF.G5], [1, NF.E5], [2, NF.C5]],
+  [[1, NF.D5], [1, NF.E5], [1, NF.F5], [1, NF.G5]], [[4, NF.F5]],
+];
+const AC_NATAL = { F: [41, 65, 69, 72], Dm: [38, 62, 65, 69], Bb: [46, 62, 65, 70], C: [36, 64, 67, 70], Gm: [43, 62, 67, 70] };
+const HARM_PRACA = ["F", "Dm", "Bb", "C", "F", "F", "C", "F", "F", "C", "Bb", "C", "Bb", "C", "Gm", "F"];
+export const NATAL_PRACA = { bpm: 108, volume: 0.6, trilhas: [
+  { onda: "pulso", vol: 0.075, laco: 64, notas: juntar(MEL_PRACA, 4) },
+  { onda: "tri", vol: 0.2, laco: 64, notas: HARM_PRACA.flatMap((a, c) => [c * 4, 0.9, AC_NATAL[a][0], c * 4 + 2, 0.9, AC_NATAL[a][0] + 7]) },
+  { onda: "pulso", vol: 0.026, laco: 64, notas: HARM_PRACA.flatMap((a, c) => [1, 3].flatMap((b) => [c * 4 + b, 0.45, AC_NATAL[a][1] + 12, c * 4 + b + 0.5, 0.45, AC_NATAL[a][2] + 12])), solto: 0.6 },
+  // sininho: uma nota bem aguda no começo de cada dois compassos
+  { onda: "quadrada", vol: 0.018, laco: 8, notas: [0, 0.25, NF.F5 + 12, 0.5, 0.25, NF.C5 + 24], solto: 0.5 },
+  { onda: "chiado", vol: 0.03, laco: 1, notas: [0.5, 0.1, 8000], solto: 1 },
+] };
+// a do desfile de Natal: a mesma batida da marchinha do desfile (cada 8 batidas tem uma chamada), com melodia de Natal própria
+const MEL_DESFILE_NATAL = [
+  [[0.5, G5], [0.5, E5], [1, G5], [1, C6], [0.5, B5], [0.5, A5]], [[1, G5], [1, E5], [0.5, F5], [0.5, G5], [1, A5]],
+  [[0.5, F5], [0.5, D5], [1, F5], [1, B5], [0.5, A5], [0.5, G5]], [[1, E5], [1, C5], [0.5, D5], [0.5, E5], [1, C5]],
+];
+export const DESFILE_NATAL = { bpm: 120, trilhas: [
+  { onda: "pulso", vol: 0.075, laco: 16, notas: juntar(MEL_DESFILE_NATAL, 4) },
+  { onda: "tri", vol: 0.22, laco: 16, notas: [[36, 43], [36, 43], [43, 50], [36, 43]].flatMap(([a, b], c) => [0, 1, 2, 3, 4, 5, 6, 7].flatMap((i) => [c * 4 + i / 2, 0.42, i % 4 === 2 ? b : a])) },
+  { onda: "quadrada", vol: 0.016, laco: 4, notas: [0, 0.2, 96, 2, 0.2, 91], solto: 0.5 },
+  { onda: "chiado", vol: 0.04, laco: 1, notas: [0.5, 0.12, 8500], solto: 1 },
   { onda: "chiado", vol: 0.05, laco: 2, notas: [1, 0.16, 2600], solto: 1 },
 ] };

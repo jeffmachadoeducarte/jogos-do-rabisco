@@ -14,7 +14,9 @@ import { cx as pc, claro } from "./blocos.js";
 import { criarMorador } from "./personagens.js";
 import { criarPessoa } from "./pessoas.js";
 import { letreiro } from "./predios-parceiros.js";
-import { criarSequencia, VALSA, VALSA_SHOW, DESFILE } from "./musica-cenas.js";
+import { criarSequencia, VALSA, VALSA_SHOW, DESFILE, DESFILE_NATAL } from "./musica-cenas.js";
+import { natalAtivo, DESFILE_NATAL as FANTASIAS_NATAL, FALAS_NATAL } from "./natal.js";
+import { estrela } from "./natal-cidade.js";
 
 const NARRA = "Rabiscolândia";
 const F = { sombra: false };
@@ -377,6 +379,37 @@ function vestir(m, qual) {
   }
   mesclar(g);
 }
+// fantasias do desfile de Natal (modo Natal, natal.js): gorro e cachecol, estrela, pastorzinho, árvore de Natal e anjinho
+function vestirNatal(m, qual) {
+  const g = new THREE.Group(); m.partes.raiz.add(g);
+  const a = m.altura / (m.grupo.scale.y || 1), VM = 0xd62839, BR = 0xffffff, OU = 0xf2c94c, VD = 0x2e8b3a;
+  if (qual === "gorro") { // gorro de Natal com pompom e cachecol listrado
+    pc(g, 0.66, 0.14, 0.66, BR, 0, a + 0.02, 0, F); pc(g, 0.52, 0.26, 0.52, VM, 0, a + 0.2, 0, F); pc(g, 0.36, 0.22, 0.36, VM, 0.06, a + 0.42, 0, { ...F, rz: -0.3 }); pc(g, 0.22, 0.2, 0.22, VM, 0.16, a + 0.58, 0, { ...F, rz: -0.6 });
+    pc(g, 0.18, 0.18, 0.18, BR, 0.27, a + 0.66, 0, F);
+    pc(g, 0.84, 0.16, 0.82, VM, 0, 1.2, 0, F); pc(g, 0.86, 0.05, 0.84, BR, 0, 1.2, 0, F); // cachecol no pescoço
+    for (let i = 0; i < 4; i++) pc(g, 0.18, 0.14, 0.06, i % 2 ? BR : VM, 0.22, 1.08 - i * 0.14, 0.42, F); // a ponta caindo na frente
+  } else if (qual === "estrela") { // estrela grande na cabeça (de frente e de lado) e capa azul de céu de noite com estrelinhas
+    for (const ry of [0, Math.PI / 2]) { const e = estrela(0.42, 0.12, 0xffc21a); e.position.set(0, a + 0.5, 0); e.rotation.y = ry; g.add(e); }
+    pc(g, 0.12, 0.2, 0.12, 0xffc21a, 0, a + 0.06, 0, F); pc(g, 0.56, 0.1, 0.56, 0xffc21a, 0, a + 0.02, 0, F);
+    for (let i = 0; i < 4; i++) pc(g, 0.78 + i * 0.09, 0.22, 0.05, i % 2 ? 0x1f3a8a : 0x274aa8, 0, 1.12 - i * 0.22, -0.4 - i * 0.03, F);
+    for (const [x, y] of [[-0.25, 0.9], [0.22, 0.62], [0, 0.42], [0.2, 1.05], [-0.18, 0.5]]) pc(g, 0.1, 0.1, 0.05, 0xfff3b0, x, y, -0.49, F);
+  } else if (qual === "pastor") { // manto marrom, faixa na cabeça e cajado
+    pc(g, 0.64, 0.14, 0.62, 0xd8c3a0, 0, a + 0.02, 0, F); pc(g, 0.66, 0.06, 0.64, 0x5b8fd9, 0, a - 0.04, 0, F);
+    for (const k of [-1, 1]) pc(g, 0.08, 0.5, 0.5, 0xd8c3a0, k * 0.34, a - 0.2, -0.04, F);
+    for (let i = 0; i < 5; i++) pc(g, 0.84 + i * 0.06, 0.22, 0.05, i % 2 ? 0x8a5a2b : 0x9c6a38, 0, 1.1 - i * 0.2, -0.4 - i * 0.02, F);
+    pc(g, 0.86, 0.1, 0.84, 0x8a5a2b, 0, 0.62, 0, F);
+    pc(g, 0.07, 1.9, 0.07, 0x8a5a2b, 0.52, 0.95, 0.15, F); pc(g, 0.24, 0.07, 0.07, 0x8a5a2b, 0.43, 1.9, 0.15, F); pc(g, 0.07, 0.2, 0.07, 0x8a5a2b, 0.32, 1.82, 0.15, F);
+  } else if (qual === "arvore") { // fantasia de árvore de Natal: andares verdes, bolinhas e a estrela em cima
+    for (let i = 0; i < 4; i++) pc(g, 1.02 - i * 0.16, 0.26, 1.0 - i * 0.16, i % 2 ? 0x3fa34a : VD, 0, 0.42 + i * 0.26, 0, { ...F, ry: i % 2 ? Math.PI / 4 : 0 });
+    for (const [x, y, z, c] of [[0.42, 0.34, 0.3, VM], [-0.4, 0.62, 0.28, OU], [0.3, 0.86, 0.3, 0x2f8fe8], [-0.26, 1.1, 0.26, VM], [0.0, 0.5, 0.52, OU]]) pc(g, 0.13, 0.13, 0.13, c, x, y, z, F);
+    for (const r of [0, Math.PI / 2]) pc(g, 0.4, 0.12, 0.1, 0xffd23f, 0, a + 0.16, 0, { ...F, rz: Math.PI / 4, ry: r }); pc(g, 0.2, 0.2, 0.14, 0xffe27a, 0, a + 0.16, 0, F);
+  } else if (qual === "anjo") { // anjinho: asas brancas, auréola dourada e túnica com faixa dourada
+    for (const q of [-1, 1]) { pc(g, 0.62, 0.72, 0.06, BR, q * 0.55, 1.06, -0.36, { ...F, rz: q * 0.35 }); pc(g, 0.44, 0.4, 0.06, 0xeaf4ff, q * 0.62, 0.6, -0.36, { ...F, rz: -q * 0.3 }); }
+    for (const [w, d, x, z] of [[0.46, 0.06, 0, 0.2], [0.46, 0.06, 0, -0.2], [0.06, 0.46, 0.2, 0], [0.06, 0.46, -0.2, 0]]) pc(g, w, 0.05, d, 0xffd23f, x, a + 0.24, z, F);
+    pc(g, 0.84, 0.1, 0.82, OU, 0, 0.66, 0, F);
+  }
+  mesclar(g);
+}
 const DESFILANTES = [
   { tipo: "lapis", cor: 0xe8413c, roupa: "capa", fala: "rp-desfile-1", texto: "Com vocês, o Lápis Vermelho, de capa de herói!" },
   { tipo: "giz", cor: 0xffcc1f, roupa: "festa", fala: "rp-desfile-2", texto: "Agora, o Giz Amarelo, de chapéu de festa e saia de arco-íris!" },
@@ -430,7 +463,11 @@ export function montarSalao({ id, def, ox, oz }) {
   const lampadas = [0, 1, 2, 3].map((i) => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 10), new THREE.MeshBasicMaterial({ color: 0x3a3a40 })); m.position.set(-1.65 + i * 1.1, PH + 0.3, ZI - 0.15); din.add(m); return m; });
   const COR_ACESA = [0xffd23f, 0xffd23f, 0xffd23f, 0x35e25f];
   // ---- amigos do estojo
-  const estojo = DESFILANTES.map((d, i) => { const m = criarMorador(d.tipo, { cor: d.cor, semente: i + 3, escala: 0.82 }); vestir(m, d.roupa); m.grupo.visible = false; din.add(m.grupo); return { ...d, m, est: "fila", t: 0, flanco: [(i % 2 ? 1 : -1) * 1.15, 3.9 - Math.floor(i / 2) * 2.2] }; });
+  const elenco = (lista, vestirCom) => lista.map((d, i) => { const m = criarMorador(d.tipo, { cor: d.cor, semente: i + 3, escala: 0.82 }); vestirCom(m, d.roupa); m.grupo.visible = false; din.add(m.grupo); return { ...d, m, est: "fila", t: 0, flanco: [(i % 2 ? 1 : -1) * 1.15, 3.9 - Math.floor(i / 2) * 2.2] }; });
+  const estojoFantasia = elenco(DESFILANTES, vestir);
+  // no modo Natal, o desfile é de Natal (menos quando a missão ativa é a do desfile de fantasias de sempre)
+  const estojoNatal = natalAtivo() ? elenco(FANTASIAS_NATAL, vestirNatal) : null;
+  let estojo = estojoFantasia, deNatal = false;
   const npcs = [];
   const est = { preparou: { tapete: false, luz: false, bandeiras: false }, chamados: 0, ritmo: null };
   // marcas no chão
@@ -452,12 +489,14 @@ export function montarSalao({ id, def, ox, oz }) {
     if (!pronto()) { a.falar("rp-desfile-falta"); a.dizer(NARRA, "Ainda falta preparar a passarela: veja as marcas brilhantes.", 3000); return; }
     if (fase !== "preparar" && fase !== "acabou") return;
     api = a; fase = "desfile"; est.chamados = 0; chamouNa = -99;
-    for (const q of estojo) { q.est = "fila"; q.m.grupo.visible = false; }
+    deNatal = Boolean(estojoNatal) && a.missao?.() !== "parceiro-bt-models"; est.natal = deNatal;
+    for (const q of [...estojoFantasia, ...(estojoNatal ?? [])]) { q.est = "fila"; q.m.grupo.visible = false; }
+    estojo = deNatal ? estojoNatal : estojoFantasia;
     MARCAS.comecar.visible = false;
     vista = CAM_DESFILE; teto.visible = true;
     a.dizer(NARRA, "Tudo pronto! Olhe as luzes no alto do portal: um, dois, três... quando a luz ficar verde, aperte o botão e chame o amigo!", 6500);
     a.falar("rp-desfile-comecar");
-    seq = criarSequencia(DESFILE); seq.iniciar(0.4);
+    seq = criarSequencia(deNatal ? DESFILE_NATAL : DESFILE); seq.iniciar(0.4);
     proxB = 16; // duas rodadas de explicação antes da primeira chamada
     a.travar({ x: ox + 2.9, z: oz - 4.8, dir: -Math.PI / 2 - 0.4, modo: "parado", segundos: 1e6, rotulo: "📣 Chamar o amigo!", aoAcao: chamar, posar });
     est.ritmo = { get janela() { const dif = (seq.batida() - proxB) * seq.seg; return fase === "desfile" && !andando() && Math.abs(dif) < 0.3; }, get chamados() { return est.chamados; }, get fase() { return fase; }, get luzes() { return lampadas.filter((m) => m.material.color.getHex() !== 0x3a3a40).length; } };
@@ -480,7 +519,8 @@ export function montarSalao({ id, def, ox, oz }) {
   function tem() { const b = seq.batida(); proxB = Math.ceil((b + 12) / 8) * 8; }
   function rabiscoEntra() {
     fase = "rabisco"; rabT = 0;
-    api.falar("rp-desfile-rabisco"); api.dizer(NARRA, "E quem fecha o desfile é o Rabisco!", 3200);
+    if (deNatal) { api.falar("rp-natal-desfile-rabisco"); api.dizer(NARRA, FALAS_NATAL["rp-natal-desfile-rabisco"], 3200); }
+    else { api.falar("rp-desfile-rabisco"); api.dizer(NARRA, "E quem fecha o desfile é o Rabisco!", 3200); }
     for (const m of lampadas) m.material.color.setHex(0x35e25f);
   }
   // o Rabisco anda da mesa até o portal e depois desfila até o fim da passarela, com os membros andando de verdade
@@ -500,7 +540,7 @@ export function montarSalao({ id, def, ox, oz }) {
       tr.modo = rabT < 6.5 ? "andar" : "parado"; tr.vel = rabT < 6.5 ? 3 : 0;
       rb.grupo.position.set(p[0], rabT > 1.5 ? Y : 0.07, p[1]); rb.grupo.rotation.y = p[2];
       if (rabT >= 6.5) { rb.grupo.rotation.y = 0; const k = Math.sin(rabT * 7) * 0.3; rb.bracoD.ombro.rotation.set(0, 0, -2.7 - k); rb.bracoE.ombro.rotation.set(0, 0, 2.7 + k); rb.grupo.position.y = Y + Math.abs(Math.sin(rabT * 5)) * 0.2; }
-      if (rabT > 6.5 && !tFim) { tFim = 0.001; for (const q of estojo) { q.m.acenar(5); q.m.pular(); } api.confete?.(); api.sons.vitoria?.(); api.dizer(NARRA, "Que festa! Todo mundo junto na passarela. Cada um é especial do seu jeito!", 5200); api.falar("rp-desfile-fim"); }
+      if (rabT > 6.5 && !tFim) { tFim = 0.001; for (const q of estojo) { q.m.acenar(5); q.m.pular(); } api.confete?.(); api.sons.vitoria?.(); if (deNatal) { api.dizer(NARRA, FALAS_NATAL["rp-natal-desfile-fim"], 5200); api.falar("rp-natal-desfile-fim"); } else { api.dizer(NARRA, "Que festa! Todo mundo junto na passarela. Cada um é especial do seu jeito!", 5200); api.falar("rp-desfile-fim"); } }
     }
   }
   function terminar() {

@@ -11,13 +11,17 @@
 
 import { THREE, mat, malha, caixaRedonda, texturaCanvas, arvoreReal, mesclar } from "./base3d.js";
 import { criarMorador } from "./personagens.js";
-import { MISSOES, PESSOAS_PORTA } from "./missoes-dados.js";
+import { MISSOES as MISSOES_SEMPRE, MISSOES_NATAL, PESSOAS_PORTA } from "./missoes-dados.js";
+import { natalAtivo } from "./natal.js";
+// no modo Natal (dezembro até o Dia de Reis, ou ?natal=1) entram as 3 missões de Natal; fora dele, só as de sempre
+const MISSOES = natalAtivo() ? [...MISSOES_SEMPRE, ...MISSOES_NATAL] : MISSOES_SEMPRE;
 import { criarPessoa } from "./pessoas.js";
 import { lugar } from "./mapa.js";
 import { PARCEIROS } from "../../src/parceiros.js";
 import { PROPAGANDA, falaDaPropaganda } from "./propaganda.js";
 import { gatinho, bau, foguinho, portico, placaNumero, caixaFrutas, caixaCorreio, texturaEnvelope, tapeteOracao, alvara, rackVidros } from "./missoes-objetos.js";
 import { criarCena } from "./missoes-cenas.js";
+import { anjo } from "./natal-cidade.js";
 const OBJETOS_MAO = { alvara };
 
 // figurinha redonda com emoji (itens, buraquinhos da horta)
@@ -155,8 +159,9 @@ export function criarMissoes(ctx) {
     const naPorta = d.fachada && ctx.lugares?.().find((l) => l.id === d.fachada)?.pessoaNaPorta;
     if (naPorta) Object.assign(n, { m: naPorta.m, g: naPorta.m.grupo, fixo: true, pessoa: true, fachada: true, mundo: [naPorta.x, naPorta.z] });
     else if (d.tipo === "vovo") Object.assign(n, { m: vovo, g: vovo.grupo, fixo: true });
-    else if (["ovelha", "coelho", "piquenique", "gato"].includes(d.tipo)) {
-      n.g = d.tipo === "gato" ? gatinho(d.cor) : bichinho(d.tipo); n.bicho = true; n.g.position.set(d.x, 0.03, d.z); n.g.rotation.y = d.rot ?? Math.PI;
+    else if (["ovelha", "coelho", "piquenique", "gato", "anjo"].includes(d.tipo)) {
+      // (anjo: o anjinho do presépio, no modo Natal)
+      n.g = d.tipo === "gato" ? gatinho(d.cor) : d.tipo === "anjo" ? anjo() : bichinho(d.tipo); n.bicho = true; n.g.position.set(d.x, 0.03, d.z); n.g.rotation.y = d.rot ?? Math.PI;
       if (d.tipo === "piquenique") {
         n.amigos = [criarMorador("lapis", { cor: 0xec2e8c, semente: 20 }), criarMorador("giz", { cor: 0x00b5f0, semente: 21 }), criarMorador("cola", { semente: 22 })];
         n.amigos.forEach((a, i) => { a.grupo.position.set(-1.3 + i * 1.3, 0.04, -1.7); n.g.add(a.grupo); });
@@ -169,7 +174,7 @@ export function criarMissoes(ctx) {
       grupo.add(m.grupo);
       Object.assign(n, { m, g: m.grupo, pessoa: true });
     } else {
-      const m = criarMorador(d.tipo, { cor: d.cor ?? 0xec2e8c, nome: d.nome, semente: d.nome.length + 3, escala: d.escala ?? 0.78, acessorio: d.acessorio, corAcessorio: d.corAcessorio, tenis: d.tenis });
+      const m = criarMorador(d.tipo, { cor: d.cor ?? 0xec2e8c, nome: d.nome, semente: d.nome.length + 3, escala: d.escala ?? 0.78, acessorio: d.acessorio, corAcessorio: d.corAcessorio, tenis: d.tenis, simples: d.simples });
       m.grupo.position.set(d.x, d.naArvore ? 2.45 : d.naAgua ? -0.55 : 0.07, d.z); m.grupo.rotation.y = d.rot ?? 0;
       grupo.add(m.grupo);
       Object.assign(n, { m, g: m.grupo });
@@ -607,7 +612,7 @@ export function criarMissoes(ctx) {
     if (E.tipo === "entregar") for (const en of E.entregas) {
       if (est.feitas.has(en.item) || !levando.includes(en.item)) continue;
       const n = npcDe(ativa, en.ate), [x, z] = npcPos(n), it = E.entregas && itensDa(en.item);
-      if (perto(x, z, 3.2)) return { rotulo: `✉️ Entregar a ${it?.nome ?? "carta"}`, fazer: () => entregarItem(E, en, n) };
+      if (perto(x, z, 3.2)) return { rotulo: E.rotulo ? `${E.rotulo} ${it?.nome ?? ""}` : `✉️ Entregar a ${it?.nome ?? "carta"}`, fazer: () => entregarItem(E, en, n) };
     }
     if (E.tipo === "voltar") { const n = npcDe(ativa, E.ate), [x, z] = npcPos(n); if (perto(x, z, 3.2)) return { rotulo: `🙌 Contar para ${nomeDe(E.ate)}`, fazer: () => { reagir(n); avancar(); } }; }
     if (E.tipo === "escolherCarro" && ctx.patioJE && !est.escolheu) for (const [i, vg] of ctx.patioJE.vagas.entries()) {
@@ -788,7 +793,7 @@ export function criarMissoes(ctx) {
     if (E.tipo === "levarVeiculo") return est.carregado ? { ...npcAlvo(E.ate), emoji: E.pousar ? "🚁" : "📦" } : { ...npcAlvo(E.de), emoji: "📦" };
     if (E.tipo === "apagar") { const p = pos(), f = est.fogos.filter((q) => !q.apagado).sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z))[0]; return f ? { x: f.x, z: f.z, emoji: "🔥" } : null; }
     if (E.tipo === "pistas") { const b = est.baus[est.i]; return b ? { x: b.x, z: b.z, emoji: "🗝️" } : null; }
-    if (E.tipo === "entregar") { const p = pos(); const n = E.entregas.filter((en) => !est.feitas.has(en.item)).map((en) => npcDe(ativa, en.ate)).sort((a, b) => Math.hypot(npcPos(a)[0] - p.x, npcPos(a)[1] - p.z) - Math.hypot(npcPos(b)[0] - p.x, npcPos(b)[1] - p.z))[0]; if (!n) return null; const [x, z] = npcPos(n); return { x, z, emoji: "✉️" }; }
+    if (E.tipo === "entregar") { const p = pos(); const n = E.entregas.filter((en) => !est.feitas.has(en.item)).map((en) => npcDe(ativa, en.ate)).sort((a, b) => Math.hypot(npcPos(a)[0] - p.x, npcPos(a)[1] - p.z) - Math.hypot(npcPos(b)[0] - p.x, npcPos(b)[1] - p.z))[0]; if (!n) return null; const [x, z] = npcPos(n); return { x, z, emoji: E.icone ?? "✉️" }; }
     if (E.tipo === "voltar") return npcAlvo(E.ate);
     if (E.tipo === "cena") return est.cena?.alvo() ?? null;
     if (E.tipo === "orar") return { x: E.tapete[0], z: E.tapete[1], emoji: "🙏" };
@@ -807,7 +812,7 @@ export function criarMissoes(ctx) {
     if (E.tipo === "levarVeiculo") return !est.carregado ? `Venha ${E.comoIr ?? "de carro"} buscar a ${E.carga.nome}` : E.pousar ? `Voe e pouse perto de ${nomeDe(E.ate)}` : `Leve ${E.comoIr ?? "de carro"} até ${nomeDe(E.ate)}`;
     if (E.tipo === "apagar") return `Apague os foguinhos: ${est.fogos.filter((f) => f.apagado).length} de ${est.fogos.length}`;
     if (E.tipo === "pistas") return `Pista ${est.i + 1} de ${E.pistas.length}: ache o baú`;
-    if (E.tipo === "entregar") return `Entregue as cartas: ${est.feitas.size} de ${E.entregas.length}`;
+    if (E.tipo === "entregar") return `Entregue ${E.oque ?? "as cartas"}: ${est.feitas.size} de ${E.entregas.length}`;
     if (E.tipo === "voltar") return `Volte e conte para ${nomeDe(E.ate)}`;
     if (E.tipo === "cena") return est.cena?.texto() ?? "";
     if (E.tipo === "evento") return E.texto;
