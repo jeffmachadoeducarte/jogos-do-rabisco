@@ -607,7 +607,7 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
   function atualizarAle(dt, t, pl) {
     if (A.modo === "lago") {
       if (comidaPatos > 0) { // vem comer o milho, junto com os patos
-        if (passo(A, PONTO_PATOS[0] - 0.4, PONTO_PATOS[1] - 0.2, 2.2, dt) < 0.3) A.rot = Math.atan2(PONTO_PATOS[0] - A.x, PONTO_PATOS[1] - A.z);
+        if (passo(A, PONTO_PATOS[0] - 0.4, PONTO_PATOS[1] - 0.2, Math.max(2.2, Math.hypot(PONTO_PATOS[0] - A.x, PONTO_PATOS[1] - A.z) * 1.2), dt) < 0.3) A.rot = Math.atan2(PONTO_PATOS[0] - A.x, PONTO_PATOS[1] - A.z);
         A.a = Math.atan2(A.x - LG.x, A.z - LG.z);
         ale.position.set(A.x, 0.02, A.z); ale.rotation.set(Math.max(0, Math.sin(t * 8)) * 0.45, A.rot, 0);
       } else {
@@ -639,7 +639,8 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
       let ax = LG.x + Math.sin(p.a) * p.r, az = LG.z + Math.cos(p.a) * p.r, bica = 0;
       if (comidaPatos > 0) { ax = PONTO_PATOS[0] + Math.cos(i * 2.1) * 0.9; az = PONTO_PATOS[1] + Math.sin(i * 2.1) * 1.1; }
       p.x ??= ax; p.z ??= az;
-      const d = passo(p, ax, az, comidaPatos > 0 ? 2.2 : 1.4, dt);
+      // indo comer, nada mais depressa quanto mais longe está (chega em ~2 s de qualquer canto do lago)
+      const dl = Math.hypot(ax - (p.x ?? ax), az - (p.z ?? az)), d = passo(p, ax, az, comidaPatos > 0 ? Math.max(2.2, dl * 1.2) : 1.4, dt);
       if (comidaPatos > 0 && d < 0.3) { bica = Math.max(0, Math.sin(t * 9 + i)) * 0.45; p.rot = Math.atan2(PONTO_PATOS[0] - p.x, PONTO_PATOS[1] - p.z); }
       else if (d < 0.3) p.rot = p.a + Math.PI / 2;
       p.g.position.set(p.x, 0.02 + Math.sin(t * 2 + p.r) * 0.02, p.z); p.g.rotation.set(bica, p.rot ?? 0, 0);
