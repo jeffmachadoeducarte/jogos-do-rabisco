@@ -15,7 +15,7 @@
 import { THREE, matNovo, mat, malha, caixa, mesclar } from "./base3d.js";
 import { emBlocos, cx as pc, prisma, geoCaixas, disco } from "./blocos.js";
 
-const vidro = matNovo({ color: 0xbfeaff, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false });
+const vidro = matNovo({ color: 0xbfeaff, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false });
 const farol = matNovo({ color: 0xfffbe6, emissive: 0xfff2c0, emissiveIntensity: 0.6 });
 const CROMO = 0xdfe6ee, PNEU = 0x262626;
 
@@ -76,32 +76,52 @@ function terminar(g, rodas, extra) {
 const FZ = 1.35, FX = 1.0, FR = 0.44; // eixos, bitola e raio das rodas
 export function fusquinha(cor = 0x00b5f0) {
   const g = new THREE.Group(), lata = mat(cor), claro = new THREE.Color(cor).lerp(new THREE.Color(0xffffff), 0.5).getHex();
-  // carroceria de baixo: capô curvo descendo para a frente, linha de cintura e a traseira redonda do motor
-  const corpo = perfil([[2.2, 0.42], [2.38, 0.6, 2.3, 0.86], [2.2, 1.16, 1.7, 1.3], [0.8, 1.4], [-0.95, 1.42], [-1.8, 1.4, -2.2, 1.02], [-2.38, 0.72, -2.24, 0.42]], [FZ, -FZ], 0.42, 0.62);
-  const caixas = corpoBlocos(corpo, 1.8);
+  // silhueta de besouro: capô curvo na frente e uma cúpula só do para-brisa até o motor atrás (a ponta do lápis do
+  // Rabisco, sentado, fica a 2,06; o teto por dentro, a 2,16)
+  const CINTA = 1.25, ar = (v) => Math.round(v / 0.08) * 0.08;
+  const domo = (z) => { const d = z + 0.35, a = d > 0 ? 1.35 : 1.95; return Math.abs(d) >= a ? 0 : 0.6 + 1.72 * Math.sqrt(1 - (d / a) ** 2); };
+  const capo = (z) => (z < 0.9 ? 0 : 0.7 + 0.6 * Math.sqrt(Math.max(0, 1 - ((z - 0.9) / 1.45) ** 2)));
+  const topo = (z) => Math.max(domo(z), capo(z));
+  const baseY = (z) => { let y = 0.42; for (const e of [FZ, -FZ]) { const d = Math.abs(z - e); if (d < 0.6) y = Math.max(y, 0.42 + Math.sqrt(0.36 - d * d)); } return y; };
+  // janelas laterais pequenas (frente e trás da coluna do meio) e o para-brisa; perto da beira da janela o vão
+  // diminui (cantos arredondados)
+  const JANELAS = [[-0.42, 0.24], [-1.12, -0.56]], PB = 0.38;
+  const canto = (z) => { for (const [a, b] of JANELAS) if (z > a && z < b) return Math.min(z - a, b - z) < 0.1 ? 0.1 : 0; return -1; };
+  // cada camada (largura, x) diz, por coluna, os trechos cheios [y0, y1]; colunas iguais em sequência viram uma caixa só
+  const camadas = [
+    [1.8, 0, (z, t) => [[baseY(z), z > 0.95 ? t : Math.min(t, CINTA)]]], // carroceria de baixo e o capô
+    [1.32, 0, (z, t) => (t <= CINTA || z > PB ? [] : z >= -1.15 ? [[t - 0.14, t]] : z >= -1.5 ? [[CINTA, t - 0.44], [t - 0.14, t]] : [[CINTA, t]])], // teto, vidrinho de trás e o motor
+    ...[-1, 1].map((s) => [0.22, s * 0.77, (z, t) => { // lados da cabine: colunas e janelas
+      const tO = t - 0.12; if (tO <= CINTA || z > PB) return [];
+      const c = canto(z); return c < 0 ? [[CINTA, tO]] : [[CINTA, CINTA + c], [tO - 0.14 - c, tO]];
+    }]),
+  ];
+  const caixas = [], P = 0.1;
+  for (const [w, x, trechos] of camadas) {
+    let ant = null, ini = 0;
+    const fecha = (fim) => { if (ant) for (const [y0, y1] of ant) caixas.push([w, y1 - y0, fim - ini, x, (y0 + y1) / 2, (ini + fim) / 2]); };
+    for (let z = -2.3; z < 2.3 - 1e-6; z += P) {
+      const zc = z + P / 2, t = topo(zc);
+      const tr = t > 0 ? trechos(zc, t).map(([a, b]) => [ar(a), ar(b)]).filter(([a, b]) => b - a > 0.05) : [];
+      const k = JSON.stringify(tr);
+      if (ant && JSON.stringify(ant) === k) continue;
+      fecha(z); ant = tr.length ? tr : null; ini = z;
+    }
+    fecha(2.3);
+  }
   // para-lamas salientes e redondos (mais largos que a carroceria), com o arco da roda
   const fd = perfil([[FZ + 0.9, 0.46], [FZ + 0.98, 0.86], [FZ + 0.8, 1.22, FZ + 0.05, 1.24], [FZ - 0.72, 1.2, FZ - 0.82, 0.46]], [FZ], 0.44, 0.54);
   const ft = perfil([[-FZ + 0.82, 0.46], [-FZ + 0.72, 1.2, -FZ - 0.05, 1.24], [-FZ - 0.8, 1.22, -FZ - 0.98, 0.86], [-FZ - 0.9, 0.46]], [-FZ], 0.44, 0.54);
   for (const s of [-1, 1]) for (const f of [fd, ft]) caixas.push(...corpoBlocos(f, 0.36, s * 1.06));
-  // cabine: colunas, moldura de cima e os cantinhos que arredondam as janelas; teto em cúpula de 3 degraus
-  const W = 1.62, yC = 1.4, yT = 2.32; // largura da cabine, cintura e teto (a ponta do lápis do Rabisco fica a 2,21)
-  for (const s of [-1, 1]) {
-    const x = s * (W / 2 - 0.06);
-    caixas.push([0.12, yT - yC, 0.16, x, (yC + yT) / 2, 0.68]); // coluna da frente
-    caixas.push([0.12, yT - yC, 0.18, x, (yC + yT) / 2, -0.22]); // coluna do meio
-    caixas.push([0.12, yT - yC, 0.42, x, (yC + yT) / 2, -0.98]); // coluna de trás (larga, como no besouro)
-    caixas.push([0.12, 0.1, 1.9, x, yT - 0.05, -0.15]); // moldura de cima
-    for (const [z, d] of [[0.56, 1], [-0.1, -1], [-0.34, 1], [-0.73, -1]]) { // cantinhos redondos de cada janela (em cima e embaixo)
-      caixas.push([0.12, 0.12, 0.12, x, yT - 0.16, z + d * 0.02]);
-      caixas.push([0.12, 0.08, 0.08, x, yC + 0.06, z + d * 0.02]);
-    }
-  }
-  caixas.push([W, yT - yC, 0.14, 0, (yC + yT) / 2, -1.16]); // fundo da cabine (o vidro de trás é pequeno, embaixo do teto)
-  caixas.push([W, 0.12, 0.14, 0, yT - 0.06, 0.7]); caixas.push([W, 0.08, 0.14, 0, yC + 0.04, 0.72]); // moldura do para-brisa
-  caixas.push([W + 0.04, 0.12, 2.0, 0, yT + 0.06, -0.2], [W - 0.2, 0.1, 1.7, 0, yT + 0.17, -0.25], [W - 0.6, 0.08, 1.2, 0, yT + 0.26, -0.28]);
   g.add(malha(geoCaixas(caixas), lata));
-  // vidros: para-brisa, laterais e o vidrinho de trás (o Rabisco aparece dirigindo)
-  const vid = new THREE.Mesh(new THREE.BoxGeometry(W - 0.1, yT - yC - 0.04, 1.8), vidro); vid.position.set(0, (yC + yT) / 2, -0.24); vid.renderOrder = 3; g.add(vid);
+  // vidros: para-brisa em degraus seguindo a cúpula e as janelinhas dos lados (o Rabisco aparece dirigindo)
+  const vidros = [];
+  for (const s of [-1, 1]) for (const [a, b] of JANELAS) { const t = ar(Math.min(topo(a), topo(b)) - 0.26); vidros.push([0.04, t - CINTA, b - a, s * 0.8, (CINTA + t) / 2, (a + b) / 2]); }
+  vidros.push([1.28, 0.26, 0.3, 0, 1.8, -1.33]); // vidrinho de trás
+  const vid = new THREE.Mesh(geoCaixas(vidros), vidro); vid.renderOrder = 3; g.add(vid);
+  // para-brisa: uma placa só, inclinada como a cúpula (vidro em degraus embaçava o Rabisco)
+  const zA = PB + 0.02, yA = ar(topo(PB)) - 0.04, zB = 0.95, yB = CINTA, pb = new THREE.Mesh(new THREE.PlaneGeometry(1.66, Math.hypot(zB - zA, yA - yB)), vidro);
+  pb.position.set(0, (yA + yB) / 2, (zA + zB) / 2); pb.rotation.x = -Math.atan2(zB - zA, yA - yB); pb.renderOrder = 3; g.add(pb);
   // estribo entre os para-lamas, de cada lado
   for (const s of [-1, 1]) pc(g, 0.34, 0.08, 1.1, 0x2f3440, s * 1.04, 0.5, 0);
   // para-choques cromados de lâmina na frente e atrás, com as garras
@@ -110,28 +130,27 @@ export function fusquinha(cor = 0x00b5f0) {
     for (const s of [-1, 1]) pc(g, 0.1, 0.3, 0.14, CROMO, s * 0.62, 0.56, z - Math.sign(z) * 0.03);
   }
   // capô com o friso cromado, saia clara embaixo e as grelhas do motor atrás
-  pc(g, 0.14, 0.05, 1.0, CROMO, 0, 1.33, 1.42, { sombra: false, rx: 0.12 });
+  pc(g, 0.14, 0.05, 1.1, CROMO, 0, 1.3, 1.5, { sombra: false, rx: 0.22 });
   pc(g, 1.86, 0.1, 2.9, claro, 0, 0.5, 0, { sombra: false });
-  for (let i = 0; i < 4; i++) pc(g, 0.7, 0.05, 0.06, 0x2f3440, 0, 1.2 - i * 0.09, -2.06 - i * 0.03, { sombra: false });
+  for (let i = 0; i < 4; i++) { const z = -1.95 - i * 0.07; pc(g, 0.7, 0.05, 0.08, 0x2f3440, 0, ar(domo(z)) + 0.01, z, { sombra: false }); }
   // faróis redondos com aro cromado em cima dos para-lamas da frente; lanternas redondas atrás
   const aroM = mat(CROMO), lant = mat(0xff3b3b);
   for (const s of [-1, 1]) {
     redondo(g, 0.24, aroM, s * 1.06, 0.98, FZ + 0.99, { inclina: -0.25, furo: 0.15 });
     redondo(g, 0.17, farol, s * 1.06, 0.98, FZ + 0.98, { inclina: -0.25 });
     redondo(g, 0.13, lant, s * 1.06, 0.98, -FZ - 1.0, { tras: true, inclina: 0.25 });
-    pc(g, 0.06, 0.06, 0.18, CROMO, s * 0.86, 1.5, 0.66, { sombra: false }); // retrovisor
-    pc(g, 0.2, 0.14, 0.06, CROMO, s * 1.0, 1.5, 0.66, { sombra: false });
+    pc(g, 0.16, 0.05, 0.05, CROMO, s * 0.95, 1.4, 0.3, { sombra: false }); // retrovisor
+    pc(g, 0.18, 0.13, 0.06, CROMO, s * 1.08, 1.43, 0.3, { sombra: false });
   }
   // placa (sem marca nenhuma)
   pc(g, 0.6, 0.2, 0.04, 0xffffff, 0, 0.78, -2.42, { sombra: false });
   // interior: bancos claros (aparecem pelas janelas) e painel
-  for (const x of [0.45, -0.45]) { pc(g, 0.68, 0.2, 0.7, 0xfff4e0, x, 0.88, -0.2); pc(g, 0.68, 0.7, 0.16, 0xfff4e0, x, 1.3, -0.6); }
-  pc(g, W - 0.2, 0.22, 0.3, 0x2f3440, 0, 1.4, 0.55);
-  const volante = volante3D(0.22, 0.45, 1.55, 0.32); g.add(volante);
+  for (const x of [0.45, -0.45]) pc(g, 0.62, 0.62, 0.14, 0xfff4e0, x, 1.25, -0.62);
+  const volante = volante3D(0.22, 0.45, 1.4, 0.3); g.add(volante);
   const rodas = [];
   for (const [x, z] of [[-FX, FZ], [FX, FZ], [-FX, -FZ], [FX, -FZ]]) { const r = roda(FR, 0.3, 0xf4f4f4, CROMO); r.position.set(x, FR, z); g.add(r); rodas.push(r); }
   const seta = seta3D(3.3); g.add(seta);
-  return terminar(g, rodas, { seta, volante, motorista: new THREE.Vector3(0.45, 1.0, -0.15), carona: new THREE.Vector3(-0.45, 1.0, -0.15) });
+  return terminar(g, rodas, { seta, volante, motorista: new THREE.Vector3(0.45, 0.85, -0.15), carona: new THREE.Vector3(-0.45, 0.85, -0.15) });
 }
 
 // ------------------------------------------------------------------ Fórmula Rabisco (F1 laranja)

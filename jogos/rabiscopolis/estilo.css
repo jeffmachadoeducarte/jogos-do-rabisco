@@ -546,3 +546,5 @@ html.modo-tv .atl-cartao { transform: scale(1.1); }
   .rf-item, .rf-icone, .rf-botoes button { transition: none; }
   .rf-lista .rf-item.rf-foco, .rf-app.rf-foco .rf-icone { transform: none; }
 }
+/* Rabisfone aberto: os botões da casca (sair, pausa, engrenagem) não ficam por cima da tela do celular */
+body:has(.rabifone:not([hidden])) :is(.casca-topo, .pausa-botao, .engrenagem-pausa) { visibility: hidden; }
