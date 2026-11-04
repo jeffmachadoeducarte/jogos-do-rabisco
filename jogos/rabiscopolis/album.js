@@ -47,7 +47,7 @@ export function criarAlbum({ salvo, salvar, ganhar }) {
   const visitou = (lugarId) => { const id = idDoLugar(lugarId); return id ? [ganharFig(id)] : []; };
   // pessoas de verdade: uma figurinha só, vale qualquer uma das missões dela
   const dePessoa = (mid) => FIGURINHAS.filter((f) => f.missoes?.includes(mid)).map((f) => f.id);
-  const missao = (mid) => [`a:${mid}`, `v:${mid}`, ...dePessoa(mid)].filter((id) => figurinha(id)).map(ganharFig);
+  const missao = (mid) => [`a:${mid}`, ...FIGURINHAS.filter((f) => f.missao === mid && f.id.startsWith(`a:${mid}-`)).map((f) => f.id), `v:${mid}`, ...dePessoa(mid)].filter((id) => figurinha(id)).map(ganharFig);
   // save antigo: quem concluiu a missão antes da figurinha existir recebe agora (sem duplicar, sem animação)
   function recuperar() {
     const feitas = salvo().missoesFeitas;

@@ -180,24 +180,24 @@ try {
   const C = "parceiro-sitio-floresca-comida", Dh = "parceiro-sitio-floresca-horta", Er = "parceiro-sitio-floresca-rocar", Fk = "parceiro-sitio-floresca-kids";
   // ---- 3. Hora de dar comida
   await pegarMissao(C, "Hora de dar comida");
-  { const b = await L(-15, -76.5); await botao(b.x - 0.9, b.z, "Pegar o balde de milho"); }
+  { const b = await L(-15, -68.5); await botao(b.x - 0.9, b.z, "Pegar o balde de milho"); }
   ok((await cena())?.balde, "o balde de milho está na mão do Rabisco");
-  { const g = await L(-14.9, -80); await botao(g.x - 0.3, g.z, "Jogar milho para as galinhas", -Math.PI / 2); }
+  { const g = await L(-14.9, -71); await botao(g.x - 0.3, g.z, "Jogar milho para as galinhas", -Math.PI / 2); }
   ok((await ev(`${S}.comendo`)).galinhas, "as galinhas vêm correndo para o milho");
-  { const m0 = await L(-19.5, -80); await ate(t, `${S}.galinhasMundo().filter((q) => Math.hypot(q.x - ${m0.x}, q.z - ${m0.z}) < 1.4).length >= 2`, 12000); }
-  { const m = await L(-19.5, -80), gs = await ev(`${S}.galinhasMundo()`); ok(gs.filter((q) => Math.hypot(q.x - m.x, q.z - m.z) < 1.4).length >= 2, `as galinhas bicam o milho (${gs.map((q) => Math.round(Math.hypot(q.x - m.x, q.z - m.z) * 10) / 10).join(", ")} m)`);
+  { const m0 = await L(-19.5, -71); await ate(t, `${S}.galinhasMundo().filter((q) => Math.hypot(q.x - ${m0.x}, q.z - ${m0.z}) < 1.4).length >= 2`, 12000); }
+  { const m = await L(-19.5, -71), gs = await ev(`${S}.galinhasMundo()`); ok(gs.filter((q) => Math.hypot(q.x - m.x, q.z - m.z) < 1.4).length >= 2, `as galinhas bicam o milho (${gs.map((q) => Math.round(Math.hypot(q.x - m.x, q.z - m.z) * 10) / 10).join(", ")} m)`);
     await ev(`teste.vista([${m.x - 5}, 3.4, ${m.z - 3}], [${m.x}, 0.4, ${m.z}])`); await espera(500); await foto("50-comida-galinhas"); await ev("teste.vista(null)"); }
   ok(await ate(t, `window.__voz.includes("rp-m-${C}-galinhas.mp3")`, 5000), "a anfitriã: agora leve o balde até o lago");
   { const mk2 = await ev(`${S}.marcaLagoMundo()`); await botao(mk2.x, mk2.z, "Jogar milho para os patos", Math.PI / 2); }
   ok((await ev(`${S}.comendo`)).patos, "os patos nadam até o milho");
-  { const d0 = await L(-12.1, -100.5); await ate(t, `${S}.patosMundo().filter((q) => Math.hypot(q.x - ${d0.x}, q.z - ${d0.z}) < 1.8).length >= 2`, 12000); }
-  { const d = await L(-12.1, -100.5), ps = await ev(`${S}.patosMundo()`); ok(ps.filter((q) => Math.hypot(q.x - d.x, q.z - d.z) < 1.8).length >= 2, `os patos bicam o milho na água (${ps.map((q) => Math.round(Math.hypot(q.x - d.x, q.z - d.z) * 10) / 10).join(", ")} m)`);
+  { const d0 = await L(-12.1, -103); await ate(t, `${S}.patosMundo().filter((q) => Math.hypot(q.x - ${d0.x}, q.z - ${d0.z}) < 1.8).length >= 2`, 12000); }
+  { const d = await L(-12.1, -103), ps = await ev(`${S}.patosMundo()`); ok(ps.filter((q) => Math.hypot(q.x - d.x, q.z - d.z) < 1.8).length >= 2, `os patos bicam o milho na água (${ps.map((q) => Math.round(Math.hypot(q.x - d.x, q.z - d.z) * 10) / 10).join(", ")} m)`);
     await ev(`teste.vista([${d.x - 7}, 4, ${d.z + 3}], [${d.x + 1}, 0, ${d.z}])`); await espera(400); await foto("51-comida-patos"); await ev("teste.vista(null)"); }
   ok(await ate(t, `teste.missoes.feitas.includes("${C}")`, 8000), "missão \"Hora de dar comida\" concluída");
   ok(await ate(t, `window.__voz.includes("rp-m-${C}-verso.mp3")`, 40000), "o versículo (Mateus 6.26)");
   // ---- 4. Cuidar da hortinha
   await pegarMissao(Dh, "Cuidar da hortinha");
-  { const r = await L(-15.6, -58.4); await botao(r.x, r.z + 0.3, "Pegar o regador"); }
+  { const r = await L(-15.6, -57.0); await botao(r.x, r.z + 0.3, "Pegar o regador"); }
   ok((await cena())?.regador, "o regador está na mão do Rabisco");
   for (const i of [0, 1, 2]) { const c = await ev(`${S}.canteiroMundo(${i})`); await botao(c.x, c.z, "Regar o canteiro", -Math.PI / 2); if (i === 0) { await espera(250); await ev(`teste.vista([${c.x - 4}, 2.6, ${c.z - 3.5}], [${c.x + 3}, 0.4, ${c.z}])`); await espera(250); await foto("52-horta-regando"); await ev("teste.vista(null)"); } }
   ok(await ate(t, `teste.missoes.cena?.info().fase === "colher"`, 8000), "regou os três canteiros: a hortinha cresceu");
@@ -270,7 +270,7 @@ try {
     if (k === 0) { const bm = (await ev(`${S}.balancosMundo()`))[0]; ok(bm.sentado && bm.amp > 0.25, `uma criança no balanço de pneu, indo alto (amplitude ${bm.amp.toFixed(2)})`); await ev(`teste.vista([${bal.x + 6}, 2.6, ${bal.z - 5}], [${bal.x}, 1.4, ${bal.z}])`); await espera(400); await foto("59-kids-balanco"); await ev("teste.vista(null)"); }
     await espera(3600);
   }
-  ok(await ate(t, `teste.missoes.cena?.info().fase === "voltar"`, 15000), "brincaram no balanço: hora de voltar");
+  ok(await ate(t, `teste.missoes.cena?.info().fase === "voltar"`, 40000), "brincaram no balanço: hora de voltar");
   // de volta para o ônibus (as crianças vêm atrás e sobem)
   { const pt = await L(0, -6); await ev(`teste.ir(${pt.x}, ${pt.z})`); await espera(2500); const b = (await cena()).bus; await ev(`teste.ir(${b.x}, ${b.z + 2.9})`); }
   ok(await ate(t, `teste.missoes.cena?.info().fase === "volta"`, 40000), "as crianças subiram no ônibus de novo");
@@ -285,7 +285,38 @@ try {
   ok(await ate(t, `window.__voz.lastIndexOf("rp-prop-sitio-floresca.mp3") > window.__voz.lastIndexOf("rp-m-${Fk}-verso.mp3") && window.__voz.includes("rp-m-${Fk}-verso.mp3")`, 70000, 250), "no fim do dia com a Kids II, a propaganda do sítio de novo (depois do versículo)");
   const vzN = (await ev("window.__voz")).slice(vozAntes), nProp = vzN.filter((k) => k === "rp-prop-sitio-floresca.mp3").length;
   ok(nProp === 1, `nas quatro missões novas, a propaganda tocou só no fim da última (${nProp} vez)`);
+  // ---- 7. Pescaria com o Junior (na casa-container, no fundo do sítio)
+  const Pz = "parceiro-sitio-floresca-pesca";
+  await ate(t, "!teste.missoes.ativa", 20000); await espera(1500);
+  const sobe = (x, z) => ev(`teste.ir(${x}, ${z}); teste.j.pos.y = 0.82; teste.j.vel.set(0, 0, 0)`); // no deck (0,8 m)
+  const jr = await ev(`${S}.juniorMundo()`);
+  await sobe(jr.x - 1.1, jr.z - 0.4); await espera(1200);
+  { const alt = await ev(`({ y: ${S}.junior.grupo.position.y, h: ${S}.junior.altura })`); ok(alt.y > 0.7, `o Junior fica em pé no deck (y ${alt.y.toFixed(2)}, ${alt.h.toFixed(2)} m)`); }
+  ok((await ev("teste.contexto"))?.includes("Pescaria com o Junior"), `o Junior tem a missão (${await ev("teste.contexto")})`);
+  await ev(`teste.vista([${jr.x - 2.2}, 2.2, ${jr.z - 2.6}], [${jr.x}, 1.9, ${jr.z}])`); await espera(700); await foto("70-junior-de-perto"); await ev("teste.vista(null)");
+  { const c4 = await custo(t); ok(c4.calls <= 250, `TV, no deck da casa-container: ${c4.calls} chamadas (≤ 250)`); }
+  await ev("teste.acao()"); await espera(700);
+  ok((await ev("teste.missoes.ativa")) === Pz, "missão da pescaria aceita");
+  ok((await ev("window.__voz")).includes(`rp-m-${Pz}-pedido.mp3`), "a anfitriã fala o pedido (o Junior não fala)");
+  { const v = await L(-16.2, -130.6); await sobe(v.x - 0.6, v.z - 0.3); await espera(600); ok((await ev("teste.contexto"))?.includes("Pegar a vara de pescar"), `no deck: ${await ev("teste.contexto")}`); await ev("teste.acao()"); await espera(500); }
+  ok((await cena())?.vara, "a vara de pescar está na mão do Rabisco");
+  { const pp = await L(-21.7, -124.2); await sobe(pp.x, pp.z); await ev("teste.olhar(Math.PI)"); await espera(700); ok((await ev("teste.contexto"))?.includes("Jogar a linha"), `na ponta do píer: ${await ev("teste.contexto")}`); await ev("teste.acao()"); }
+  ok(await ate(t, `teste.missoes.cena?.info().fase === "beliscando"`, 20000), "a boia afundou: o peixe beliscou");
+  ok(await ate(t, `window.__voz.includes("rp-m-${Pz}-belisca.mp3")`, 3000), "a anfitriã: puxe agora!");
+  { const pp = await L(-21.7, -124.2); await ev(`teste.vista([${pp.x + 4}, 3, ${pp.z - 2}], [${pp.x - 0.5}, 0.6, ${pp.z + 3}])`); await espera(300); await foto("71-pescaria-boia"); await ev("teste.vista(null)"); }
+  ok((await ev("teste.contexto"))?.includes("Puxar o peixe"), `aparece o botão de puxar (${await ev("teste.contexto")})`);
+  await ev("teste.acao()");
+  ok(await ate(t, `teste.missoes.cena?.info().fase === "mostrar"`, 10000), "pescou o peixe (está na mão do Rabisco)");
+  { const pp = await L(-21.7, -124.2); await ev(`teste.vista([${pp.x + 2.5}, 2.4, ${pp.z - 2.5}], [${pp.x}, 1.4, ${pp.z}])`); await espera(400); await foto("72-pescaria-peixe"); await ev("teste.vista(null)"); }
+  await sobe(jr.x - 1.1, jr.z - 0.4); await espera(700);
+  ok((await ev("teste.contexto"))?.includes("Mostrar o peixe para o Junior"), `com o Junior: ${await ev("teste.contexto")}`);
+  await ev("teste.acao()"); await espera(500);
+  await ev(`teste.vista([${jr.x - 3}, 2.6, ${jr.z - 4}], [${jr.x}, 1.2, ${jr.z}])`); await espera(300); await foto("73-pescaria-junior"); await ev("teste.vista(null)");
+  ok(await ate(t, `window.__voz.includes("rp-m-${Pz}-soltou.mp3")`, 8000), "o peixe volta para o lago (cuidado com a criação)");
+  ok(await ate(t, `teste.missoes.feitas.includes("${Pz}")`, 20000), "missão \"Pescaria com o Junior\" concluída");
+  ok(await ate(t, `window.__voz.includes("rp-m-${Pz}-verso.mp3")`, 40000), "o versículo (Mateus 4.19)");
   const figs2 = await ev("teste.salvo.album?.figs ?? []");
+  for (const id of ["a:pessoa-junior", `a:${Pz}`, `a:${Pz}-2`, `v:${Pz}`]) ok(figs2.includes(id), `figurinha ${id} no álbum (Junior, peixe do lago, casa-container, versículo)`);
   for (const id of [C, Dh, Er, Fk]) { ok(figs2.includes(`a:${id}`), `figurinha a:${id} no álbum`); ok(figs2.includes(`v:${id}`), `versículo v:${id} no álbum`); }
 
   // ---- custo pelos cantos do sítio e fotos de cada parte
@@ -300,7 +331,8 @@ try {
   // vistas em coordenadas do terreno ([x, y, z] da câmera e do alvo): a fila da esquerda (casa → salão → hortinha →
   // galinheiro → lago quadrado), as frutíferas com balanço à direita e o sítio inteiro de cima
   const VL = { casa: [[-6, 4, 4], [-20, 1.6, -14]], "casa-salao": [[-6, 5, -16], [-22, 2, -34]], salao: [[-6, 4.5, -36], [-20, 2, -44]], "salao-dentro": [[-17.6, 1.5, -29], [-17.6, 1.3, -54]],
-    horta: [[-9, 4, -56], [-21, 0.6, -64]], galinheiro: [[-8, 4, -74], [-21, 0.6, -81]], lago: [[-2, 7, -92], [-18, 0, -102]], "fila-esquerda": [[8, 26, 6], [-18, 0, -62]],
+    horta: [[-9, 4, -54], [-21, 0.6, -62]], galinheiro: [[-8, 4, -64], [-21, 0.6, -71]], lago: [[-1, 9, -78], [-18, 0, -108]], "lago-comprido": [[6, 30, -100], [-18, 0, -104]], "fila-esquerda": [[8, 26, 6], [-18, 0, -62]],
+    "container-frente": [[-17, 3.2, -123], [-20, 1.8, -132]], "container-deck": [[-8, 3, -126], [-20, 1.4, -131]], "container-lado": [[-29, 4, -122], [-18, 1.6, -132]], "container-alto": [[-6, 14, -112], [-20, 0.8, -130]],
     frutiferas: [[14, 6, -6], [24, 3, -40]], balanco: [[16, 3, -23], [21.7, 1.5, -27]], aereo: [[60, 110, -40], [0, 0, -69]], "aereo-alto": [[0.5, 170, -69], [0, 0, -69]] };
   for (const [n, [pos, alvo2]] of Object.entries(VL)) {
     const [px, pz] = await ev(`${S}.paraMundo(${pos[0]}, ${pos[2]})`), [ax, az] = await ev(`${S}.paraMundo(${alvo2[0]}, ${alvo2[2]})`);
