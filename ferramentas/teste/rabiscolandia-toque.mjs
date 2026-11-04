@@ -16,7 +16,10 @@ const ok = (c, msg) => { console.log(c ? "✓" : "✗", msg); if (!c) falhas++; 
 const ate = async (t, expr, ms = 20000) => { const fim = Date.now() + ms; while (Date.now() < fim) { if (await t.ev(expr).catch(() => false)) return true; await espera(200); } return false; };
 const FAMILIA = `localStorage.setItem("rabisco.familia", JSON.stringify({ responsavel: { nome: "Teste", email: "t@t" }, crianca: { nome: "Alice", genero: "menina" } }))`;
 // espera em TEMPO DE JOGO (o Chrome sem placa de vídeo roda o jogo mais devagar que o relógio)
-const esperaJogo = async (t, seg) => { const t0 = await t.ev("teste.estat.tj"); await ate(t, `teste.estat.tj - ${t0} >= ${seg}`, 60000, 30); };
+const esperaJogo = async (t, seg) => { const t0 = await t.ev("teste.estat.tj"); await ate(t, `teste.estat.tj - ${t0} >= ${seg}`, 300000, 30); };
+// condição com prazo em TEMPO DE JOGO (máquina carregada: o relógio de parede não serve de prazo); teto de 6 min de parede
+const ateJogo = async (t, expr, seg, maxMs = 360000) => { const t0 = await t.ev("teste.estat.tj"); const fim = Date.now() + maxMs;
+  while (Date.now() < fim) { if (await t.ev(expr).catch(() => false)) return true; if ((await t.ev("teste.estat.tj").catch(() => t0)) - t0 > seg) return Boolean(await t.ev(expr).catch(() => false)); await espera(100); } return false; };
 const SO = process.env.SO || "jogo,notch,controle";
 
 // toques com vários dedos: dedos = Map(id → {x,y})
@@ -38,7 +41,7 @@ async function abrirJogo(largura, altura) {
   const t = await abrir("about:blank", { mobile: true, largura, altura });
   await t.cmd("Page.addScriptToEvaluateOnNewDocument", { source: `${FAMILIA}; navigator.getGamepads = () => [null, null, null, null];` });
   await t.cmd("Page.navigate", { url: `${BASE}/jogos/rabiscopolis/?teste&jogar&fixo` });
-  ok(await ate(t, "!!window.teste?.vivo && !!teste.mundo", 60000), `jogo carregou (${largura}x${altura})`);
+  ok(await ate(t, "!!window.teste?.vivo && !!teste.mundo", 180000), `jogo carregou (${largura}x${altura})`);
   await espera(1500);
   return t;
 }
@@ -78,10 +81,10 @@ if (SO.includes("jogo")) {
     const dist = await t.ev("teste.garagem('carro')");
     ok(dist != null, `carro chamado (${dist?.toFixed?.(1)} m)`);
     await t.ev("(() => { const v = teste.garagemAtual; teste.ir(v.pos.x + Math.cos(v.ang) * 2.2, v.pos.z - Math.sin(v.ang) * 2.2); })()");
-    ok(await ate(t, "/Entrar|Dirigir/.test(teste.contexto || '')", 4000), `ação mostra "${await t.ev("teste.contexto")}"`);
+    ok(await ateJogo(t, "/Entrar|Dirigir/.test(teste.contexto || '')", 3), `ação mostra "${await t.ev("teste.contexto")}"`);
     const acao = await centro(t, ".rp-acao");
     await D.poe(3, acao[0], acao[1]); await espera(80); await D.tira(3);
-    ok(await ate(t, "!!teste.dentro", 3000), "entrou no carro tocando a ação");
+    ok(await ateJogo(t, "!!teste.dentro", 3), "entrou no carro tocando a ação");
     // põe o carro no começo do trecho reto mais longo da rota do trânsito, alinhado com a rua
     const NA_RUA = `(() => { const r = teste.transito[0].rota, P = r.pts; let m = -1, im = 0; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length], d = Math.hypot(b[0] - a[0], b[1] - a[1]); if (d > m) { m = d; im = i; } }
       const a = P[im], b = P[(im + 1) % P.length], dx = (b[0] - a[0]) / m, dz = (b[1] - a[1]) / m; const x = a[0] + dx * 6, z = a[1] + dz * 6;
@@ -142,7 +145,7 @@ if (SO.includes("jogo")) {
     await t.foto(`${FOTOS}/2c-carro-sozinho.png`);
     // ---- sair andando: freia sozinho e sai
     await D.poe(8, sairB[0], sairB[1]); await espera(60); await D.tira(8);
-    ok(await ate(t, "!teste.dentro", 4000), "Sair com o carro andando: freou e saiu");
+    ok(await ateJogo(t, "!teste.dentro", 5), "Sair com o carro andando: freou e saiu");
     ok(!(await t.ev("document.querySelector('.rp-auto').classList.contains('ligado') && false")), "ok");
     await t.ev("localStorage.removeItem('rabisco.rp.acelerarSozinho'); 0");
     await espera(500);
@@ -165,11 +168,15 @@ if (SO.includes("jogo")) {
     await D.tira(10);
     ok(vh > 3, `voou para a frente (vel ${vh.toFixed(1)})`);
     await D.poe(11, des[0], des[1]);
-    ok(await ate(t, "teste.dentro.alt - teste.chaoHeli(teste.dentro.pos.x, teste.dentro.pos.z) < 0.15", 90000), "desceu até pousar segurando Descer");
+    const pousou = await ateJogo(t, "teste.dentro.alt - teste.chaoHeli(teste.dentro.pos.x, teste.dentro.pos.z) < 0.15", 40);
+    ok(pousou, "desceu até pousar segurando Descer");
+    if (!pousou) console.log("  ·", await t.ev(`JSON.stringify({ alt: teste.dentro?.alt, chao: teste.dentro && teste.chaoHeli(teste.dentro.pos.x, teste.dentro.pos.z), vs: teste.dentro?.vs, pos: teste.dentro && [teste.dentro.pos.x, teste.dentro.pos.z], descer: document.querySelector('.rp-heli .rp-descer')?.classList.contains('apertado'), pausado: teste.jogo?.pausado, modo: teste.modo, abertos: [...document.querySelectorAll('dialog[open], .aberto, [aria-modal=true]')].map((e) => e.className).slice(0, 5) })`));
     await D.tira(11);
     await espera(1500);
     await D.poe(12, sairH[0], sairH[1]); await espera(60); await D.tira(12);
-    ok(await ate(t, "!teste.dentro", 3000), "desceu e saiu do helicóptero");
+    ok(await ateJogo(t, "!teste.dentro", 3), "desceu e saiu do helicóptero");
+    // a próxima parte é a pé: se algo acima falhou, sai do veículo para ela medir só o que é dela
+    if (await t.ev("!!teste.dentro")) { console.log("  · ainda no helicóptero: pousa e sai pelo teste para seguir"); await t.ev("(() => { const v = teste.dentro; v.alt = teste.chaoHeli(v.pos.x, v.pos.z); v.vs = 0; v.vel = 0; teste.sair(); })()"); await esperaJogo(t, 0.5); }
 
     // ---- controle físico em uso: some o toque; tocar a tela traz de volta
     await t.ev(`(() => { const b = Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })); b[0].pressed = true; window.__p = { index: 0, id: "x", connected: true, mapping: "standard", buttons: b, axes: [0, 0, 0, 0] }; navigator.getGamepads = () => [window.__p]; })()`);
@@ -180,7 +187,9 @@ if (SO.includes("jogo")) {
     await t.ev("navigator.getGamepads = () => [null, null, null, null]; 0");
     await D.poe(13, 600, 120); await espera(60); await D.tira(13);
     await espera(200);
-    ok(!(await t.ev("document.body.classList.contains('toque-oculto')")) && await visivel(t, ".jd-pulo"), "tocou a tela: botões de toque voltam");
+    const voltou = !(await t.ev("document.body.classList.contains('toque-oculto')")) && await visivel(t, ".jd-pulo");
+    ok(voltou, "tocou a tela: botões de toque voltam");
+    if (!voltou) console.log("  ·", await t.ev(`JSON.stringify({ oculto: document.body.classList.contains('toque-oculto'), modo: teste.modo, dentro: teste.dentro?.tipo ?? null, alvo: document.elementFromPoint(600, 120)?.className, carro: document.querySelector('.cena-rp')?.className })`));
     ok(!(await t.transborda()), "sem rolagem horizontal");
     const erros = t.erros.filter((e) => !/assets\/voz\//.test(e));
     ok(erros.length === 0, `sem erros no console ${erros.slice(0, 3).join(" | ")}`);
