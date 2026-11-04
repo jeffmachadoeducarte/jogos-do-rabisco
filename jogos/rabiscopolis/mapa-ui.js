@@ -30,14 +30,14 @@ const EMOJI = {
   floricultura: "🌷", pizzaria: "🍕", pracaPalmeiras: "⛲", farmacia: "💊", brinquedos: "🧸", pracaEstrelas: "⛲",
   museu: "🦖", observatorio: "🔭", orla: "🌊", salvavidas: "🛟", pier: "⚓", quiosque: "🥥", ilha: "🏝️", roda: "🎡", atelie: "🎨",
 };
-const EMOJI_TIPO = { carros: "🚗", academia: "🏋️", moda: "💄", contabilidade: "📊", presentes: "🎁", joias: "💍", confeccao: "👗", reciclagem: "⚙️", livraria: "📖", ballet: "🩰", agencia: "📸", vidracaria: "🪟", locacao: "🏗️" };
+const EMOJI_TIPO = { carros: "🚗", academia: "🏋️", moda: "💄", contabilidade: "📊", presentes: "🎁", joias: "💍", confeccao: "👗", reciclagem: "⚙️", livraria: "📖", ballet: "🩰", agencia: "📸", vidracaria: "🪟", locacao: "🏗️", sitio: "🦆" };
 // nome curto no mapa (na lista e no cartão vai o nome inteiro)
 const CURTO = {
   biblioteca: "Biblioteca", hospital: "Hospital", mercado: "Mercado", padaria: "Padaria", sorveteria: "Sorveteria", veterinario: "Veterinário",
   lavarapido: "Lava-Rápido", estudio: "Estúdio Dó-Ré-Mi", floricultura: "Floricultura", pizzaria: "Pizzaria", farmacia: "Farmácia",
   brinquedos: "Brinquedos Pião", observatorio: "Observatório", museu: "Museu", salvavidas: "Salva-Vidas", quiosque: "Quiosque",
   atelie: "Ateliê", horta: "Horta", quadra: "Quadra", campo: "Campo", pier: "Píer", roda: "Roda-Gigante", orla: "Praia do Mar Azul",
-  "parceiro-bella-cat": "Bella Cat", "parceiro-rise-up": "Rise Up", "parceiro-crescente-contabilidade": "Crescente", "parceiro-cafe-com-deus-pai-kids": "Café com Deus Pai",
+  "parceiro-bella-cat": "Bella Cat", "parceiro-rise-up": "Rise Up", "parceiro-crescente-contabilidade": "Crescente", "parceiro-cafe-com-deus-pai-kids": "Café com Deus Pai", "parceiro-sitio-floresca": "Sítio Floresça",
 };
 // nomes dos bairros, bem clarinhos, só quando sobra espaço
 const BAIRROS = [
