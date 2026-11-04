@@ -181,5 +181,5 @@ window.ModoTV = ModoTV;
 garantirCss();
 if (emModoTV) document.documentElement.classList.add("sala-tv");
 if (document.documentElement) aplicar();
-if (!emModoTV) detectar();
+if (!emModoTV && !/\/tv\/?$/.test(location.pathname)) detectar(); // a página tv/ já é a TV: não sugere o Modo TV
 export default ModoTV;

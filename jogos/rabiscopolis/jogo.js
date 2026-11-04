@@ -135,7 +135,9 @@ let hojeTeste = params.has("teste") && diaValido(params.get("hoje")) ? params.ge
 addEventListener("keydown", (e) => {
   if (jogo.estado !== "jogando" || jogo.pausado) return;
   if (e.target?.matches?.("input, textarea")) return; // digitando o nome no Meu Rabisco
-  if (J.tv && !ehAcao("mapa", e.code)) return; // TV como tela (página tv/): os dois jogam pelos controles e celulares
+  // TV como tela (página tv/): os dois jogam pelos controles e celulares; o teclado só vale quando é ele o jogador 1
+  // (ninguém entrou com controle nem celular: vaga 1 "teclado", src/motor/salatv.js)
+  if (J.tv && J.j1.entrada !== "teclado" && !ehAcao("mapa", e.code)) return;
   if (sorveteUI?.aberto) {
     const mapa = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
     if (mapa[e.code]) { sorveteUI.navegar(...mapa[e.code]); e.preventDefault(); return; }
@@ -425,6 +427,7 @@ function iniciar() {
     salvo: () => salvo, salvar: (d) => salvar(d), crianca: () => { try { return window.Familia?.crianca?.() || null; } catch { return null; } },
     otimizar: (rb) => otimizarRabisco(rb, () => j2?.modelo?.c?.rabisco === rb),
     veiculo: () => dentro, yaw: () => camera.st.yaw, caronaDaMissao: () => missoes?.carona,
+    cam: () => cam, nome1: () => (J.j1?.nome || "Rabisco").trim().split(/\s+/)[0],
     travado: () => Boolean(fone?.aberto || decoCasa?.ativo || sorveteUI?.aberto || meuRb?.aberto || atelieUI?.aberto || mapaUI?.aberto),
   });
   acaoJ2 = el("div", { class: "acao-j2-rp", hidden: "" }); caixa.append(acaoJ2);
@@ -1192,7 +1195,9 @@ const _pOnibus = new THREE.Vector3(), _pDois = new THREE.Vector3();
 function posicionarCamera(k, dt, andando = false) {
   const giro = (tem("girarD") ? 1 : 0) - (tem("girarE") ? 1 : 0) + pad.gx * 1.2;
   const arrasto = toque && !dentro ? toque.girar() : 0;
-  const dois = j2?.enquadrar(); // 2 jogadores a pé: a câmera mira o meio dos dois e afasta para caber
+  // 2 jogadores (a pé, ou o Rabisco dirigindo e o jogador 2 a pé): a câmera compartilhada mira o meio dos dois e afasta/sobe
+  // até caber os dois no quadro (jogador2.js, enquadrar). Com o jogador 2 de carona, segue o veículo como com 1 jogador.
+  const dois = dentro?.tipo === "heli" ? null : j2?.enquadrar(dt || 1 / 30);
   if (oracao) { // oração: a câmera para atrás do Rabisco, olhando para a igreja (ou para a cruz)
     const fx = Math.sin(oracao.olhar), fz = Math.cos(oracao.olhar);
     camera.st.vista = { pos: [oracao.x - fx * 4.6, 2.5, oracao.z - fz * 4.6], alvo: [oracao.x + fx * 3, 1.6, oracao.z + fz * 3] };
@@ -1209,9 +1214,9 @@ function posicionarCamera(k, dt, andando = false) {
     mundo.visibilidade(j.pos.x, j.pos.z);
     return;
   }
-  const P = dentro?.tipo === "onibus" ? _pOnibus.set(dentro.pos.x + Math.sin(dentro.ang) * 2.6, dentro.pos.y, dentro.pos.z + Math.cos(dentro.ang) * 2.6) : dentro ? dentro.pos : dois ? _pDois.set(dois.x, dois.y, dois.z) : j.pos;
-  const afastar = !dentro && dois ? dois.afastar : dentro && j2?.seguindo ? 2.5 : 0;
-  camera.posicionar({ P, ref: dentro ? dentro.ang : j.dir, dirigindo: Boolean(dentro), andando, giro, arrasto, onibus: ["onibus", "ambulancia", "sorvete"].includes(dentro?.tipo), comp: dentro?.comp ?? 0, heli: dentro?.tipo === "heli", afastar }, k, dt);
+  const P = dois ? _pDois.set(dois.x, dois.y, dois.z) : dentro?.tipo === "onibus" ? _pOnibus.set(dentro.pos.x + Math.sin(dentro.ang) * 2.6, dentro.pos.y, dentro.pos.z + Math.cos(dentro.ang) * 2.6) : dentro ? dentro.pos : j.pos;
+  const afastar = dois ? dois.afastar : dentro && j2?.seguindo ? 2.5 : 0;
+  camera.posicionar({ P, ref: dentro ? dentro.ang : j.dir, dirigindo: Boolean(dentro), andando, giro, arrasto, onibus: ["onibus", "ambulancia", "sorvete"].includes(dentro?.tipo), comp: dentro?.comp ?? 0, heli: dentro?.tipo === "heli", afastar, dois: Boolean(dois), veiculo: dentro, pular: [rabisco.grupo, j2?.modelo?.grupo] }, k, dt);
   ceu.seguir(P.x, P.z);
   mundo.visibilidade(P.x, P.z);
 }
@@ -1233,6 +1238,7 @@ function quadro() {
   const doisToque = Boolean(j2?.ativo) && qualidade.perfil.toque;
   if (doisToque !== quadro.doisToque) { quadro.doisToque = doisToque; if (qualidade.perfil.toque) { mundo.alcance = doisToque ? 78 : 95; mundo.detalheAte = doisToque ? 28 : 35; cena.fog.far = mundo.alcance; } }
   for (let p = 0; p < passos; p++) passo(total / passos, p === passos - 1);
+  if (j2?.ativo) j2.hud(cam, { veiculo: dentro, alturaRabisco: emCasa || emLugar ? 1.5 : 1.6 });
   somDoMotor();
   estat.tj = (estat.tj ?? 0) + total; // tempo de jogo (o que os passos simularam), para os testes
   r3.render(cena, cam);
@@ -1429,9 +1435,9 @@ function dizer(nome, texto, ms = 4200) {
 function atualizarHud() { hud.innerHTML = `<div class="chip-rp">🏙️ Rabiscolândia</div><div class="missao-rp" hidden></div>`; }
 // balãozinho rosa do jogador 2 (só quando a ação dele faz alguma coisa)
 function atualizarAcaoJ2() {
-  const r = j2?.acao;
+  const dica = J.tecladoDividido ? "F" : J.j2?.entrada === "celular" ? "✋" : "X";
+  const r = j2?.acao ?? (j2?.longe ? "Segure para vir para perto" : null);
   if (!r) { acaoJ2.hidden = true; return; }
-  const dica = J.tecladoDividido ? "F" : "X";
   const html = `<b>🎮2</b> ${r} <kbd>${dica}</kbd>`;
   if (acaoJ2.innerHTML !== html) acaoJ2.innerHTML = html;
   acaoJ2.hidden = false;
@@ -1642,6 +1648,7 @@ if (params.has("teste")) window.teste = {
   get oracao() { return oracao ? { i: oracao.i, total: ORACAO.length, painel: !painelOracao.hidden, texto: painelOracao.textContent } : null; },
   proximaFrase: () => proximaFrase(),
   get j2() { return j2; }, get dois() { return Boolean(j2?.ativo); }, get Jogadores() { return J; },
+  get camDist() { const p = dentro ? dentro.pos : j.pos; return { dist: Math.hypot(cam.position.x - p.x, cam.position.z - p.z), alt: cam.position.y - p.y }; },
   // as duas pessoas aparecem na tela? (projeção dentro do quadro)
   get naTela() { const ps = [rabisco.grupo, j2?.modelo?.grupo].filter(Boolean); return ps.map((g) => { const v = new THREE.Vector3(); g.getWorldPosition(v); v.y += 1; v.project(cam); return Math.abs(v.x) < 1 && Math.abs(v.y) < 1 && v.z < 1; }); },
   luzPedestreVerde: (s, eixo) => luzDe(s, eixo, relogio.elapsedTime) === "vermelho",
