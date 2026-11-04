@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#00b5f0">
+<title>Jogar na TV - Jogos do Rabisco</title>
+<link rel="icon" href="../assets/marca/logos/icone-rosa.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root { --azul: #00b5f0; --rosa: #ec2e8c; --amarelo: #ffcc1f; --laranja: #ff7a00; --tinta: #151515; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #eaf8ff; color: var(--tinta); font: 600 17px/1.35 "Baloo 2", ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif; }
+.pagina { max-width: 900px; margin: 0 auto; padding: 16px; }
+header { display: flex; align-items: center; gap: 14px; background: #fff; border: 4px solid var(--tinta); border-radius: 24px; box-shadow: 6px 7px 0 var(--tinta); padding: 10px 16px; }
+header img { height: 52px; width: auto; flex: none; }
+h1 { margin: 0; font-size: clamp(24px, 6vw, 36px); line-height: 1.05; }
+h1 span { color: var(--rosa); }
+.sub { margin: 14px 4px 10px; font-weight: 700; font-size: 18px; }
+.tv { background: #fff; border: 4px solid var(--tinta); border-radius: 22px; box-shadow: 5px 6px 0 var(--tinta); padding: 10px 14px 12px; margin: 14px 0; break-inside: avoid; }
+.tv h2 { margin: 0 0 6px; font-size: 24px; color: #fff; background: var(--azul); display: inline-block; border: 3px solid var(--tinta); border-radius: 999px; padding: 0 14px 2px; }
+.vias { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tv h2 small { font-size: 0.7em; font-weight: 700; }
+.via.cheia { grid-column: 1 / -1; }
+.via h3 { margin: 4px 0 2px; font-size: 18px; }
+ol { margin: 0; padding: 0; list-style: none; counter-reset: p; }
+li { counter-increment: p; position: relative; padding: 2px 0 2px 36px; font-size: 16px; }
+li::before { content: counter(p); position: absolute; left: 0; top: 2px; width: 26px; height: 26px; border-radius: 50%; background: var(--rosa); color: #fff; border: 2px solid var(--tinta); font: 800 15px/22px "Baloo 2", system-ui, sans-serif; text-align: center; }
+.aviso { margin: 6px 0 0; background: #fff3c4; border: 2px dashed var(--tinta); border-radius: 12px; padding: 4px 9px; font-size: 14.5px; }
+.dicas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; }
+.dica { background: #fff8d6; border: 3px solid var(--tinta); border-radius: 16px; padding: 7px 11px 9px; font-size: 14.5px; line-height: 1.25; }
+.dica b { display: block; font-size: 16.5px; }
+footer { text-align: center; font-weight: 800; font-size: 18px; margin: 16px 0 6px; }
+footer a { color: var(--rosa); }
+.botao { display: block; width: fit-content; margin: 8px auto; background: var(--rosa); color: #fff; text-decoration: none; font-weight: 800; font-size: 20px; border: 4px solid var(--tinta); border-radius: 18px; box-shadow: 0 5px 0 var(--tinta); padding: 6px 22px 8px; }
+a:focus-visible { outline: 5px solid var(--amarelo); outline-offset: 3px; }
+@media (max-width: 640px) { .vias, .dicas { grid-template-columns: 1fr; } header img { height: 42px; } }
+@media print {
+  @page { size: A4; margin: 8mm; }
+  body { background: #fff; font-size: 9.5pt; line-height: 1.22; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .pagina { max-width: none; padding: 0; }
+  header { box-shadow: none; padding: 5px 12px; border-width: 3px; } header img { height: 34px; } h1 { font-size: 20pt; }
+  .sub { margin: 6px 2px 4px; font-size: 10pt; }
+  .tv { box-shadow: none; margin: 6px 0; padding: 4px 9px 6px; border-width: 3px; }
+  .tv h2 { font-size: 12pt; margin-bottom: 2px; }
+  .via h3 { font-size: 10pt; margin: 2px 0 1px; }
+  li { font-size: 9pt; padding: 1px 0 1px 24px; } li::before { width: 17px; height: 17px; font-size: 8.5pt; line-height: 14px; top: 2px; }
+  .aviso { font-size: 8.5pt; padding: 2px 6px; margin-top: 3px; }
+  .dicas { margin: 6px 0; gap: 6px; } .dica { font-size: 8.5pt; padding: 3px 7px 4px; } .dica b { font-size: 9.5pt; }
+  footer { margin: 6px 0 0; font-size: 11pt; } .botao { display: none; }
+}
+</style>
+</head>
+<body>
+<main class="pagina">
+  <header>
+    <img src="../assets/marca/logos/azul-icone-rosa.svg" alt="Educarte Escola Cristã">
+    <h1>Jogos do <span>Rabisco</span> na TV</h1>
+  </header>
+  <p class="sub">O jogo roda no celular e a TV só mostra a tela. Escolha a sua TV e siga os passos (3 ou 4, bem curtinhos).</p>
+  <section class="tv"><h2>📺 Roku</h2><div class="vias"><div class="via"><h3>🍎 iPhone / iPad</h3><ol><li>O celular e a TV precisam estar no mesmo Wi-Fi.</li><li>Na Roku, confira em Configurações → Apple AirPlay e HomeKit se o AirPlay está ligado. Só Roku mais recentes têm AirPlay.</li><li>No iPhone, deslize para abrir a Central de Controle, toque em Espelhar Tela e escolha a Roku. Se a TV mostrar um código, digite no celular.</li><li>Deite o celular (de lado) e abra o jogo. O que aparece no celular aparece na TV.</li></ol><p class="aviso">💡 A Roku não apareceu na lista? Ela provavelmente é antiga e não tem AirPlay. Use a aba Notebook com cabo.</p></div><div class="via"><h3>🤖 Android</h3><ol><li>O celular e a TV precisam estar no mesmo Wi-Fi.</li><li>Na Roku, abra Configurações → Sistema → Espelhamento de tela e deixe em "Perguntar" ou "Sempre permitir".</li><li>No celular, puxe o painel de cima e toque em Transmitir, Smart View ou Espelhamento (o nome muda de marca para marca). Escolha a Roku.</li><li>Aceite o pedido que aparece na TV. Deite o celular (de lado) e abra o jogo. O que aparece no celular aparece na TV.</li></ol><p class="aviso">💡 Alguns Android novos (como o Google Pixel) não espelham para Roku. Se a Roku não aparecer, use a aba Notebook com cabo.</p></div></div></section>
+<section class="tv"><h2>🟢 Android TV / Google TV</h2><div class="vias"><div class="via"><h3>🍎 iPhone / iPad</h3><ol><li>A maioria das TVs Android TV e Google TV não recebe AirPlay do iPhone. Procure "AirPlay" nas configurações da TV para conferir.</li><li>Se a sua TV tiver AirPlay: no iPhone, abra a Central de Controle, toque em Espelhar Tela e escolha a TV.</li><li>Se não tiver, o jeito mais fácil é a aba Notebook com cabo.</li></ol><p class="aviso">💡 Resumindo: iPhone pede TV com AirPlay (Apple TV, Roku recente, Samsung e LG recentes).</p></div><div class="via"><h3>🤖 Android</h3><ol><li>O celular e a TV precisam estar no mesmo Wi-Fi. A TV já vem com Chromecast embutido.</li><li>No celular, puxe o painel de cima e toque em Transmitir (ou Smart View / Espelhamento).</li><li>Escolha o nome da sua TV na lista.</li><li>Deite o celular (de lado) e abra o jogo. O que aparece no celular aparece na TV.</li></ol></div></div></section>
+<section class="tv"><h2>🖥️ Smart TV <small>(Samsung, LG, outras)</small></h2><div class="vias"><div class="via"><h3>🍎 iPhone / iPad</h3><ol><li>O celular e a TV precisam estar no mesmo Wi-Fi.</li><li>Na TV, procure AirPlay nas configurações e ligue. Só Samsung e LG mais recentes têm.</li><li>No iPhone, abra a Central de Controle, toque em Espelhar Tela e escolha a TV. Digite o código da TV, se pedir.</li><li>Deite o celular (de lado) e abra o jogo. O que aparece no celular aparece na TV.</li></ol><p class="aviso">💡 Sua TV não aparece? Provavelmente é antiga. Use a aba Notebook com cabo.</p></div><div class="via"><h3>🤖 Android</h3><ol><li>O celular e a TV precisam estar no mesmo Wi-Fi.</li><li>Na TV, ligue o espelhamento: nas Samsung chama Smart View; nas LG, Compartilhar Tela; nas outras, Espelhamento ou Miracast.</li><li>No celular, puxe o painel de cima, toque em Smart View, Transmitir ou Espelhamento e escolha a TV.</li><li>Aceite o pedido na TV. Deite o celular (de lado) e abra o jogo. O que aparece no celular aparece na TV.</li></ol><p class="aviso">💡 Se a TV não aparecer, use a aba Notebook com cabo.</p></div></div></section>
+<section class="tv"><h2>🔌 Notebook com cabo</h2><div class="vias"><div class="via cheia"><h3>Qualquer aparelho</h3><ol><li>Ligue o notebook na TV com um cabo HDMI e, no controle da TV, escolha a entrada HDMI onde ligou.</li><li>Abra o navegador (Chrome) e entre em jogos.educarte.qzz.io. Aperte F11 para a tela cheia.</li><li>Jogue com o teclado ou ligue um controle (USB ou Bluetooth) e aperte um botão nele.</li><li>Para a TV virar só a tela: ⚙️ → Jogar na TV → Usar só controles. Os controles e os celulares entram pelo QR.</li></ol><p class="aviso">💡 Celular só liga por cabo com um adaptador de vídeo (USB-C ou Lightning para HDMI), e nem todo Android tem saída de vídeo. Por isso o notebook é a escolha mais segura.</p></div></div></section>
+  <div class="dicas"><div class="dica"><b>🎮 Controle Bluetooth (opcional)</b>Pareie o controle (PS4, Xbox ou genérico) nas configurações de Bluetooth do celular, abra o jogo e aperte um botão nele. O jogo reconhece sozinho.</div><div class="dica"><b>📱 Segundo jogador pelo QR</b>Toque em ⚙️ → Jogar na TV → Mais um controle pelo celular. Outra pessoa lê o QR com a câmera do celular e vira o jogador 2.</div><div class="dica"><b>🔆 Tela sempre acesa</b>Durante a partida o jogo pede para a tela não apagar. Se a TV travar ou ficar lenta, feche outros aplicativos e deixe o Wi-Fi forte (de preferência 5 GHz).</div></div>
+  <a class="botao" href="../">Abrir o jogo</a>
+  <footer>Jogue em <a href="https://jogos.educarte.qzz.io">jogos.educarte.qzz.io</a></footer>
+</main>
+</body>
+</html>

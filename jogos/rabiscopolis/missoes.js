@@ -240,7 +240,9 @@ export function criarMissoes(ctx) {
   for (const M of MISSOES) M.quem = Object.keys(M.npcs)[0];
   // missões em sequência com a mesma pessoa (Sítio Floresça): a segunda (depois: id) só aparece com a primeira feita, e a
   // primeira, já feita, dá a vez para a segunda enquanto ela não for feita
-  const liberada = (M) => (!M.depois || feitas.has(M.depois)) && !(feitas.has(M.id) && MISSOES.some((o) => o.depois === M.id && !feitas.has(o.id)));
+  // (em fila longa: a feita só volta a aparecer quando todas as que vêm depois dela, em cadeia, também estiverem feitas)
+  const pendenteDepois = (id) => MISSOES.some((o) => o.depois === id && (!feitas.has(o.id) || pendenteDepois(o.id)));
+  const liberada = (M) => (!M.depois || feitas.has(M.depois)) && !(feitas.has(M.id) && pendenteDepois(M.id));
 
   const npcPos = (n) => (n.mundo ?? (n === caronaNpc() ? [carona.pos.x, carona.pos.z] : [n.g.position.x, n.g.position.z]));
   const caronaNpc = () => (carona && ativa ? npcs.get(`${ativa.id}:${ativa.etapas[etapa]?.passageiro}`) : null);
@@ -474,7 +476,8 @@ export function criarMissoes(ctx) {
     for (const pl of plantas) { if (pl.sprite.parent) pl.sprite.visible = Math.hypot(p.x - pl.x, p.z - pl.z) < R; if (pl.broto) { pl.cresce = Math.min(1, pl.cresce + dt * 1.5); pl.broto.scale.setScalar(0.3 + pl.cresce * 0.9); pl.broto.visible = Math.hypot(p.x - pl.x, p.z - pl.z) < R; } }
     for (const n of npcs.values()) {
       const [x, z] = npcPos(n);
-      const daMissao = n.quem || ativa === n.M || (feitas.has(n.M.id) && !n.dados.soNaMissao) || n.festa > 0;
+      // (a mesma pessoa usada por outra missão, com "mesmo": aparece também com essa missão ativa)
+      const daMissao = n.quem || ativa === n.M || (feitas.has(n.M.id) && !n.dados.soNaMissao) || n.festa > 0 || Boolean(ativa && Object.values(ativa.npcs).some((d) => d.mesmo === `${n.M.id}:${n.id}`));
       const vis = n === caronaNpc() || (daMissao && Math.hypot(p.x - x, p.z - z) < R);
       if (!n.fixo) n.g.visible = vis;
       if (n.extras) n.extras.visible = Math.hypot(p.x - n.casa[0], p.z - n.casa[1]) < R && (n.casaExtras ? ativa === n.M : daMissao);

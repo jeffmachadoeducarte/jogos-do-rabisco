@@ -363,20 +363,27 @@ FOTOS.construrenova = (c, W, H) => {
     c.fillStyle = "#f07a1a"; c.beginPath(); c.arc(x - 36, H - 22, 14, 0, 7); c.fill();
   }
 };
-// Sítio Floresça: gramado, a estradinha de terra até o celeiro de madeira com portas amarelas, a casa de tijolinho à
-// esquerda, o portão de tela com palanques e o pinheiro alto
+// Sítio Floresça: gramado, a estradinha de terra, a casa de tijolinho à esquerda com o salão comprido de treliça logo
+// atrás (telha laranja e as mansardas), as árvores frutíferas à direita, o portão de tela com palanques e o pinheiro alto
 FOTOS["sitio-floresca"] = (c, W, H) => {
   const g = c.createLinearGradient(0, 0, 0, H * 0.6); g.addColorStop(0, "#7cc8f2"); g.addColorStop(1, "#d8f0ff");
   c.fillStyle = g; c.fillRect(0, 0, W, H);
   c.fillStyle = "#3f7d3a"; for (let i = 0; i < 14; i++) { c.beginPath(); c.arc(i * 80 + 20, H * 0.5, 70 + (i % 3) * 18, 0, 7); c.fill(); } // mata ao fundo
   c.fillStyle = "#6cbf4a"; c.fillRect(0, H * 0.56, W, H * 0.44); // gramado
   c.fillStyle = "#b9a27a"; c.beginPath(); c.moveTo(W * 0.47, H * 0.6); c.lineTo(W * 0.53, H * 0.6); c.lineTo(W * 0.66, H); c.lineTo(W * 0.34, H); c.fill(); // estradinha
-  // celeiro de madeira: tábuas, telha laranja e as portas amarelas
-  const bx = W * 0.5, by = H * 0.6;
-  c.fillStyle = "#9a7350"; c.fillRect(bx - 20, by - 110, 260, 110);
-  c.strokeStyle = "#6e4f34"; c.lineWidth = 3; for (let x = bx - 14; x < bx + 240; x += 14) { c.beginPath(); c.moveTo(x, by - 110); c.lineTo(x, by); c.stroke(); }
-  c.fillStyle = "#d0643a"; c.beginPath(); c.moveTo(bx - 34, by - 106); c.lineTo(bx + 110, by - 176); c.lineTo(bx + 254, by - 106); c.fill();
-  c.fillStyle = "#e8b547"; for (const x of [bx + 60, bx + 112]) { c.fillRect(x, by - 74, 48, 74); c.strokeStyle = "#a87a25"; c.lineWidth = 5; c.beginPath(); c.moveTo(x, by - 74); c.lineTo(x + 48, by); c.moveTo(x + 48, by - 74); c.lineTo(x, by); c.stroke(); }
+  // o salão comprido de madeira, logo atrás da casa: treliça em losango, telha laranja e duas mansardas
+  const sx = W * 0.2, sy = H * 0.6;
+  c.fillStyle = "#8c6646"; c.fillRect(sx, sy - 74, 330, 74);
+  c.save(); c.beginPath(); c.rect(sx, sy - 60, 330, 60); c.clip(); c.strokeStyle = "#c9a46a"; c.lineWidth = 4;
+  for (let x = sx - 60; x < sx + 390; x += 18) { c.beginPath(); c.moveTo(x, sy - 60); c.lineTo(x + 60, sy); c.moveTo(x + 60, sy - 60); c.lineTo(x, sy); c.stroke(); } c.restore();
+  c.fillStyle = "#d0643a"; c.beginPath(); c.moveTo(sx - 16, sy - 70); c.lineTo(sx + 20, sy - 128); c.lineTo(sx + 310, sy - 128); c.lineTo(sx + 346, sy - 70); c.fill();
+  for (const x of [sx + 90, sx + 220]) { c.fillStyle = "#8c6646"; c.fillRect(x, sy - 128, 34, 28); c.fillStyle = "#d0643a"; c.beginPath(); c.moveTo(x - 6, sy - 126); c.lineTo(x + 17, sy - 146); c.lineTo(x + 40, sy - 126); c.fill(); }
+  // árvores frutíferas à direita, com as frutinhas coloridas
+  for (const [x, cor] of [[W * 0.7, "#ff8a1f"], [W * 0.79, "#e0342b"], [W * 0.62, "#f2a33a"]]) {
+    c.fillStyle = "#6b4a2e"; c.fillRect(x - 6, H * 0.5, 12, H * 0.14);
+    c.fillStyle = "#3f8a3a"; c.beginPath(); c.arc(x, H * 0.46, 46, 0, 7); c.fill();
+    c.fillStyle = cor; for (let i = 0; i < 9; i++) { c.beginPath(); c.arc(x + Math.cos(i * 2.4) * 30, H * 0.46 + Math.sin(i * 2.4) * 26, 6, 0, 7); c.fill(); }
+  }
   // casa de tijolinho à esquerda: telha escura e janelas de moldura escura
   const hx = W * 0.06, hy = H * 0.66;
   c.fillStyle = "#b5583a"; c.fillRect(hx, hy - 120, 300, 120);

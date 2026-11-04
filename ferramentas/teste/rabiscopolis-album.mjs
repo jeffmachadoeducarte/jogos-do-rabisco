@@ -88,9 +88,9 @@ const SALDO = "teste.Rabiscoins.saldo()";
   await espera(5000);
 
   // ---- pessoas de verdade: UMA figurinha cada na página Amigos (boneco de bloco), ganha com qualquer missão dela
-  const PESSOAS = { sabrina: ["alvara", "parceiro-speedy-solucoes"], carina: ["uniformesCarina"], "vovo-leo": ["maletaLeo", "samuelLeo"], marlon: ["parceiro-marlon-maquinas"], samira: ["parceiro-ballet-e-cia"], albino: ["parceiro-construrenova"], regina: ["parceiro-sitio-floresca", "parceiro-sitio-floresca-duck"] };
+  const PESSOAS = { sabrina: ["alvara", "parceiro-speedy-solucoes"], carina: ["uniformesCarina"], "vovo-leo": ["maletaLeo", "samuelLeo"], marlon: ["parceiro-marlon-maquinas"], samira: ["parceiro-ballet-e-cia"], albino: ["parceiro-construrenova"], regina: ["parceiro-sitio-floresca", "parceiro-sitio-floresca-duck", "parceiro-sitio-floresca-comida", "parceiro-sitio-floresca-horta", "parceiro-sitio-floresca-rocar", "parceiro-sitio-floresca-kids"] };
   const amigosIds = await t.ev(`${A}.paginas().find((p) => p.id === 'amigos').figs.map((f) => f.id)`);
-  ok(await t.ev("teste.album.album.paginas().reduce((n, p) => n + p.figs.length, 0)") === 154, "o álbum tem 154 figurinhas no total (139 + 5 pessoas + Construrenova: parceira, Seu Albino, Pedreiro Caderno e versículo + Sítio Floresça: parceira, Tia Regina, pata Ale, Duck e dois versículos)");
+  ok(await t.ev("teste.album.album.paginas().reduce((n, p) => n + p.figs.length, 0)") === 162, "o álbum tem 162 figurinhas no total (139 + 5 pessoas + Construrenova: parceira, Seu Albino, Pedreiro Caderno e versículo + Sítio Floresça: parceira, Tia Regina, pata Ale, Duck e dois versículos + as 4 missões novas do sítio: galinhas, hortinha, roçador, balanço de pneu e quatro versículos)");
   for (const [pes, ms] of Object.entries(PESSOAS)) {
     ok(amigosIds.filter((id) => id === `a:pessoa-${pes}`).length === 1, `a página Amigos tem exatamente 1 figurinha de ${pes}`);
     ok(!(await t.ev(TEM(`a:pessoa-${pes}`))), `${pes}: antes da missão não tem a figurinha`);
@@ -102,7 +102,7 @@ const SALDO = "teste.Rabiscoins.saldo()";
   }
   // save antigo: missão já concluída antes de a figurinha existir; abrir o álbum entrega, uma vez, sem erro
   // (teste.salvo é uma cópia lida do localStorage: o save antigo é escrito lá e o jogo recarregado)
-  await t.ev("(() => { const k = Perfis.chave('rabisco.rabiscopolis.v1'), s = JSON.parse(localStorage.getItem(k)); s.album.figs = s.album.figs.filter((x) => !x.startsWith('a:pessoa-')); s.missoesFeitas = [...new Set([...(s.missoesFeitas ?? []), 'alvara', 'uniformesCarina', 'maletaLeo', 'samuelLeo', 'parceiro-marlon-maquinas', 'parceiro-ballet-e-cia', 'parceiro-speedy-solucoes', 'parceiro-construrenova', 'parceiro-sitio-floresca', 'parceiro-sitio-floresca-duck'])]; localStorage.setItem(k, JSON.stringify(s)); })()");
+  await t.ev("(() => { const k = Perfis.chave('rabisco.rabiscopolis.v1'), s = JSON.parse(localStorage.getItem(k)); s.album.figs = s.album.figs.filter((x) => !x.startsWith('a:pessoa-')); s.missoesFeitas = [...new Set([...(s.missoesFeitas ?? []), 'alvara', 'uniformesCarina', 'maletaLeo', 'samuelLeo', 'parceiro-marlon-maquinas', 'parceiro-ballet-e-cia', 'parceiro-speedy-solucoes', 'parceiro-construrenova', 'parceiro-sitio-floresca', 'parceiro-sitio-floresca-duck', 'parceiro-sitio-floresca-comida', 'parceiro-sitio-floresca-horta', 'parceiro-sitio-floresca-rocar', 'parceiro-sitio-floresca-kids'])]; localStorage.setItem(k, JSON.stringify(s)); })()");
   await t.cmd("Page.reload"); await esperarJogo(t);
   ok(!(await t.ev(TEM("a:pessoa-marlon"))), "save antigo simulado: sem as figurinhas das pessoas");
   ok((await t.ev("teste.salvo.missoesFeitas")).includes("alvara"), "save antigo simulado: missões já concluídas");

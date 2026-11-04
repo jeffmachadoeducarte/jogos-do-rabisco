@@ -98,7 +98,7 @@ export function ligarChip(btn) {
     const p = Perfis.ativo(), nome = p?.nome || "";
     const roda = h("span", { class: "roda" });
     if (p?.foto) roda.append(h("img", { src: p.foto, alt: "" })); else roda.textContent = nome ? emoji(p) : "🧒";
-    btn.replaceChildren(roda, h("span", { texto: nome || "Quem joga?" }));
+    btn.replaceChildren(roda, h("span", { class: "nome", texto: nome ? nome.split(" ")[0] : "Quem joga?" }));
     btn.setAttribute("aria-label", nome ? `Jogando agora: ${nome}. Trocar de jogador` : "Quem vai jogar? Escolher o jogador");
   };
   desenhar();

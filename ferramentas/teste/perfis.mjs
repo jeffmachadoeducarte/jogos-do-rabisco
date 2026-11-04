@@ -122,7 +122,7 @@ ok(await esperarPedido(1), "o cadastro foi enviado para a Educarte (servidor fal
   ok(p?.url === "/cadastro" && /^[0-9a-f-]{36}$/.test(c.id) && /^[0-9a-f]{48}$/.test(c.segredo), "POST /cadastro com id anônimo (UUID) e segredo do aparelho");
   ok(c.responsavel?.nome === "Maria Souza" && c.responsavel.telefone === "(11) 98765-4321" && c.responsavel.email === "maria@exemplo.com", "envia o responsável (nome completo, telefone, e-mail)");
   ok(J(c.criancas) === J([{ nome: "Alice", nascimento: "2018-03-10" }, { nome: "Theo", nascimento: "2015-07-01" }]), "envia as crianças (primeiro nome e nascimento), sem o perfil do adulto");
-  ok(c.consentimento?.privacidade === true && c.consentimento.versao && c.consentimento.em && c.marketing?.aceito === false, "consentimento (termo, versão, data/hora) e marketing separado (não aceito)");
+  ok(c.consentimento?.privacidade === true && c.consentimento.versao && c.consentimento.em && c.marketing?.aceito === false && c.marketing.em === null, "consentimento (termo, versão, data/hora) e marketing separado (não aceito)");
   ok(!/data:image|foto|genero|rabiscoins|pin/i.test(p.bruto), "nunca vai a foto (nem gênero, PIN ou progresso)");
   ok(c.id === fam.id && c.segredo === fam.segredo, "id e segredo ficam guardados no aparelho (para atualizar e apagar)");
 }
