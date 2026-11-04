@@ -10,9 +10,48 @@ const MAX_BYTES = 2048;
 const MAX_CONTROLES = 4;
 const MAX_SALAS = 500;
 const MAX_MSG_POR_S = 60;
+const MAX_FALHAS_CONEXAO = 3; // códigos errados por conexão: na 3ª a conexão é fechada
+const MAX_INVALIDAS = 10; // mensagens fora do formato por conexão
+
+// Limites por IP e globais. Generosos de propósito: uma escola/casa inteira pode sair pelo mesmo IP.
+// O atacante que adivinha códigos (23^4 = 279.841) fica limitado a ~40 palpites por IP a cada 10 min.
+const LIMITES = {
+  conexoesGlobal: 2000, // conexões simultâneas no servidor todo
+  conexoesPorIp: 60, // conexões simultâneas por IP
+  novasPorMin: 120, // conexões novas por IP por minuto (janela deslizante)
+  falhasPorJanela: 40, // palpites errados por IP na janela
+  janelaFalhas: 10 * 60e3,
+  bloqueio: 10 * 60e3, // quanto tempo o IP fica barrado ao estourar as falhas
+  salasPorIp: 25, // salas abertas ao mesmo tempo por IP
+  criadasPorJanela: 100, // salas criadas por IP na janela
+  janelaCriadas: 10 * 60e3,
+};
+const NOME_MAX = 14;
+// só letras (qualquer língua), espaço, apóstrofo e hífen: o mesmo que src/motor/nomes.js mostra na TV
+const limparNome = (t) => String(t ?? '').normalize('NFC').replace(/[^\p{L}\p{M} '-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, NOME_MAX);
+const ehObjeto = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);
+const textoCurto = (t, max = 64) => typeof t === 'string' && t.length <= max;
+const ID_CONTROLE = /^c\d{1,6}$/;
+
+// O proxy do EasyPanel (Traefik) fica numa rede privada e põe o IP real à direita de X-Forwarded-For.
+// Só confia no cabeçalho se a conexão vier de endereço de rede privada/loopback: de fora, é forjável.
+const ehProxy = (a = '') => {
+  const x = a.replace(/^::ffff:/, '');
+  return x === '::1' || /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|f[cd][0-9a-f]{2}:|fe80:)/i.test(x);
+};
+export function ipDe(req) {
+  const direto = req.socket.remoteAddress || '?';
+  const xff = req.headers['x-forwarded-for'];
+  if (ehProxy(direto) && typeof xff === 'string') {
+    const ult = xff.split(',').pop().trim();
+    if (ult && ult.length <= 64) return ult;
+  }
+  return direto;
+}
 
 // Tempos em ms; TEMPO_ESCALA encolhe tudo (só para teste).
-export function iniciar({ porta = Number(process.env.PORT) || 8090, origens = process.env.ORIGENS ?? '', escala = Number(process.env.TEMPO_ESCALA) || 1, log = true } = {}) {
+export function iniciar({ porta = Number(process.env.PORT) || 8090, origens = process.env.ORIGENS ?? '', escala = Number(process.env.TEMPO_ESCALA) || 1, log = true, limites = {} } = {}) {
+  const L = { ...LIMITES, ...limites };
   const T = {
     host: 2 * 60e3 * escala, // host fora: sala expira
     vaga: 2 * 60e3 * escala, // vaga do controle guardada
@@ -22,6 +61,13 @@ export function iniciar({ porta = Number(process.env.PORT) || 8090, origens = pr
   };
   const permitidas = origens.split(',').map((s) => s.trim()).filter(Boolean);
   const salas = new Map();
+  const ips = new Map(); // ip -> { conexoes, novas: [t], falhas: [t], criadas: [t], bloqueadoAte }
+  const estadoIp = (ip) => {
+    let e = ips.get(ip);
+    if (!e) ips.set(ip, e = { conexoes: 0, novas: [], falhas: [], criadas: [], bloqueadoAte: 0 });
+    return e;
+  };
+  const recente = (lista, janela, agora) => { while (lista.length && agora - lista[0] > janela) lista.shift(); return lista.length; };
   let abertas = 0, fechadas = 0;
 
   const token = () => crypto.randomBytes(16).toString('hex');
@@ -56,7 +102,7 @@ export function iniciar({ porta = Number(process.env.PORT) || 8090, origens = pr
   const server = http.createServer((req, res) => {
     if (req.method === 'GET' && req.url.split('?')[0] === '/saude') {
       res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-      res.end(JSON.stringify({ ok: true, salas: salas.size }));
+      res.end(JSON.stringify({ ok: true }));
     } else {
       res.writeHead(404);
       res.end();
@@ -66,10 +112,24 @@ export function iniciar({ porta = Number(process.env.PORT) || 8090, origens = pr
   const wss = new WebSocketServer({
     server,
     maxPayload: MAX_BYTES, // acima disso a conexão cai (1009)
-    verifyClient: ({ origin }) => !permitidas.length || permitidas.includes(origin),
+    verifyClient: ({ origin, req }, resp) => {
+      if (permitidas.length && !permitidas.includes(origin)) return resp(false, 401, 'origem');
+      const agora = Date.now();
+      const e = estadoIp(ipDe(req));
+      if (agora < e.bloqueadoAte) return resp(false, 429, 'bloqueado');
+      if (wss.clients.size >= L.conexoesGlobal) return resp(false, 503, 'cheio');
+      if (e.conexoes >= L.conexoesPorIp) return resp(false, 429, 'conexoes');
+      if (recente(e.novas, 60e3, agora) >= L.novasPorMin) return resp(false, 429, 'ritmo');
+      e.novas.push(agora);
+      resp(true);
+    },
   });
 
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws, req) => {
+    ws.ip = ipDe(req);
+    estadoIp(ws.ip).conexoes++;
+    ws.falhas = 0;
+    ws.invalidas = 0;
     ws.viva = true;
     ws.ultimo = Date.now();
     ws.janela = 0; // contagem de mensagens no segundo atual
@@ -83,13 +143,39 @@ export function iniciar({ porta = Number(process.env.PORT) || 8090, origens = pr
       if (binario || ++ws.janela > MAX_MSG_POR_S) return;
       let m;
       try { m = JSON.parse(bruto.toString()); } catch { return; }
-      if (!m || typeof m !== 'object') return;
+      if (!ehObjeto(m) || !formatoOk(m)) {
+        if (++ws.invalidas >= MAX_INVALIDAS) ws.close(1008, 'invalido');
+        return;
+      }
       tratar(ws, m);
     });
     ws.on('pong', () => { ws.ultimo = Date.now(); });
     ws.on('error', () => {});
-    ws.on('close', () => { clearInterval(zera); saiu(ws); });
+    ws.on('close', () => { clearInterval(zera); estadoIp(ws.ip).conexoes--; saiu(ws); });
   });
+
+  // Formato estrito de cada mensagem; o que não bate é descartado (e conta como inválida).
+  function formatoOk(m) {
+    switch (m.t) {
+      case 'ping': case 'criar': return true;
+      case 'voltarHost': return textoCurto(m.codigo, 8) && (m.token === undefined || textoCurto(m.token));
+      case 'entrar': return textoCurto(m.codigo, 8) && (m.nome === undefined || typeof m.nome === 'string');
+      case 'voltar': return textoCurto(m.codigo, 8) && textoCurto(m.id, 8) && (m.token === undefined || textoCurto(m.token));
+      case 'in': return ehObjeto(m.d);
+      case 'para': return (m.id === '*' || (typeof m.id === 'string' && ID_CONTROLE.test(m.id))) && ehObjeto(m.d);
+      default: return false;
+    }
+  }
+
+  // Palpite errado de código/token: por conexão (3 e fecha) e por IP (estourou, bloqueia por um tempo).
+  function falhou(ws, motivo) {
+    erro(ws, motivo);
+    const agora = Date.now();
+    const e = estadoIp(ws.ip);
+    e.falhas.push(agora);
+    if (recente(e.falhas, L.janelaFalhas, agora) >= L.falhasPorJanela) e.bloqueadoAte = agora + L.bloqueio;
+    if (++ws.falhas >= MAX_FALHAS_CONEXAO || agora < e.bloqueadoAte) ws.close(1008, 'tentativas');
+  }
 
   function tratar(ws, m) {
     switch (m.t) {
@@ -97,8 +183,14 @@ export function iniciar({ porta = Number(process.env.PORT) || 8090, origens = pr
       case 'criar': {
         if (ws.papel) return;
         if (salas.size >= MAX_SALAS) return erro(ws, 'servidor-cheio');
+        const agora = Date.now();
+        const e = estadoIp(ws.ip);
+        let doIp = 0;
+        for (const x of salas.values()) if (x.ip === ws.ip) doIp++;
+        if (doIp >= L.salasPorIp || recente(e.criadas, L.janelaCriadas, agora) >= L.criadasPorJanela) return erro(ws, 'servidor-cheio');
+        e.criadas.push(agora);
         const codigo = novoCodigo();
-        const s = { codigo, tokenHost: token(), host: ws, hostSaiu: 0, criada: Date.now(), controles: new Map(), proximo: 1 };
+        const s = { codigo, ip: ws.ip, tokenHost: token(), host: ws, hostSaiu: 0, criada: Date.now(), controles: new Map(), proximo: 1 };
         salas.set(codigo, s);
         abertas++;
         ws.papel = 'host'; ws.sala = s;
@@ -108,7 +200,7 @@ export function iniciar({ porta = Number(process.env.PORT) || 8090, origens = pr
       case 'voltarHost': {
         if (ws.papel) return;
         const s = codigoOk(m.codigo) && salas.get(m.codigo);
-        if (!s || !igual(s.tokenHost, m.token ?? '')) return erro(ws, 'sala-nao-existe');
+        if (!s || !igual(s.tokenHost, m.token ?? '')) return falhou(ws, 'sala-nao-existe');
         if (s.host && s.host !== ws) { s.host.sala = null; s.host.close(1000, 'substituido'); }
         s.host = ws; s.hostSaiu = 0;
         ws.papel = 'host'; ws.sala = s;
@@ -120,12 +212,12 @@ export function iniciar({ porta = Number(process.env.PORT) || 8090, origens = pr
       }
       case 'entrar': {
         if (ws.papel) return;
-        if (!codigoOk(m.codigo)) return erro(ws, 'codigo-invalido');
+        if (!codigoOk(m.codigo)) return falhou(ws, 'codigo-invalido');
         const s = salas.get(m.codigo);
-        if (!s) return erro(ws, 'sala-nao-existe');
+        if (!s) return falhou(ws, 'sala-nao-existe');
         if (s.controles.size >= MAX_CONTROLES) return erro(ws, 'sala-cheia');
         const id = 'c' + s.proximo++;
-        const nome = typeof m.nome === 'string' ? m.nome.slice(0, 30) : undefined;
+        const nome = typeof m.nome === 'string' ? limparNome(m.nome) || undefined : undefined;
         const c = { token: token(), ws, nome, saiu: 0 };
         s.controles.set(id, c);
         ws.papel = 'controle'; ws.sala = s; ws.id = id;
@@ -134,11 +226,11 @@ export function iniciar({ porta = Number(process.env.PORT) || 8090, origens = pr
       }
       case 'voltar': {
         if (ws.papel) return;
-        if (!codigoOk(m.codigo)) return erro(ws, 'codigo-invalido');
+        if (!codigoOk(m.codigo)) return falhou(ws, 'codigo-invalido');
         const s = salas.get(m.codigo);
         const c = s && s.controles.get(m.id);
-        if (!c) return erro(ws, 'sala-nao-existe');
-        if (!igual(c.token, m.token ?? '')) return erro(ws, 'token-invalido');
+        if (!c) return falhou(ws, 'sala-nao-existe');
+        if (!igual(c.token, m.token ?? '')) return falhou(ws, 'token-invalido');
         if (c.ws && c.ws !== ws) { c.ws.sala = null; c.ws.close(1000, 'substituido'); }
         c.ws = ws; c.saiu = 0;
         ws.papel = 'controle'; ws.sala = s; ws.id = m.id;
@@ -148,7 +240,10 @@ export function iniciar({ porta = Number(process.env.PORT) || 8090, origens = pr
       }
       case 'in': {
         if (ws.papel !== 'controle' || !ws.sala) return;
-        return enviar(ws.sala.host, { t: 'in', id: ws.id, d: m.d });
+        const d = m.d;
+        if (typeof d.nome === 'string') d.nome = limparNome(d.nome); // texto livre que pode aparecer na TV
+        else if ('nome' in d) delete d.nome;
+        return enviar(ws.sala.host, { t: 'in', id: ws.id, d });
       }
       case 'para': {
         if (ws.papel !== 'host' || !ws.sala) return;
@@ -184,6 +279,9 @@ export function iniciar({ porta = Number(process.env.PORT) || 8090, origens = pr
     for (const ws of wss.clients) {
       if (agora - ws.ultimo > T.morto) { ws.terminate(); continue; }
       if (pingar && ws.readyState === 1) ws.ping();
+    }
+    for (const [ip, e] of ips) {
+      if (e.conexoes <= 0 && agora >= e.bloqueadoAte && !recente(e.novas, 60e3, agora) && !recente(e.falhas, L.janelaFalhas, agora) && !recente(e.criadas, L.janelaCriadas, agora)) ips.delete(ip);
     }
     for (const [codigo, s] of salas) {
       if (agora - s.criada > T.sala || (!s.host && agora - s.hostSaiu > T.host)) { fecharSala(codigo); continue; }

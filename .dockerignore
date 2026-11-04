@@ -6,3 +6,8 @@ README.md
 .dockerignore
 **/.DS_Store
 servidor
+Dockerfile
+nginx.conf
+.claude
+node_modules
+src/radio/teste.html
