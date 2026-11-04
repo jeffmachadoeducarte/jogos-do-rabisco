@@ -541,7 +541,7 @@ export function criarMissoes(ctx) {
         carona = v; v.g.add(n.g); const a = v.g.userData.carona; n.g.position.set(a.x, a.y - 0.3, a.z + 0.05); n.g.rotation.set(0, 0, 0); n.g.scale.setScalar(0.78 / (v.g.scale.x || 1));
         sons.pisao(); n.m.acenar(2); dizer(nomeDe(E.passageiro), E.falaCarona ?? "Obrigado pela carona! Vamos para o hospital. 🏥", 3000); if (E.vozCarona) falar(E.vozCarona);
       } else if (!carona && v && !v.g.userData.carona && Math.hypot(v.pos.x - n.g.position.x, v.pos.z - n.g.position.z) < 6) {
-        aviso -= dt; if (aviso <= 0) { aviso = 5; dizer(nomeDe(E.passageiro), E.semBanco ?? "Aqui não cabe eu! Chame um carro no Rabifone. 📱"); }
+        aviso -= dt; if (aviso <= 0) { aviso = 5; dizer(nomeDe(E.passageiro), E.semBanco ?? "Aqui não cabe eu! Chame um carro no Rabisfone. 📱"); }
       }
       if (carona) {
         const dest = npcDe(ativa, E.ate), [dx2, dz2] = npcPos(dest);
@@ -762,7 +762,7 @@ export function criarMissoes(ctx) {
             setTimeout(() => dizer(E.titulo ?? "Corrida dos números", `1, 2, 3, 4, 5! Você fez a volta em ${seg} segundos. 🏁`, 3600), 5300);
             return;
           }
-        } else if (!v && est.prox === 0 && Math.hypot(p.x - b.x, p.z - b.z) < (E.aPe ? 30 : 9)) avisar(nomeDe(E.ate), E.aPe ?? "A corrida é de carro! Chame um carro no Rabifone 📱 e passe por baixo da bandeira.", E.vozAPe ?? "rp-corrida-pe");
+        } else if (!v && est.prox === 0 && Math.hypot(p.x - b.x, p.z - b.z) < (E.aPe ? 30 : 9)) avisar(nomeDe(E.ate), E.aPe ?? "A corrida é de carro! Chame um carro no Rabisfone 📱 e passe por baixo da bandeira.", E.vozAPe ?? "rp-corrida-pe");
         else if (v && E.veiculos && !E.veiculos.includes(v.tipo) && est.prox === 0) avisar(nomeDe(E.ate), E.aPe, E.vozAPe, 8);
       }
     }

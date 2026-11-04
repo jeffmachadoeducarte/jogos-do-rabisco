@@ -113,7 +113,7 @@ const andar = async (t, m, iy = 1) => {
 
   // ---- veículo: carro e moto
   await t.ev("teste.ir(0, 20); teste.olhar(0)"); await espera(500);
-  ok((await t.ev("teste.garagem('carro')")) != null, "carro chamado pelo Rabifone");
+  ok((await t.ev("teste.garagem('carro')")) != null, "carro chamado pelo Rabisfone");
   await t.ev("teste.entrar(teste.veiculos.indexOf(teste.garagemAtual))"); await espera(900);
   const carro = await t.ev(`({ modo: teste.modo, naCarona: ${PET}.naCarona, vis: ${PET}.visivel })`);
   ok(carro.modo === "veiculo" && carro.naCarona === "carro" && carro.vis, `no carro o bichinho vai sentado (${JSON.stringify(carro)})`);

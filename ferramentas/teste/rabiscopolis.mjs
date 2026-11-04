@@ -1,5 +1,5 @@
 // Rabiscolândia (Fatias 1 a 5): carrega sem erro, escolhe casa (e guarda), dirige sem atravessar sólidos, Garagem do
-// Rabifone, noite com janelas acesas, lojas parceiras, controles de toque e celular sozinho sem pedir controle/QR.
+// Rabisfone, noite com janelas acesas, lojas parceiras, controles de toque e celular sozinho sem pedir controle/QR.
 // Tira as fotos em .claude/tmp/rabiscopolis/.
 // Uso: python3 -m http.server 8097 &  node --experimental-websocket ferramentas/teste/rabiscopolis.mjs [http://localhost:8097]
 import { mkdirSync } from "node:fs";
@@ -313,7 +313,7 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   if (so) return;
   const salvo = await ev("teste.salvo");
   ok(salvo.missoesFeitas.length === M.length && salvo.selos.length === M.length, `${M.length} missões feitas e ${M.length} selos guardados (${salvo.missoesFeitas.length}/${salvo.selos.length})`);
-  // Passaporte no Rabifone
+  // Passaporte no Rabisfone
   await ev("teste.ir(0, 33); teste.fone.abrir()"); await espera(300);
   await ev("[...document.querySelectorAll('.rf-app')].find((b) => b.textContent.includes('Passaporte')).click()"); await espera(400);
   const pas = await ev("({ n: document.querySelectorAll('.rf-item-missao').length, selos: document.querySelectorAll('.rf-selo.feito').length, txt: document.querySelector('.rf-tela p')?.textContent })");
@@ -430,14 +430,14 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   await espera(1800);
   await t.ev("teste.volante(null)");
   await t.foto(`${FOTOS}carro-na-avenida.png`);
-  // (d) Garagem pelo Rabifone (pelo menu de verdade: abre, app Garagem, Carro laranja)
+  // (d) Garagem pelo Rabisfone (pelo menu de verdade: abre, app Garagem, Carro rosa)
   await t.ev("teste.sair(); teste.ir(4, 33); teste.olhar(Math.PI)");
   await espera(400);
   await t.ev("teste.fone.abrir('garagem')");
   await espera(400);
   await t.foto(`${FOTOS}rabifone-garagem.png`);
   const nAntes = await t.ev("teste.veiculos.length");
-  await t.ev("[...document.querySelectorAll('.rf-item')].find((b) => /laranja/.test(b.textContent)).click()");
+  await t.ev("[...document.querySelectorAll('.rf-item')].find((b) => /Carro rosa/.test(b.textContent)).click()");
   await espera(400);
   const dist = await t.ev("(() => { const v = teste.veiculos.at(-1); return Math.hypot(v.pos.x - teste.j.pos.x, v.pos.z - teste.j.pos.z); })()");
   ok(await t.ev("teste.veiculos.length") === nAntes + 1 && dist < 6, `(d) app Garagem criou o veículo a ${dist.toFixed(1)} m do Rabisco`);

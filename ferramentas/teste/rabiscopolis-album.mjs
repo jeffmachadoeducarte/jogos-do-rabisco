@@ -1,4 +1,4 @@
-// Rabiscolândia: o Álbum de figurinhas (app "Álbum" do Rabifone). Confere, num aparelho novo (perfil do Chrome vazio):
+// Rabiscolândia: o Álbum de figurinhas (app "Álbum" do Rabisfone). Confere, num aparelho novo (perfil do Chrome vazio):
 //  - visitar o lugar ou a loja do parceiro dá a figurinha; concluir missão dá a do versículo e a de quem pediu; abrir o baú do dia dá uma surpresa;
 //  - nada duplica (repetir não muda a contagem nem paga bônus de novo);
 //  - completar uma página rende 30 Rabiscoins uma vez só, e a contagem "x de y" aparece no app;
@@ -117,7 +117,7 @@ const SALDO = "teste.Rabiscoins.saldo()";
   await t.foto(`${OUT}8-amigos-pessoas-tv.png`);
   await t.ev("teste.fone.fechar()");
 
-  // ---- o app no Rabifone: contagem "x de y" e os @
+  // ---- o app no Rabisfone: contagem "x de y" e os @
   await t.ev("teste.fone.abrir('album')"); await espera(600);
   const resumo = await t.ev("document.querySelector('.alb-resumo')?.textContent");
   const total = await t.ev(`teste.album.album.total()`);

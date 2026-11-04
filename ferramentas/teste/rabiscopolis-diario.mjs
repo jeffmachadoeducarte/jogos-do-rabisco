@@ -4,9 +4,9 @@
 //  - não paga 2 vezes no mesmo dia (nem recarregando); a sequência de 7 dias rende 10, 12, 14, 16, 18, 20 e 40 (bônus) e recomeça;
 //  - faltar 1 dia só volta a sequência para o dia 1 (as moedas continuam); relógio voltando no tempo não dá baú nem extra;
 //  - a Missão do dia muda com a data, nunca repete a do dia anterior, é das missões que dá para fazer e paga +15 só na
-//    primeira conclusão do dia (repetir rende só o normal); a estrela ⭐ aparece no marcador e no Rabifone;
+//    primeira conclusão do dia (repetir rende só o normal); a estrela ⭐ aparece no marcador e no Rabisfone;
 //  - a anfitriã avisa do presente na primeira entrada do dia (depois da fala de boas-vindas, sem cortar) e não repete;
-//  - tudo continua depois de recarregar; o calendário de 7 dias no Rabifone; chamadas de desenho (TV ≤ 250, celular ≤ 180)
+//  - tudo continua depois de recarregar; o calendário de 7 dias no Rabisfone; chamadas de desenho (TV ≤ 250, celular ≤ 180)
 //    na praça e onde o baú aparece; sem erro de console.
 // Uso: node --experimental-websocket ferramentas/teste/rabiscopolis-diario.mjs <http://localhost:porta> [pasta das fotos]
 import { mkdirSync } from "node:fs";
@@ -71,7 +71,7 @@ let mdDia0 = null;
   await t.ev("teste.ir(0, 33); teste.olhar(Math.PI)"); await espera(900);
   ok(await t.ev("teste.bau.visivel"), "de onde a criança começa (largada), o baú está à vista");
   await t.ev("teste.fone.abrir()"); await espera(400);
-  ok(await t.ev("Boolean(document.querySelector('.rabifone .rf-bolinha'))"), "no Rabifone, o app Presente tem a bolinha de presente esperando");
+  ok(await t.ev("Boolean(document.querySelector('.rabifone .rf-bolinha'))"), "no Rabisfone, o app Presente tem a bolinha de presente esperando");
   await t.ev("teste.fone.abrir('presente')"); await espera(500);
   ok(await t.ev("document.querySelectorAll('.rf-dias .rf-dia').length === 7 && document.querySelector('.rf-dia.hoje')?.dataset.dia === '1'"), "o calendário tem 7 dias e hoje é o dia 1");
   await t.foto(`${OUT}rabifone-presente-dia1.png`);
@@ -172,7 +172,7 @@ let mdDia0 = null;
   s = await t.ev(SALDO);
   await t.ev(`teste.missoes.concluirParaTeste("${md}")`);
   ok((await t.ev(SALDO)) - s === 5, "repetir no mesmo dia rende só o normal (5), sem extra");
-  ok((await t.ev("teste.presente")).missao.feita, "o Rabifone mostra a Missão do dia como feita hoje");
+  ok((await t.ev("teste.presente")).missao.feita, "o Rabisfone mostra a Missão do dia como feita hoje");
   const feitas2 = await t.ev("teste.missoes.feitas"), outra = cand.find((id) => id !== md && !feitas2.includes(id)) ?? cand.find((id) => id !== md);
   s = await t.ev(SALDO);
   await t.ev(`teste.missoes.concluirParaTeste("${outra}")`);

@@ -650,7 +650,7 @@ export const MISSOES = [
     },
     pedido: "Rabisco, os uniformes novos da Educarte ficaram prontos na Bella Company! Pegue as camisetas e os agasalhos e leve para a Diretora Carina, na Educarte Kids I.",
     etapas: [
-      { tipo: "pegar", itens: [{ id: "camisetas", nome: "as camisetas", emoji: "👕", x: 212, z: 57.5 }, { id: "agasalhos", nome: "os agasalhos", emoji: "🧥", x: 207.5, z: 57.5 }], fala: "Uniformes prontos! A Educarte Kids I fica do outro lado da cidade: chame um carro no Rabifone.", voz: "rp-m-uniformesCarina-pegou" },
+      { tipo: "pegar", itens: [{ id: "camisetas", nome: "as camisetas", emoji: "👕", x: 212, z: 57.5 }, { id: "agasalhos", nome: "os agasalhos", emoji: "🧥", x: 207.5, z: 57.5 }], fala: "Uniformes prontos! A Educarte Kids I fica do outro lado da cidade: chame um carro no Rabisfone.", voz: "rp-m-uniformesCarina-pegou" },
       { tipo: "levar", ate: "carina", icone: "👕" },
     ],
     fim: "Os uniformes chegaram, e a Diretora Carina ficou muito feliz. Cuidar de cada criança é mostrar o amor de Deus.",

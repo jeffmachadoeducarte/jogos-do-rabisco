@@ -1,5 +1,5 @@
 // Rabiscolândia: o Presente do dia (um baú por dia) e a Missão do dia. Sem DOM e sem three.js (dá para testar em node):
-// o baú de blocos fica em diario-bau.js e a tela de 7 dias no Rabifone (rabifone.js).
+// o baú de blocos fica em diario-bau.js e a tela de 7 dias no Rabisfone (rabifone.js).
 //
 // O dia é a data LOCAL do aparelho ("2026-11-03"). Tudo fica no salvamento da Rabiscolândia (salvar.js), em salvo.diario:
 //   { bau: dia do último baú aberto, seq: 1..7 (em que dia da sequência ele foi), maior: o dia mais adiante já visto,

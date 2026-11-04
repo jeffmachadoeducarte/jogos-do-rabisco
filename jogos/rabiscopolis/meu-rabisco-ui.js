@@ -2,7 +2,7 @@
 // calça e óculos de sol) com as opções de cada uma e, se a família não cadastrou o nome da criança, o campo opcional
 // "Como você se chama?" (até 12 letras, vira a plaquinha em cima do Rabisco). Toda escolha vale na hora (no Rabisco da tela
 // e no da cidade) e fica guardada. Funciona no toque, no mouse, no teclado (setas, Enter, Esc) e no controle (direcional,
-// A confirma, B volta), como o Rabifone: os itens têm data-foco.
+// A confirma, B volta), como o Rabisfone: os itens têm data-foco.
 //
 //   const mr = criarMeuRabisco(caixa, { escolha(), possui(slot, id), nomeCadastro(), nomeSalvo(), aoEscolher(slot, id), aoNome(texto), aoAbrir(), aoFechar() });
 // (possui: peças do Ateliê já compradas aparecem junto com as de graça; a camiseta e o chapéu ficam no Ateliê)

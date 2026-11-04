@@ -2,7 +2,7 @@
 // pedestal; do outro o saldo de Rabiscoins, as abas (camisetas, chapéus, óculos, mochilas e pinturas) e as peças.
 // Andar pelas peças já PROVA no Rabisco da vitrine; o botão grande de baixo compra, veste ou tira. Nada é comprado sem
 // apertar esse botão. Funciona no toque, no mouse, no teclado (setas, Enter, Esc) e no controle (direcional, A, B):
-// os itens têm data-foco, como o Rabifone e o Meu Rabisco.
+// os itens têm data-foco, como o Rabisfone e o Meu Rabisco.
 //
 //   const loja = criarAtelie(caixa, { escolha(), pinturas(), saldo(), vestir(slot, id), pintar(veiculo, id|null),
 //     comprar(item) → resultado de rabiscoins.comprar, aoAbrir(), aoFechar(), falar(chave), confete() });
@@ -112,7 +112,7 @@ export function criarAtelie(onde, cb) {
     } else if (comprado(it)) { acaoEl.innerHTML = it.veiculo ? "🎨 Usar esta pintura" : "👕 Vestir"; acaoEl.classList.add("vestir"); }
     else if (s >= it.preco) { acaoEl.innerHTML = `Trocar por ${moeda(it.preco)}`; acaoEl.classList.add("trocar"); }
     else { acaoEl.innerHTML = `Faltam ${moeda(it.preco - s)}`; acaoEl.classList.add("falta"); }
-    dicaEl.textContent = comprado(it) || s >= it.preco ? (it.veiculo ? "A pintura vale no veículo chamado pelo Rabifone 📱" : "Arraste o Rabisco para ver de todos os lados") : "Ajude os amigos nas missões para ganhar Rabiscoins!";
+    dicaEl.textContent = comprado(it) || s >= it.preco ? (it.veiculo ? "A pintura vale no veículo chamado pelo Rabisfone 📱" : "Arraste o Rabisco para ver de todos os lados") : "Ajude os amigos nas missões para ganhar Rabiscoins!";
   }
   const nomeDoBichinho = (id) => cb.bichinho?.()?.nomes?.[id] ?? "";
   const nomeEl = raiz.querySelector(".atl-nomepet"), campoEl = raiz.querySelector(".atl-campo");

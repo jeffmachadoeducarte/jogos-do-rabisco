@@ -81,11 +81,11 @@ try {
       ok(pe[0] === null && pe[1] < 270, `${tipo}: encostado na areia, o Rabisco desce em terra (z = ${pe[1].toFixed(1)})`);
       await ev(`teste.posVeiculo(${i}, ${tipo === "jetski" ? 33.6 : 21.5}, ${tipo === "jetski" ? 284 : 289}, 0)`); // volta para o píer
     }
-    // Garagem do Rabifone: na areia chama, longe do mar não
+    // Garagem do Rabisfone: na areia chama, longe do mar não
     await ev("teste.ir(-80, 266)"); await espera(400);
-    ok((await ev("teste.garagem('jetski')")) != null, "Rabifone: chama o jet ski na beira do mar");
+    ok((await ev("teste.garagem('jetski')")) != null, "Rabisfone: chama o jet ski na beira do mar");
     await ev("teste.ir(0, 33)"); await espera(400);
-    ok((await ev("teste.garagem('lancha')")) == null, "Rabifone: longe do mar, a lancha não vem (só anda no mar)");
+    ok((await ev("teste.garagem('lancha')")) == null, "Rabisfone: longe do mar, a lancha não vem (só anda no mar)");
 
     // ---- roda-gigante
     await ev("teste.ir(0, 370.5)"); await espera(800);

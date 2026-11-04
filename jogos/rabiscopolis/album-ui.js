@@ -1,10 +1,10 @@
-// Rabiscolândia: o Álbum de figurinhas na tela. O app "Álbum" do Rabifone (páginas, contagem "x de y", figurinha em tamanho
+// Rabiscolândia: o Álbum de figurinhas na tela. O app "Álbum" do Rabisfone (páginas, contagem "x de y", figurinha em tamanho
 // grande), o "cartão voando" quando chega figurinha nova (com som 8-bit original) e as falas da anfitriã, que são só duas:
 // na primeira figurinha de todas e ao completar uma página. Parceiros e pessoas de verdade não falam.
 // O estado fica em album.js; os desenhos, em album-arte.js. Tudo aqui é DOM (não entra na conta de chamadas de desenho do 3D).
 //
 //   const U = criarAlbumUI({ caixa, salvo, salvar, ganhar, falar, aguardarFim, contador: () => contadorMoedas, confete, hoje });
-//   U.montar(tela, lista, { botao }) (chamado pelo Rabifone)      U.visitou(lugarId) · U.missao(id) · U.bau()      U.album (o estado)
+//   U.montar(tela, lista, { botao }) (chamado pelo Rabisfone)      U.visitou(lugarId) · U.missao(id) · U.bau()      U.album (o estado)
 import { criarAlbum } from "./album.js";
 import { PAGINAS, FIGURINHAS, RARIDADES, BONUS_PAGINA } from "./album-dados.js";
 import { desenharFigurinha, TAMANHO, usarRetratos } from "./album-arte.js";
@@ -83,7 +83,7 @@ export function criarAlbumUI({ caixa, salvo, salvar, ganhar, falar, aguardarFim,
     return c;
   };
 
-  // ---------------------------------------------------------------- o app do Rabifone
+  // ---------------------------------------------------------------- o app do Rabisfone
   let aba = "parceiros";
   function montar(tela, lista, { botao }) {
     album.recuperar(); // save antigo: missão já concluída antes da figurinha da pessoa existir

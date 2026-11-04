@@ -223,7 +223,7 @@ export function criarJogador2(ctx) {
         if (ctxAcao) ctxAcao.fazer(); else { acena = 1.4; modelo.acenar(2); }
       }
     }
-    // longe demais (o Rabisco entrou numa casa, num lugar ou foi chamado pelo Rabifone): aparece do lado dele
+    // longe demais (o Rabisco entrou numa casa, num lugar ou foi chamado pelo Rabisfone): aparece do lado dele
     if (Math.hypot(st.pos.x - j.pos.x, st.pos.z - j.pos.z) > RAIO_J2 + 5) colocarPerto();
     ent.puloNovo = ent.acaoNova = false;
     modelo.grupo.position.copy(st.pos);

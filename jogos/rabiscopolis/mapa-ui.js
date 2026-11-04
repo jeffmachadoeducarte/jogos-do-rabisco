@@ -414,7 +414,7 @@ export function criarMapaUI(onde, cb) {
     tocar: (sx, sy) => tocarEm(sx, sy),
     voltar() { if (sel) { const id = sel.id; sel = null; mostrarCartao(); marcarLista(); pedirDesenho(); focar(lista.querySelector(`[data-id="${id}"]`) ?? lista.querySelector(".mp-item")); } else api.fechar(); },
     confirmar() { if (foco === busca) { busca.focus(); return; } foco?.click(); },
-    // anda o foco pelo item mais perto na direção pedida (como no Rabifone); na lista, mostra o lugar no mapa
+    // anda o foco pelo item mais perto na direção pedida (como no Rabisfone); na lista, mostra o lugar no mapa
     navegar(dx, dy) {
       const els = focaveis();
       if (!foco || !els.includes(foco)) { focar(lista.querySelector(".mp-item") ?? els[0]); return; }

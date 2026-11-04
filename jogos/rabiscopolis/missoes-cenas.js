@@ -495,7 +495,7 @@ function cenaKids(ctx) {
       const v = ctx.veiculoAtual?.();
       ultimoP = { x: p.x, z: p.z };
       aviso -= dt; marca.scale.setScalar(1 + Math.sin(t * 4) * 0.08);
-      if (bus && !ctx.veiculos?.().includes(bus)) { // o ônibus foi embora (chamou outro veículo no Rabifone): todo mundo desce e espera
+      if (bus && !ctx.veiculos?.().includes(bus)) { // o ônibus foi embora (chamou outro veículo no Rabisfone): todo mundo desce e espera
         kids.forEach((k) => { if (k.modo === "onibus" || k.modo === "indo") { gk.add(k.m.grupo); k.modo = "seguir"; k.x = p.x + 1; k.z = p.z + 1; } });
         bus = null; if (["embarcando", "ida", "parado", "embarcando2", "volta"].includes(fase)) fase = fase === "ida" || fase === "embarcando" || fase === "parado" ? "escola" : "voltar";
       }
@@ -535,7 +535,7 @@ function cenaKids(ctx) {
     },
     texto() {
       return { escola: "Vá até a Educarte Kids II e chame o ônibus", embarcando: "As crianças estão subindo no ônibus…", ida: "Dirija o ônibus até o Sítio Floresça", parado: "Desça do ônibus", frutas: `Colha frutas com as crianças: ${colhidas.size} de ${TREES_KIDS.length}`,
-        balanco: "Hora do balanço!", balancoPronto: `Empurre o balanço de pneu: ${balancou} de 2`, voltar: bus ? "Leve as crianças de volta para o ônibus" : "Chame o ônibus da escola no Rabifone", embarcando2: "As crianças estão subindo no ônibus…", volta: "Leve as crianças de volta para a Educarte Kids II", chegou: "As crianças chegaram!", fim: "" }[fase] ?? "";
+        balanco: "Hora do balanço!", balancoPronto: `Empurre o balanço de pneu: ${balancou} de 2`, voltar: bus ? "Leve as crianças de volta para o ônibus" : "Chame o ônibus da escola no Rabisfone", embarcando2: "As crianças estão subindo no ônibus…", volta: "Leve as crianças de volta para a Educarte Kids II", chegou: "As crianças chegaram!", fim: "" }[fase] ?? "";
     },
     info() { return { fase, bus: bus ? { x: bus.pos.x, z: bus.pos.z, ang: bus.ang, i: ctx.veiculos?.().indexOf(bus) } : null, kids: kids.map((k) => ({ modo: k.modo, x: k.x, z: k.z })), colhidas: [...colhidas], balancou, parada, escola: escola() }; },
     fim() {

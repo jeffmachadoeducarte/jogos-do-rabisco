@@ -6,7 +6,7 @@ import { writeFileSync } from "node:fs";
 // rp-casa-pre + nome da criança + rp-casa-pos (falarNome); sem nome no banco, vale rp-casa inteira
 export const FALAS_PT = {
   "rp-titulo": "Rabiscolândia! Vida na cidade com o Rabisco!",
-  "rp-intro": "Que cidade grande! Escolha uma casa no Bairro das Casas e use o Rabifone para chamar um carro.",
+  "rp-intro": "Que cidade grande! Escolha uma casa no Bairro das Casas e use o Rabisfone para chamar um carro.",
   "rp-casa": "Agora esta é a sua casa! Que lar bonito!",
   "rp-casa-pre": "Agora esta é a casa de",
   "rp-casa-pos": "Que lar bonito!",
@@ -55,7 +55,7 @@ export const FALAS_PT = {
   // missões que vieram da Rabiscópolis (o resto reaproveita as falas cid-* já gravadas)
   "rp-bella-entrar": "Bem-vindo à Bella Cat! Chegue pertinho dos pedestais para ver os laços, colares e tiaras.",
   "rp-rise-entrar": "Bem-vindo à Academia Rise Up! Aqui a gente cuida do corpo que Deus nos deu.",
-  "rp-corrida-pe": "A corrida é de carro! Chame um carro no Rabifone e passe por baixo da bandeira.",
+  "rp-corrida-pe": "A corrida é de carro! Chame um carro no Rabisfone e passe por baixo da bandeira.",
   "rp-remedio-heli": "Que bom que você veio! Mas a doutora pediu para vir de helicóptero: pouse aqui pertinho.",
   // Mar Azul e Ilha da Alegria: jet ski, lancha e roda-gigante
   "rp-mar": "Partiu, Rabisco! Para a frente acelera, para trás freia. Encoste na areia, no píer ou na ilha para descer.",
@@ -124,7 +124,7 @@ Object.assign(FALAS_PT, {
   "rp-atelie-comprou": "Que escolha linda! Agora é sua.",
   "rp-atelie-vestiu": "Ficou muito bonito!",
   "rp-atelie-falta": "Ainda faltam algumas Rabiscoins. Ajude os amigos nas missões para juntar mais!",
-  "rp-atelie-pintura": "Pintura nova! Chame o veículo pelo Rabifone para passear com ela.",
+  "rp-atelie-pintura": "Pintura nova! Chame o veículo pelo Rabisfone para passear com ela.",
   "rp-bichinho-primeiro": "Que fofura! Você ganhou o seu primeiro bichinho! Ele vai passear com o Rabisco e, se você tocar nele, faz um truque. Que tal dar um nome a ele?",
 });
 // Presente do dia (o baú de cada dia: diario.js); quem fala é a anfitriã
@@ -138,7 +138,7 @@ const { FALAS_CASA } = await import(`data:text/javascript,${encodeURIComponent(r
 Object.assign(FALAS_PT, FALAS_CASA);
 // Álbum de figurinhas (album-ui.js): a anfitriã só fala na primeira figurinha e ao completar uma página
 Object.assign(FALAS_PT, {
-  "rp-album-primeira": "Sua primeira figurinha! Todas ficam guardadas no Álbum, no Rabifone.",
+  "rp-album-primeira": "Sua primeira figurinha! Todas ficam guardadas no Álbum, no Rabisfone.",
   "rp-album-pagina-parceiros": "Página completa! Você conheceu todos os parceiros da cidade. Ganhou Rabiscoins de bônus!",
   "rp-album-pagina-amigos": "Página completa! Você conheceu todos os amigos da cidade. Ganhou Rabiscoins de bônus!",
   "rp-album-pagina-versiculos": "Página completa! Você juntou todos os versículos. Ganhou Rabiscoins de bônus!",

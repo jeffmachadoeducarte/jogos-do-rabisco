@@ -20,7 +20,9 @@ export async function abrir(url, { mobile = false, largura = 1280, altura = 800,
     "--use-mock-keychain", "--password-store=basic",
     "--autoplay-policy=no-user-gesture-required", ...(process.env.CHROME_ARGS ? [process.env.CHROME_ARGS] : []), "about:blank"], { stdio: "ignore" });
   let alvo;
-  for (let i = 0; i < 60 && !alvo; i++) { await espera(250); try { alvo = (await (await fetch(`http://127.0.0.1:${p}/json`)).json()).find((t) => t.type === "page"); } catch { /* subindo */ } }
+  // até 90 s: com a máquina carregada o Chrome demora a subir; se não subir, mata o processo (nada de Chrome sobrando)
+  for (let i = 0; i < 360 && !alvo; i++) { await espera(250); try { alvo = (await (await fetch(`http://127.0.0.1:${p}/json`)).json()).find((t) => t.type === "page"); } catch { /* subindo */ } }
+  if (!alvo) { chrome.kill("SIGKILL"); rmSync(perfil, { recursive: true, force: true }); throw new Error(`o Chrome não subiu na porta ${p}`); }
   const ws = new WebSocket(alvo.webSocketDebuggerUrl);
   await new Promise((r) => ws.addEventListener("open", r));
   let id = 0; const pend = {}; const erros = [];

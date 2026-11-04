@@ -1,6 +1,6 @@
 // Rabiscolândia: Vida na Cidade. A criança vive o dia do Rabisco numa cidade grande e colorida: escolhe uma casa no
 // Bairro das Casas (a placa ganha o nome dela), passeia a pé ou dirigindo (carro aberto ou ônibus da escola, que
-// aparecem pelo Rabifone), conhece a Igreja Reviver, a escola, o hospital, os bombeiros, o comércio com as lojas
+// aparecem pelo Rabisfone), conhece a Igreja Reviver, a escola, o hospital, os bombeiros, o comércio com as lojas
 // parceiras, o parque com o lago e a Fazendinha, e troca o dia pela noite. Sem tempo, sem perder, sem dinheiro.
 // Os moradores são amigos do estojo (personagens.js). Tudo o que é guardado fica no aparelho (salvar.js).
 //
@@ -70,7 +70,7 @@ const CONTROLES = [
   { id: "pular", nome: "Pular (no carro: buzina)", teclas: ["Space"], botoes: [0, 1], controle: "pulo" },
   { id: "acao", nome: "Ação (entrar, sair, morar aqui)", teclas: ["KeyF", "Enter"], botoes: [2, 3], controle: "acao" },
   { id: "descer", nome: "Helicóptero: descer (pulo sobe)", teclas: ["ShiftLeft", "KeyZ"] },
-  { id: "fone", nome: "Rabifone", teclas: ["Tab", "KeyC"], botoes: [8], controle: "select" },
+  { id: "fone", nome: "Rabisfone", teclas: ["Tab", "KeyC"], botoes: [8], controle: "select" },
   { id: "girarE", nome: "Girar a câmera ⟲", teclas: ["KeyQ"] },
   { id: "girarD", nome: "Girar a câmera ⟳", teclas: ["KeyE"] },
   { id: "mapa", nome: "Mapa (mostrar / esconder)", teclas: ["KeyM"], botoes: [10], controle: "mapa" },
@@ -95,9 +95,9 @@ const jogo = criarCasca({
   menuNoJogo: false,
   teclado: false,
   dica: {
-    teclado: "WASD ou setas andam · F faz a ação · Tab abre o Rabifone · M mostra o mapa · Q/E giram a câmera · Espaço pula",
-    toque: "Arraste à esquerda para andar · à direita para olhar · ✋ faz a ação · 📱 abre o Rabifone · ⚙️ mostra o mapa",
-    controle: "Alavanca anda · X faz a ação · Select abre o Rabifone · L3 mostra o mapa · A pula · Start pausa",
+    teclado: "WASD ou setas andam · F faz a ação · Tab abre o Rabisfone · M mostra o mapa · Q/E giram a câmera · Espaço pula",
+    toque: "Arraste à esquerda para andar · à direita para olhar · ✋ faz a ação · 📱 abre o Rabisfone · ⚙️ mostra o mapa",
+    controle: "Alavanca anda · X faz a ação · Select abre o Rabisfone · L3 mostra o mapa · A pula · Start pausa",
   },
   falas: { titulo: "rp-titulo", vitoria: null },
   controles: CONTROLES,
@@ -257,7 +257,7 @@ function garantirRadio() {
 let r3, cena, cam, ceu, mundo, fis, camera, rabisco, relogio, qualidade, vivo = false;
 let hud, minimapa, mapaGrande, mapaUI = null, guia = null, balao, bussola, caixa;
 const j = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), noChao: true, coyote: 0, buffer: 0, dir: 0 };
-const veiculos = []; let garagem = null; // veículo chamado pelo Rabifone (só um por vez)
+const veiculos = []; let garagem = null; // veículo chamado pelo Rabisfone (só um por vez)
 let transito = [], moradores = [], vovo = null, missoes = null, profissoes = null, j2 = null, patioJE = null;
 let desafios = null; // Desafios de obstáculos (desafios.js): Pula-telhados, Argolas do helicóptero e Corrida de barco
 let natal = null; // Natal na cidade (natal.js: de 1º/12 a 6/1, ou ?natal=1): luzes, árvore, presépio e música da praça
@@ -413,7 +413,7 @@ function iniciar() {
     aoAbrir: () => { teclas.clear(); toque?.zerar(); },
   });
   mapaGrande = mapaUI.raiz;
-  const btnFone = el("button", { class: "btn-fone-rp", "aria-label": "Abrir o Rabifone", html: "📱 <span>Rabifone</span>" });
+  const btnFone = el("button", { class: "btn-fone-rp", "aria-label": "Abrir o Rabisfone", html: "📱 <span>Rabisfone</span>" });
   btnFone.addEventListener("click", () => fone.abrir());
   const btnAcao = el("button", { class: "acao-rp", hidden: "", "aria-label": "Ação" });
   btnAcao.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); pad.acaoNova = true; });
@@ -443,21 +443,21 @@ function iniciar() {
     aoMeuRabisco: () => meuRb.abrir(),
     // Ateliê: o saldo, o caminho até a loja e a loja aberta de qualquer lugar (bom para a TV e o controle)
     saldo: () => saldoRabiscoins(),
-    aoAtelie: (acao) => { if (acao === "abrir") abrirAtelie(); else { const l = mundo.lugares.find((q) => q.id === "atelie"); alvoMapa = { x: l.x, z: l.z, emoji: "🎨" }; dizer("Rabifone", `Siga a setinha até o ${NOME_LOJA}, ao lado da praça!`, 3000); } },
+    aoAtelie: (acao) => { if (acao === "abrir") abrirAtelie(); else { const l = mundo.lugares.find((q) => q.id === "atelie"); alvoMapa = { x: l.x, z: l.z, emoji: "🎨" }; dizer("Rabisfone", `Siga a setinha até o ${NOME_LOJA}, ao lado da praça!`, 3000); } },
     // carro com a pintura do Ateliê: aparece no alto da Garagem
     veiculosExtra: () => { const p = pinturaDe(salvo, "carro"); return p ? [{ tipo: "carro", cor: p.cor, nome: p.nome, emoji: "🎨" }] : []; },
     infoCasa: () => ({ tem: salvo.casa != null, nome: salvo.casa != null ? `Casa ${salvo.casa}` : "" }),
     coresCasa: () => CORES_PAREDE,
     // a Missão do dia vem primeiro, com a estrela (enquanto o extra de hoje não saiu)
     trabalho: () => profissoes.lista(),
-    aoTrabalho: (acao, id) => { if (acao === "comecar") profissoes.comecar(id); else if (acao === "terminar") profissoes.terminar(); else if (acao === "caminho") { const a = profissoes.caminhoBase(id); if (a) { alvoMapa = a; dizer("Rabifone", "Siga a setinha até o ponto de trabalho 💼!", 2800); } } },
+    aoTrabalho: (acao, id) => { if (acao === "comecar") profissoes.comecar(id); else if (acao === "terminar") profissoes.terminar(); else if (acao === "caminho") { const a = profissoes.caminhoBase(id); if (a) { alvoMapa = a; dizer("Rabisfone", "Siga a setinha até o ponto de trabalho 💼!", 2800); } } },
     missoes: () => { const dd = missaoDoDiaAgora(), extra = dd && !diario.extraPagoHoje() ? EXTRA_DIA : 0;
       const lista = missoes.MISSOES.map((m) => ({ id: m.id, titulo: m.titulo, icone: m.icone, tipo: m.tipo, feita: missoes.feitas.includes(m.id), doDia: m.id === dd ? extra : 0 }));
       return { lista: [...lista.filter((m) => m.doDia), ...lista.filter((m) => !m.doDia)], ativa: missoes.ativa }; },
     presente: () => infoPresente(),
     desafios: () => desafios?.lista() ?? [],
-    aoDesafio: (id) => { const d = desafios.lista().find((q) => q.id === id); alvoMapa = { x: d.x, z: d.z, emoji: d.icone }; dizer("Rabifone", `Siga a setinha até a bandeira: ${d.nome}!`, 3000); },
-    aoPresente: (acao) => { if (acao === "caminho" && bauDia?.estado === "fechado") { alvoMapa = { x: bauDia.pos.x, z: bauDia.pos.z, emoji: "🎁" }; dizer("Rabifone", "Siga a setinha até o presente do dia!", 2800); } },
+    aoDesafio: (id) => { const d = desafios.lista().find((q) => q.id === id); alvoMapa = { x: d.x, z: d.z, emoji: d.icone }; dizer("Rabisfone", `Siga a setinha até a bandeira: ${d.nome}!`, 3000); },
+    aoPresente: (acao) => { if (acao === "caminho" && bauDia?.estado === "fechado") { alvoMapa = { x: bauDia.pos.x, z: bauDia.pos.z, emoji: "🎁" }; dizer("Rabisfone", "Siga a setinha até o presente do dia!", 2800); } },
     aoMissao: (acao, id) => {
       if (acao === "largar") { missoes.largar(); dizer("Passaporte", "Tudo bem! Dá para voltar quando quiser.", 2400); return; }
       const o = missoes.ondePede(id); alvoMapa = { x: o.x, z: o.z, emoji: "❗" };
@@ -515,7 +515,7 @@ function iniciar() {
   vivo = true;
   posicionarCamera(1, 0);
   requestAnimationFrame(quadro);
-  setTimeout(() => { falar("rp-intro"); dizer("Rabiscolândia", salvo.casa != null ? "Bem-vindo de volta! Sua casa está esperando no Bairro das Casas." : "Que cidade grande! Escolha uma casa no Bairro das Casas e use o Rabifone 📱 para chamar um carro."); }, 700);
+  setTimeout(() => { falar("rp-intro"); dizer("Rabiscolândia", salvo.casa != null ? "Bem-vindo de volta! Sua casa está esperando no Bairro das Casas." : "Que cidade grande! Escolha uma casa no Bairro das Casas e use o Rabisfone 📱 para chamar um carro."); }, 700);
   // primeira entrada do dia com o presente esperando: a anfitriã avisa depois da fala de boas-vindas (sem cortar)
   if (diario.deveAvisar()) setTimeout(() => aguardarFim().then(() => setTimeout(() => avisarPresente(), 350)), 1900);
 }
@@ -653,7 +653,7 @@ function aplicarCasa() {
   for (const c of mundo.casas) {
     const minha = c.lote.numero === salvo.casa;
     c.placa.userData.definir(minha ? textoPlaca() : `Casa ${c.lote.numero}`, minha ? "#ffcc1f" : "#ec2e8c");
-    // cor das paredes: a escolhida no Rabifone (só a casa da criança); as outras ficam com a cor do lote
+    // cor das paredes: a escolhida no Rabisfone (só a casa da criança); as outras ficam com a cor do lote
     const cor = minha && typeof salvo.corCasa === "number" ? salvo.corCasa : c.lote.hex;
     if (c.grupo.userData.paredes.userData.cor !== cor) recolorirParedes(c.grupo.userData.paredes, cor);
   }
@@ -669,7 +669,7 @@ function trocarCorCasa(hex) {
   if (salvo.casa == null) return;
   salvo.corCasa = hex; salvar(salvo); aplicarCasa();
   falar("rp-casa-cor");
-  dizer("Rabifone", "Casa pintadinha de cor nova!", 2400);
+  dizer("Rabisfone", "Casa pintadinha de cor nova!", 2400);
 }
 function escurecer(cb) { fade.classList.add("ativo"); setTimeout(() => { cb(); setTimeout(() => fade.classList.remove("ativo"), 60); }, 260); }
 function trocarSolidosCasa(novos) {
@@ -1043,10 +1043,10 @@ function acionarEspecial(v) {
   else if (e === "agua") return; // o jato fica ligado enquanto segura
   else sons.buzina();
 }
-// Garagem do Rabifone: o veículo aparece do lado do Rabisco (num lugar livre a menos de 6 m)
+// Garagem do Rabisfone: o veículo aparece do lado do Rabisco (num lugar livre a menos de 6 m)
 function chamarVeiculo(tipo, cor) {
-  if (dentro) { dizer("Rabifone", "Saia do veículo para chamar outro."); return null; }
-  if (emCasa || emLugar) { dizer("Rabifone", "Saia para a rua para chamar um veículo: ele estaciona lá fora."); return null; }
+  if (dentro) { dizer("Rabisfone", "Saia do veículo para chamar outro."); return null; }
+  if (emCasa || emLugar) { dizer("Rabisfone", "Saia para a rua para chamar um veículo: ele estaciona lá fora."); return null; }
   if (garagem) { cena.remove(garagem.g, garagem.parado); veiculos.splice(veiculos.indexOf(garagem), 1); garagem = null; }
   // pintura do Ateliê: moto, barquinho e helicóptero saem na cor comprada (o carro pintado tem botão próprio na Garagem)
   let pint = tipo !== "carro" ? pinturaDe(salvo, tipo) : null;
@@ -1055,13 +1055,13 @@ function chamarVeiculo(tipo, cor) {
   const v = criarVeiculo(tipo, cor, null, pint);
   if (tipo === "barco") {
     const lago = [LAGO, LAGO2].find((l) => Math.hypot(l.x - j.pos.x, l.z - j.pos.z) < l.r + 14);
-    if (!lago) { dizer("Rabifone", "O barquinho só anda no lago: vá ao Parque do Lago ou à Praia!"); return null; }
+    if (!lago) { dizer("Rabisfone", "O barquinho só anda no lago: vá ao Parque do Lago ou à Praia!"); return null; }
     if (garagem) { cena.remove(garagem.g, garagem.parado); veiculos.splice(veiculos.indexOf(garagem), 1); }
     const a = Math.atan2(j.pos.x - lago.x, j.pos.z - lago.z), r = lago.r - 3;
     const vb = criarVeiculo("barco", cor, null, pint);
     vb.pos.set(lago.x + Math.sin(a) * r, 0.03, lago.z + Math.cos(a) * r); vb.ang = a + Math.PI / 2;
     animarVeiculo(vb, 0, 0); cena.add(vb.g, vb.parado); veiculos.push(vb); garagem = vb;
-    dizer("Rabifone", "O barquinho chegou na beira do lago! Chegue perto e aperte a ação.", 3000);
+    dizer("Rabisfone", "O barquinho chegou na beira do lago! Chegue perto e aperte a ação.", 3000);
     return vb;
   }
   if (tipo === "jetski" || tipo === "lancha") {
@@ -1071,11 +1071,11 @@ function chamarVeiculo(tipo, cor) {
       const x = j.pos.x + Math.sin(a) * r, z = j.pos.z + Math.cos(a) * r;
       if (!fis.veiculoBate(v, x, z, 0, veiculos.map((o) => ({ x: o.pos.x, z: o.pos.z, raio: o.comp })))) ponto = [x, z];
     }
-    if (!ponto) { dizer("Rabifone", "O jet ski e a lancha andam no mar: vá até a Praia do Mar Azul, o píer ou a ilha!"); return null; }
+    if (!ponto) { dizer("Rabisfone", "O jet ski e a lancha andam no mar: vá até a Praia do Mar Azul, o píer ou a ilha!"); return null; }
     v.pos.set(ponto[0], 0.03, ponto[1]); v.ang = 0;
     animarVeiculo(v, 0, 0); cena.add(v.g, v.parado); veiculos.push(v); garagem = v;
     sons.moeda?.(); falar("rp-garagem");
-    dizer("Rabifone", `${tipo === "jetski" ? "O jet ski" : "A lancha"} chegou na beira da água! Chegue perto e aperte a ação.`, 3200);
+    dizer("Rabisfone", `${tipo === "jetski" ? "O jet ski" : "A lancha"} chegou na beira da água! Chegue perto e aperte a ação.`, 3200);
     return v;
   }
   const R = tipo === "onibus" ? 4.6 : tipo === "heli" ? 5 : ["bombeiro", "reciclagem"].includes(tipo) ? 5 : 3.4, RMAX = tipo === "heli" ? 9.5 : ["bombeiro", "reciclagem"].includes(tipo) ? 8 : 5.9;
@@ -1085,7 +1085,7 @@ function chamarVeiculo(tipo, cor) {
     const livreAqui = tipo === "heli" ? fis.chaoHeli(x, z) < 0.5 && !fis.veiculoBate(v, x, z, j.dir, veiculos.map((o) => ({ x: o.pos.x, z: o.pos.z, raio: o.comp + 2 }))) : !fis.veiculoBate(v, x, z, j.dir, veiculos.map((o) => ({ x: o.pos.x, z: o.pos.z, raio: o.comp })));
     if (livreAqui) ponto = [x, z];
   }
-  if (!ponto) { dizer("Rabifone", "Aqui está muito apertado! Vá para um lugar mais aberto, como a rua."); return null; }
+  if (!ponto) { dizer("Rabisfone", "Aqui está muito apertado! Vá para um lugar mais aberto, como a rua."); return null; }
   v.pos.set(ponto[0], 0.03, ponto[1]); v.ang = j.dir;
   animarVeiculo(v, 0, 0);
   cena.add(v.g, v.parado);
@@ -1093,13 +1093,13 @@ function chamarVeiculo(tipo, cor) {
   garagem = v;
   sons.moeda?.();
   falar("rp-garagem");
-  dizer("Rabifone", tipo === "heli" ? "O helicóptero pousou do seu lado! Chegue perto e aperte a ação." : tipo === "onibus" ? "O ônibus da escola chegou! Entre e leve todo mundo para passear." : "Seu carro chegou! Chegue perto e aperte a ação para entrar.", 3600);
+  dizer("Rabisfone", tipo === "heli" ? "O helicóptero pousou do seu lado! Chegue perto e aperte a ação." : tipo === "onibus" ? "O ônibus da escola chegou! Entre e leve todo mundo para passear." : "Seu carro chegou! Chegue perto e aperte a ação para entrar.", 3600);
   return v;
 }
 function mudarHora(h) {
   ceu.hora(h);
   falar(h >= 18.5 || h < 6 ? "rp-noite" : "rp-dia");
-  dizer("Rabifone", h >= 19 || h < 6 ? "Boa noite! As janelas e os postes acenderam." : h >= 18 ? "Que pôr do sol bonito!" : "Bom dia, Rabiscolândia!", 2800);
+  dizer("Rabisfone", h >= 19 || h < 6 ? "Boa noite! As janelas e os postes acenderam." : h >= 18 ? "Que pôr do sol bonito!" : "Bom dia, Rabiscolândia!", 2800);
 }
 function irPara(x, z) { const [lx, lz] = fis.livre(x, z, 0.6); j.pos.set(lx, 0.07, lz); j.vel.set(0, 0, 0); posicionarCamera(1, 0); }
 

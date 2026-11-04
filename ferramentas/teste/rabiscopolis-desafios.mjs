@@ -225,7 +225,7 @@ await parte("pula", TV, async (t) => {
 await parte("heli", TV, async (t) => {
   await t.ev(OCULTA_UI);
   const iheli = await t.ev("teste.veiculos.findIndex((v) => v.tipo === 'heli')");
-  ok(iheli >= 0, "há helicóptero (o do Rabifone/Heliponto)");
+  ok(iheli >= 0, "há helicóptero (o do Rabisfone/Heliponto)");
   // a bandeira, o pórtico e a placa, vistos do Heliponto
   await t.ev(`teste.ir(${HELI.bandeira.x}, ${HELI.bandeira.z + 8}); teste.olhar(Math.PI)`); await espera(1500);
   await t.foto(`${FOTOS}heli-1-bandeira-e-placa.png`);
@@ -342,10 +342,10 @@ await (async () => {
     ok(ganhos["rabiscolandia:desafio:pula:bronze"] === 1 && ganhos["rabiscolandia:desafio:pula:prata"] === 1 && ganhos["rabiscolandia:desafio:pula:ouro"] === 1, `cada medalha foi paga uma vez só: ${JSON.stringify(ganhos)}`);
     const reg = await t.ev("teste.salvo.desafios.pula");
     ok(reg.top.map(Math.round).join() === "50,54,75", `recordes guardados (os 3 melhores): ${reg.top.map((x) => x.toFixed(1)).join(", ")}`);
-    // o Rabifone lista os desafios
+    // o Rabisfone lista os desafios
     await t.ev("teste.fone.abrir('desafios')"); await espera(500);
     const itens = await t.ev("[...document.querySelectorAll('.rabifone .rf-lista .rf-item')].map((e) => e.textContent)");
-    ok(itens.length === 3 && /Pula-telhados/.test(itens[0]) && /Recorde 5\d\.\d/.test(itens[0]), `Rabifone, app Desafios: ${JSON.stringify(itens)}`);
+    ok(itens.length === 3 && /Pula-telhados/.test(itens[0]) && /Recorde 5\d\.\d/.test(itens[0]), `Rabisfone, app Desafios: ${JSON.stringify(itens)}`);
     await t.ev("teste.fone.fechar()");
   } catch (e) { ok(false, `erro em pagamento: ${e.stack?.split("\n").slice(0, 3).join(" | ")}`); }
   if (t) await t.fechar();
@@ -361,7 +361,7 @@ await parte("pagamento", TV, async (t) => {
   await espera(1500);
   const depois = await t.ev("JSON.stringify([teste.salvo.desafios.pula, teste.Rabiscoins.saldo()])");
   ok(antes === depois, `recorde, medalhas e saldo iguais depois de recarregar: ${depois}`);
-  ok(Math.round(await t.ev("teste.desafios.lista().find((d) => d.id === 'pula').melhor")) === 61, "a lista do Rabifone mostra o recorde guardado (61 s)");
+  ok(Math.round(await t.ev("teste.desafios.lista().find((d) => d.id === 'pula').melhor")) === 61, "a lista do Rabisfone mostra o recorde guardado (61 s)");
   // placa de recordes (textura) mostra o recorde: confere pelo canvas da placa
   const txt = await t.ev(`(() => { const m = teste.desafios.placa('pula'); const c = m.material.map.image; return { w: c.width, h: c.height, ink: (() => { const d = c.getContext('2d').getImageData(20, 230, 300, 50).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] < 80) n++; return n; })() }; })()`);
   ok(txt.w === 512 && txt.ink > 300, `a placa de recordes foi desenhada com os tempos (tinta ${txt.ink})`);

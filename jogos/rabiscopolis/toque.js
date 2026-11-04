@@ -1,6 +1,6 @@
 // Rabiscolândia: controles de toque (só aparecem com body.touch, celular/tablet deitado).
 //  - a pé: joystick dinâmico à esquerda (src/motor/joystick.js, que também gira a câmera arrastando à direita e
-//    tem o botão de pulo) + botões Ação e 📱 (Rabifone) à direita;
+//    tem o botão de pulo) + botões Ação e 📱 (Rabisfone) à direita;
 //  - no carro: ◀ ▶ à esquerda; ▲ (frente), ▼ (ré) e Sair à direita;
 //  - no helicóptero: ◀ ▶ à esquerda; ▲ (subir), ▼ (descer), ➤ (voar para a frente) e Sair à direita.
 // Leitura: t.x, t.y (andar), t.girar(), t.puloNovo/t.pulo, t.carro = { esq, dir, frente, re }, t.acaoNova, t.foneNovo, t.sairNovo.
@@ -12,14 +12,14 @@ export function criarToque(caixa) {
   const camada = document.createElement("div");
   camada.className = "rp-toque";
   camada.innerHTML = `
-    <div class="rp-pe"><button class="rp-acao" data-b="acao" aria-label="Ação">✋</button><button class="rp-fone" data-b="fone" aria-label="Rabifone">📱</button></div>
+    <div class="rp-pe"><button class="rp-acao" data-b="acao" aria-label="Ação">✋</button><button class="rp-fone" data-b="fone" aria-label="Rabisfone">📱</button></div>
     <div class="rp-carro">
       <div class="rp-volante"><button data-b="esq" aria-label="Virar à esquerda">◀</button><button data-b="dir" aria-label="Virar à direita">▶</button></div>
-      <div class="rp-pedais"><button class="rp-sair" data-b="sair" aria-label="Sair do carro">Sair</button><button data-b="frente" aria-label="Acelerar">▲</button><button data-b="re" aria-label="Ré">▼</button><button class="rp-fone" data-b="fone" aria-label="Rabifone">📱</button><button class="rp-especial" data-b="especial" aria-label="Buzina" hidden>📯</button></div>
+      <div class="rp-pedais"><button class="rp-sair" data-b="sair" aria-label="Sair do carro">Sair</button><button data-b="frente" aria-label="Acelerar">▲</button><button data-b="re" aria-label="Ré">▼</button><button class="rp-fone" data-b="fone" aria-label="Rabisfone">📱</button><button class="rp-especial" data-b="especial" aria-label="Buzina" hidden>📯</button></div>
     </div>
     <div class="rp-heli">
       <div class="rp-volante"><button data-b="esq" aria-label="Virar à esquerda">◀</button><button data-b="dir" aria-label="Virar à direita">▶</button></div>
-      <div class="rp-pedais"><button class="rp-sair" data-b="sair" aria-label="Sair do helicóptero">Sair</button><button data-b="subir" aria-label="Subir">▲</button><button data-b="descer" aria-label="Descer">▼</button><button class="rp-voar" data-b="voar" aria-label="Voar para a frente">➤</button><button class="rp-fone" data-b="fone" aria-label="Rabifone">📱</button></div>
+      <div class="rp-pedais"><button class="rp-sair" data-b="sair" aria-label="Sair do helicóptero">Sair</button><button data-b="subir" aria-label="Subir">▲</button><button data-b="descer" aria-label="Descer">▼</button><button class="rp-voar" data-b="voar" aria-label="Voar para a frente">➤</button><button class="rp-fone" data-b="fone" aria-label="Rabisfone">📱</button></div>
     </div>`;
   caixa.append(camada);
   const api = {

@@ -180,7 +180,7 @@ export function pecasDaLoja(ajuda) {
 export { voltarBone };
 
 // ---------------------------------------------------------------- pintura dos veículos
-// cor (lataria) e cor2 (detalhe: faixa do helicóptero, borda do barquinho). Valem para o veículo chamado pelo Rabifone.
+// cor (lataria) e cor2 (detalhe: faixa do helicóptero, borda do barquinho). Valem para o veículo chamado pelo Rabisfone.
 export const PINTURAS = [
   { id: "carro-verde", veiculo: "carro", nome: "Carro verde-limão", cor: 0x7ed321, preco: 40 },
   { id: "carro-roxo", veiculo: "carro", nome: "Carro roxo", cor: 0x8e6cff, preco: 60 },

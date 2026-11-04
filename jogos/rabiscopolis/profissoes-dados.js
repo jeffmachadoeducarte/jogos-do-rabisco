@@ -1,5 +1,5 @@
 // Rabiscolândia: profissões curtas de faz de conta (dados puros, sem three.js: falas.mjs e os testes leem no node).
-// A criança escolhe no Rabifone (app "Trabalhar") ou no ponto 💼 da cidade, ao lado de cada base, e faz um turno de
+// A criança escolhe no Rabisfone (app "Trabalhar") ou no ponto 💼 da cidade, ao lado de cada base, e faz um turno de
 // ~3 a 4 minutos com 5 tarefas. Cada tarefa rende Rabiscoins na hora (dá para sair quando quiser e o que fez já
 // ficou na carteira); o turno completo dá o bônus. Enquanto trabalha, veste o uniforme (roupas-rp.js), que esconde o
 // chapéu do Ateliê do mesmo jeito que o capacete da moto (meu-rabisco.js · ajustarUniforme).

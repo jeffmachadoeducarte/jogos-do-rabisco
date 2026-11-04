@@ -1,4 +1,4 @@
-// Rabiscolândia, tela "Meu Rabisco": abre pelo Rabifone e pela ⚙️; cada aba tem o original e pelo menos 4 opções; a escolha vale no
+// Rabiscolândia, tela "Meu Rabisco": abre pelo Rabisfone e pela ⚙️; cada aba tem o original e pelo menos 4 opções; a escolha vale no
 // Rabisco da cidade, persiste ao recarregar e convive com uniforme, veículo e casa; o original fica idêntico ao Rabisco de sempre;
 // o nome da plaquinha vem do cadastro ou do campo "Como você se chama?"; o custo de desenho segue no orçamento.
 // Uso: python3 -m http.server 8731 &  node --experimental-websocket ferramentas/teste/rabiscopolis-meu-rabisco.mjs [http://localhost:8731]
@@ -25,12 +25,12 @@ const png = (t) => t.ev("(() => { const p = teste.meuRb.palco; p.renderer.render
 const t = await abrir("about:blank", { largura: 1280, altura: 720 });
 try {
   await comecar(t);
-  // abre pelo Rabifone
+  // abre pelo Rabisfone
   await t.ev("teste.fone.abrir()"); await espera(300);
   const apps = await t.ev("[...document.querySelectorAll('.rf-app')].map((b) => b.textContent.trim())");
-  ok(apps.some((a) => /Meu Rabisco/.test(a)), `Rabifone tem o app "Meu Rabisco" (${apps.join(", ")})`);
+  ok(apps.some((a) => /Meu Rabisco/.test(a)), `Rabisfone tem o app "Meu Rabisco" (${apps.join(", ")})`);
   await t.ev("[...document.querySelectorAll('.rf-app')].find((b) => /Meu Rabisco/.test(b.textContent)).click()"); await espera(1500);
-  ok(await t.ev("teste.meuRb.aberto && teste.fone.aberto === false"), "o app abre a tela e fecha o Rabifone");
+  ok(await t.ev("teste.meuRb.aberto && teste.fone.aberto === false"), "o app abre a tela e fecha o Rabisfone");
   // abas: original + pelo menos 4 opções (óculos: nenhum + 4)
   const abas = await t.ev("[...document.querySelectorAll('.mrb-aba')].map((b) => b.dataset.aba)");
   ok(abas.join() === "mochila,fone,sapatos,calca,oculos", `cinco abas (${abas.join(", ")})`);

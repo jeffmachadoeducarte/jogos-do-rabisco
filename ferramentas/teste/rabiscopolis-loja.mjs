@@ -1,10 +1,10 @@
 // Rabiscolândia: Rabiscoins e o Ateliê Ponta do Lápis (loja de visual). Confere, num aparelho novo (perfil do Chrome vazio):
 //  - concluir uma missão de verdade rende Rabiscoins (1ª vez 20; repetir, 5), com o contador do HUD e a animação de ganho;
 //  - o saldo, as compras e o que está vestido continuam depois de recarregar a página;
-//  - a loja abre e fecha pelo teclado (F na porta, Esc) e pelo toque (✋ na porta, ✓ Pronto), e também pelo Rabifone;
+//  - a loja abre e fecha pelo teclado (F na porta, Esc) e pelo toque (✋ na porta, ✓ Pronto), e também pelo Rabisfone;
 //  - sem saldo a compra é recusada (nada muda); com saldo, compra, desconta e já veste;
 //  - equipar aparece no Rabisco da cidade (grafo de cena: camiseta, chapéu, aba do boné) e trocar volta o original;
-//  - a pintura comprada vale no veículo chamado pelo Rabifone (cor da lataria no grafo de cena);
+//  - a pintura comprada vale no veículo chamado pelo Rabisfone (cor da lataria no grafo de cena);
 //  - chamadas de desenho dentro do orçamento (TV ≤ 250, celular ≤ 180) na praça e na frente da loja; sem erro de console.
 // Uso: node --experimental-websocket ferramentas/teste/rabiscopolis-loja.mjs <http://localhost:porta> [pasta das fotos]
 import { mkdirSync } from "node:fs";
@@ -135,7 +135,7 @@ const CONTADOR = "Number(document.querySelector('.rbc-contador b')?.textContent)
 
   // ---- o capacete da moto guarda a cartola embaixo dele e devolve ao descer
   await t.ev("teste.ir(0, 20); teste.olhar(0)"); await espera(300);
-  ok((await t.ev("teste.garagem('moto')")) != null, "moto chamada pelo Rabifone");
+  ok((await t.ev("teste.garagem('moto')")) != null, "moto chamada pelo Rabisfone");
   await t.ev("teste.entrar(teste.veiculos.indexOf(teste.garagemAtual))"); await espera(500);
   const moto = await t.ev(`({ dentro: teste.modo, capacete: teste.rabisco.emCapacete, cartola: ${NA_FUSAO("teste.rabisco.tronco", 0x2a2a33)}, aba: teste.rabisco.pivoAba.visible })`);
   ok(moto.dentro === "veiculo" && moto.capacete && moto.cartola === 0 && !moto.aba, `na moto o capacete esconde a cartola (${JSON.stringify(moto)})`);
@@ -143,27 +143,27 @@ const CONTADOR = "Number(document.querySelector('.rbc-contador b')?.textContent)
   const desceu = await t.ev(`({ modo: teste.modo, capacete: teste.rabisco.emCapacete, cartola: ${NA_FUSAO("teste.rabisco.tronco", 0x2a2a33)}, aba: teste.rabisco.pivoAba.visible })`);
   ok(desceu.modo === "rua" && !desceu.capacete && desceu.cartola > 100 && !desceu.aba, `ao descer a cartola volta (a aba segue escondida) (${JSON.stringify(desceu)})`);
 
-  // ---- pintura: helicóptero laranja e carro roxo, chamados pelo Rabifone
+  // ---- pintura: helicóptero laranja e carro roxo, chamados pelo Rabisfone
   await t.ev("teste.abrirAtelie('veiculo')"); await espera(800);
   ok(await t.ev("teste.atelie.escolher('heli-laranja') && teste.atelie.veiculo != null"), "a aba Pinturas mostra o veículo girando na vitrine");
   await t.ev("teste.atelie.fazer(); teste.atelie.escolher('carro-roxo'); teste.atelie.fazer(); teste.atelie.fechar()"); await espera(300);
   ok(JSON.stringify(await t.ev("teste.salvo.pinturas")) === '{"heli":"heli-laranja","carro":"carro-roxo"}', `pinturas guardadas (${JSON.stringify(await t.ev("teste.salvo.pinturas"))})`);
   await t.ev("teste.ir(0, 20); teste.olhar(0)"); await espera(400);
-  ok((await t.ev("teste.garagem('heli')")) != null, "helicóptero chamado pelo Rabifone");
+  ok((await t.ev("teste.garagem('heli')")) != null, "helicóptero chamado pelo Rabisfone");
   const corHeli = await t.ev(`(() => { const v = teste.garagemAtual, C = teste.rabisco.bone.material.color.constructor, alvo = new C(0xff7a00), azul = new C(0x00b5f0); let laranja = 0, az = 0;
     v.g.traverse((o) => { const a = o.geometry?.attributes?.color; if (!a) return; for (let i = 0; i < a.count; i++) { const d = (c) => Math.abs(a.getX(i) - c.r) + Math.abs(a.getY(i) - c.g) + Math.abs(a.getZ(i) - c.b); if (d(alvo) < 0.02) laranja++; if (d(azul) < 0.02) az++; } });
     return { tipo: v.tipo, cor: v.cor.toString(16), laranja, az }; })()`);
   ok(corHeli.tipo === "heli" && corHeli.cor === "ff7a00" && corHeli.laranja > 100 && corHeli.az === 0, `grafo de cena: o helicóptero saiu laranja, sem o azul de fábrica (${JSON.stringify(corHeli)})`);
   await t.ev("teste.fone.abrir('garagem')"); await espera(300);
-  ok((await t.ev("document.querySelector('.rabifone .rf-item').textContent")).includes("Carro roxo"), "a Garagem do Rabifone mostra o carro pintado primeiro");
+  ok((await t.ev("document.querySelector('.rabifone .rf-item').textContent")).includes("Carro roxo"), "a Garagem do Rabisfone mostra o carro pintado primeiro");
   await t.ev("document.querySelector('.rabifone .rf-item').click()"); await espera(400);
   ok((await t.ev("teste.garagemAtual?.cor?.toString(16)")) === "8e6cff", "o carro chamado saiu roxo");
 
-  // ---- Rabifone: app do Ateliê com o saldo e "Abrir a loja"
+  // ---- Rabisfone: app do Ateliê com o saldo e "Abrir a loja"
   await t.ev("teste.fone.abrir('atelie')"); await espera(300);
-  ok(Number(await t.ev("document.querySelector('.rf-moedas')?.textContent")) === await t.ev(SALDO), "o app Ateliê do Rabifone mostra o saldo");
+  ok(Number(await t.ev("document.querySelector('.rf-moedas')?.textContent")) === await t.ev(SALDO), "o app Ateliê do Rabisfone mostra o saldo");
   await t.ev("[...document.querySelectorAll('.rabifone .rf-item')].find((b) => /Abrir a loja/.test(b.textContent)).click()"); await espera(800);
-  ok(await t.ev("teste.atelie.aberto"), "pelo Rabifone também abre a loja");
+  ok(await t.ev("teste.atelie.aberto"), "pelo Rabisfone também abre a loja");
   await t.ev("teste.atelie.fechar()");
 
   // ---- recarregar: compras, roupa vestida e pinturas continuam

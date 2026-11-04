@@ -359,7 +359,7 @@ export function criarDesafios(cena, ctx) {
     if (D3.pula.grupo.visible && !A) { /* discos parados */ }
   }
 
-  // ---------- testes e Rabifone
+  // ---------- testes e Rabisfone
   function teleportar(id, k) {
     // k = 0: largada · k > 0: o k-ésimo checkpoint/argola/boia (põe o jogador logo antes de passar por ele)
     const v = ctx.veiculo();

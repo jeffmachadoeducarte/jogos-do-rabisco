@@ -1,11 +1,11 @@
 // Rabiscolândia: profissões curtas (profissoes.js, profissoes-dados.js). Num aparelho novo, confere:
-//  - o app "Trabalhar" do Rabifone lista as 3 profissões (com o @ exato da Speedy e do Marlon, lido de src/parceiros.js);
+//  - o app "Trabalhar" do Rabisfone lista as 3 profissões (com o @ exato da Speedy e do Marlon, lido de src/parceiros.js);
 //  - Entregador da Speedy Soluções, de ponta a ponta: começa no ponto 💼 da cidade, o carro chega com o cavalete de vidros,
 //    5 entregas (casa e obra) parando o carro perto, cada uma rende 6 (+2 chegando no tempo folgado), bônus de 12 no fim,
 //    a anfitriã explica na 1ª vez, comemora e depois toca a propaganda já gravada (rp-prop-speedy-solucoes) sem cortar;
 //  - Ajudante do Marlon Máquinas: caminhão da reciclagem, 4 coletas (5 cada, as garrafas vão para a caçamba) e o galpão (8),
 //    bônus, propaganda rp-prop-marlon-maquinas; a missão do Marlon continua igual;
-//  - Bombeiro mirim (começado pelo Rabifone): sai no meio do turno e fica com o parcial (sem bônus, uniforme tirado);
+//  - Bombeiro mirim (começado pelo Rabisfone): sai no meio do turno e fica com o parcial (sem bônus, uniforme tirado);
 //    no turno seguinte (sem explicação de novo) apaga 4 focos de fumaça colorida com a mangueira e ajuda o gatinho;
 //  - uniforme vestido durante o turno (o chapéu do Ateliê fica escondido, como no capacete da moto) e tirado no fim;
 //    o uniforme do turno não fica guardado no aparelho;
@@ -92,10 +92,10 @@ try {
   await esperarJogo(t);
   await t.ev("teste.Rabiscoins.zerar()");
 
-  // ---- Rabifone: app Trabalhar
+  // ---- Rabisfone: app Trabalhar
   await t.ev("teste.fone.abrir('trabalhar')"); await espera(500);
   const fone = await t.ev(`(() => { const r = document.querySelector('.rabifone'); return { app: r.querySelector('.rf-tela').dataset.app, itens: [...r.querySelectorAll('[data-trabalho]')].map((b) => b.dataset.trabalho), texto: r.querySelector('.rf-tela').textContent }; })()`);
-  ok(fone.app === "trabalhar" && fone.itens.join() === "entregador,reciclagem,bombeiro", `Rabifone › Trabalhar lista as 3 profissões (${fone.itens.join(", ")})`);
+  ok(fone.app === "trabalhar" && fone.itens.join() === "entregador,reciclagem,bombeiro", `Rabisfone › Trabalhar lista as 3 profissões (${fone.itens.join(", ")})`);
   ok(fone.texto.includes(`@${insta["speedy-solucoes"]}`) && fone.texto.includes(`@${insta["marlon-maquinas"]}`) && !/comprar/i.test(fone.texto), `o @ exato da Speedy (@${insta["speedy-solucoes"]}) e do Marlon (@${insta["marlon-maquinas"]}), sem "comprar"`);
   await t.foto(`${OUT}rabifone-trabalhar.png`);
   await t.ev("teste.fone.fechar()");
@@ -166,14 +166,14 @@ try {
   ok((await t.ev("document.querySelector('.balao-rp').textContent")).includes(`@${insta["marlon-maquinas"]}`), `o balão mostra @${insta["marlon-maquinas"]}`);
   await t.ev("teste.sair()"); await espera(300);
 
-  // ---- Bombeiro mirim, pelo Rabifone; sai no meio
+  // ---- Bombeiro mirim, pelo Rabisfone; sai no meio
   const bB = bases.find((b) => b.id === "bombeiro");
   await t.ev(`teste.ir(${bB.x}, ${bB.z + 2}); teste.olhar(Math.PI)`); await espera(500);
   const s2 = await t.ev(SALDO);
   await t.ev("teste.fone.abrir('trabalhar')"); await espera(300);
   await t.ev("document.querySelector('[data-trabalho=bombeiro]').click()"); await espera(600);
   const infB = await t.ev(`${P}.info()`);
-  ok(infB?.id === "bombeiro" && infB.tarefas.map((q) => q.tipo).join() === "foco,foco,foco,foco,gatinho" && (await t.ev("teste.profissao")) === "bombeiro", `Rabifone começa o Bombeiro mirim: ${infB?.tarefas.map((q) => q.tipo).join(", ")}, de uniforme de bombeiro`);
+  ok(infB?.id === "bombeiro" && infB.tarefas.map((q) => q.tipo).join() === "foco,foco,foco,foco,gatinho" && (await t.ev("teste.profissao")) === "bombeiro", `Rabisfone começa o Bombeiro mirim: ${infB?.tarefas.map((q) => q.tipo).join(", ")}, de uniforme de bombeiro`);
   ok((await vozes(t)).includes("rp-trab-bombeiro-explica"), "1ª vez: a anfitriã explica o bombeiro mirim");
   const durB = duracao(infB.tarefas, [bB.x, bB.z], false);
   ok(durB.seg >= 150 && durB.seg <= 270, `duração estimada do turno a pé: ${durB.seg} s (${durB.dist} m de rota)`);
@@ -194,7 +194,7 @@ try {
   ok(g1 === 6 && g2 === 6, `cada foco apagado rende 6 (${g1}, ${g2})`);
   await t.ev("teste.fone.abrir('trabalhar')"); await espera(300);
   const telaAtiva = await t.ev("document.querySelector('.rf-tela').textContent");
-  ok(/2 de 5 tarefas/.test(telaAtiva) && telaAtiva.includes("12"), `com o turno ativo, o Rabifone mostra o andamento (“${telaAtiva.slice(0, 90)}”)`);
+  ok(/2 de 5 tarefas/.test(telaAtiva) && telaAtiva.includes("12"), `com o turno ativo, o Rabisfone mostra o andamento (“${telaAtiva.slice(0, 90)}”)`);
   await t.foto(`${OUT}rabifone-turno-ativo.png`);
   await t.ev("[...document.querySelectorAll('.rf-tela .rf-item')].find((b) => b.textContent.includes('Terminar')).click()"); await espera(600);
   const saiu = await t.ev(`({ ativa: ${P}.ativa, ultimo: ${P}.ultimo, saldo: ${SALDO}, p: teste.profissao })`);

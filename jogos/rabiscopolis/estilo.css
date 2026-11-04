@@ -1,4 +1,4 @@
-/* Rabiscolândia: cena 3D, HUD, minimapa, balão, Rabifone e controles de toque */
+/* Rabiscolândia: cena 3D, HUD, minimapa, balão, Rabisfone e controles de toque */
 .cena-rp { position: absolute; inset: 0; overflow: hidden; }
 .cena-rp > canvas:not(.minimapa-rp) { display: block; width: 100%; height: 100%; touch-action: none; }
 .hud-rp { position: absolute; z-index: 5; left: 12px; top: calc(env(safe-area-inset-top, 0px) + 74px); pointer-events: none; font-family: var(--texto); }
@@ -120,27 +120,6 @@ html.modo-tv .mp-corpo { grid-template-columns: minmax(0, 1fr) clamp(320px, 30%,
 .bussola-rp .cancelar { pointer-events: auto; flex: none; width: 32px; height: 32px; margin-left: 2px; border-radius: 50%; border: 3px solid var(--tinta); background: #fff; font: 800 15px/1 var(--texto); color: var(--tinta); cursor: pointer; padding: 0; }
 .bussola-rp .cancelar[hidden] { display: none; }
 
-/* Rabifone: celular de desenho, com apps grandes */
-.rabifone { position: absolute; inset: 0; z-index: 12; display: flex; align-items: center; justify-content: center; background: rgba(10, 30, 60, 0.45); }
-.rabifone[hidden] { display: none; }
-.rf-aparelho { width: min(340px, 44vw, 52vh); aspect-ratio: 9 / 16; max-height: 88vh; display: flex; flex-direction: column; background: #151515; border-radius: 42px; padding: 14px 12px 10px; box-shadow: 0 10px 0 #0a0a0a, 0 0 0 6px var(--rosa); animation: rf-entra 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
-@keyframes rf-entra { from { transform: translateY(40%) rotate(-6deg); opacity: 0; } }
-.rf-topo { display: flex; justify-content: space-between; align-items: center; color: #fff; font: 700 13px var(--texto); padding: 0 12px 6px; }
-.rf-topo b { color: var(--amarelo); font-size: 15px; }
-.rf-tela { flex: 1; overflow: auto; background: linear-gradient(160deg, #7fd6ff, #c9b3ff 60%, #ffc7e1); border-radius: 26px; padding: 12px; font-family: var(--texto); }
-.rf-tela h3 { margin: 0 0 6px; font-size: 24px; color: var(--tinta); }
-.rf-tela p { margin: 0 0 8px; font-weight: 700; font-size: 15px; line-height: 1.25; color: var(--tinta); }
-.rf-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-top: 8px; }
-.rf-item { cursor: pointer; border: 4px solid var(--tinta); border-radius: 20px; background: #fff; box-shadow: 0 4px 0 var(--tinta); font: 800 17px var(--texto); color: var(--tinta); }
-.rf-app { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px 8px; }
-.rf-icone { display: grid; place-items: center; width: 62px; height: 62px; border-radius: 18px; border: 4px solid var(--tinta); font-size: 34px; }
-.rf-lista { display: flex; flex-direction: column; gap: 10px; }
-.rf-lista .rf-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; text-align: left; }
-.rf-emoji { font-size: 28px; }
-.rf-item.rf-foco, .rf-item:focus-visible { outline: 5px solid var(--amarelo); outline-offset: 2px; transform: scale(1.04); }
-.rf-botoes { display: flex; justify-content: space-around; padding-top: 8px; }
-.rf-botoes button { width: 54px; height: 40px; border-radius: 14px; border: 0; background: #333; color: #fff; font-size: 20px; cursor: pointer; }
-.rf-botoes button.rf-foco { outline: 4px solid var(--amarelo); }
 
 /* toque: botões grandes à direita (a pé) e o volante/pedais (no carro) */
 .rp-toque { display: none; }
@@ -214,7 +193,6 @@ body.touch .rp-toque { display: block; }
 .deco-ok, .deco-voltar { min-width: 130px; height: 48px; border-radius: 999px; border: 4px solid var(--tinta); font: 800 19px var(--texto); cursor: pointer; }
 .deco-ok { background: #58c43a; color: #fff; } .deco-voltar { background: #fff; }
 .deco-dica { display: block; margin-top: 4px; color: #666; font: 700 13px var(--texto); }
-.rf-cores .rf-icone { width: 54px; height: 54px; }
 @media (max-height: 520px) and (orientation: landscape) {
   .deco-rp { bottom: 6px; width: min(520px, 62vw); }
   .deco-cartao { padding: 4px 10px 6px; border-width: 4px; }
@@ -234,17 +212,12 @@ body.touch .rp-toque { display: block; }
   .sorvete-rp { bottom: 6px; width: min(560px, 66vw); } .sv-sabor { height: 38px; font-size: 14px; } .sv-escolha { font-size: 15px; }
 }
 
-/* Fatia 5: missões (faixa no HUD, Passaporte no Rabifone) */
+/* Fatia 5: missões (faixa no HUD, Passaporte no Rabisfone) */
 .missao-rp { margin-top: 8px; max-width: min(360px, 46vw); background: #fff8e1; border: 4px solid var(--tinta); border-radius: 18px; box-shadow: 0 4px 0 var(--tinta); padding: 4px 12px 6px; display: flex; flex-direction: column; line-height: 1.15; animation: missao-rp 0.35s ease-out; }
 .missao-rp[hidden] { display: none; }
 .missao-rp b { font-size: 15px; color: #c2410c; }
 .missao-rp span { font-size: 18px; font-weight: 800; }
 @keyframes missao-rp { from { transform: translateX(-20px); opacity: 0; } }
-.rf-grade .rf-app:last-child:nth-child(odd) { grid-column: span 2; }
-.rf-item-missao .rf-missao { flex: 1; display: flex; flex-direction: column; }
-.rf-item-missao small { font-size: 12px; font-weight: 700; opacity: 0.7; }
-.rf-item-missao .rf-selo { font-size: 22px; }
-.rf-excl { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--amarelo, #ffcc1f); border: 3px solid var(--tinta); font-weight: 900; }
 @media (max-height: 520px) and (orientation: landscape) {
   .missao-rp { margin-top: 4px; padding: 2px 10px 4px; border-width: 3px; max-width: 40vw; }
   .missao-rp b { font-size: 12px; } .missao-rp span { font-size: 14px; }
@@ -269,7 +242,7 @@ html.modo-tv .missao-rp { transform: scale(1.3); transform-origin: top left; }
 html.modo-tv .bussola-rp { transform: translateX(-50%) scale(1.35); transform-origin: top center; }
 html.modo-tv .acao-rp, html.modo-tv .acao-j2-rp { font-size: 24px; }
 html.modo-tv .btn-fone-rp { opacity: 0.55; }
-/* com 2 jogadores a legenda "quem é quem" fica embaixo à esquerda: o botão do Rabifone sobe um pouco */
+/* com 2 jogadores a legenda "quem é quem" fica embaixo à esquerda: o botão do Rabisfone sobe um pouco */
 .cena-rp.dois-rp .btn-fone-rp { bottom: 62px; }
 
 /* Pai Nosso: frase grande no alto, palavra por palavra (karaokê), no traço da Igreja Reviver */
@@ -287,7 +260,7 @@ html.modo-tv .btn-fone-rp { opacity: 0.55; }
 body.touch .oracao-rp { top: 6%; width: min(620px, 60vw); padding: 10px 16px 8px; }
 @keyframes oracao-rp-entra { from { opacity: 0; transform: translate(-50%, -12px); } to { opacity: 1; transform: translateX(-50%); } }
 
-/* Meu Rabisco: o Rabisco girando de um lado, abas e peças do outro (mesmo traço do Rabifone e da decoração) */
+/* Meu Rabisco: o Rabisco girando de um lado, abas e peças do outro (mesmo traço do Rabisfone e da decoração) */
 .meu-rb { position: absolute; inset: 0; z-index: 12; display: grid; place-items: center; background: rgba(10, 30, 60, 0.5); font-family: var(--texto); }
 .meu-rb[hidden] { display: none; }
 .mrb-cartao { width: min(980px, 96vw); height: min(590px, 92vh); display: grid; grid-template-columns: 1fr 1.05fr; gap: 12px; padding: 12px; background: #fff; border: 6px solid var(--tinta); border-radius: 28px; box-shadow: 0 8px 0 var(--tinta); animation: rf-entra 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -389,54 +362,152 @@ html.modo-tv .mrb-cartao { transform: scale(1.1); }
 }
 html.modo-tv .atl-cartao { transform: scale(1.1); }
 
-/* Presente do dia (Rabifone): calendário de 7 dias e a Missão do dia (diario.js) */
-.rf-icone { position: relative; }
-.rf-bolinha { position: absolute; top: -9px; right: -9px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--rosa); color: #fff; border: 3px solid var(--tinta); font: 900 13px var(--texto); font-style: normal; animation: rf-pulsa 1.4s ease-in-out infinite; }
-.rf-dias { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 2px 0 8px; }
-.rf-dia { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 2px 4px; background: #fff; border: 3px solid var(--tinta); border-radius: 14px; box-shadow: 0 3px 0 var(--tinta); font-family: var(--texto); color: var(--tinta); }
-.rf-dia small { font-size: 11px; font-weight: 800; }
+/* Rabisfone: celular atual — moldura fina escura, ilha no topo, barra de status, papel de parede nas cores do Rabisco,
+   apps em grade, telas de app claras com cartões brancos e a barra de baixo com 3 botões redondos (voltar, início, fechar).
+   Celular deitado: o aparelho fica largo e os 3 botões vão para a lateral direita, sem passar da altura da tela. */
+@keyframes rf-entra { from { transform: translateY(40%) rotate(-6deg); opacity: 0; } } /* (usado também pelo Meu Rabisco e pelo Ateliê) */
+@keyframes rf-abre { from { opacity: 0; transform: translateY(18px) scale(0.9); } }
+@keyframes rf-sai { to { opacity: 0; transform: translateY(14px) scale(0.92); } }
+@keyframes rf-veu { from { background-color: rgba(8, 18, 40, 0); } }
+@keyframes rf-veu-sai { to { background-color: rgba(8, 18, 40, 0); } }
+@keyframes rf-troca { from { opacity: 0; transform: translateX(14px); } }
+@keyframes rf-troca-volta { from { opacity: 0; transform: translateX(-14px); } }
+@keyframes rf-pulsa { 50% { transform: scale(1.07); } }
+.rabifone { position: absolute; inset: 0; z-index: 12; display: flex; align-items: center; justify-content: center; background: rgba(8, 18, 40, 0.42); animation: rf-veu 0.22s ease-out; }
+.rabifone[hidden] { display: none; }
+.rabifone.rf-saindo { pointer-events: none; animation: rf-veu-sai 0.18s ease-in forwards; }
+.rabifone.rf-saindo .rf-aparelho { animation: rf-sai 0.18s ease-in forwards; }
+.rf-aparelho {
+  position: relative; box-sizing: border-box; height: min(88vh, 740px); aspect-ratio: 9 / 18.5; max-width: 94vw;
+  display: flex; flex-direction: column; border: 7px solid #0d0f14; border-radius: 50px; overflow: hidden;
+  background: radial-gradient(90% 55% at 0% 0%, rgba(120, 220, 255, 0.9), rgba(120, 220, 255, 0) 70%),
+    radial-gradient(90% 60% at 100% 100%, rgba(255, 160, 70, 0.95), rgba(255, 160, 70, 0) 70%),
+    linear-gradient(165deg, #00b5f0 0%, #7a6ff0 40%, #ec2e8c 72%, #ff7a00 100%);
+  background-clip: padding-box;
+  box-shadow: 0 0 0 1.5px #4a5060, 0 0 0 3px #1a1d24, 0 26px 60px rgba(0, 0, 0, 0.45);
+  font-family: var(--texto); color: #fff; animation: rf-abre 0.24s cubic-bezier(0.2, 0.9, 0.3, 1.15);
+}
+.rf-aparelho:not([data-app="inicio"]) { background: #f2f4f9; color: var(--tinta); }
+.rf-topo { flex: none; position: relative; display: flex; align-items: center; justify-content: space-between; height: 36px; box-sizing: border-box; padding: 6px 24px 0; font: 800 14px/1 var(--texto); color: inherit; }
+.rf-hora { min-width: 3em; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.rf-ilha { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); height: 22px; min-width: 84px; padding: 0 14px; box-sizing: border-box; border-radius: 999px; background: #0d0f14; color: rgba(255, 255, 255, 0.55); font: 800 8.5px/22px var(--texto); letter-spacing: 0.2em; text-transform: uppercase; text-align: center; }
+.rf-status { display: flex; align-items: center; gap: 5px; }
+.rf-status svg { display: block; height: 11px; width: auto; }
+.rf-tela { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 10px 16px 12px; font-family: var(--texto); color: var(--tinta); scrollbar-width: thin; }
+.rf-tela.rf-troca { animation: rf-troca 0.2s ease-out; }
+.rf-tela.rf-troca-volta { animation: rf-troca-volta 0.2s ease-out; }
+.rf-tela h3 { display: flex; align-items: center; gap: 10px; margin: 2px 0 10px; font: 800 22px/1.1 var(--texto); color: var(--tinta); }
+.rf-h-icone { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; font-size: 21px; line-height: 1; background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0) 60%, rgba(0, 0, 0, 0.08)); box-shadow: 0 3px 8px rgba(20, 30, 60, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+.rf-h-icone svg { width: 32px; height: auto; display: block; }
+.rf-tela p { margin: 0 0 10px; font-weight: 700; font-size: 15px; line-height: 1.3; color: #3b4152; }
+/* cartões brancos */
+.rf-item { cursor: pointer; border: 0; border-radius: 18px; background: #fff; box-shadow: 0 1px 2px rgba(20, 30, 60, 0.08), 0 6px 16px rgba(20, 30, 60, 0.1); font: 800 17px/1.15 var(--texto); color: var(--tinta); transition: transform 0.14s ease, box-shadow 0.14s ease; -webkit-tap-highlight-color: transparent; }
+.rf-item:active { transform: scale(0.97); }
+.rf-lista { display: flex; flex-direction: column; gap: 10px; padding: 2px 2px 8px; }
+.rf-lista .rf-item { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 14px; text-align: left; }
+.rf-emoji { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: #f1f3f8; font-size: 24px; line-height: 1; }
+.rf-emoji-veiculo { width: 60px; height: 44px; background: linear-gradient(180deg, #eef8ff, #dff0fb); }
+.rf-veiculo { display: block; width: 54px; height: auto; overflow: visible; }
+/* tela inicial: ícones de app em grade, rótulo embaixo */
+.rf-grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 6px; padding-top: 10px; }
+.rf-app { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 5px 2px; background: none; box-shadow: none; border-radius: 16px; font: 700 13px/1.1 var(--texto); color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); text-align: center; }
+.rf-icone { position: relative; display: grid; place-items: center; width: 60px; height: 60px; border-radius: 22%; font-size: 32px; line-height: 1; text-shadow: none; background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0) 55%, rgba(0, 0, 0, 0.1)); box-shadow: 0 4px 10px rgba(10, 20, 50, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.45); transition: transform 0.14s ease; }
+.rf-icone svg { width: 48px; height: auto; display: block; }
+.rf-app.rf-foco .rf-icone, .rf-app:focus-visible .rf-icone { transform: scale(1.06); }
+.rf-cores { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.rf-cores .rf-app { padding: 8px; }
+.rf-cores .rf-icone { width: 58px; height: 58px; box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(20, 30, 60, 0.2); }
+/* foco bem claro para teclado e controle: anel ciano por dentro, amarelo grosso por fora */
+.rabifone .rf-foco, .rabifone :focus-visible { outline: 4px solid #ffcc1f; outline-offset: 3px; box-shadow: 0 0 0 3px #00b5f0, 0 6px 16px rgba(20, 30, 60, 0.2); }
+.rabifone :focus:not(:focus-visible):not(.rf-foco) { outline: none; }
+.rf-lista .rf-item.rf-foco { transform: scale(1.02); }
+/* barra de baixo: 3 botões redondos (alvo de 46 px) e o tracinho de gesto */
+.rf-botoes { flex: none; position: relative; display: flex; justify-content: center; gap: 30px; padding: 6px 0 14px; }
+.rf-botoes::after { content: ""; position: absolute; left: 50%; bottom: 5px; width: 100px; height: 4px; margin-left: -50px; border-radius: 2px; background: currentColor; opacity: 0.35; }
+.rf-botoes button { display: grid; place-items: center; width: 46px; height: 46px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.24); color: #fff; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3); transition: transform 0.12s ease, background-color 0.15s ease; -webkit-tap-highlight-color: transparent; }
+.rf-botoes button:active { transform: scale(0.92); }
+.rf-botoes svg { width: 24px; height: 24px; display: block; }
+.rf-aparelho:not([data-app="inicio"]) .rf-botoes button { background: #fff; color: var(--tinta); box-shadow: 0 2px 8px rgba(20, 30, 60, 0.16); }
+.rabifone .rf-botoes button.rf-foco, .rabifone .rf-botoes button:focus-visible { box-shadow: 0 0 0 3px #00b5f0; }
+/* Passaporte, Trabalhar, Desafios */
+.rf-item-missao .rf-missao { flex: 1; display: flex; flex-direction: column; }
+.rf-item-missao small { font-size: 12px; font-weight: 700; color: #5b6275; }
+.rf-item-missao .rf-selo { font-size: 22px; }
+.rf-excl { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--amarelo, #ffcc1f); border: 2px solid var(--tinta); font-weight: 900; }
+.rf-item-dodia { background: #fff6c7; }
+.rf-item-missao small:has(.rf-dodia) { color: inherit; }
+.rf-dodia { color: #8a4b00; }
+/* Presente do dia: bolinha no app, calendário de 7 dias e a Missão do dia (diario.js) */
+.rf-bolinha { position: absolute; top: -6px; right: -6px; display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; box-sizing: border-box; border-radius: 999px; background: #ff3b30; color: #fff; border: 2px solid #fff; font: 900 12px/1 var(--texto); font-style: normal; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25); animation: rf-pulsa 1.4s ease-in-out infinite; }
+.rf-dias { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 2px 0 10px; }
+.rf-dia { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 2px 5px; background: #fff; border-radius: 14px; box-shadow: 0 1px 2px rgba(20, 30, 60, 0.08), 0 4px 10px rgba(20, 30, 60, 0.08); font-family: var(--texto); color: var(--tinta); }
+.rf-dia small { font-size: 11px; font-weight: 800; color: #5b6275; }
 .rf-dia .rf-dia-icone { font-size: 20px; line-height: 1.1; }
 .rf-dia b { font-size: 13px; font-weight: 900; color: #8a4b00; }
-.rf-dia.pego { background: #c8f2b8; }
+.rf-dia.pego { background: #dcf7d0; }
 .rf-dia.pego b { color: #1f6d12; }
-.rf-dia.hoje { background: #ffe066; outline: 4px solid var(--rosa); outline-offset: 1px; animation: rf-pulsa 1.4s ease-in-out infinite; }
-.rf-dia.sete { grid-column: span 2; flex-direction: row; justify-content: center; gap: 6px; background: linear-gradient(135deg, #fff3b0, #ffd23f); }
-.rf-dia.sete.pego { background: #c8f2b8; }
+.rf-dia.hoje { background: #fff1a8; box-shadow: 0 0 0 3px #ec2e8c, 0 4px 10px rgba(236, 46, 140, 0.25); animation: rf-pulsa 1.4s ease-in-out infinite; }
+.rf-dia.sete { grid-column: span 2; flex-direction: row; justify-content: center; gap: 6px; background: linear-gradient(135deg, #fff6c7, #ffd84f); }
+.rf-dia.sete.pego { background: #dcf7d0; }
 .rf-dia.sete small::after { content: " · bônus!"; }
-@keyframes rf-pulsa { 50% { transform: scale(1.07); } }
-@media (prefers-reduced-motion: reduce) { .rf-dia.hoje, .rf-bolinha { animation: none; } }
-.rf-tela p.rf-dica { font-size: 12px; font-weight: 700; opacity: 0.85; }
+.rf-tela p.rf-dica { font-size: 12px; font-weight: 700; color: #6a7183; }
 .rf-tela[data-app="presente"] h3 { font-size: 21px; white-space: nowrap; }
-.rf-md { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; background: #fff8d6; border: 4px solid var(--tinta); border-radius: 20px; font-family: var(--texto); color: var(--tinta); }
+.rf-md { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; background: #fff8d6; border-radius: 18px; box-shadow: 0 1px 2px rgba(20, 30, 60, 0.08), 0 6px 16px rgba(20, 30, 60, 0.1); font-family: var(--texto); color: var(--tinta); }
 .rf-md b { font-size: 15px; color: #8a4b00; }
 .rf-md span { font-size: 17px; font-weight: 800; }
 .rf-md small { font-size: 12px; font-weight: 700; }
-.rf-item-dodia { background: #fff3b0; }
-.rf-item-missao small:has(.rf-dodia) { opacity: 1; }
-.rf-dodia { color: #8a4b00; }
+/* Álbum (album-ui.js põe o resto do estilo): abas e textos no mesmo visual de cartões */
+.rabifone .alb-abas .rf-item { min-height: 0; justify-content: center; border: 0; border-radius: 14px; box-shadow: 0 1px 2px rgba(20, 30, 60, 0.08), 0 4px 10px rgba(20, 30, 60, 0.1); }
+.rabifone .alb-abas .rf-item.atual { background: #fff3b0; box-shadow: 0 0 0 2px #ffcc1f, 0 4px 10px rgba(20, 30, 60, 0.1); }
+.rabifone .alb-abas .rf-item.rf-foco, .rabifone .alb-abas .rf-item:focus-visible { box-shadow: 0 0 0 3px #00b5f0; }
+.rabifone .alb-detalhe .alb-texto, .rabifone .alb-completa { border: 0; border-radius: 14px; box-shadow: 0 1px 2px rgba(20, 30, 60, 0.08), 0 4px 10px rgba(20, 30, 60, 0.1); }
+.rabifone .alb-fig.rf-foco, .rabifone .alb-fig:focus-visible { box-shadow: 0 0 0 3px #00b5f0; }
+/* TV grande: o aparelho cresce junto */
+/* em pé, o aparelho encosta embaixo: a ilha fica abaixo do botão de pausa da casca (no meio, em cima) */
+@media (min-height: 521px) { .rabifone { align-items: flex-end; padding-bottom: max(12px, 2vh); box-sizing: border-box; } }
+@media (min-height: 680px) and (min-width: 1200px) {
+  .rf-aparelho { zoom: 1.12; height: min(calc(86vh / 1.12), 740px); }
+}
+@media (min-height: 1000px) and (min-width: 1600px) {
+  .rf-aparelho { zoom: 1.3; height: min(calc(86vh / 1.3), 740px); }
+}
+/* tela baixa (celular deitado): letras menores no Presente */
 @media (max-height: 520px) {
-  .rf-dias { gap: 4px; } .rf-dia { padding: 3px 1px; border-width: 2px; border-radius: 10px; }
+  .rf-dias { gap: 5px; } .rf-dia { padding: 3px 1px; border-radius: 10px; }
   .rf-dia small { font-size: 9px; } .rf-dia .rf-dia-icone { font-size: 15px; } .rf-dia b { font-size: 11px; }
   .rf-tela p.rf-dica { font-size: 10px; }
-  .rf-tela[data-app="presente"] h3 { font-size: 15px; margin-bottom: 4px; }
+  .rf-tela[data-app="presente"] h3 { font-size: 16px; margin-bottom: 4px; }
   .rf-tela[data-app="presente"] p { font-size: 11px; margin-bottom: 5px; }
-  .rf-tela[data-app="presente"] { padding: 8px; }
   .rf-dia.sete { flex-direction: column; gap: 0; }
 }
-/* Rabifone com muitos apps (Presente, Ateliê, Álbum, Trabalhar, Desafios...): a tela inicial vira grade de 3 colunas na TV
-   e, no celular deitado, o aparelho fica largo com 6 colunas de ícones menores, tudo à vista sem rolar */
-.rf-tela[data-app="inicio"] .rf-grade { grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.rf-tela[data-app="inicio"] .rf-grade .rf-app:last-child:nth-child(odd) { grid-column: auto; }
-.rf-tela[data-app="inicio"] .rf-app { padding: 8px 2px 6px; font-size: 15px; line-height: 1.1; text-align: center; border-width: 3px; border-radius: 16px; }
-.rf-tela[data-app="inicio"] .rf-icone { width: 56px; height: 56px; font-size: 31px; border-radius: 15px; border-width: 3px; }
 @media (max-height: 520px) and (orientation: landscape) {
-  .rf-aparelho { width: min(560px, 66vw); aspect-ratio: auto; height: 86vh; border-radius: 30px; padding: 10px 12px 8px; }
-  .rf-topo { justify-content: flex-start; gap: 14px; padding: 0 12px 4px; }
-  .rf-topo > :last-child { margin-left: auto; }
-  .rf-tela[data-app="inicio"] { padding: 8px; }
-  .rf-tela[data-app="inicio"] .rf-grade { grid-template-columns: repeat(6, 1fr); gap: 10px 7px; padding-top: 2px; }
-  .rf-tela[data-app="inicio"] .rf-app { padding: 8px 1px 6px; font-size: 14px; gap: 4px; border-radius: 14px; box-shadow: 0 3px 0 var(--tinta); }
-  .rf-tela[data-app="inicio"] .rf-icone { width: 52px; height: 52px; font-size: 29px; border-radius: 14px; }
-  .rf-botoes { padding-top: 6px; }
-  .rf-botoes button { height: 34px; }
+  .rf-aparelho { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); height: calc(100vh - 16px); max-height: none; aspect-ratio: auto; width: min(720px, 88vw); border-width: 6px; border-radius: 36px; }
+  .rf-topo { grid-column: 1 / -1; height: 26px; padding: 4px 26px 0; font-size: 12px; }
+  .rf-ilha { display: none; } /* deitado, a ilha fica na lateral do aparelho de verdade; aqui o botão de pausa da casca ocupa o meio */
+  .rabifone .alb-abas { grid-template-columns: repeat(4, 1fr); }
+  .rf-tela { grid-row: 2; grid-column: 1; padding: 6px 8px 10px 18px; }
+  .rf-botoes { grid-row: 2; grid-column: 2; flex-direction: column; justify-content: center; gap: 12px; padding: 0 12px 10px 4px; }
+  .rf-botoes::after { display: none; }
+  .rf-botoes button { width: 44px; height: 44px; }
+  .rf-tela h3 { font-size: 18px; margin-bottom: 6px; gap: 8px; }
+  .rf-h-icone { width: 30px; height: 30px; border-radius: 8px; font-size: 17px; }
+  .rf-h-icone svg { width: 26px; }
+  .rf-tela p { font-size: 13px; margin-bottom: 6px; }
+  .rf-grade { grid-template-columns: repeat(6, 1fr); gap: 10px 4px; padding-top: 4px; }
+  .rf-app { font-size: 12px; gap: 4px; padding: 4px 1px; }
+  .rf-icone { width: 52px; height: 52px; font-size: 28px; }
+  .rf-icone svg { width: 42px; }
+  .rf-cores { grid-template-columns: repeat(6, 1fr); }
+  .rf-cores .rf-icone { width: 48px; height: 48px; }
+  .rf-lista { gap: 8px; }
+  .rf-lista .rf-item { min-height: 46px; padding: 5px 10px; gap: 10px; font-size: 15px; border-radius: 14px; }
+  .rf-emoji { width: 34px; height: 34px; border-radius: 10px; font-size: 20px; }
+  .rf-emoji-veiculo { width: 50px; height: 36px; }
+  .rf-veiculo { width: 46px; }
+  .rf-tela[data-app="garagem"] .rf-lista, .rf-tela[data-app="hora"] .rf-lista, .rf-tela[data-app="atelie"] .rf-lista, .rf-tela[data-app="casa"] .rf-lista { display: grid; grid-template-columns: 1fr 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rabifone, .rf-aparelho, .rf-tela.rf-troca, .rf-tela.rf-troca-volta, .rf-dia.hoje, .rf-bolinha { animation: none !important; }
+  .rf-item, .rf-icone, .rf-botoes button { transition: none; }
+  .rf-lista .rf-item.rf-foco, .rf-app.rf-foco .rf-icone { transform: none; }
 }

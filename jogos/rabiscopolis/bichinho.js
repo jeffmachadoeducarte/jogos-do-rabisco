@@ -89,7 +89,7 @@ export function criarBichinho(cena, { j, fis, sons, cam }) {
   function comportamento(dt, t, ctx) {
     const dx = j.pos.x - e.x, dz = j.pos.z - e.z, distR = Math.hypot(dx, dz);
     quieto = rv < 0.25 ? quieto + dt : 0;
-    // longe demais (teleporte, Rabifone, pulou de veículo) ou preso: aparece perto do Rabisco
+    // longe demais (teleporte, Rabisfone, pulou de veículo) ou preso: aparece perto do Rabisco
     if (distR > 16) reaparecer(true);
     // alvo: atrás do Rabisco e um pouco de lado (fora do caminho)
     const fx = Math.sin(j.dir), fz = Math.cos(j.dir), atras = 0.95 + Math.min(0.9, rv * 0.18);

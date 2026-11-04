@@ -4,7 +4,7 @@
 // e conta no HUD. Cada tarefa rende na hora; o turno completo dá o bônus. Sair no meio: fica com o que já ganhou.
 //
 //   const P = criarProfissoes(ctx);  P.atualizar(dt, t);  P.contexto() → { rotulo, fazer } | null;  P.alvo();  P.texto()
-//   P.comecar(id) → true | "motivo";  P.terminar();  P.ativa → id | null;  P.lista() (Rabifone);  P.info() (testes)
+//   P.comecar(id) → true | "motivo";  P.terminar();  P.ativa → id | null;  P.lista() (Rabisfone);  P.info() (testes)
 // ctx: { cena, sons, falar, aguardarFim, dizer, pos, veiculoAtual, chamarVeiculo(tipo, cor), vestir(id), tirar(),
 //   ganhar(qtd, motivo, rotulo), propaganda(id), confete, raio(), casaFrente(n), ocupado(), missaoAtiva(), salvo(), salvar() }
 
@@ -155,7 +155,7 @@ export function criarProfissoes(ctx) {
   function comecar(id) {
     const T = trabalho(id);
     if (!T) return "nao-existe";
-    if (ativa) { dizer("Rabiscolândia", "Você já está trabalhando! Termine o turno pelo Rabifone para escolher outro.", 3200); return "ja-trabalhando"; }
+    if (ativa) { dizer("Rabiscolândia", "Você já está trabalhando! Termine o turno pelo Rabisfone para escolher outro.", 3200); return "ja-trabalhando"; }
     if (ctx.ocupado?.()) { dizer("Rabiscolândia", "Saia para a rua para começar o turno.", 3000); return "ocupado"; }
     if (ctx.missaoAtiva?.()) { dizer("Rabiscolândia", "Termine ou largue a missão de agora antes de começar um turno.", 3600); return "missao"; }
     const vAgora = ctx.veiculoAtual?.();
@@ -368,7 +368,7 @@ export function criarProfissoes(ctx) {
     const tempo = tf.tipo === "entrega" && e && !e.feito ? (e.t <= e.prazo ? ` · ⏱️ ${mmss(e.prazo - e.t)}` : " · ⏱️ sem pressa") : "";
     return { icone: ativa.T.icone, titulo: ativa.T.titulo, passo: `Tarefa ${k} de ${n}: ${oque}${tempo} · 🪙 ${ativa.ganhou}` };
   }
-  // Rabifone (app Trabalhar)
+  // Rabisfone (app Trabalhar)
   function lista() {
     const S = salvoTrab();
     return { ativa: ativa ? { id: ativa.T.id, titulo: ativa.T.titulo, icone: ativa.T.icone, feitas: ativa.i, total: ativa.tarefas.length, ganhou: ativa.ganhou } : null,
