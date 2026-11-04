@@ -1523,7 +1523,7 @@ function criarGuia() {
   s.moveTo(-0.36, -1.3); s.lineTo(0.36, -1.3); s.lineTo(0.36, 0.05); s.lineTo(0.95, 0.05); s.lineTo(0, 1.4); s.lineTo(-0.95, 0.05); s.lineTo(-0.36, 0.05); s.closePath();
   const geo = new THREE.ExtrudeGeometry(s, { depth: 0.3, bevelEnabled: false });
   geo.translate(0, 0, -0.15); geo.rotateX(Math.PI / 2); // deitada, com a ponta para +z
-  const seta = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xff4f9a, transparent: true, opacity: 0.78, depthWrite: false, fog: false }));
+  const seta = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xff4f9a, transparent: true, opacity: 0.85, depthWrite: false, fog: false }));
   const borda = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, side: THREE.BackSide, depthWrite: false, fog: false })); borda.scale.setScalar(1.12);
   seta.renderOrder = borda.renderOrder = 6;
   const g = new THREE.Group(); g.add(borda, seta);
@@ -1543,7 +1543,7 @@ function atualizarGuia(t) {
   if (!mostra) return;
   const base = dentro ? dentro.pos : j.pos, heli = dentro?.tipo === "heli";
   const dx = a.x - base.x, dz = a.z - base.z, d = Math.hypot(dx, dz) || 1;
-  const k = Math.min(dentro ? (heli ? 2.2 : 1.6) : 0.7, d * 0.5); // um pouco à frente, na direção do destino
+  const k = Math.min(dentro ? (heli ? 1.2 : 0.8) : 0.45, d * 0.5); // um pouco à frente, na direção do destino
   const alto = dentro ? topoVeiculo(dentro) + 1.35 : 2.95; // acima da cabeça (e da etiqueta do nome)
   guia.g.position.set(base.x + (dx / d) * k, base.y + alto + Math.sin(t * 2.6) * 0.08, base.z + (dz / d) * k);
   const ang = Math.atan2(dx, dz);
@@ -1555,7 +1555,7 @@ function atualizarGuia(t) {
   d3.addScaledVector(N, -d3.dot(N)).normalize();
   TMP_G.x.crossVectors(N, d3);
   guia.g.quaternion.setFromRotationMatrix(TMP_G.m.makeBasis(TMP_G.x, N, d3));
-  const tam = dentro ? (heli ? 0.75 : 0.55) : 0.27; // ~45% do que era (0,6 a pé, 1,4 no carro, 2 no helicóptero)
+  const tam = dentro ? (heli ? 0.55 : 0.4) : 0.27; // ~30-45% do que era (0,6 a pé, 1,4 no carro, 2 no helicóptero)
   guia.tam = apareceu ? tam : guia.tam + (tam - guia.tam) * Math.min(1, dt * 5);
   guia.g.scale.setScalar(guia.tam * (1 + Math.sin(t * 4.2) * 0.06));
   guia.farol.position.set(a.x, 35, a.z);
