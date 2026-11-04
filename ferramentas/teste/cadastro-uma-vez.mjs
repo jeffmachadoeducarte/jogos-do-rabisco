@@ -25,7 +25,7 @@ async function nova(opts, url, antes = "") {
 }
 async function cadastrar(t) {
   await t.ev(s('[data-campo="resp-nome"]', "Mae Teste"));
-  await t.ev(s('[data-campo="telefone"]', "11999998888"));
+  await t.ev(s('[data-campo="telefone"]', "11900000004"));
   await t.ev(s('[data-campo="email"]', "m@t.com"));
   await t.ev(s('[data-campo="pin"]', "3719"));
   await t.ev(`document.querySelector('[data-acao="continuar"]').click()`);
@@ -61,7 +61,7 @@ for (const [nome, opts] of [["celular", { mobile: true, largura: 390, altura: 84
   ok((await t.ev(clicaJogo)) === "segue", "depois de salvar, o jogo segue");
   await t.ev(`sessionStorage.clear(); location.reload()`); await espera(1500);
   ok(!(await t.ev(ALGUM)), "nova visita: não abre cadastro");
-  ok(/Alice/.test(await t.ev(`document.getElementById("familia").textContent`)), "chip mostra Alice");
+  ok(await ate(t, `/Alice/.test(document.getElementById("familia")?.textContent || "")`, 15000), `chip mostra Alice (${await t.ev(`document.getElementById("familia")?.textContent`)})`);
   await t.ev(`document.getElementById("familia").click()`);
   ok(await ate(t, `!!document.querySelector(".quem .quem-item")`), "chip abre \"Quem vai jogar?\"");
   ok(!t.erros.length, `sem erros (${t.erros.join(" ; ")})`);

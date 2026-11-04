@@ -112,8 +112,10 @@ export function apagarTudo() {
   const pendentes = ler(CHAVE_EXCLUIR, []);
   Perfis.apagarTudo();
   familia = null;
-  if (API_CADASTRO && (quem || pendentes.length)) { gravar(CHAVE_EXCLUIR, [...pendentes.filter((x) => x.id !== quem?.id), ...(quem ? [quem] : [])]); sincronizar(); }
+  let envio = Promise.resolve(false);
+  if (API_CADASTRO && (quem || pendentes.length)) { gravar(CHAVE_EXCLUIR, [...pendentes.filter((x) => x.id !== quem?.id), ...(quem ? [quem] : [])]); envio = sincronizar(); }
   avisar();
+  return envio; // resolve quando o pedido de exclusão terminou (ou falhou: fica pendente e tenta de novo depois)
 }
 
 // ------------------------------------------------------------------ Envio do cadastro para a Educarte (API_CADASTRO)

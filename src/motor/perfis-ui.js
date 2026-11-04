@@ -549,7 +549,8 @@ function painelPais() {
           h("button", { type: "button", class: "pais-grande perigo", "data-acao": "apagar-tudo", texto: "🗑️ Apagar todos os dados deste aparelho", onclick: acao(async () => {
             const sim = await confirmar({ titulo: "Apagar tudo deste aparelho?", texto: "Apaga deste aparelho o cadastro, as fotos e o progresso de TODOS os jogadores (moedas, casas, álbuns, missões) e pede à Educarte para apagar o cadastro guardado lá. Não dá para desfazer.", sim: "Sim, apagar tudo", perigo: true });
             if (!sim) return;
-            Familia.apagarTudo();
+            // espera o pedido de exclusão ao servidor (até 3 s) antes de recarregar; sem internet, fica pendente
+            await Promise.race([Familia.apagarTudo(), new Promise((r) => setTimeout(r, 3000))]);
             fechar(true, true);
           }) }),
         ]),

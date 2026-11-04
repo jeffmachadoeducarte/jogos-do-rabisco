@@ -18,7 +18,7 @@ const ate = async (t, expr, ms = 10000) => { const fim = Date.now() + ms; while 
 const foto = async (t, nome) => { if (FOTOS) await t.foto(`${FOTOS}/${nome}.png`); };
 const J = JSON.stringify;
 // nome fora do banco de vozes (assets/voz/nomes) dá 404 no HEAD: é esperado, a narradora usa a fala neutra
-const errosDe = (t) => t.erros.filter((e) => !/HTTP 404 .*\/voz\/nomes\//.test(e));
+const errosDe = (t) => t.erros.filter((e) => !/HTTP 404 .*\/voz\/nomes\//.test(e) && !/HTTP 503 http:\/\/127\.0\.0\.1:\d+\/cadastro/.test(e)); // 503 = "servidor fora" simulado
 // preenche um campo como gente (valor + evento input)
 const preencher = (t, sel, v) => t.ev(`(() => { const e = document.querySelector(${J(sel)}); e.focus(); e.value = ${J(v)}; e.dispatchEvent(new Event("input", { bubbles: true })); e.dispatchEvent(new Event("change", { bubbles: true })); return e.value; })()`);
 const clicar = (t, sel) => t.ev(`(() => { const e = document.querySelector(${J(sel)}); if (!e) return false; e.click(); return true; })()`);
@@ -69,8 +69,8 @@ await foto(t, "cadastro-1-celular-deitado");
 await preencher(t, '[data-campo="resp-nome"]', "Maria");
 await tocar(t, '[data-acao="continuar"]');
 ok(/nome completo/.test(await erroVisivel(t)), "nome sem sobrenome: pede o nome completo");
-await preencher(t, '[data-campo="resp-nome"]', "Maria Souza");
-ok((await preencher(t, '[data-campo="telefone"]', "11987654321")) === "(11) 98765-4321", "telefone ganha a máscara (11) 98765-4321");
+await preencher(t, '[data-campo="resp-nome"]', "Maria Teste");
+ok((await preencher(t, '[data-campo="telefone"]', "11900000001")) === "(11) 90000-0001", "telefone ganha a máscara (11) 90000-0001");
 await preencher(t, '[data-campo="email"]', "maria@exemplo");
 await clicar(t, '[data-acao="continuar"]');
 ok(/e-mail/i.test(await erroVisivel(t)), "e-mail incompleto: avisa");
@@ -112,7 +112,7 @@ ok(r?.perfis?.length === 3 && r.perfis.map((p) => p.nome).join(",") === "Alice,T
 ok(r.perfis[2].tipo === "adulto" && r.perfis[0].genero === "menina" && r.perfis[1].nascimento === "2015-07-01", "tipo, gênero e nascimento guardados");
 const ids = Object.fromEntries(r.perfis.map((p) => [p.nome, p.id]));
 const fam = await t.ev(`JSON.parse(localStorage.getItem("rabisco.familia"))`);
-ok(fam.responsavel.nome === "Maria Souza" && fam.responsavel.telefone === "(11) 98765-4321" && fam.responsavel.email === "maria@exemplo.com", "responsável: nome completo, telefone e e-mail");
+ok(fam.responsavel.nome === "Maria Teste" && fam.responsavel.telefone === "(11) 90000-0001" && fam.responsavel.email === "maria@exemplo.com", "responsável: nome completo, telefone e e-mail");
 ok(fam.consentimento.responsavelLegal?.aceito && fam.consentimento.responsavelLegal.versaoTermo && fam.consentimento.responsavelLegal.em && !fam.consentimento.novidades.aceito, "consentimento registrado com data/hora e versão do termo; novidades desmarcado");
 ok(fam.pin?.h && !JSON.stringify(fam).includes("2580"), "PIN guardado só como impressão (o número não aparece)");
 ok(!JSON.stringify(fam).match(/cpf|rg"/i) && !fam.crianca, "sem CPF/RG e sem criança dentro do cadastro (ela mora no perfil)");
@@ -120,7 +120,7 @@ ok(await esperarPedido(1), "o cadastro foi enviado para a Educarte (servidor fal
 {
   const p = posts()[0], c = p?.corpo || {};
   ok(p?.url === "/cadastro" && /^[0-9a-f-]{36}$/.test(c.id) && /^[0-9a-f]{48}$/.test(c.segredo), "POST /cadastro com id anônimo (UUID) e segredo do aparelho");
-  ok(c.responsavel?.nome === "Maria Souza" && c.responsavel.telefone === "(11) 98765-4321" && c.responsavel.email === "maria@exemplo.com", "envia o responsável (nome completo, telefone, e-mail)");
+  ok(c.responsavel?.nome === "Maria Teste" && c.responsavel.telefone === "(11) 90000-0001" && c.responsavel.email === "maria@exemplo.com", "envia o responsável (nome completo, telefone, e-mail)");
   ok(J(c.criancas) === J([{ nome: "Alice", nascimento: "2018-03-10" }, { nome: "Theo", nascimento: "2015-07-01" }]), "envia as crianças (primeiro nome e nascimento), sem o perfil do adulto");
   ok(c.consentimento?.privacidade === true && c.consentimento.versao && c.consentimento.em && c.marketing?.aceito === false && c.marketing.em === null, "consentimento (termo, versão, data/hora) e marketing separado (não aceito)");
   ok(!/data:image|foto|genero|rabiscoins|pin/i.test(p.bruto), "nunca vai a foto (nem gênero, PIN ou progresso)");
@@ -198,8 +198,8 @@ console.log("\n== área dos pais: PIN, apagar perfil");
   t = await nova({ largura: 1280, altura: 800 }, `${BASE}/index.html`, prep);
   // cadastro rápido pela própria tela
   await ate(t, `!!document.querySelector(".cadastro")`);
-  await preencher(t, '[data-campo="resp-nome"]', "João Pereira Lima");
-  await preencher(t, '[data-campo="telefone"]', "21912345678");
+  await preencher(t, '[data-campo="resp-nome"]', "João Teste Lima");
+  await preencher(t, '[data-campo="telefone"]', "21900000002");
   await preencher(t, '[data-campo="email"]', "joao@exemplo.com.br");
   await preencher(t, '[data-campo="pin"]', "4826");
   await clicar(t, '[data-acao="continuar"]');
@@ -274,8 +274,9 @@ console.log("\n== área dos pais: PIN, apagar perfil");
   // portão antigo (sem PIN): conta de 2 algarismos × 1
   await t.ev(`(() => { const f = JSON.parse(localStorage.getItem("rabisco.familia")); f.pin = null; localStorage.setItem("rabisco.familia", JSON.stringify(f)); })()`);
   await marcar(t); await t.ev(`location.reload()`); await recarregou(t); await espera(600);
-  await t.ev(`Familia.portaoDosPais()`.replace("Familia.portaoDosPais()", `(window.__p = Familia.portaoDosPais(), 1)`));
-  await ate(t, `!!document.querySelector(".portao-conta")`);
+  await ate(t, `!!window.Familia && !document.querySelector(".perfis-tela")`, 15000);
+  await t.ev(`(window.__p = Familia.portaoDosPais(), 1)`);
+  ok(await ate(t, `!!document.querySelector(".portao-conta")`, 15000), "sem PIN: o portão abre");
   const [a, b] = (await t.ev(`document.querySelector(".portao-conta").textContent`)).split("×").map(Number);
   ok(a >= 12 && a <= 19 && b >= 6 && b <= 9, `sem PIN: conta difícil de cabeça (${a} × ${b})`);
   await clicar(t, ".portao-tela .botao.branco");
@@ -297,7 +298,7 @@ console.log("\n== migração: progresso antigo vai para o 1º perfil, sem perder
     "rabisco-arca-recorde": "42",
   };
   const antes = `if (!sessionStorage.getItem("__prep")) { sessionStorage.setItem("__prep", "1"); localStorage.clear();
-    localStorage.setItem("rabisco.familia", ${J(J({ responsavel: { nome: "Ana Lima", email: "ana@exemplo.com", whatsapp: "(31) 99876-5432", cidade: "BH", uf: "MG" }, crianca: { nome: "Lara", nascimento: "2017-09-09", genero: "menina", foto: FOTO }, consentimento: { novidades: true, em: "2026-10-01T10:00:00.000Z" }, criadoEm: "2026-10-01T10:00:00.000Z" }))});
+    localStorage.setItem("rabisco.familia", ${J(J({ responsavel: { nome: "Ana Teste", email: "ana@exemplo.com", whatsapp: "(31) 90000-0003", cidade: "BH", uf: "MG" }, crianca: { nome: "Lara", nascimento: "2017-09-09", genero: "menina", foto: FOTO }, consentimento: { novidades: true, em: "2026-10-01T10:00:00.000Z" }, criadoEm: "2026-10-01T10:00:00.000Z" }))});
     for (const [k, v] of Object.entries(${J(antigos)})) localStorage.setItem(k, v);
     localStorage.setItem("rabisco.som", "0"); }`;
   t = await nova({ mobile: true, largura: 390, altura: 844 }, `${BASE}/index.html`, antes);
@@ -311,11 +312,11 @@ console.log("\n== migração: progresso antigo vai para o 1º perfil, sem perder
   ok((await saldo(t)) === 321, "Rabiscoins antigos aparecem (321)");
   ok((await t.ev(`import("/jogos/rabiscopolis/salvar.js").then((m) => m.carregar())`)).album.figs.length === 2, "álbum da Rabiscolândia continua");
   const famV2 = await t.ev(`JSON.parse(localStorage.getItem("rabisco.familia"))`);
-  ok(famV2.v === 2 && !famV2.crianca && famV2.responsavel.telefone === "(31) 99876-5432" && famV2.consentimento.novidades.aceito, "cadastro antigo convertido (WhatsApp → telefone, novidades mantido)");
+  ok(famV2.v === 2 && !famV2.crianca && famV2.responsavel.telefone === "(31) 90000-0003" && famV2.consentimento.novidades.aceito, "cadastro antigo convertido (WhatsApp → telefone, novidades mantido)");
   ok((await t.ev(`Familia.crianca().nome`)) === "Lara", "a narradora continua chamando a Lara");
   // cadastro antigo não tinha o consentimento do responsável legal: o questionário abre já preenchido
   ok(await ate(t, `!!document.querySelector(".cadastro")`), "cadastro antigo: abre o questionário para confirmar e consentir");
-  ok((await t.ev(`document.querySelector('[data-campo="resp-nome"]').value`)) === "Ana Lima", "já vem preenchido com o responsável");
+  ok((await t.ev(`document.querySelector('[data-campo="resp-nome"]').value`)) === "Ana Teste", "já vem preenchido com o responsável");
   ok(!(await t.transborda()), "cadastro cabe no celular em pé");
   await preencher(t, '[data-campo="pin"]', "7391");
   await clicar(t, '[data-acao="continuar"]');
@@ -357,7 +358,7 @@ console.log("\n== migração: progresso antigo vai para o 1º perfil, sem perder
     ok(lara?.marketing?.aceito === true, "o aceite de novidades do cadastro antigo foi mantido no envio");
   }
   await espera(600);
-  const sobrou = await t.ev(`Object.keys(localStorage).filter((k) => k !== "rabisco.perfis")`);
+  const sobrou = await t.ev(`Object.keys(localStorage).filter((k) => k !== "rabisco.perfis" && k !== "teste.apiCadastro")`); // teste.apiCadastro: só o endereço do servidor falso
   ok(sobrou.length === 0, `nada da família ficou no aparelho (sobrou: ${sobrou.join(", ") || "nada"})`);
   ok((await reg(t)).perfis.length === 1 && !(await reg(t)).perfis[0].nome && (await saldo(t)) === 0, "começa do zero, com um perfil vazio");
   ok(await ate(t, `!!document.querySelector(".cadastro")`), "e o cadastro da 1ª entrada aparece de novo");
@@ -376,8 +377,8 @@ console.log("\n== TV 1920x1080 e página de privacidade");
   t = await nova({ largura: 1920, altura: 1080 }, `${BASE}/index.html`);
   ok(await ate(t, `!!document.querySelector(".cadastro")`), "TV: cadastro abre");
   await foto(t, "cadastro-1-tv-1920x1080");
-  await preencher(t, '[data-campo="resp-nome"]', "Maria Souza");
-  await preencher(t, '[data-campo="telefone"]', "11987654321");
+  await preencher(t, '[data-campo="resp-nome"]', "Maria Teste");
+  await preencher(t, '[data-campo="telefone"]', "11900000001");
   await preencher(t, '[data-campo="email"]', "maria@exemplo.com");
   await preencher(t, '[data-campo="pin"]', "2580");
   await clicar(t, '[data-acao="continuar"]');
