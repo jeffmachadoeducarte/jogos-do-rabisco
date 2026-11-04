@@ -693,7 +693,7 @@ export function obraPedreiro(rot = 0) {
 export function construrenova(l) {
   const S = novo(), g = S.grupo, W = 23, H = 9.6, D = 14, prof = 7, CZ = 0xd9dcdf, LJ = 0xf07a1a, PT = 0x141416, GR = 0x8e959b;
   const FX0 = -11.1, FX1 = 2.7, FY = 8.9, E = 0.75, R = 1.5; // moldura laranja (de fora a fora) e o recuo da loja atrás do vidro
-  const GX0 = 4.5, GX1 = 10.7, GH = 5.6; // portão do galpão
+  const GX0 = 4.5, GX1 = 10.7, GH = 4.7; // portão do galpão (baixo o bastante para a placa do @ caber acima do toldo, à vista da rua)
   casco(g, { W, H, D, prof, cor: CZ, beiral: 0xc4c8cc, rodape: 0x9aa1a7 });
   // paredes da frente: tudo fundo (prof), menos o recuo da loja e o vão do portão
   const cheio = (x0, x1, y0, y1) => pc(g, x1 - x0, y1 - y0, prof, CZ, (x0 + x1) / 2, (y0 + y1) / 2, -prof / 2);
@@ -752,8 +752,8 @@ export function construrenova(l) {
   for (let i = 0; i < 3; i++) pc(g, gw - 0.2, 0.16, 0.08, 0xb4bac0, gm, GH - 0.3 - i * 0.2, -0.3, F);
   for (const x of [-2, 2]) pc(g, 1.8, 0.1, 0.4, 0, gm + x, GH - 0.15, -3.2, { ...F, material: MAT.lampada });
   // andaime (laranja e azul) e compactador lá dentro
-  for (const [x, z] of [[GX0 + 0.8, -4.6], [GX0 + 2.6, -4.6], [GX0 + 0.8, -5.9], [GX0 + 2.6, -5.9]]) pc(g, 0.1, 4.2, 0.1, 0x2f6fc0, x, 2.1, z, F);
-  for (const y of [1.4, 2.8, 4.2]) { pc(g, 2.0, 0.1, 1.5, 0x8a6a48, GX0 + 1.7, y, -5.25, F); pc(g, 1.9, 0.08, 0.08, LJ, GX0 + 1.7, y + 0.6, -4.55, F); }
+  for (const [x, z] of [[GX0 + 0.8, -4.6], [GX0 + 2.6, -4.6], [GX0 + 0.8, -5.9], [GX0 + 2.6, -5.9]]) pc(g, 0.1, 4.3, 0.1, 0x2f6fc0, x, 2.15, z, F);
+  for (const y of [1.3, 2.5, 3.7]) { pc(g, 2.0, 0.1, 1.5, 0x8a6a48, GX0 + 1.7, y, -5.25, F); pc(g, 1.9, 0.08, 0.08, LJ, GX0 + 1.7, y + 0.6, -4.55, F); }
   pc(g, 0.8, 0.6, 0.9, LJ, GX1 - 1.6, 0.5, -3.2); pc(g, 1.0, 0.12, 1.1, 0x2b2d31, GX1 - 1.6, 0.15, -3.2, F); pc(g, 0.08, 1.2, 0.08, 0x2b2d31, GX1 - 1.6, 1.25, -3.75, { ...F, rx: 0.4 });
   betoneira(g, GX1 - 1.4, -5.6, 0.6); carrinhoDeMao(g, GX0 + 4.2, -2.2, 0.3, 0x5a6168);
   // toldo inclinado de chapa ondulada, com duas mãos-francesas

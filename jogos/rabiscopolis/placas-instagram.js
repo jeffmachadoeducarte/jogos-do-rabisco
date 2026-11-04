@@ -29,7 +29,7 @@ const PLACAS = {
   "ballet-e-cia": { x: 0, y: 5.5, z: 0, w: 8.6, h: 0.98, cor: 0x7d1f4f },
   "bt-models": { x: 0, y: 5.85, z: 0, w: 7.6, h: 0.98, cor: 0xe7c35a },
   "speedy-solucoes": { x: 0, y: 4.43, z: 0.14, w: 8, h: 0.84, cor: 0x2f8fe8 },
-  construrenova: { x: 7.6, y: 7.85, z: 0.02, w: 5.6, h: 0.86, cor: 0xf07a1a }, // em cima do portão do galpão, acima do toldo
+  construrenova: { x: 7.6, y: 6.75, z: 0.02, w: 5.6, h: 0.86, cor: 0xf07a1a }, // em cima do portão do galpão, acima do toldo
 };
 
 // glifo do Instagram em vetor: quadrado de cantos redondos com degradê (amarelo embaixo à esquerda → rosa → roxo em cima à direita),

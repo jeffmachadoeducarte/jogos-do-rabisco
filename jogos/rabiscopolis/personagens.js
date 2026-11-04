@@ -222,12 +222,12 @@ function enfeitarMorador(raiz, qual, info, PERNA, corA = null, juntar = true) {
     const gr = malha(new THREE.ConeGeometry(0.08, 0.32, 4), mat(0x1f3a8a)); gr.rotation.x = Math.PI; gr.position.set(0, PERNA + info.ombro - 0.12, frente + 0.03); gr.scale.z = 0.35; g.add(gr);
     const no = malha(new THREE.SphereGeometry(0.05, 8, 6), mat(0x1f3a8a)); no.position.set(0, PERNA + info.ombro + 0.06, frente + 0.03); g.add(no);
   } else if (qual === "chapeu" || qual === "bone" || qual === "capacete" || qual === "chef") {
-    const cor = { chapeu: 0xf2d27a, bone: 0x00b5f0, capacete: 0xe63946, chef: 0xffffff }[qual];
+    const cor = (qual === "capacete" && corA) || { chapeu: 0xf2d27a, bone: 0x00b5f0, capacete: 0xe63946, chef: 0xffffff }[qual]; // capacete com corA: o amarelo de obra
     const aba = malha(new THREE.CylinderGeometry(r + (qual === "chapeu" ? 0.2 : 0.06), r + (qual === "chapeu" ? 0.2 : 0.06), 0.05, 20), mat(cor));
     aba.position.y = topo; if (qual === "bone") { aba.scale.set(0.8, 1, 1.25); aba.position.z = 0.12; } g.add(aba);
     const copa = malha(new THREE.SphereGeometry(r + 0.02, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(cor));
     copa.position.y = topo; if (qual === "chef") copa.scale.set(1, 1.9, 1); g.add(copa);
-    if (qual === "capacete") { const placa = malha(geoCaixaRedonda(0.2, 0.16, 0.04, 0.03), mat(0xffcc1f)); placa.position.set(0, topo + 0.14, r + 0.02); g.add(placa); }
+    if (qual === "capacete") { const placa = malha(geoCaixaRedonda(0.2, 0.16, 0.04, 0.03), mat(corA ? 0xf07a1a : 0xffcc1f)); placa.position.set(0, topo + 0.14, r + 0.02); g.add(placa); }
   } else if (qual === "gorro") { // gorro de Natal (missões de Natal): barra branca, cone vermelho caindo para o lado e pompom
     const barra = malha(new THREE.CylinderGeometry(r + 0.05, r + 0.05, 0.14, 16), mat(0xffffff)); barra.position.y = topo + 0.03; g.add(barra);
     const cone = malha(new THREE.ConeGeometry(r * 0.92, 0.6, 12), mat(0xd62839)); cone.position.set(0.07, topo + 0.36, -0.02); cone.rotation.z = -0.38; g.add(cone);

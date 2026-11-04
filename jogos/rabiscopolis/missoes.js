@@ -213,7 +213,7 @@ export function criarMissoes(ctx) {
     // a obra do pedreiro (missão da Construrenova): o que foi alugado aparece lá depois da entrega (e fica, missão feita)
     if (d.obra) {
       n.extras = new THREE.Group(); grupo.add(n.extras);
-      const o = obraPedreiro(d.rot ?? 0); // a obra fica atrás de quem espera o.g.position.set(d.x, 0.04, d.z); n.extras.add(o.g);
+      const o = obraPedreiro(d.rot ?? 0); o.g.position.set(d.x, 0.04, d.z); n.extras.add(o.g); // a obra fica atrás de quem espera
       mesclar(o.g, { juntas: new Set([o.chegou]) }); n.obraChegou = o.chegou; o.chegou.visible = feitas.has(M.id);
     }
     // o que fica em volta (não se mexe): a árvore do Zaqueu, a arca do Noé

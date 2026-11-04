@@ -1,11 +1,13 @@
-// Rabiscolândia: as 4 missões especiais das parceiras (Marlon Máquinas, Ballet e Cia, BT Models, Speedy Soluções).
+// Rabiscolândia: as 5 missões especiais das parceiras (Marlon Máquinas, Ballet e Cia, BT Models, Speedy Soluções, Construrenova).
+//  - Construrenova: o Pedreiro Caderno pede, o Rabisco aluga a betoneira e o carrinho de mão com o seu Albino (o boneco da porta,
+//    que acena e não fala), leva até a obra (o equipamento aparece lá) e a anfitriã faz a propaganda com o @constru.renova;
 //  - a frente da Educarte Kids II começa antiga, troca ao concluir a missão da Speedy e continua trocada depois de recarregar;
 //  - largar a missão no meio da obra devolve a frente antiga;
 //  - o minijogo do ballet só anda com o botão no tempo; o desfile chama cada amigo só na luz verde; fora do tempo não acontece nada;
-//  - orçamento de desenho (TV ≤ 250, celular ≤ 180) perto da Kids II, na apresentação do ballet e no desfile;
+//  - orçamento de desenho (TV ≤ 250, celular ≤ 180) em frente à Construrenova e na obra, perto da Kids II, na apresentação do ballet e no desfile;
 //  - fotos em .claude/tmp/parceiros-missoes/.
 // Uso: python3 -m http.server 8103 &  node --experimental-websocket ferramentas/teste/rabiscopolis-parceiros-missoes.mjs http://localhost:8103
-//      PARTES=kids,galpao,ballet,desfile,celular para rodar só algumas (cada uma abre o jogo do zero).
+//      PARTES=kids,galpao,construrenova,ballet,desfile,celular para rodar só algumas (cada uma abre o jogo do zero).
 import { mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { abrir, espera } from "./cdp.mjs";
@@ -34,7 +36,7 @@ const custo = (t) => t.ev("teste.medir().total");
 const VISTA_KIDS2 = "teste.vista([195, 6.5, 8], [195, 4.2, -22])";
 const SPEEDY = "parceiro-speedy-solucoes";
 
-const PARTES = (process.env.PARTES ?? "kids,galpao,ballet,desfile,celular").split(",");
+const PARTES = (process.env.PARTES ?? "kids,galpao,construrenova,ballet,desfile,celular").split(",");
 const SEM_FALHA = (t) => { const erros = t.erros.filter((e) => !/assets\/voz\/nomes\//.test(e)); ok(!erros.length, `sem erro de console ${erros.slice(0, 6).join(" ; ")}`); };
 async function parte(nome, opcoes, f) {
   if (!PARTES.includes(nome)) return;
@@ -156,6 +158,58 @@ await parte("galpao", TV, async (t, ev) => {
   ok((await ev("teste.trava")) == null, "o Rabisco ficou solto de novo");
 });
 
+// ---------------------------------------------------------------- Construrenova: alugar com o seu Albino e levar até a obra
+const CONSTRU = "parceiro-construrenova";
+const FRENTE_CONSTRU = "teste.ir(140, 100); teste.olhar(Math.PI / 2)"; // no meio da Avenida do Contorno, de frente para o galpão
+await parte("construrenova", TV, async (t, ev) => {
+  await ev(`window.__voz = []; { const p = HTMLMediaElement.prototype.play; HTMLMediaElement.prototype.play = function () { window.__voz.push(this.src.replace(/^.*\\/voz\\//, "")); return p.call(this); }; }`);
+  const l = await ev(`(() => { const q = teste.mundo.lugares.find((x) => x.id === "${CONSTRU}"); return { x: q.x, z: q.z, pessoa: q.pessoaNaPorta && { x: q.pessoaNaPorta.x, z: q.pessoaNaPorta.z, id: q.pessoaNaPorta.m.grupo.userData.id } }; })()`);
+  ok(l.pessoa?.id === "albino", `o seu Albino fica na porta do galpão (${JSON.stringify(l.pessoa)})`);
+  const placa = await ev(`import("/jogos/rabiscopolis/placas-instagram.js").then(({ medidasPlacas }) => medidasPlacas.construrenova)`);
+  ok(placa?.arroba === "@constru.renova" && placa.largura <= placa.area, `placa do Instagram na fachada: ${placa?.arroba} (${Math.round(placa?.largura)} de ${Math.round(placa?.area)} px)`);
+  await ev(FRENTE_CONSTRU); await espera(1500);
+  const c0 = await custo(t);
+  ok(c0.calls <= 250, `em frente à Construrenova: ${c0.calls} chamadas, ${Math.round(c0.tris / 1000)} mil triângulos (≤ 250)`);
+  await t.foto(`${FOTOS}construrenova-frente.png`);
+  const alb = await ev(`teste.missoes.npc("${CONSTRU}", "albino")`);
+  ok(Math.hypot(alb.x - l.pessoa.x, alb.z - l.pessoa.z) < 0.1, "o seu Albino da missão é o boneco da porta (um só)");
+  // o pedido: com o Pedreiro Caderno, na obra da Avenida da Alegria
+  const ped = await ev(`teste.missoes.npc("${CONSTRU}", "pedreiro")`);
+  await ev(`teste.ir(${ped.x}, ${ped.z - 1.6}); teste.olhar(0)`); await espera(1300);
+  ok((await ev("teste.contexto"))?.includes("Pedreiro Caderno"), `na obra o Pedreiro Caderno tem a missão (${await ev("teste.contexto")})`);
+  const cObra = await custo(t);
+  ok(cObra.calls <= 250, `na obra: ${cObra.calls} chamadas (≤ 250)`);
+  await ev("teste.acao()"); await espera(500);
+  ok((await ev("teste.missoes.ativa")) === CONSTRU, "missão da Construrenova aceita");
+  ok((await ev("window.__voz")).includes(`rp-m-${CONSTRU}-pedido.mp3`), "a anfitriã fala o pedido");
+  await t.foto(`${FOTOS}construrenova-obra-antes.png`);
+  // alugar a betoneira e o carrinho de mão, na calçada em frente ao portão, do lado do seu Albino
+  const itens = await ev(`teste.missoes.itensDe("${CONSTRU}")`);
+  ok(itens.length === 2, `dois equipamentos para alugar (${itens.map((i) => i.id).join(", ")})`);
+  for (const it of itens) {
+    ok(!(await ev(`teste.fis.bate(${it.x}, ${it.z}, 0.1, 0.32)`)) && (await ev(`teste.distRua(${it.x}, ${it.z}).d`)) > 0 && Math.hypot(it.x - alb.x, it.z - alb.z) < 4.5, `${it.id} na calçada, fora do asfalto, perto do seu Albino (${it.x}, ${it.z})`);
+    await ev(`teste.ir(${it.x - 0.6}, ${it.z}); teste.olhar(Math.PI / 2)`); await espera(600);
+    ok((await ev("teste.contexto"))?.includes("Alugar"), `botão: ${await ev("teste.contexto")}`);
+    if (it.id === "betoneira") await t.foto(`${FOTOS}construrenova-alugar.png`);
+    await ev("teste.acao()"); await espera(400);
+  }
+  ok(await ate(t, "teste.missoes.etapa === 1", 3000), "alugou os dois: agora é levar até a obra");
+  ok(await ate(t, `window.__voz.includes("rp-m-${CONSTRU}-alugou.mp3")`, 4000), "a anfitriã avisa que está tudo alugado");
+  ok(!(await ev("document.querySelector('.balao-rp')?.textContent ?? ''")).startsWith("Seu Albino"), "o seu Albino não fala (quem narra é a anfitriã)");
+  await ev(`teste.ir(${ped.x}, ${ped.z - 1.6}); teste.olhar(0)`); await espera(1000);
+  ok((await ev("teste.contexto"))?.includes("Entregar"), `na obra aparece entregar (${await ev("teste.contexto")})`);
+  await ev("teste.acao()");
+  ok(await ate(t, `teste.missoes.feitas.includes("${CONSTRU}")`, 6000), "missão da Construrenova concluída");
+  await espera(1200);
+  await ev(`teste.vista([${ped.x - 5}, 3.5, ${ped.z - 6}], [${ped.x}, 0.8, ${ped.z + 1}])`); await espera(800); await t.foto(`${FOTOS}construrenova-obra-depois.png`); await ev("teste.vista(null)");
+  // propaganda no fim (depois da fala de fim e do versículo): balão com o nome e o @, e a voz rp-prop-construrenova
+  ok(await ate(t, `window.__voz.includes("rp-prop-construrenova.mp3")`, 60000, 200), "a propaganda da Construrenova toca no fim");
+  const arroba = await ev(`document.querySelector(".balao-rp .prop-insta")?.textContent ?? ""`);
+  ok(arroba.includes("@constru.renova") && arroba.includes("Construrenova"), `o balão mostra "${arroba}"`);
+  const vz = await ev("window.__voz");
+  ok(vz.indexOf(`rp-m-${CONSTRU}-verso.mp3`) >= 0 && vz.indexOf("rp-prop-construrenova.mp3") > vz.indexOf(`rp-m-${CONSTRU}-verso.mp3`), "a propaganda vem depois do versículo");
+});
+
 // ---------------------------------------------------------------- ballet
 await parte("ballet", TV, async (t, ev) => {
   await ev("teste.entrarLugar('parceiro-ballet-e-cia')"); await espera(1200);
@@ -230,6 +284,10 @@ await parte("desfile", TV, async (t, ev) => {
 
 // ---------------------------------------------------------------- celular (orçamento menor; toque no botão de verdade)
 await parte("celular", { mobile: true, largura: 844, altura: 390 }, async (c, evc) => {
+  await evc(FRENTE_CONSTRU); await espera(1500);
+  const kc = await custo(c);
+  ok(kc.calls <= 180, `celular, em frente à Construrenova: ${kc.calls} chamadas (≤ 180)`);
+  await c.foto(`${FOTOS}celular-construrenova.png`);
   await evc("teste.ir(195, -6); teste.olhar(Math.PI)"); await espera(1500);
   const k0 = await custo(c);
   ok(k0.calls <= 180, `celular, Kids II com a frente antiga: ${k0.calls} chamadas (≤ 180)`);
