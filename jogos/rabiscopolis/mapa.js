@@ -174,8 +174,8 @@ export const LOJA_MAX = 19;
 // A Crescente Contabilidade (a 4ª) fica longe das outras, no oeste: lado sul da Avenida da Esperança, entre a Avenida do
 // Contorno e a Educarte Kids I, num prédio-escritório maior (PEGADA_ESCRITORIO).
 // [x, z, dir x, dir z, bairro?]. As parceiras novas ficam ESPALHADAS pela cidade, nunca juntas (o teste confere: 60 m ou mais
-// de qualquer outra parceira). Do índice 4 ao 12: Gala, See Love, Bella Company, Marlon, Café com Deus Pai Kids, Ballet e Cia,
-// BT Models, Speedy Soluções e Construrenova. O último é o ponto livre de antes (segue reservado para a próxima parceira).
+// de qualquer outra parceira). Do índice 4 ao 13: Gala, See Love, Bella Company, Marlon, Café com Deus Pai Kids, Ballet e Cia,
+// BT Models, Speedy Soluções, Construrenova e o Sítio Floresça. O último é o ponto livre de antes (segue reservado para a próxima parceira).
 export const PONTOS_PARCEIROS = [
   [164, -59.5, 0, 1], [93, 9, 0, -1], [116, 9, 0, -1], [-160, -40.5, 0, -1],
   [-41, 30, -1, 0, "Centro"], // Gala Presentes: Rua do Sol, ao lado da praça
@@ -187,10 +187,13 @@ export const PONTOS_PARCEIROS = [
   [98, 149.5, 0, -1, "Sul"], // BT Models: sul da Avenida do Contorno
   [-116, -149.5, 0, 1, "Noroeste"], // Speedy Soluções: norte da Avenida do Contorno
   [149.5, 100, -1, 0, "Sudeste"], // Construrenova: leste da Avenida do Contorno, de frente para ela (entre os prédios 58 e 60)
+  // Sítio Floresça (Escola de Campo Educarte): o terreno grande do canto sudoeste, entre a Avenida do Horizonte e a Rua dos
+  // Ipês; o portão dá para a Avenida da Alegria (o resto do sítio desce até perto da orla). Desenho em sitio.js
+  [-352, 59.5, 0, -1, "Vila dos Ipês"],
   [118, -59.5, 0, 1],
 ];
 // largura e fundo do prédio de cada tipo de parceira que tem fachada própria (as outras: LOJA_MAX × 7,5)
-export const PEGADA_TIPO = { presentes: [17, 9], joias: [15, 9], confeccao: [19, 10], reciclagem: [24, 16], livraria: [17, 10], ballet: [21, 12], agencia: [19, 11], vidracaria: [18, 10], locacao: [24, 15] };
+export const PEGADA_TIPO = { presentes: [17, 9], joias: [15, 9], confeccao: [19, 10], reciclagem: [24, 16], livraria: [17, 10], ballet: [21, 12], agencia: [19, 11], vidracaria: [18, 10], locacao: [24, 15], sitio: [56, 138] };
 export const PEGADA_ESCRITORIO = [16, 12];
 // pátio da J.E (atrás da loja, no bairro Leste, longe da praça: de lá não se vê nem custa nada): cercado, com o portão
 // aberto para a Avenida do Contorno (no lado x0, de z = portao[0] a portao[1]) e 5 carros em leque, cada um com o bico
@@ -239,6 +242,8 @@ LUGARES.push(L("atelie", "Ateliê Ponta do Lápis", 24, 20, -1, 0, { pegada: [16
 export const FRENTE_ATELIE = { x0: 18.5, x1: 25, z0: 13, z1: 27 };
 // a calçada da Construrenova também fica sem árvore nem poste: de frente, o letreiro e o portão aparecem inteiros
 export const FRENTE_CONSTRURENOVA = { x0: 143, x1: 150.5, z0: 87.5, z1: 112.5 };
+// e a calçada em frente ao portão do Sítio Floresça: a porteira, a placa do @ e a campainha aparecem inteiras
+export const FRENTE_SITIO = { x0: -364, x1: -340, z0: 56.5, z1: 60.4 };
 export const lugar = (id) => LUGARES.find((l) => l.id === id);
 // praças dos bairros novos (iguais à do Centro: chafariz, canteiros, bancos e árvores)
 export const PRACAS_NOVAS = ["pracaIpes", "pracaPalmeiras", "pracaEstrelas"].map((id) => ({ id, x: lugar(id).x, z: lugar(id).z, r: 16 }));
@@ -334,6 +339,7 @@ export const PEGADAS_FIXAS = [
   ...LUGARES.filter((l) => l.pegada).map((l) => ({ id: l.id, nova: l.parceiroNovo || l.loja, ...pegadaDe(l.x, l.z, l.dir, l.pegada[0], l.pegada[1], l.recuo) })),
   { id: "atelie-frente", nova: true, ...FRENTE_ATELIE },
   { id: "construrenova-frente", nova: true, ...FRENTE_CONSTRURENOVA },
+  { id: "sitio-frente", nova: true, ...FRENTE_SITIO },
   ...AREAS_DESAFIOS.map((r) => ({ ...r, nova: true })), // Desafios de obstáculos (desafios-dados.js): sem árvore nem prédio de enchimento em cima
   ...LOTES.map((l) => ({ id: l.id, ...pegadaDe(l.x, l.z, l.dir, LOTE.w, LOTE.d, LOTE.recuo) })),
   { id: "praca", x0: PRACA.x - PRACA.r - 2, x1: PRACA.x + PRACA.r + 2, z0: PRACA.z - PRACA.r - 2, z1: PRACA.z + PRACA.r + 2 },

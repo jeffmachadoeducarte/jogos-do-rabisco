@@ -120,8 +120,11 @@ export function montarMundo(cena) {
     const ox = l.x - l.dir[0] * l.recuo, oz = l.z - l.dir[1] * l.recuo;
     if (l.parceiro?.tipo === "contabilidade") { por(P.escritorioCrescente(l), ox, oz, l.rot); continue; } // prédio-escritório (sem foto)
     if (FACHADAS[l.parceiro?.tipo]) { // parceira com fachada inventada (predios-parceiros.js)
+      const n0 = solidos.length;
       const S = por(FACHADAS[l.parceiro.tipo](l), ox, oz, l.rot);
       Object.assign(lugares.at(-1), { porta: mundoDe(ox, oz, l.rot, ...S.porta), topo: S.topo, origem: [ox, oz, l.rot] });
+      // o Sítio Floresça tem vida própria (portão, Tia Regina, Duck, Ale: sitio.js); recebe as colisões dele já no mundo
+      if (S.vivo) lugares.at(-1).sitio = S.vivo({ origem: [ox, oz, l.rot], solidos: solidos.slice(n0), lugar: lugares.at(-1) });
       if (S.pessoa) { // quem fica na porta: cada um respira, olha em volta e só anima com o bloco visível
         const q = criarPessoa(S.pessoa.id);
         q.grupo.userData.dinamico = true; q.grupo.position.set(S.pessoa.x, 0.09, S.pessoa.z);
@@ -332,6 +335,7 @@ export function montarMundo(cena) {
       }
     },
     blocosVisiveis: () => blocos.filter((g) => g.visible).length,
+    get sitio() { return lugares.find((q) => q.sitio)?.sitio ?? null; }, // o Sítio Floresça (sitio.js)
     atualizar(dt, t) {
       for (const p of anima.patos) { p.a += p.v * dt; p.p.position.set(LAGO.x + Math.cos(p.a) * p.r, 0.12 + Math.sin(t * 3 + p.r) * 0.03, LAGO.z + Math.sin(p.a) * p.r); p.p.rotation.y = -p.a; }
       for (const j of anima.jatos) j.scale.y = 1 + Math.sin(t * 6) * 0.08;

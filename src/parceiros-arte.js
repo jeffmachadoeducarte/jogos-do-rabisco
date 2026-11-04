@@ -179,6 +179,21 @@ const LETREIROS = {
     c.fillStyle = "#c3c9ce"; for (let i = 1; i < 3; i++) c.fillRect((w * i) / 3 - 2, y0, 4, vh);
     for (let i = 0; i < n2; i++) ferramenta(c, qs[i], (w * (i + 0.5)) / n2, y0 + vh * 0.5, vh * 0.78);
   },
+  // Sítio Floresça: placa de madeira da porteira, com o nome da escola em cima, o do sítio grande no meio e "Festas e
+  // eventos" embaixo; florzinhas nos cantos. Arte inventada (sem logotipo)
+  "sitio-floresca": (c, w, h) => {
+    c.fillStyle = "#7a4e2c"; c.fillRect(0, 0, w, h);
+    c.fillStyle = "#8a5a34"; for (let i = 0; i < 4; i++) c.fillRect(0, (h * i) / 4 + 2, w, h / 4 - 4); // tábuas
+    c.strokeStyle = "rgba(60,34,16,0.45)"; c.lineWidth = Math.max(2, h * 0.012); for (let i = 0; i < 9; i++) { const y = ((i * 37) % 97) / 97 * h; c.beginPath(); c.moveTo((i * 131) % w, y); c.quadraticCurveTo(w / 2, y + h * 0.04, ((i * 211) % w), y + h * 0.02); c.stroke(); }
+    moldura(c, w, h, h * 0.06, "#4f3018");
+    texto(c, "ESCOLA DE CAMPO EDUCARTE", w / 2, h * 0.2, w * 0.82, h * 0.15, { cor: "#ffe9b0", espaco: 2 });
+    texto(c, "Sítio Floresça", w / 2, h * 0.52, w * 0.78, h * 0.4, { cor: "#ffffff", contorno: "#3f2412" });
+    texto(c, "Festas e eventos", w / 2, h * 0.83, w * 0.6, h * 0.15, { cor: "#bfe88a" });
+    for (const [x, y, cor] of [[h * 0.2, h * 0.24, "#ff7ab0"], [w - h * 0.2, h * 0.24, "#ffd23f"], [h * 0.2, h * 0.76, "#ffd23f"]]) {
+      c.fillStyle = cor; for (let k = 0; k < 5; k++) { const a = (k / 5) * Math.PI * 2; c.beginPath(); c.arc(x + Math.cos(a) * h * 0.06, y + Math.sin(a) * h * 0.06, h * 0.055, 0, 7); c.fill(); }
+      c.fillStyle = "#fff6c8"; c.beginPath(); c.arc(x, y, h * 0.045, 0, 7); c.fill();
+    }
+  },
 };
 // etiqueta do @ no canto de baixo do letreiro, só na "foto" do Kart. Na Rabiscolândia o @ tem placa própria na fachada
 // (jogos/rabiscopolis/placas-instagram.js)
@@ -347,6 +362,35 @@ FOTOS.construrenova = (c, W, H) => {
     c.strokeStyle = "#2b2d31"; c.lineWidth = 6; c.beginPath(); c.moveTo(x + 30, H - 40); c.lineTo(x + 70, H - 26); c.stroke();
     c.fillStyle = "#f07a1a"; c.beginPath(); c.arc(x - 36, H - 22, 14, 0, 7); c.fill();
   }
+};
+// Sítio Floresça: gramado, a estradinha de terra até o celeiro de madeira com portas amarelas, a casa de tijolinho à
+// esquerda, o portão de tela com palanques e o pinheiro alto
+FOTOS["sitio-floresca"] = (c, W, H) => {
+  const g = c.createLinearGradient(0, 0, 0, H * 0.6); g.addColorStop(0, "#7cc8f2"); g.addColorStop(1, "#d8f0ff");
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  c.fillStyle = "#3f7d3a"; for (let i = 0; i < 14; i++) { c.beginPath(); c.arc(i * 80 + 20, H * 0.5, 70 + (i % 3) * 18, 0, 7); c.fill(); } // mata ao fundo
+  c.fillStyle = "#6cbf4a"; c.fillRect(0, H * 0.56, W, H * 0.44); // gramado
+  c.fillStyle = "#b9a27a"; c.beginPath(); c.moveTo(W * 0.47, H * 0.6); c.lineTo(W * 0.53, H * 0.6); c.lineTo(W * 0.66, H); c.lineTo(W * 0.34, H); c.fill(); // estradinha
+  // celeiro de madeira: tábuas, telha laranja e as portas amarelas
+  const bx = W * 0.5, by = H * 0.6;
+  c.fillStyle = "#9a7350"; c.fillRect(bx - 20, by - 110, 260, 110);
+  c.strokeStyle = "#6e4f34"; c.lineWidth = 3; for (let x = bx - 14; x < bx + 240; x += 14) { c.beginPath(); c.moveTo(x, by - 110); c.lineTo(x, by); c.stroke(); }
+  c.fillStyle = "#d0643a"; c.beginPath(); c.moveTo(bx - 34, by - 106); c.lineTo(bx + 110, by - 176); c.lineTo(bx + 254, by - 106); c.fill();
+  c.fillStyle = "#e8b547"; for (const x of [bx + 60, bx + 112]) { c.fillRect(x, by - 74, 48, 74); c.strokeStyle = "#a87a25"; c.lineWidth = 5; c.beginPath(); c.moveTo(x, by - 74); c.lineTo(x + 48, by); c.moveTo(x + 48, by - 74); c.lineTo(x, by); c.stroke(); }
+  // casa de tijolinho à esquerda: telha escura e janelas de moldura escura
+  const hx = W * 0.06, hy = H * 0.66;
+  c.fillStyle = "#b5583a"; c.fillRect(hx, hy - 120, 300, 120);
+  c.strokeStyle = "#d8c8b0"; c.lineWidth = 2; for (let y = hy - 112; y < hy; y += 12) { c.beginPath(); c.moveTo(hx, y); c.lineTo(hx + 300, y); c.stroke(); }
+  c.fillStyle = "#3e302c"; c.beginPath(); c.moveTo(hx - 16, hy - 116); c.lineTo(hx + 150, hy - 196); c.lineTo(hx + 316, hy - 116); c.fill();
+  c.fillStyle = "#2d2622"; for (const x of [hx + 30, hx + 130, hx + 230]) c.fillRect(x, hy - 92, 44, 54);
+  c.fillStyle = "#c9a46a"; c.fillRect(hx + 136, hy - 168, 28, 24); // caixinha de madeira no oitão
+  // pinheiro alto
+  c.fillStyle = "#6b4a2e"; c.fillRect(W * 0.88, H * 0.12, 14, H * 0.5);
+  c.fillStyle = "#2f6a35"; for (let i = 0; i < 5; i++) { c.beginPath(); c.ellipse(W * 0.88 + 7, H * 0.16 + i * 48, 60 - i * 4, 24, 0, 0, 7); c.fill(); }
+  // cerca de tela com palanques e o portão de moldura metálica
+  c.strokeStyle = "#8a6440"; c.lineWidth = 10; for (let x = 20; x < W; x += 110) { c.beginPath(); c.moveTo(x, H * 0.78); c.lineTo(x, H); c.stroke(); }
+  c.strokeStyle = "rgba(160,170,176,0.7)"; c.lineWidth = 2; for (let x = 0; x < W; x += 16) { c.beginPath(); c.moveTo(x, H * 0.8); c.lineTo(x, H); c.stroke(); } for (let y = H * 0.8; y < H; y += 16) { c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); }
+  c.strokeStyle = "#d9dee2"; c.lineWidth = 7; for (const x of [W * 0.38, W * 0.5]) c.strokeRect(x, H * 0.8, W * 0.12, H * 0.2);
 };
 // a foto: fachada desenhada, com o letreiro em cima (legível de longe na beira da pista)
 export function desenharFoto(c, id, W, H, { instagram = null } = {}) {

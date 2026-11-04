@@ -38,6 +38,7 @@
   <button data-a="maleta">Maleta: não</button>
   <button data-p="marlon">Marlon</button>
   <button data-p="albino">Albino</button>
+  <button data-p="regina">Tia Regina</button>
   <button data-p="samira">Samira</button>
   <button data-p="juntas">Todas</button>
 </div>
@@ -64,9 +65,9 @@ const g = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshToonMate
 const calc = TEX.calcada.clone(); calc.needsUpdate = true; calc.repeat.set(3, 3);
 const c = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), new THREE.MeshToonMaterial({ map: calc })); c.rotation.x = -Math.PI / 2; c.position.y = 0.01; cena.add(c);
 
-const pessoas = { sabrina: criarPessoa("sabrina"), elaine: criarPessoa("elaine"), carina: criarPessoa("carina"), aurelio: criarPessoa("aurelio"), camila: criarPessoa("camila"), "riseup-dono": criarPessoa("riseup-dono"), marlon: criarPessoa("marlon"), albino: criarPessoa("albino"), samira: criarPessoa("samira"), "vovo-leo": criarPessoa("vovo-leo", { objeto: true }) };
-const TITULOS = { sabrina: "Diretora Sabrina · Kids II", elaine: "Contadora Elaine · Crescente Contabilidade", carina: "Diretora Carina · Kids I", aurelio: "Aurélio · Crescente Contabilidade", camila: "Camila · Rise Up", "riseup-dono": "Robert · Rise Up", marlon: "Marlon · Marlon Máquinas", albino: "Seu Albino · Construrenova", samira: "Prof. Samira · Ballet e Cia", juntas: "Todas as pessoas", "vovo-leo": "Vovô Léo · amigo do Rabisco" };
-const LUGAR = { sabrina: -5.5, elaine: -4.4, aurelio: -3.3, carina: -2.2, camila: -1.1, "riseup-dono": 0, marlon: 1.1, albino: 2.2, samira: 3.3, "vovo-leo": 4.4 };
+const pessoas = { sabrina: criarPessoa("sabrina"), elaine: criarPessoa("elaine"), carina: criarPessoa("carina"), aurelio: criarPessoa("aurelio"), camila: criarPessoa("camila"), "riseup-dono": criarPessoa("riseup-dono"), marlon: criarPessoa("marlon"), albino: criarPessoa("albino"), regina: criarPessoa("regina"), samira: criarPessoa("samira"), "vovo-leo": criarPessoa("vovo-leo", { objeto: true }) };
+const TITULOS = { sabrina: "Diretora Sabrina · Kids II", elaine: "Contadora Elaine · Crescente Contabilidade", carina: "Diretora Carina · Kids I", aurelio: "Aurélio · Crescente Contabilidade", camila: "Camila · Rise Up", "riseup-dono": "Robert · Rise Up", marlon: "Marlon · Marlon Máquinas", albino: "Seu Albino · Construrenova", regina: "Tia Regina · Sítio Floresça", samira: "Prof. Samira · Ballet e Cia", juntas: "Todas as pessoas", "vovo-leo": "Vovô Léo · amigo do Rabisco" };
+const LUGAR = { sabrina: -5.5, elaine: -4.4, aurelio: -3.3, carina: -2.2, camila: -1.1, "riseup-dono": 0, marlon: 1.1, albino: 2.2, regina: 2.75, samira: 3.3, "vovo-leo": 4.4 };
 for (const p of Object.values(pessoas)) cena.add(p.grupo);
 let sabrina = pessoas.sabrina, quem = "sabrina";
 function mostrar(q) {

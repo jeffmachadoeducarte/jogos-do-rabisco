@@ -2,6 +2,7 @@
 // fica parado nela e o botão faz cada parte, com uma câmera de cena.
 //   "pet"  · Marlon Máquinas: cada garrafa sobe a esteira, entra no container e sai separada em três caixas (rótulo, tampa, flocos)
 //   "obra" · Speedy Soluções: andaime e poeira; sai a frente antiga, entram os perfis de alumínio e depois a pele de vidro da Kids II
+//   "ale" · Sítio Floresça: pegar a pata Ale que fugiu e soltar no lago · "duck" · tirar o Duck do lago e levar até a Tia Regina
 //   "presepio" · Natal: as 7 peças do presépio entram uma por vez na praça, com a história do nascimento de Jesus
 // Só anda enquanto é a etapa atual: fim() desfaz tudo que for da cena (também quando a criança larga a missão).
 //
@@ -253,4 +254,50 @@ function cenaPresepio(ctx) {
   };
 }
 
-export function criarCena(nome, ctx) { return ({ pet: cenaPet, obra: cenaObra, presepio: cenaPresepio })[nome](ctx); }
+// ------------------------------------------------------------------ Sítio Floresça (sitio.js): a pata Ale e o Duck
+// Quem se mexe é do sítio (mundo.sitio): a cena só diz o que o botão faz, para onde a seta aponta e quando termina.
+const sitioDe = (ctx) => ctx.lugares().find((l) => l.sitio)?.sitio;
+// "ale": a Ale foge pelo gramado (a Tia Regina ajuda); o Rabisco pega a Ale e solta no lago, pelo portãozinho
+function cenaAle(ctx) {
+  const s = sitioDe(ctx), f = ctx.E.falas[0];
+  let pegou = false, soltou = false;
+  s.aleFugir();
+  return {
+    contexto(p) {
+      if (!pegou && s.perto(p, s.aleMundo(), 2.4)) return { rotulo: "🦆 Pegar a Ale", fazer: () => { if (!s.pegarAle(ctx.rabisco)) return; pegou = true; s.mostrarMarca(true); ctx.sons.bichinho?.("quack"); ctx.dizer("Rabiscolândia", f.texto, 3800); ctx.falar(f.voz); } };
+      if (pegou && !soltou && s.perto(p, s.marcaLagoMundo(), 2.4)) return { rotulo: "🦆 Soltar a Ale no lago", fazer: () => { soltou = true; s.mostrarMarca(false); s.soltarAle(() => ctx.fim()); } };
+      return null;
+    },
+    atualizar() {},
+    alvo() { return pegou ? { ...s.marcaLagoMundo(), emoji: "🦆" } : { ...s.aleMundo(), emoji: "🦆" }; },
+    texto() { return soltou ? "A Ale voltou para o lago!" : pegou ? "Leve a Ale até o portãozinho do lago" : "Pegue a pata Ale (a Tia Regina ajuda)"; },
+    info() { return { pegou, soltou, ale: s.ale, onde: s.aleMundo() }; },
+    fim() { if (!soltou) s.cancelarAle(); s.mostrarMarca(false); },
+  };
+}
+// "duck": o Duck está no lago; no portãozinho o Rabisco pega o Duck (ele sai, se sacode) e leva até a Tia Regina
+function cenaDuck(ctx) {
+  const s = sitioDe(ctx), f = ctx.E.falas[0];
+  let estado = "lago"; // lago → saindo → seguindo → entregue
+  s.duckNoLago(); s.mostrarMarca(true);
+  return {
+    contexto(p) {
+      if (estado === "lago" && s.duck === "lago" && s.perto(p, s.marcaLagoMundo(), 2.4)) return { rotulo: "🐕 Pegar o Duck", fazer: () => {
+        if (!s.chamarDuck(() => { estado = "seguindo"; ctx.dizer("Rabiscolândia", f.texto, 3800); ctx.falar(f.voz); })) return;
+        estado = "saindo"; s.mostrarMarca(false); ctx.sons.bichinho?.("au");
+      } };
+      return null;
+    },
+    atualizar(dt, t, p) {
+      if (estado !== "seguindo") return;
+      const r = s.reginaMundo();
+      if (s.perto(p, r, 3.6) && s.perto(s.duckMundo(), r, 4.6)) { estado = "entregue"; s.duckEntregar(); ctx.fim(); }
+    },
+    alvo() { return estado === "seguindo" ? { ...s.reginaMundo(), emoji: "🐕" } : { ...s.marcaLagoMundo(), emoji: "🐕" }; },
+    texto() { return estado === "seguindo" ? "Leve o Duck até a Tia Regina" : estado === "saindo" ? "O Duck está saindo do lago…" : "Vá até o portãozinho do lago e pegue o Duck"; },
+    info() { return { estado, duck: s.duckMundo() }; },
+    fim() { if (estado !== "entregue") s.cancelarDuck(); s.mostrarMarca(false); },
+  };
+}
+
+export function criarCena(nome, ctx) { return ({ pet: cenaPet, obra: cenaObra, presepio: cenaPresepio, ale: cenaAle, duck: cenaDuck })[nome](ctx); }

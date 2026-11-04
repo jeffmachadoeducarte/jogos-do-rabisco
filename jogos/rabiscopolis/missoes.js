@@ -166,7 +166,8 @@ export function criarMissoes(ctx) {
     if (d.mesmo) { const [mid, nid] = d.mesmo.split(":"); return npcDe(MISSOES.find((x) => x.id === mid), nid); }
     const n = { dados: d, M, id, quem: id === M.quem, festa: 0 };
     const naPorta = d.fachada && ctx.lugares?.().find((l) => l.id === d.fachada)?.pessoaNaPorta;
-    if (naPorta) Object.assign(n, { m: naPorta.m, g: naPorta.m.grupo, fixo: true, pessoa: true, fachada: true, mundo: [naPorta.x, naPorta.z] });
+    // (naPorta.mundo: quem anda pelo lugar, como a Tia Regina no sítio, mantém esse [x, z] sempre em dia)
+    if (naPorta) Object.assign(n, { m: naPorta.m, g: naPorta.m.grupo, fixo: true, pessoa: true, fachada: true, mundo: naPorta.mundo ?? [naPorta.x, naPorta.z] });
     else if (d.tipo === "vovo") Object.assign(n, { m: vovo, g: vovo.grupo, fixo: true });
     else if (["ovelha", "coelho", "piquenique", "gato", "anjo"].includes(d.tipo)) {
       // (anjo: o anjinho do presépio, no modo Natal)
@@ -237,6 +238,9 @@ export function criarMissoes(ctx) {
     return n;
   }
   for (const M of MISSOES) M.quem = Object.keys(M.npcs)[0];
+  // missões em sequência com a mesma pessoa (Sítio Floresça): a segunda (depois: id) só aparece com a primeira feita, e a
+  // primeira, já feita, dá a vez para a segunda enquanto ela não for feita
+  const liberada = (M) => (!M.depois || feitas.has(M.depois)) && !(feitas.has(M.id) && MISSOES.some((o) => o.depois === M.id && !feitas.has(o.id)));
 
   const npcPos = (n) => (n.mundo ?? (n === caronaNpc() ? [carona.pos.x, carona.pos.z] : [n.g.position.x, n.g.position.z]));
   const caronaNpc = () => (carona && ativa ? npcs.get(`${ativa.id}:${ativa.etapas[etapa]?.passageiro}`) : null);
@@ -373,7 +377,7 @@ export function criarMissoes(ctx) {
     ultimoReceptor = null;
     if (M.verso) passos.push({ nome: `📖 ${M.titulo}`, html: `${M.verso.texto} <i>(${M.verso.ref})</i>`, texto: `${M.verso.texto} ${M.verso.ref}`, tocar: () => falar(`rp-m-${M.id}-verso`) });
     const parc = PARCEIROS.find((p) => p.id === M.parceiro), P = PROPAGANDA[M.parceiro];
-    if (parc && P) passos.push({ nome: "Rabiscolândia", html: `${P.texto}<span class="prop-insta">📸 ${parc.nome} · @${parc.instagram}</span>`, texto: falaDaPropaganda(M.parceiro),
+    if (parc && P && !M.semPropaganda) passos.push({ nome: "Rabiscolândia", html: `${P.texto}<span class="prop-insta">📸 ${parc.nome} · @${parc.instagram}</span>`, texto: falaDaPropaganda(M.parceiro),
       quando: () => !ctx.ocupado?.() && !est.orando, tocar: () => falar(`rp-prop-${M.parceiro}`) });
     api.fimDaSerie = falarSerie(passos); // o álbum espera por ela para falar "página completa" no fim
     ativa = null; etapa = 0;
@@ -388,7 +392,7 @@ export function criarMissoes(ctx) {
     p ??= pos();
     if (!ativa) {
       for (const M of MISSOES) {
-        const n = npcs.get(`${M.id}:${M.quem}`); if (!n || !n.g.visible) continue;
+        const n = npcs.get(`${M.id}:${M.quem}`); if (!n || !n.g.visible || !liberada(M)) continue;
         const [x, z] = npcPos(n);
         if (Math.hypot(p.x - x, p.z - z) < 2.8) return { rotulo: `${M.icone} ${feitas.has(M.id) ? "De novo: " : ""}${M.titulo}`, fazer: () => aceitar(M.id) };
       }
@@ -475,7 +479,7 @@ export function criarMissoes(ctx) {
       if (!n.fixo) n.g.visible = vis;
       if (n.extras) n.extras.visible = Math.hypot(p.x - n.casa[0], p.z - n.casa[1]) < R && (n.casaExtras ? ativa === n.M : daMissao);
       // Missão do dia (diario.js): ctx.marcaDoDia(id) dá a estrela no lugar do "!" (aparece também se já foi feita)
-      if (n.marca) { const dia = ctx.marcaDoDia?.(n.M.id) ?? null, tx = dia ?? marcaTex(); if (n.marca.material.map !== tx) { n.marca.material.map = tx; n.marca.material.needsUpdate = true; } const pede = (!feitas.has(n.M.id) || Boolean(dia)) && !ativa; n.marca.visible = pede && (n.fixo && !n.fachada ? n.g.visible : vis); n.marca.position.set(x, n.g.position.y + (n.bicho ? 1.6 : n.m?.altura ?? 1.4) + 0.75 + Math.sin(t * 4) * 0.12, z); }
+      if (n.marca) { const dia = ctx.marcaDoDia?.(n.M.id) ?? null, tx = dia ?? marcaTex(); if (n.marca.material.map !== tx) { n.marca.material.map = tx; n.marca.material.needsUpdate = true; } const pede = (!feitas.has(n.M.id) || Boolean(dia)) && !ativa && liberada(n.M); n.marca.visible = pede && (n.fixo && !n.fachada ? n.g.visible : vis); n.marca.position.set(x, n.g.position.y + (n.bicho ? 1.6 : n.m?.altura ?? 1.4) + 0.75 + Math.sin(t * 4) * 0.12, z); }
       if (!vis && !n.fixo) continue;
       if (n.m && !n.fixo) {
         // parado: vira para o Rabisco quando ele chega perto

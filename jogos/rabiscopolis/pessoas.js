@@ -17,6 +17,10 @@
 //  - "albino": Seu Albino, gerente da Construrenova — senhor de uns 60 anos, cabelo grisalho bem curto com entradas (testa
 //    alta, topo ralo), pele clara rosada, sobrancelhas grossas, sorriso largo, rosto redondo, leve barriga; camiseta branca
 //    com corrente prateada fina, bermuda escura e tênis preto;
+//  - "regina": Tia Regina, dona do Sítio Floresça (Escola de Campo Educarte) — senhora baixinha (menor que o Rabisco), só um
+//    pouquinho cheinha, cabelo curto louro-claro acinzentado com franja de lado, óculos de vovó (armação fina escura, hastes
+//    douradas), pele morena clara, sorriso largo; blusa preta de manga curta, calça preta larga, tênis branco e o casaco
+//    verde-esmeralda pendurado no braço. As cores ficam em REGINA, logo abaixo, fáceis de trocar;
 //  - "samira": Prof. Samira, da Ballet e Cia — figura genérica de professora de ballet (a aparência real não é conhecida):
 //    coque, collant vinho e saia de tule nas cores da fachada.
 //
@@ -32,7 +36,7 @@
 
 import { THREE, texturaCanvas } from "../../src/motor3d/toon.js";
 import { sombraBlob } from "../../src/motor3d/objetos.js";
-import { comArestas, claro } from "./blocos.js";
+import { comArestas, claro, escuro } from "./blocos.js";
 
 // ---------------------------------------------------------------- esqueleto (posição de repouso, em metros, escala 1)
 const OSSOS = [
@@ -45,6 +49,13 @@ const O = Object.fromEntries(OSSOS.map(([n], i) => [n, i]));
 const ALTURA = 2.15;
 
 // ---------------------------------------------------------------- receitas
+// Tia Regina (Sítio Floresça): cores e medidas num lugar só, para ajustar fácil pelas fotos
+const REGINA = {
+  escala: 0.66, // baixinha: bem menor que o Rabisco (ela fica com ~1,42 m; a cabeça dela bate no rosto dele)
+  pele: 0xd9a582, cabelo: 0xe6cf9a, cabeloClaro: 0xf4e8c6, // louro-claro acinzentado, com mechas mais claras
+  blusa: 0x1c1c20, calca: 0x18181b, tenis: 0xe2e2de, solaTenis: 0xf6f6f4, casaco: 0x0f8a5f,
+  oculos: 0x3a2a22, hastes: 0xd4a941, iris: "#4a2c16", sobrancelha: "#8f7a5c", batom: "#c46a6a",
+};
 const PESSOAS = {
   sabrina: { nome: "Diretora Sabrina", escola: "kids2", pele: 0xf2c4a0, roupa: 0xec2e8c, manga: 0xec2e8c, calca: 0xf4f4f4, sapato: 0x1d1c22, frente: "#ffcfe3", lapela: "#e0207f", cabelo: { estilo: "lado", cor: 0x2b1913 }, brinco: 0xf2bb3d, rosto: { iris: "#6e3a18", brow: "#22110a", batom: "#b03f5c", cilios: true, boca: "aberta" }, logo: new URL("../../assets/marca/logos/azul.png", import.meta.url).href, objeto: null },
   elaine: { nome: "Contadora Elaine", empresa: "Crescente Contabilidade", pele: 0xf7d8c4, roupa: 0xf1e4d2, manga: 0xf1e4d2, calca: 0x2e3348, sapato: 0x1d1c22, listras: "#2f3f8f", frente: "#f1e4d2", cabelo: { estilo: "meio", cor: 0x4a2f1f, pontas: 0xb98a55 }, brinco: 0xe9b949, oculos: 0x24242c, rosto: { iris: "#5e3a1c", brow: "#4a2e1c", batom: "#d9707f", cilios: true, boca: "discreta" }, objeto: { tipo: "prancheta" } },
@@ -53,6 +64,7 @@ const PESSOAS = {
   "riseup-dono": { nome: "Robert", empresa: "Rise Up", escala: 1.1, pele: 0xf1c3a8, roupa: 0x2e3036, manga: 0x2e3036, curta: true, calca: 0x18181c, sapato: 0x18181c, tenis: 0xff5a36, frente: "#2e3036", corpo: { ombros: 1.2, gordo: 1.06 }, cabelo: { estilo: "bone", cor: 0x17181c }, barba: 0x4a3324, rosto: { iris: "#4a3016", brow: "#3a2616", boca: "sorriso", barba: true, bone: "RISE UP" }, objeto: null },
   marlon: { nome: "Marlon", empresa: "Marlon Máquinas", escala: 1.04, pele: 0xd9a67e, roupa: 0x2e9e57, manga: 0x2e9e57, curta: true, calca: 0x5c6670, sapato: 0x18181c, frente: "#2e9e57", botoes: true, corBotoes: { gola: "#25804a", botao: "#ffffff" }, dedos: true, corpo: { ombros: 1.06, gordo: 1.05 }, cabelo: { estilo: "careca", cor: 0x8c8378 }, rosto: { iris: "#4a3016", brow: "#7a7166", boca: "sorriso" }, objeto: null },
   albino: { nome: "Albino", empresa: "Construrenova", escala: 1.02, pele: 0xeab096, roupa: 0xf6f6f3, manga: 0xf6f6f3, curta: true, calca: 0x2a2e36, bermuda: true, sapato: 0x17171a, tenis: 0x3a3a40, frente: "#f6f6f3", corrente: "#c9ced6", barriga: true, dedos: true, corpo: { ombros: 1.05, gordo: 1.12 }, cabelo: { estilo: "entradas", cor: 0xb3aea6, topo: 0x8f8a82 }, rosto: { iris: "#4a3016", brow: "#5a554e", browGrossa: true, boca: "largo", rugas: true }, objeto: null },
+  regina: { nome: "Tia Regina", empresa: "Sítio Floresça", escala: REGINA.escala, pele: REGINA.pele, roupa: REGINA.blusa, manga: REGINA.blusa, curta: true, calca: REGINA.calca, larga: true, sapato: REGINA.solaTenis, tenis: REGINA.tenis, frente: "#1c1c20", golaV: "#d9a582", dedos: true, casaco: REGINA.casaco, corpo: { ombros: 1.0, gordo: 1.07 }, cabelo: { estilo: "curtinho", cor: REGINA.cabelo, pontas: REGINA.cabeloClaro }, oculos: REGINA.oculos, hastes: REGINA.hastes, oculosOval: true, rosto: { iris: REGINA.iris, brow: REGINA.sobrancelha, batom: REGINA.batom, cilios: true, boca: "largo", rugas: true }, objeto: null },
   samira: { nome: "Prof. Samira", empresa: "Ballet e Cia", pele: 0xefc7a8, roupa: 0x7d1f4f, manga: 0x7d1f4f, calca: 0xf6c6d8, saia: true, tule: 0xffb0cc, cinto: 0xe5bd5a, abre: 0.2, sapato: 0x1d1c22, frente: "#7d1f4f", decote: "#efc7a8", dedos: true, corpo: { ombros: 0.92, gordo: 0.9 }, cabelo: { estilo: "coque", cor: 0x2c1b14 }, brinco: 0xe5bd5a, rosto: { iris: "#4a2c16", brow: "#2c1b14", batom: "#b03f6c", cilios: true, boca: "discreta" }, objeto: null },
   carina: { nome: "Diretora Carina", escola: "kids1", pele: 0xd9a07a, roupa: 0xd8c29e, manga: 0xd8c29e, calca: 0xd9a07a, saia: true, sapato: 0x1d1c22, frente: "#d8c29e", botoes: true, cabelo: { estilo: "cachos", cor: 0x17110e }, brinco: 0xe9b84a, rosto: { iris: "#3a2010", brow: "#17110e", batom: "#a8483c", cilios: true, boca: "dentes" }, objeto: null },
   // escala 0,83: a mesma altura do Rabisco
@@ -72,7 +84,8 @@ function montar(p) {
   // pernas e sapatos
   for (const [s, c, j] of [[1, "pernaE", "joelhoE"], [-1, "pernaD", "joelhoD"]]) {
     const x = s * 0.17;
-    P(c, 0.27, 0.42, 0.28, p.calca, x, 0.71, 0); P(j, 0.25, 0.4, 0.26, p.bermuda ? p.pele : p.calca, x, 0.3, 0);
+    const lg = p.larga ? 0.05 : 0; // calça larga
+    P(c, 0.27 + lg, 0.42, 0.28 + lg, p.calca, x, 0.71, 0); P(j, 0.25 + lg, 0.4, 0.26 + lg, p.bermuda ? p.pele : p.calca, x, 0.3, 0);
     if (p.bermuda) P(j, 0.28, 0.1, 0.29, p.calca, x, 0.46, 0); // barra da bermuda, logo abaixo do joelho
     P(j, 0.29, 0.13, 0.42, p.sapato, x, 0.065, 0.06); if (p.tenis) { P(j, 0.3, 0.05, 0.43, p.tenis, x, 0.12, 0.06); }
   }
@@ -93,6 +106,8 @@ function montar(p) {
     P(o, 0.22, 0.3, 0.24, b, x, 1.36, 0); P(c, 0.2, 0.3, 0.22, b2, x, 1.06, 0); P(m, 0.2, 0.16, 0.2, p.pele, x, 0.84, 0);
     if (p.dedos) { for (const q of [-0.07, -0.024, 0.024, 0.07]) P(m, 0.038, 0.09, 0.05, p.pele, x + q, 0.725, 0.04); P(m, 0.05, 0.1, 0.05, p.pele, x - s * 0.12, 0.8, 0.05); }
   }
+  // casaco dobrado pendurado no antebraço esquerdo (Tia Regina)
+  if (p.casaco) { const x = xB + 0.02; P("cotoveloE", 0.3, 0.12, 0.34, p.casaco, x, 1.02, 0.06); P("cotoveloE", 0.26, 0.44, 0.24, p.casaco, x, 0.8, 0.06); P("cotoveloE", 0.27, 0.05, 0.25, escuro(p.casaco, 0.8), x, 0.86, 0.06); P("cotoveloE", 0.2, 0.06, 0.2, claro(p.casaco, 0.12), x, 0.57, 0.06); }
   // cabeça
   const cab = "cabeca", W = 0.56, A = 0.54, Y = H + 0.08 + A / 2;
   P(cab, W, A, 0.5, p.pele, 0, Y, 0);
@@ -105,6 +120,11 @@ function montar(p) {
     for (const s of [-1, 1]) { P(cab, 0.035, 0.3, 0.4, C.cor, s * 0.2875, Y + 0.08, -0.05); P(cab, 0.06, 0.05, 0.3, C.topo, s * 0.25, Y + 0.285, -0.1); }
     P(cab, W + 0.02, 0.38, 0.04, C.cor, 0, Y + 0.08, -0.265);
     P(cab, W - 0.06, 0.045, 0.3, C.topo, 0, Y + 0.29, -0.1); P(cab, 0.2, 0.04, 0.16, C.topo, 0, Y + 0.285, 0.1); // topo ralo e o tufinho do meio
+  } else if (C.estilo === "curtinho") { // curto e cheio, curtinho atrás, franja de lado caindo na testa (mechas mais claras)
+    P(cab, W + 0.05, 0.15, 0.55, C.cor, 0, Y + 0.26, -0.01); P(cab, W - 0.06, 0.06, 0.4, C.pontas, 0.02, Y + 0.35, -0.04);
+    for (const s of [-1, 1]) P(cab, 0.06, 0.24, 0.46, C.cor, s * 0.3, Y + 0.1, -0.03);
+    P(cab, W + 0.04, 0.3, 0.06, C.cor, 0, Y + 0.1, -0.27);
+    P(cab, 0.36, 0.1, 0.09, C.cor, 0.07, Y + 0.18, 0.255); P(cab, 0.18, 0.07, 0.08, C.pontas, -0.15, Y + 0.2, 0.25); P(cab, 0.12, 0.08, 0.08, C.pontas, 0.2, Y + 0.13, 0.26);
   } else if (C.estilo === "coque") { // puxado para trás, com franjinha baixa e o coque bem alto
     P(cab, W + 0.04, 0.14, 0.54, C.cor, 0, Y + 0.26, 0);
     P(cab, W, 0.08, 0.07, C.cor, 0, Y + 0.18, 0.25);
@@ -133,7 +153,7 @@ function montar(p) {
     }
   }
   if (p.brinco) for (const s of [-1, 1]) P(cab, 0.06, p.nome === "Camila" ? 0.14 : 0.08, 0.06, p.brinco, s * 0.32, Y - 0.16, 0.04);
-  if (p.oculos) { for (const s of [-1, 1]) { P(cab, 0.2, 0.03, 0.03, p.oculos, s * 0.13, Y + 0.12, 0.26); P(cab, 0.2, 0.03, 0.03, p.oculos, s * 0.13, Y - 0.02, 0.26); P(cab, 0.03, 0.17, 0.03, p.oculos, s * 0.03, Y + 0.05, 0.26); P(cab, 0.03, 0.17, 0.03, p.oculos, s * 0.23, Y + 0.05, 0.26); P(cab, 0.03, 0.03, 0.26, p.oculos, s * 0.29, Y + 0.1, 0.13); } }
+  if (p.oculos) { for (const s of [-1, 1]) { P(cab, 0.2, 0.03, 0.03, p.oculos, s * 0.13, Y + 0.12, 0.26); P(cab, 0.2, 0.03, 0.03, p.oculos, s * 0.13, Y - 0.02, 0.26); P(cab, 0.03, 0.17, 0.03, p.oculos, s * 0.03, Y + 0.05, 0.26); P(cab, 0.03, 0.17, 0.03, p.oculos, s * 0.23, Y + 0.05, 0.26); P(cab, 0.03, 0.03, 0.26, p.hastes ?? p.oculos, s * 0.29, Y + 0.1, 0.13); } }
   if (p.barba) { P(cab, W + 0.03, 0.14, 0.53, p.barba, 0, Y - 0.2, 0.0); P(cab, 0.12, 0.2, 0.5, p.barba, 0.27, Y - 0.1, 0); P(cab, 0.12, 0.2, 0.5, p.barba, -0.27, Y - 0.1, 0); }
   // objeto na mão
   if (p.objeto?.tipo === "prancheta") { P("objeto", 0.05, 0.36, 0.28, 0xb07a45, 0.55, 0.92, 0.14); P("objeto", 0.06, 0.28, 0.22, 0xffffff, 0.56, 0.9, 0.14); P("objeto", 0.07, 0.04, 0.1, 0xc8d0da, 0.56, 1.06, 0.14); }
@@ -203,6 +223,7 @@ function desenhar(c, p, fechado, logo) {
   if (p.lapela) { c.fillStyle = p.lapela; c.fillRect(0, 0, 66, S); c.fillRect(S - 66, 0, 66, S); c.fillStyle = "#ffffff"; c.fillRect(90, 0, 76, 44); }
   if (p.botoes) { c.fillStyle = p.corBotoes?.gola ?? "#eadbbf"; c.fillRect(70, 0, 116, 34); c.fillStyle = p.corBotoes?.botao ?? "#8a6a48"; for (const y of [66, 118, 170, 222]) c.fillRect(118, y, 20, 20); }
   if (p.corrente) { c.fillStyle = "#e4e4df"; c.beginPath(); c.ellipse(128, 0, 62, 24, 0, 0, Math.PI); c.fill(); c.strokeStyle = p.corrente; c.lineWidth = 5; c.beginPath(); c.moveTo(70, 0); c.quadraticCurveTo(128, 150, 186, 0); c.stroke(); }
+  if (p.golaV) { c.fillStyle = p.golaV; c.beginPath(); c.moveTo(78, 0); c.lineTo(S - 78, 0); c.lineTo(128, 52); c.closePath(); c.fill(); c.strokeStyle = "#2c2c32"; c.lineWidth = 6; c.beginPath(); c.moveTo(74, 0); c.lineTo(128, 56); c.lineTo(S - 74, 0); c.stroke(); }
   if (p.decote) { c.fillStyle = p.decote; c.beginPath(); c.moveTo(56, 0); c.lineTo(S - 56, 0); c.lineTo(128, 70); c.closePath(); c.fill(); }
   if (logo) { const w = 96, h = (logo.naturalHeight / logo.naturalWidth) * w; c.fillStyle = "#ffffff"; c.fillRect(S - 112, 60, w + 8, h + 8); c.drawImage(logo, S - 108, 64, w, h); }
   if (p.texto) { c.fillStyle = "#ff5a36"; c.font = "900 54px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("RISE", S / 2, 96); c.fillStyle = "#ffffff"; c.fillText("UP", S / 2, 150); }

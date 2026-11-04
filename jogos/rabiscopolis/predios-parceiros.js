@@ -11,6 +11,7 @@ import { cx as pc, claro, escuro, telhadoDegraus } from "./blocos.js";
 import { novo, sol, janelas, porta, toldo } from "./predios.js";
 import { desenharLetreiro } from "../../src/parceiros-arte.js";
 import { placaInstagram } from "./placas-instagram.js";
+import { sitioFloresca } from "./sitio.js";
 
 const F = { sombra: false };
 const D_ = { sombra: false, detalhe: true };
@@ -776,4 +777,4 @@ export function construrenova(l) {
   return fechar(S, W, D);
 }
 
-export const FACHADAS = { presentes: galaPresentes, joias: seeLoveJoias, confeccao: bellaCompany, reciclagem: marlonMaquinas, livraria: cafeComDeusPaiKids, ballet: balletECia, agencia: btModels, vidracaria: speedySolucoes, locacao: construrenova };
+export const FACHADAS = { presentes: galaPresentes, joias: seeLoveJoias, confeccao: bellaCompany, reciclagem: marlonMaquinas, livraria: cafeComDeusPaiKids, ballet: balletECia, agencia: btModels, vidracaria: speedySolucoes, locacao: construrenova, sitio: sitioFloresca };

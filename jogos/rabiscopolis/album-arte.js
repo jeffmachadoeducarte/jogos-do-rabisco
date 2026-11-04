@@ -94,6 +94,31 @@ function cenaAmigo(c, fig, x, y, w, h) {
   c.lineJoin = "round"; c.lineWidth = 5; c.strokeStyle = TINTA; c.fillStyle = cor;
   const t = fig.tipo;
   let fy = base - 60;
+  if (t === "pata") { // a pata Ale: branquinha, bico e pés laranja, na beira do lago
+    c.fillStyle = "#7cc8ef"; c.fillRect(x, base - 6, w, 30);
+    c.fillStyle = "#ff9a1f"; for (const d of [-14, 12]) { c.beginPath(); c.ellipse(cx + d, base, 12, 5, 0, 0, 7); c.fill(); c.stroke(); }
+    c.fillStyle = "#ffffff"; c.beginPath(); c.ellipse(cx - 6, base - 34, 46, 30, 0, 0, 7); c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(cx - 48, base - 44); c.lineTo(cx - 64, base - 62); c.lineTo(cx - 40, base - 56); c.fill(); c.stroke(); // rabinho
+    c.beginPath(); c.ellipse(cx + 26, base - 82, 22, 24, 0, 0, 7); c.fill(); c.stroke(); c.fillRect(cx + 14, base - 66, 22, 18);
+    c.fillStyle = "#ff9a1f"; c.beginPath(); c.moveTo(cx + 44, base - 88); c.lineTo(cx + 70, base - 80); c.lineTo(cx + 44, base - 72); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = TINTA; c.beginPath(); c.arc(cx + 32, base - 88, 4.5, 0, 7); c.fill();
+    c.strokeStyle = "#d9d9d9"; c.lineWidth = 3; c.beginPath(); c.arc(cx - 10, base - 36, 22, 3.6, 5.6); c.stroke();
+    return;
+  }
+  if (t === "cachorro") { // o Duck: golden caramelo, peito creme, orelhas caídas e o rabo de pluma
+    const ca = "#c8782e", cr = "#f2d6a2";
+    c.fillStyle = ca; c.beginPath(); c.moveTo(cx - 44, base - 58); c.quadraticCurveTo(cx - 80, base - 96, cx - 66, base - 104); c.quadraticCurveTo(cx - 52, base - 80, cx - 34, base - 66); c.fill(); c.stroke(); // rabo
+    arredondado(c, cx - 50, base - 70, 84, 40, 18); c.fill(); c.stroke();
+    for (const d of [-40, -22, 10, 26]) { c.fillStyle = d < 0 ? ca : ca; arredondado(c, cx + d - 6, base - 36, 14, 36, 5); c.fill(); c.stroke(); }
+    c.fillStyle = cr; arredondado(c, cx + 8, base - 74, 30, 40, 12); c.fill(); c.stroke(); // peito
+    c.fillStyle = ca; arredondado(c, cx + 6, base - 118, 52, 48, 16); c.fill(); c.stroke(); // cabeça
+    c.fillStyle = "#b0642a"; arredondado(c, cx + 34, base - 96, 30, 22, 9); c.fill(); c.stroke(); // focinho
+    c.fillStyle = TINTA; c.beginPath(); c.ellipse(cx + 60, base - 92, 6, 5, 0, 0, 7); c.fill();
+    c.fillStyle = "#a85a22"; arredondado(c, cx + 2, base - 112, 16, 36, 8); c.fill(); c.stroke(); // orelha
+    c.fillStyle = "#3a2010"; c.beginPath(); c.arc(cx + 34, base - 104, 5, 0, 7); c.fill(); c.fillStyle = "#fff"; c.beginPath(); c.arc(cx + 35.5, base - 106, 1.8, 0, 7); c.fill();
+    c.fillStyle = "#ff6f8f"; c.beginPath(); c.ellipse(cx + 48, base - 76, 6, 8, 0, 0, 7); c.fill(); // linguinha
+    return;
+  }
   if (t === "borracha") {
     arredondado(c, cx - 50, base - 74, 100, 74, 14); c.fill(); c.stroke(); c.fillStyle = "#00b5f0"; arredondado(c, cx - 50, base - 38, 100, 38, 12); c.fill(); c.stroke(); fy = base - 56;
   } else if (t === "giz") {

@@ -374,6 +374,8 @@ function iniciar() {
     travar: (o) => apiLugar().travar(o), destravar: () => apiLugar().destravar(), vista: (v) => { camera.st.vista = v; },
     natal: () => natal, // o presépio da praça (cena da missão de Natal)
   });
+  // Sítio Floresça: a campainha, a voz da anfitriã e o que já foi feito (a Tia Regina e o Duck mudam de lugar)
+  mundo.sitio?.ligar({ sons, falar: (k) => { radio?.pausarPorFala(true); falar(k); }, dizer: (...a) => dizer(...a), feitas: () => missoes?.feitas ?? [], ativa: () => missoes?.ativa ?? null, rotRabisco: () => j.dir });
   // a Speedy já trocou a frente da Kids II (salvo: missão feita): continua trocada depois de recarregar
   if (missoes.feitas.includes("parceiro-speedy-solucoes")) mundo.frenteKids2(3);
   // profissões curtas (profissoes.js): turno de ~3 a 4 minutos que rende Rabiscoins por tarefa, com uniforme e veículo do trabalho
@@ -1145,6 +1147,7 @@ function regras() {
   // em turno, só a profissão; com missão em andamento, a missão vem antes do "💼 Trabalhar" (a marca do portão do galpão fica
   // perto da base da reciclagem); sem nenhuma das duas, o "Trabalhar" da base vem antes do pedido de missão de quem está ao lado
   else if ((contexto = (profissoes?.ativa ? profissoes.contexto() : missoes?.ativa ? missoes.contexto() ?? profissoes?.contexto() : profissoes?.contexto() ?? missoes?.contexto()) ?? null)) { /* profissão (turno) ou missão: pedir, pegar, entregar, plantar */ }
+  else if ((contexto = mundo.sitio?.contexto(j.pos) ?? null)) { /* a campainha do Sítio Floresça */ }
   else if (bauDia?.perto(j.pos)) contexto = { rotulo: "🎁 Abrir o presente", fazer: () => abrirPresente() };
   else if (Math.hypot(RODA.x - j.pos.x, RODA.z - 6.5 - j.pos.z) < 3.4) contexto = { rotulo: "🎡 Andar na roda-gigante", fazer: () => subirRoda() };
   else {
@@ -1330,6 +1333,7 @@ function passo(dt, ultimo) {
     verificarDia(dt);
     patioJE?.atualizar(j.pos.x, j.pos.z);
     mundo.atualizar(dt, t);
+    mundo.sitio?.atualizar(dt, t, j.pos); // Sítio Floresça: portão, Tia Regina, Duck, Ale (só perto)
     natal?.atualizar(dt, t, j.pos, !emCasa && !emLugar && !dentro);
     desafios?.atualizar(dt, t);
     if (emLugar) emLugar.atualizar(dt, t);

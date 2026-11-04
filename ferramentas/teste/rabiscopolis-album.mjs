@@ -3,7 +3,7 @@
 //  - nada duplica (repetir não muda a contagem nem paga bônus de novo);
 //  - completar uma página rende 30 Rabiscoins uma vez só, e a contagem "x de y" aparece no app;
 //  - tudo continua depois de recarregar a página (localStorage pelo salvar.js);
-//  - a página de Parceiros tem as 13 lojas com o nome e o @ iguais aos de src/parceiros.js;
+//  - a página de Parceiros tem as 14 lojas com o nome e o @ iguais aos de src/parceiros.js;
 //  - o cartão voando aparece com a figurinha nova; chamadas de desenho dentro do orçamento; sem erro de console.
 // Uso: node --experimental-websocket ferramentas/teste/rabiscopolis-album.mjs <http://localhost:porta> [pasta das fotos]
 import { mkdirSync } from "node:fs";
@@ -35,7 +35,7 @@ const SALDO = "teste.Rabiscoins.saldo()";
   ok(await t.ev("teste.album.album.paginas().length") === 4, "o álbum tem 4 páginas");
   const tam = await t.ev("teste.album.album.paginas().map((p) => [p.id, p.figs.length])");
   console.log("páginas:", JSON.stringify(tam));
-  ok(await t.ev(`${A}.paginas().find((p) => p.id === 'parceiros').figs.length`) === 13, "página de Parceiros com as 13 lojas");
+  ok(await t.ev(`${A}.paginas().find((p) => p.id === 'parceiros').figs.length`) === 14, "página de Parceiros com as 14 lojas");
 
   // ---- visita: o lugar do mapa
   const antes = await t.ev(TOTAL);
@@ -88,9 +88,9 @@ const SALDO = "teste.Rabiscoins.saldo()";
   await espera(5000);
 
   // ---- pessoas de verdade: UMA figurinha cada na página Amigos (boneco de bloco), ganha com qualquer missão dela
-  const PESSOAS = { sabrina: ["alvara", "parceiro-speedy-solucoes"], carina: ["uniformesCarina"], "vovo-leo": ["maletaLeo", "samuelLeo"], marlon: ["parceiro-marlon-maquinas"], samira: ["parceiro-ballet-e-cia"], albino: ["parceiro-construrenova"] };
+  const PESSOAS = { sabrina: ["alvara", "parceiro-speedy-solucoes"], carina: ["uniformesCarina"], "vovo-leo": ["maletaLeo", "samuelLeo"], marlon: ["parceiro-marlon-maquinas"], samira: ["parceiro-ballet-e-cia"], albino: ["parceiro-construrenova"], regina: ["parceiro-sitio-floresca", "parceiro-sitio-floresca-duck"] };
   const amigosIds = await t.ev(`${A}.paginas().find((p) => p.id === 'amigos').figs.map((f) => f.id)`);
-  ok(await t.ev("teste.album.album.paginas().reduce((n, p) => n + p.figs.length, 0)") === 148, "o álbum tem 148 figurinhas no total (139 + 5 pessoas + Construrenova: parceira, Seu Albino, Pedreiro Caderno e versículo)");
+  ok(await t.ev("teste.album.album.paginas().reduce((n, p) => n + p.figs.length, 0)") === 154, "o álbum tem 154 figurinhas no total (139 + 5 pessoas + Construrenova: parceira, Seu Albino, Pedreiro Caderno e versículo + Sítio Floresça: parceira, Tia Regina, pata Ale, Duck e dois versículos)");
   for (const [pes, ms] of Object.entries(PESSOAS)) {
     ok(amigosIds.filter((id) => id === `a:pessoa-${pes}`).length === 1, `a página Amigos tem exatamente 1 figurinha de ${pes}`);
     ok(!(await t.ev(TEM(`a:pessoa-${pes}`))), `${pes}: antes da missão não tem a figurinha`);
@@ -102,7 +102,7 @@ const SALDO = "teste.Rabiscoins.saldo()";
   }
   // save antigo: missão já concluída antes de a figurinha existir; abrir o álbum entrega, uma vez, sem erro
   // (teste.salvo é uma cópia lida do localStorage: o save antigo é escrito lá e o jogo recarregado)
-  await t.ev("(() => { const k = 'rabisco.rabiscopolis.v1', s = JSON.parse(localStorage.getItem(k)); s.album.figs = s.album.figs.filter((x) => !x.startsWith('a:pessoa-')); s.missoesFeitas = [...new Set([...(s.missoesFeitas ?? []), 'alvara', 'uniformesCarina', 'maletaLeo', 'samuelLeo', 'parceiro-marlon-maquinas', 'parceiro-ballet-e-cia', 'parceiro-speedy-solucoes', 'parceiro-construrenova'])]; localStorage.setItem(k, JSON.stringify(s)); })()");
+  await t.ev("(() => { const k = 'rabisco.rabiscopolis.v1', s = JSON.parse(localStorage.getItem(k)); s.album.figs = s.album.figs.filter((x) => !x.startsWith('a:pessoa-')); s.missoesFeitas = [...new Set([...(s.missoesFeitas ?? []), 'alvara', 'uniformesCarina', 'maletaLeo', 'samuelLeo', 'parceiro-marlon-maquinas', 'parceiro-ballet-e-cia', 'parceiro-speedy-solucoes', 'parceiro-construrenova', 'parceiro-sitio-floresca', 'parceiro-sitio-floresca-duck'])]; localStorage.setItem(k, JSON.stringify(s)); })()");
   await t.cmd("Page.reload"); await esperarJogo(t);
   ok(!(await t.ev(TEM("a:pessoa-marlon"))), "save antigo simulado: sem as figurinhas das pessoas");
   ok((await t.ev("teste.salvo.missoesFeitas")).includes("alvara"), "save antigo simulado: missões já concluídas");
@@ -112,7 +112,7 @@ const SALDO = "teste.Rabiscoins.saldo()";
   ok(new Set(fg).size === fg.length, "save antigo: nenhum id repetido depois de recuperar");
   await t.ev("document.querySelector('.alb-aba[data-pagina=amigos]').click()"); await espera(2500);
   const cartoes = await t.ev("[...document.querySelectorAll('.alb-fig.tem')].map((b) => b.dataset.fig).filter((id) => id.startsWith('a:pessoa-'))");
-  ok(cartoes.length === 6 && new Set(cartoes).size === 6, `a página Amigos mostra os 6 cartões das pessoas (${cartoes.length})`);
+  ok(cartoes.length === 7 && new Set(cartoes).size === 7, `a página Amigos mostra os 7 cartões das pessoas (${cartoes.length})`);
   await t.ev("document.querySelector('.rf-tela').scrollTop = 99999"); await espera(300);
   await t.foto(`${OUT}8-amigos-pessoas-tv.png`);
   await t.ev("teste.fone.fechar()");
@@ -123,12 +123,12 @@ const SALDO = "teste.Rabiscoins.saldo()";
   const total = await t.ev(`teste.album.album.total()`);
   ok(new RegExp(`${total} de \\d+`).test(resumo ?? ""), `o app mostra "x de y": ${resumo?.slice(0, 40)}`);
   const abas = await t.ev("[...document.querySelectorAll('.alb-aba')].map((b) => b.textContent)");
-  ok(abas.length === 4 && abas.some((a) => /13 de 13|\d+ de 13/.test(a)), `4 abas com contagem: ${abas.join(" | ")}`);
+  ok(abas.length === 4 && abas.some((a) => /14 de 14|\d+ de 14/.test(a)), `4 abas com contagem: ${abas.join(" | ")}`);
   ok(abas.some((a) => /Lugares.*(\d+) de \1/.test(a)), "a aba Lugares aparece completa");
   await t.ev("document.querySelector('.alb-aba[data-pagina=parceiros]').click()"); await espera(500);
   const arrobas = await t.ev("[...document.querySelectorAll('.alb-fig')].map((b) => b.getAttribute('aria-label'))");
   const esperado = await t.ev("teste.PARCEIROS.map((p) => [p.nome, p.instagram])");
-  ok(arrobas.length === 13, "13 cartões na página de Parceiros");
+  ok(arrobas.length === 14, "14 cartões na página de Parceiros");
   const tem = await t.ev("[...document.querySelectorAll('.alb-fig.tem')].map((b) => b.getAttribute('aria-label'))");
   const riseLbl = tem.find((l) => l.startsWith("Academia Rise Up"));
   ok(riseLbl === `Academia Rise Up, @${esperado.find(([n]) => n === "Academia Rise Up")[1]}`, `@ da Rise Up igual ao de src/parceiros.js (${riseLbl})`);
