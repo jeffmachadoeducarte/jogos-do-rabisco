@@ -13,9 +13,10 @@
 //
 //   const J2 = criarJogador2(ctx);  J2.quadro(dt) (uma vez por quadro: lê o controle)  J2.passo(dt)  J2.ativo  J2.pos
 
-import { THREE, texturaCanvas, mesclar } from "./base3d.js";
+import { THREE, mesclar } from "./base3d.js";
 import { criarMorador } from "./personagens.js";
 import { criarCompanheiro3D } from "../../src/motor3d/companheiro3d.js";
+import { criarPlacaNome } from "./placa-nome.js";
 
 export const RAIO_J2 = 17;      // a coleira trava aqui (antes eram 11 m: agora os dois podem ficar mais longe)
 export const RAIO_SUAVE = 13;   // daqui em diante a coleira puxa de volta, macio
@@ -35,20 +36,9 @@ export const AMIGOS_J2 = [
 ];
 const hex = (c) => `#${c.toString(16).padStart(6, "0")}`;
 
-// crachá do jogador (o "quem é quem" na tela): rosa = jogador 2, azul = jogador 1 (o Rabisco, só aparece a 2)
-function cracha(nome, cor = "#ec2e8c", n = 2) {
-  const tex = texturaCanvas(512, 128, (c, w, h) => {
-    c.clearRect(0, 0, w, h);
-    c.font = "800 56px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
-    const t = `🎮${n} ${nome}`, lw = Math.min(w - 8, c.measureText(t).width + 56);
-    c.fillStyle = cor; c.strokeStyle = "#151515"; c.lineWidth = 8;
-    c.beginPath(); c.roundRect((w - lw) / 2, 14, lw, h - 28, 46); c.fill(); c.stroke();
-    c.fillStyle = "#ffffff"; c.fillText(t, w / 2, h / 2 + 3);
-  });
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
-  s.scale.set(3, 0.75, 1); s.renderOrder = 7;
-  return s;
-}
+// etiqueta lilás do jogador 2 (o "quem é quem" na tela): a mesma do Rabisco (placa-nome.js), com o emoji do personagem;
+// dentro de um veículo sobe um degrau acima da do jogador 1. O "🎮1" do Rabisco (só a 2) é a mesma etiqueta, ciano
+const cracha = (nome, emoji, altura, veiculo) => criarPlacaNome({ nome, estilo: "j2", icone: emoji, altura, veiculo, toque: document.body.classList.contains("touch"), degrau: 1 });
 
 export function criarJogador2(ctx) {
   const { cena, caixa, fis, J, j, sons, dizer } = ctx;
@@ -60,7 +50,7 @@ export function criarJogador2(ctx) {
   let fora = false;       // o Rabisco está num veículo e o jogador 2 escolheu ficar a pé
   let segurando = 0;      // segundos segurando a ação (vir para perto)
   let zoom = 0;           // metros a mais da câmera compartilhada (cresce até caber os dois)
-  let cracha1 = null;     // crachá azul do Rabisco (só a 2)
+  let cracha1 = null, veic1 = null; // etiqueta ciano "🎮 Rabisco" do jogador 1 (só a 2; placa-nome.js), sobe no teto do veículo
   let setas = null;       // setas na borda da tela (quem saiu do quadro)
 
   // ---------- escolha do personagem (o jogador 2 escolhe com o controle/teclado dele, ou tocando)
@@ -101,20 +91,21 @@ export function criarJogador2(ctx) {
     escolha = o.id;
     const s = ctx.salvo(); s.j2 = o.id; ctx.salvar(s);
     if (o.crianca) {
-      const c = criarCompanheiro3D({ raiz: ctx.raiz, altura: 1.55, cracha: true });
+      const c = criarCompanheiro3D({ raiz: ctx.raiz, altura: 1.55 });
       ctx.otimizar?.(c.rabisco);
+      c.grupo.add(cracha(o.nome, o.emoji, 1.72, () => assento).sprite);
       modelo = { tipo: "crianca", grupo: c.grupo, c, nome: o.nome, escala: c.escala, altura: 1.55,
         atualizar: (dt, { modo, vel }) => { c.atualizar(dt, { modo, vel, vmax: 6.5 }); },
         acenar: () => {}, pular: () => {} };
     } else {
       const m = criarMorador(o.tipo, { cor: o.cor, nome: o.nome, semente: 7, escala: 0.86 });
-      const placa = cracha(o.nome); placa.position.y = (m.altura / 0.86) + 0.85; m.grupo.add(placa);
+      m.grupo.add(cracha(o.nome, o.emoji, (m.altura / 0.86) + 0.3, () => assento).sprite);
       modelo = { tipo: "estojo", grupo: m.grupo, m, nome: o.nome, altura: m.altura,
         atualizar: (dt, { vel }) => m.atualizar(dt, { vel }), acenar: (s) => m.acenar(s), pular: () => m.pular() };
     }
     cena.add(modelo.grupo);
-    if (!cracha1) { cracha1 = cracha(ctx.nome1?.() || "Rabisco", "#00b5f0", 1); cracha1.scale.set(2.6, 0.65, 1); }
-    cena.add(cracha1);
+    if (!cracha1) cracha1 = criarPlacaNome({ nome: ctx.nome1?.() || "Rabisco", estilo: "j1", icone: "🎮", altura: 0, veiculo: () => veic1, toque: document.body.classList.contains("touch") });
+    cena.add(cracha1.sprite);
     // a legenda "quem é quem" embaixo passa a mostrar o personagem escolhido
     if (J.j2) { J.j2.nome = o.nome; J.legenda?.(); }
     caixa.classList.add("dois-rp");
@@ -128,7 +119,7 @@ export function criarJogador2(ctx) {
   function remover() {
     if (!modelo) return;
     modelo.grupo.removeFromParent();
-    cracha1?.removeFromParent();
+    cracha1?.sprite.removeFromParent();
     if (setas) for (const e of setas) e.hidden = true;
     caixa.classList.remove("dois-rp");
     modelo = null; assento = null; seguindo = false; fora = false; zoom = 0;
@@ -319,8 +310,9 @@ export function criarJogador2(ctx) {
   function hud(cam, { alturaRabisco = 1.6, veiculo = null } = {}) {
     if (!modelo) return;
     if (cracha1) {
-      cracha1.visible = !veiculo;
-      if (!veiculo) cracha1.position.set(j.pos.x, j.pos.y + alturaRabisco + 0.55, j.pos.z);
+      veic1 = veiculo; cracha1.definir(ctx.nome1?.() || "Rabisco");
+      const b = veiculo ? veiculo.g.position : null; // no veículo a etiqueta vai para cima do teto (placa-nome.js)
+      if (b) cracha1.sprite.position.set(b.x, b.y, b.z); else cracha1.sprite.position.set(j.pos.x, j.pos.y + alturaRabisco + 0.37, j.pos.z);
     }
     if (!setas) setas = [1, 2].map((n) => { const e = document.createElement("div"); e.className = `seta-outro-rp j${n}`; e.hidden = true; caixa.append(e); return e; });
     const quem = [
@@ -354,7 +346,7 @@ export function criarJogador2(ctx) {
     get aPe() { return Boolean(modelo) && !assento && !seguindo; },
     get fora() { return fora; }, get zoom() { return zoom; }, get segurando() { return segurando; },
     get setas() { return setas ? setas.map((e) => !e.hidden) : [false, false]; },
-    get cracha1() { return cracha1 ? { visivel: cracha1.visible && Boolean(cracha1.parent) } : null; },
+    get cracha1() { return cracha1 ? { visivel: cracha1.sprite.visible && Boolean(cracha1.sprite.parent), ...cracha1.estado } : null; },
     // dica no balãozinho: longe do Rabisco → "segure para vir para perto"
     get longe() { return Boolean(modelo) && !assento && !seguindo && Math.hypot(st.pos.x - j.pos.x, st.pos.z - j.pos.z) > RAIO_SUAVE - 2; },
     get acao() { return ctxAcao?.rotulo ?? null; },
