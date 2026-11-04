@@ -77,7 +77,7 @@ export function criarPlacaNome({ nome = "", estilo = "j1", icone, altura = 2, ve
   sprite.onBeforeRender = (_r, _s, cam) => {
     const agora = performance.now(), dt = Math.min(0.1, (agora - ultimo) / 1000); ultimo = agora;
     const pai = sprite.parent; if (!pai) return;
-    pw.set(0, altura, 0); pai.localToWorld(pw);
+    pw.copy(sprite.position); pai.localToWorld(pw); // (na cabeça: position.y = altura)
     const v = veiculo(), g = v ? (v.g ?? v) : null;
     // no veículo: a etiqueta vai para cima do teto (e o 2º jogador um degrau acima, para não cobrir a do 1º)
     cam.getWorldPosition(cp); const d = cp.distanceTo(pw), hMundo = hTela * d;

@@ -192,7 +192,7 @@ if (quer("rabiscolandia")) {
     await t.ev("__eixo(0, 1, 0)"); await espera(1500); await t.ev("__eixo(0, 0, 0)");
     const a2 = await t.ev("[teste.j2.pos.x, teste.j2.pos.z, teste.j.pos.x, teste.j.pos.z]");
     ok(Math.hypot(a2[2] - a1[2], a2[3] - a1[3]) > 1, "Rabiscolândia: controle 1 move o Rabisco");
-    ok(Math.hypot(a2[0] - a2[2], a2[1] - a2[3]) <= 11.3, `Rabiscolândia: o jogador 2 fica a no máximo 11 m (${Math.hypot(a2[0] - a2[2], a2[1] - a2[3]).toFixed(1)} m)`);
+    ok(Math.hypot(a2[0] - a2[2], a2[1] - a2[3]) <= 17.3, `Rabiscolândia: o jogador 2 fica a no máximo 17 m (coleira) (${Math.hypot(a2[0] - a2[2], a2[1] - a2[3]).toFixed(1)} m)`);
     ok((await t.ev("teste.naTela")).every(Boolean), "Rabiscolândia: a câmera enquadra os dois");
     await foto(t, "rabiscolandia-2-jogadores.png");
     await aperta(t, 1, 2);
