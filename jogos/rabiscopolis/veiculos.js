@@ -8,18 +8,21 @@ import { carro, carroFofo, onibusFofo, helicoptero, carroJE, ambulancia, vanSorv
 import { posarPiloto, soltarPose } from "./motos.js";
 import { motoEsportiva } from "./motos.js";
 import { ROTAS } from "./mapa.js";
+import { GARAGEM_NOVOS, animarRodas } from "./carros-garagem.js"; // fusquinha, Fórmula Rabisco e as rodas que giram/esterçam
 
 export const CORES_CARRO = [0xec2e8c, 0x00b5f0, 0xff7a00, 0x58c43a, 0x8e6cff, 0xffcc1f];
 // veículo que o Rabisco pode dirigir: { g, tipo, pos, ang, vel, virar, giro, comp (meio comprimento), larg }
 // pintura: { cor, cor2 } do Ateliê para o helicóptero e o barquinho (os outros já vêm na cor pedida)
 export function criarVeiculo(tipo = "carro", cor = CORES_CARRO[0], enfeite = null, pintura = null) {
   const fab = { onibus: onibusFofo, heli: () => helicoptero(pintura), je: carroJE, ambulancia, sorvete: vanSorvete, bombeiro: caminhaoBombeiro, reciclagem: caminhaoReciclagem, bici: () => bicicleta(cor), patinete: () => patinete(cor), barco: () => barquinho(pintura), trator, rocador, moto: () => motoEsportiva(cor), jetski: () => jetSki(cor), lancha: () => lancha(cor) }[tipo];
-  const g0 = fab ? fab() : carroFofo(cor, tipo === "carro" ? pintura : null);
+  const novo = GARAGEM_NOVOS[tipo];
+  const g0 = novo ? novo.fab(cor) : fab ? fab() : carroFofo(cor, tipo === "carro" ? pintura : null);
   const g = enfeite?.(g0) ?? g0; // o enfeite pode trocar o carro (ex.: o carro novo da J.E sai igual ao do pátio)
   if (tipo === "jetski") Object.assign(g.userData, { posar: posarPiloto, aoSair: soltarPose }); // senta como na moto (sem capacete)
   if (tipo === "heli") g.rotation.order = "YXZ"; // inclina para a frente/lados sem embolar o giro
   // meio comprimento, meia largura e velocidade máxima de cada um
   const medidas = { onibus: [4.4, 1.5, 11], heli: [3.0, 1.9, 14], carro: [2.4, 1.2, 15], je: [2.3, 1.25, 16], ambulancia: [2.7, 1.3, 13], sorvete: [2.7, 1.3, 11], bombeiro: [3.6, 1.35, 11], reciclagem: [3.6, 1.35, 12], bici: [0.85, 0.35, 8], patinete: [0.55, 0.3, 6], barco: [1.9, 1.3, 4.5], trator: [1.8, 1.0, 7], rocador: [1.15, 0.75, 6], moto: [1.25, 0.45, 17], jetski: [1.45, 0.6, 16], lancha: [3.1, 1.3, 13] }[tipo] ?? [2.4, 1.2, 15];
+  if (novo) medidas.splice(0, 3, ...novo.medidas);
   let parado = g.userData.fazerParado?.(); // carros da J.E: a versão parada já vem mesclada (com os materiais de verdade)
   if (!parado) {
     const ud = g.userData; g.userData = {}; // (o userData do grupo tem objetos: não entra na cópia)
@@ -47,7 +50,7 @@ export function animarVeiculo(v, dt, t) {
   v.giro += (v.vel * dt) / (v.g.userData.raioRoda ?? 0.44);
   // vidro com insulfilm (carros da J.E): fica mais claro com gente dentro, para ver quem está dirigindo
   const vd = v.g.userData.vidro; if (vd) vd.opacity = v.g.children.length > v.g.userData.nPecas ? 0.42 : 0.74;
-  for (const r of v.g.userData.rodas) r.rotation.x = v.giro;
+  animarRodas(v, dt); // todas giram pela velocidade; as dianteiras esterçam com a direção
   if (v.tipo === "moto") { // inclina nas curvas; parada, apoia no descanso lateral
     const pilotando = v.g.children.length > v.g.userData.nPecas, alvo = pilotando ? v.virar * Math.min(1, Math.abs(v.vel) / 7) * 0.4 : -0.12;
     v.inclina = dt ? (v.inclina ?? alvo) + (alvo - (v.inclina ?? alvo)) * Math.min(1, dt * 5) : alvo;
