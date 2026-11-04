@@ -1234,6 +1234,40 @@ function quadro() {
   estat.n++;
   requestAnimationFrame(quadro);
 }
+// colisão entre veículos: caixa orientada de cada veículo próximo (estacionado, outro do jogador ou do trânsito).
+// Veículo no ar (helicóptero alto) não bate em ninguém e ninguém bate nele.
+const caixaVeiculo = (v) => ({ x: v.pos.x, z: v.pos.z, raio: v.comp, caixa: { ang: v.ang, hl: v.comp, hw: v.larg } });
+const caixaTransito = (k) => ({ x: k.g.position.x, z: k.g.position.z, raio: 2.4, ia: k, fantasma: (k.fantasma ?? 0) > 0, caixa: { ang: k.g.rotation.y, hl: 2.3, hw: 1.1 } });
+function veiculosPerto(v, alcance = 16) {
+  const lista = [];
+  for (const o of veiculos) if (o !== v && o.alt < 1.5 && Math.hypot(o.pos.x - v.pos.x, o.pos.z - v.pos.z) < alcance) lista.push(caixaVeiculo(o));
+  for (const k of transito) if (Math.hypot(k.g.position.x - v.pos.x, k.g.position.z - v.pos.z) < alcance) lista.push(caixaTransito(k));
+  // carro do trânsito NUNCA prende o jogador: se já está sobreposto a um (nasceu em cima, ou ele entrou na frente de um
+  // cruzamento), esse carro vira fantasma até separar; só impede de ENTRAR nele
+  for (const o of lista) if (o.ia && !o.fantasma && fis.veiculoPen(v, v.pos.x, v.pos.z, v.ang, [o]) > 0.3) o.fantasma = true; // (encostar rente, até 4 cm, não conta)
+  return lista;
+}
+// o trânsito cede: quem o jogador empurra de frente dá ré pela rota (e não trava ninguém); se não tem como ceder (ou
+// o jogador fica espremido), depois de 0,8 s o carro vira fantasma por 2,5 s e o jogador passa
+function transitoCede(dt, lista, iy = 0) {
+  for (const k of transito) { if (k.fantasma > 0) k.fantasma -= dt; k.ceder = 0; }
+  if (!dentro || (dentro.tipo === "heli" && dentro.alt > 1.5)) return;
+  let preso = null; // espremido: sem como andar nem para frente nem para trás (calculado só se algum carro está encostado)
+  for (const o of lista) {
+    if (!o.ia) continue;
+    const k = o.ia;
+    if (o.fantasma || fis.folgaAte(dentro, o) > 0.3) { k.pressT = 0; continue; }
+    // o jogador está na frente do carro (ele dá ré pela rota, se não tem ninguém atrás) ou atrás (segue o ritmo da IA)?
+    const fx = Math.sin(k.g.rotation.y), fz = Math.cos(k.g.rotation.y);
+    const rel = (q) => [(q.g.position.x - o.x) * fx + (q.g.position.z - o.z) * fz, Math.abs((q.g.position.x - o.x) * fz - (q.g.position.z - o.z) * fx)];
+    if ((dentro.pos.x - o.x) * fx + (dentro.pos.z - o.z) * fz > 0 && Math.abs(iy) > 0.15 && !transito.some((q) => { if (q === k) return false; const [a, l] = rel(q); return a < 0 && a > -6.5 && l < 1.8; })) k.ceder = -1;
+    // último recurso (nunca prender o jogador): se ele está de fato espremido, depois de 0,8 s o carro vira fantasma por 2,5 s
+    const dx = Math.sin(dentro.ang) * 0.7, dz = Math.cos(dentro.ang) * 0.7;
+    preso ??= fis.veiculoPen(dentro, dentro.pos.x + dx, dentro.pos.z + dz, dentro.ang, lista) > 0.04 && fis.veiculoPen(dentro, dentro.pos.x - dx, dentro.pos.z - dz, dentro.ang, lista) > 0.04;
+    k.pressT = preso ? (k.pressT ?? 0) + dt : 0;
+    if (k.pressT > 0.8) { k.fantasma = 2.5; k.pressT = 0; }
+  }
+}
 function passo(dt, ultimo) {
   const t = relogio.elapsedTime;
   if (!jogo.pausado) {
@@ -1242,7 +1276,9 @@ function passo(dt, ultimo) {
     if (dentro?.tipo === "heli") {
       const subir = tem("pular") || pad.pulo || toque?.carro.subir || entradaTeste?.subir;
       const descer = tem("descer") || pad.descer || toque?.carro.descer || entradaTeste?.descer;
-      fis.voar(dentro, { ix: ent.ix, iy: ent.iy, subir, descer }, dt);
+      const perto = dentro.alt < 2 ? veiculosPerto(dentro) : [];
+      fis.voar(dentro, { ix: ent.ix, iy: ent.iy, subir, descer }, dt, perto);
+      transitoCede(dt, perto, ent.iy);
       pad.puloNovo = false; if (toque) toque.puloNovo = false;
       j.pos.set(dentro.pos.x, dentro.alt + 0.07, dentro.pos.z); j.dir = dentro.ang;
       rabisco.atualizar(dt, { modo: "dirigir", virar: dentro.virar });
@@ -1253,9 +1289,10 @@ function passo(dt, ultimo) {
       if (vovo) gente.push({ x: vovo.grupo.position.x, z: vovo.grupo.position.z, raio: 0.5 });
       if (missoes) gente.push(...missoes.obstaculos());
       if (j2?.pos && !j2.sentado) gente.push({ x: j2.pos.x, z: j2.pos.z, raio: 0.6 });
-      // carro da IA NÃO entra aqui (nunca bloqueia o Rabisco): é ele que freia antes de encostar
-      const outros = veiculos.filter((v) => v !== dentro).map((v) => ({ x: v.pos.x, z: v.pos.z, raio: v.comp })).concat(gente);
+      // os outros veículos (parados, do jogador e do trânsito) são caixas de verdade; o trânsito cede e nunca prende (veja acima)
+      const outros = veiculosPerto(dentro).concat(gente);
       if (fis.dirigir(dentro, ent, dt, outros)) { sons.batida(); navigator.vibrate?.(30); }
+      transitoCede(dt, outros, ent.iy);
       const segurando = tem("pular") || pad.pulo || toque?.carro.especial || entradaTeste?.especial;
       if ((pad.puloNovo || toque?.puloNovo || toque?.especialNovo || entradaTeste?.especialNovo) && dentro.buzina <= 0) { acionarEspecial(dentro); dentro.buzina = dentro.g.userData.especial === "buzina" ? 0.8 : 1.5; if (entradaTeste) entradaTeste.especialNovo = false; }
       if (toque) toque.especialNovo = false;

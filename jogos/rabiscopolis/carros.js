@@ -139,14 +139,14 @@ export function onibusFofo() {
   const painel = caixaRedonda(W - 0.4, 0.5, 0.4, mat(0x2f3440)); painel.position.set(0, 2.15, L / 2 - 0.35); g.add(painel);
   // parte de cima (janelas e teto): fica sempre no lugar, o Rabisco dirige lá dentro
   const cima = new THREE.Group(); cima.userData.dinamico = true; cima.userData.cima = true; g.add(cima);
-  const vid = new THREE.Mesh(new THREE.BoxGeometry(W - 0.15, 1.2, L - 0.4), matNovo({ color: 0xbfeaff, transparent: true, opacity: 0.55 })); vid.position.y = 2.5; cima.add(vid);
-  for (const z of [-L / 2 + 0.25, -1.4, 1.4]) for (const s of [-1, 1]) { const c = caixa(0.2, 1.25, 0.24, mat(AMARELO)); c.position.set(s * (W / 2 - 0.12), 2.5, z); g.add(c); }
-  const traseira = caixa(W - 0.05, 1.25, 0.2, mat(AMARELO)); traseira.position.set(0, 2.5, -L / 2 + 0.2); g.add(traseira);
-  const teto = caixaRedonda(W + 0.05, 0.4, L + 0.05, mat(0xfff4e0)); teto.position.y = 3.25; cima.add(teto);
+  const vid = new THREE.Mesh(new THREE.BoxGeometry(W - 0.15, 1.5, L - 0.4), matNovo({ color: 0xbfeaff, transparent: true, opacity: 0.55 })); vid.position.y = 2.65; cima.add(vid);
+  for (const z of [-L / 2 + 0.25, -1.4, 1.4]) for (const s of [-1, 1]) { const c = caixa(0.2, 1.55, 0.24, mat(AMARELO)); c.position.set(s * (W / 2 - 0.12), 2.62, z); g.add(c); }
+  const traseira = caixa(W - 0.05, 1.55, 0.2, mat(AMARELO)); traseira.position.set(0, 2.62, -L / 2 + 0.2); g.add(traseira);
+  const teto = caixaRedonda(W + 0.05, 0.4, L + 0.05, mat(0xfff4e0)); teto.position.y = 3.55; cima.add(teto);
   const volante = malha(new THREE.TorusGeometry(0.26, 0.05, 8, 18), mat(0x262626)); volante.position.set(0.7, 2.45, 3.6); volante.rotation.x = -1.0; volante.userData.dinamico = true; g.add(volante);
   const rodas = [];
   for (const [x, z] of [[-1.25, 2.7], [1.25, 2.7], [-1.25, -2.7], [1.25, -2.7]]) { const r = roda(0x2f6fc0); r.position.set(x, R_RODA + 0.06, z); r.scale.setScalar(1.15); g.add(r); rodas.push(r); }
-  const seta = new THREE.Mesh(emBlocos(new THREE.ConeGeometry(0.5, 1, 4)), new THREE.MeshBasicMaterial({ color: 0xffcc1f })); seta.rotation.x = Math.PI; seta.position.y = 5.2; seta.userData.dinamico = true; g.add(seta);
+  const seta = new THREE.Mesh(emBlocos(new THREE.ConeGeometry(0.5, 1, 4)), new THREE.MeshBasicMaterial({ color: 0xffcc1f })); seta.rotation.x = Math.PI; seta.position.y = 5.4; seta.userData.dinamico = true; g.add(seta);
   mesclar(g, { juntas: new Set(rodas) });
   mesclar(cima);
   Object.assign(g.userData, { rodas, seta, volante, cima, motorista: assentos[0], carona: assentos[1] });
@@ -234,13 +234,13 @@ function van({ cor, corTeto = 0xffffff, faixaCor = null }) {
   if (faixaCor) { const f = caixa(2.44, 0.22, 5.0, mat(faixaCor), { sombra: false }); f.position.y = 1.0; g.add(f); }
   const cima = new THREE.Group(); cima.userData.dinamico = true; cima.userData.cima = true; g.add(cima);
   // só a caixa de trás é fechada; a cabine (z > 0) tem vidros dos lados e na frente, com colunas nos cantos
-  const caixaCima = caixaRedonda(2.4, 1.3, 2.4, mat(cor)); caixaCima.position.set(0, 2.15, -1.3); cima.add(caixaCima);
-  const pb = caixaRedonda(2.3, 1.0, 0.12, vidro); pb.position.set(0, 2.05, 1.25); pb.rotation.x = -0.35; cima.add(pb);
+  const caixaCima = caixaRedonda(2.4, 1.5, 2.4, mat(cor)); caixaCima.position.set(0, 2.3, -1.3); cima.add(caixaCima);
+  const pb = caixaRedonda(2.3, 1.35, 0.12, vidro); pb.position.set(0, 2.25, 1.25); pb.rotation.x = -0.35; cima.add(pb);
   for (const s of [-1, 1]) {
-    const lado = caixa(0.06, 1.0, 1.1, vidro, { sombra: false }); lado.position.set(s * 1.15, 2.1, 0.6); cima.add(lado);
-    for (const z of [0.05, 1.15]) { const c = caixa(0.14, 1.3, 0.14, mat(cor)); c.position.set(s * 1.15, 2.15, z); cima.add(c); }
+    const lado = caixa(0.06, 1.35, 1.1, vidro, { sombra: false }); lado.position.set(s * 1.15, 2.25, 0.6); cima.add(lado);
+    for (const z of [0.05, 1.15]) { const c = caixa(0.14, 1.6, 0.14, mat(cor)); c.position.set(s * 1.15, 2.3, z); cima.add(c); }
   }
-  const teto = caixaRedonda(2.5, 0.18, 3.8, mat(corTeto)); teto.position.set(0, 2.85, -0.7); cima.add(teto);
+  const teto = caixaRedonda(2.5, 0.18, 3.8, mat(corTeto)); teto.position.set(0, 3.05, -0.7); cima.add(teto);
   for (const x of [-0.75, 0.75]) { const f = malha(new THREE.CircleGeometry(0.2, 16), farol, { sombra: false }); f.position.set(x, 0.95, 2.6); g.add(f); const l = malha(new THREE.CircleGeometry(0.16, 14), lanterna, { sombra: false }); l.position.set(x, 1.0, -2.62); l.rotation.y = Math.PI; g.add(l); }
   const assentos = [];
   for (const x of [0.55, -0.55]) { const a = caixaRedonda(0.8, 0.26, 0.8, mat(0xfff4e0)); a.position.set(x, 1.5, 0.6); g.add(a); assentos.push(new THREE.Vector3(x, 1.63, 0.65)); }
@@ -254,28 +254,41 @@ export function ambulancia() {
   const { g, cima, rodas, seta, volante, assentos } = van({ cor: 0xffffff, faixaCor: 0xe8413c });
   for (const s of [-1, 1]) { const c1 = caixa(0.05, 0.6, 0.2, mat(0xe8413c), { sombra: false }); c1.position.set(s * 1.23, 2.2, -1.2); cima.add(c1); const c2 = caixa(0.05, 0.2, 0.6, mat(0xe8413c), { sombra: false }); c2.position.set(s * 1.23, 2.2, -1.2); cima.add(c2); }
   // sirene: duas luzes (vermelha e azul) que piscam no teto
-  const luzes = [0xff2020, 0x2f6fff].map((c, i) => { const m = new THREE.Mesh(emBlocos(new THREE.SphereGeometry(0.2, 12, 8)), matNovo({ color: c, emissive: c, emissiveIntensity: 0 })); m.position.set(i ? 0.45 : -0.45, 3.05, 0.6); m.userData.dinamico = true; g.add(m); return m; });
+  const luzes = [0xff2020, 0x2f6fff].map((c, i) => { const m = new THREE.Mesh(emBlocos(new THREE.SphereGeometry(0.2, 12, 8)), matNovo({ color: c, emissive: c, emissiveIntensity: 0 })); m.position.set(i ? 0.45 : -0.45, 3.25, 0.6); m.userData.dinamico = true; g.add(m); return m; });
   mesclar(g, { juntas: new Set(rodas) }); mesclar(cima);
   Object.assign(g.userData, { rodas, seta, volante, cima, luzes, motorista: assentos[0], carona: assentos[1], especial: "sirene" });
   return g;
 }
 export function vanSorvete() {
   const { g, cima, rodas, seta, volante, assentos } = van({ cor: 0xffb3d4, corTeto: 0x8fe3cf });
-  const casq = malha(new THREE.ConeGeometry(0.45, 1.2, 14), mat(0xe8a85a)); casq.rotation.x = Math.PI; casq.position.set(0, 3.55, -1.3); cima.add(casq);
-  [[0xff8cc0, 0], [0x8fe3cf, 0.45]].forEach(([c, y]) => { const b = malha(new THREE.SphereGeometry(0.5 - y * 0.2, 14, 10), mat(c)); b.position.set(0, 4.3 + y, -1.3); cima.add(b); });
+  const casq = malha(new THREE.ConeGeometry(0.45, 1.2, 14), mat(0xe8a85a)); casq.rotation.x = Math.PI; casq.position.set(0, 3.75, -1.3); cima.add(casq);
+  [[0xff8cc0, 0], [0x8fe3cf, 0.45]].forEach(([c, y]) => { const b = malha(new THREE.SphereGeometry(0.5 - y * 0.2, 14, 10), mat(c)); b.position.set(0, 4.5 + y, -1.3); cima.add(b); });
   const placa = texto3D("Sorvete!", "#ff6fae", 2.0, 0.6); placa.position.set(1.23, 2.0, -0.8); placa.rotation.y = Math.PI / 2; cima.add(placa);
   mesclar(g, { juntas: new Set(rodas) }); mesclar(cima);
   Object.assign(g.userData, { rodas, seta, volante, cima, motorista: assentos[0], carona: assentos[1], especial: "musica" });
   return g;
 }
+// cabine dos caminhões (bombeiro e reciclagem): piso baixo, colunas, vidros dos lados e na frente e teto ALTO, para o
+// Rabisco (que senta com a ponta do lápis a ~1,2 m do banco) ficar inteiro dentro, sem a ponta atravessar o teto
+function cabineCaminhao(g, cor) {
+  const yT = 3.0, z0 = 1.0, z1 = 2.85, zc = (z0 + z1) / 2, d = z1 - z0;
+  const piso = caixa(2.3, 0.1, d, mat(0x3a3f4c), { sombra: false }); piso.position.set(0, 1.12, zc); g.add(piso);
+  const painel = caixaRedonda(2.1, 0.5, 0.4, mat(0x2f3440)); painel.position.set(0, 1.4, z1 - 0.3); g.add(painel);
+  const teto = caixaRedonda(2.5, 0.2, d + 0.3, mat(cor)); teto.position.set(0, yT, zc + 0.1); g.add(teto);
+  const pb = caixa(2.3, 1.3, 0.06, vidro, { sombra: false }); pb.position.set(0, 2.25, z1 + 0.08); pb.renderOrder = 3; g.add(pb);
+  for (const s of [-1, 1]) {
+    const lado = caixa(0.06, 1.3, d - 0.2, vidro, { sombra: false }); lado.position.set(s * 1.2, 2.25, zc); lado.renderOrder = 3; g.add(lado);
+    for (const z of [z0 + 0.05, z1 + 0.05]) { const c = caixa(0.16, 1.9, 0.16, mat(cor)); c.position.set(s * 1.2, 2.05, z); g.add(c); }
+  }
+}
 // caminhão de bombeiro: cabine na frente, escada no teto e o canhão d'água atrás (gira e solta o jato)
 export function caminhaoBombeiro() {
   const g = new THREE.Group();
-  const cab = perfil([[3.4, 0.5], [3.55, 0.9, 3.5, 1.4], [3.2, 1.6], [1.4, 1.6], [1.3, 1.1], [-3.4, 1.1], [-3.5, 0.5]], [2.3, -2.2], 0.5);
+  const cab = perfil([[3.4, 0.5], [3.55, 0.9, 3.5, 1.4], [3.3, 1.6], [2.85, 1.6], [2.85, 1.1], [-3.4, 1.1], [-3.5, 0.5]], [2.3, -2.2], 0.5);
   const corpo = corpoExtrudado(cab, 2.5, mat(0xe8413c), 0.16); g.add(corpo);
   const bau = caixaRedonda(2.5, 1.2, 4.4, mat(0xe8413c)); bau.position.set(0, 1.7, -1.3); g.add(bau);
   const faixa = caixa(2.54, 0.2, 7.0, mat(0xffffff), { sombra: false }); faixa.position.set(0, 1.0, 0); g.add(faixa);
-  const pb = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.6), vidro); pb.position.set(0, 2.0, 2.6); pb.rotation.x = -0.4; g.add(pb);
+  cabineCaminhao(g, 0xe8413c);
   // escada em cima
   for (const s of [-0.55, 0.55]) { const tr = caixa(0.12, 0.12, 4.2, mat(0xdfe6ee)); tr.position.set(s, 2.45, -1.3); g.add(tr); }
   for (let i = 0; i < 9; i++) { const d = caixa(1.1, 0.08, 0.08, mat(0xdfe6ee), { sombra: false }); d.position.set(0, 2.45, -3.2 + i * 0.48); g.add(d); }
@@ -299,10 +312,9 @@ export function caminhaoBombeiro() {
 // com o símbolo de reciclar; o que ele recolhe vai para g.userData.carga (montado e desmontado pela profissão)
 export function caminhaoReciclagem() {
   const g = new THREE.Group(), verde = 0x2e9e57;
-  const cab = perfil([[3.4, 0.5], [3.55, 0.9, 3.5, 1.4], [3.2, 1.6], [1.4, 1.6], [1.3, 1.1], [-3.4, 1.1], [-3.5, 0.5]], [2.3, -2.2], 0.5);
+  const cab = perfil([[3.4, 0.5], [3.55, 0.9, 3.5, 1.4], [3.3, 1.6], [2.85, 1.6], [2.85, 1.1], [-3.4, 1.1], [-3.5, 0.5]], [2.3, -2.2], 0.5);
   g.add(corpoExtrudado(cab, 2.5, mat(verde), 0.16));
-  const teto = caixaRedonda(2.5, 0.9, 1.5, mat(verde)); teto.position.set(0, 2.05, 2.15); g.add(teto);
-  const pb = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.6), vidro); pb.position.set(0, 2.0, 2.95); pb.rotation.x = -0.4; g.add(pb);
+  cabineCaminhao(g, verde);
   // caçamba: fundo e paredes baixas, amarelas por dentro
   const fundo = caixa(2.5, 0.12, 4.4, mat(0x3b444b)); fundo.position.set(0, 1.16, -1.3); g.add(fundo);
   for (const s of [-1, 1]) { const p = caixa(0.12, 0.8, 4.4, mat(0xffd23f)); p.position.set(s * 1.19, 1.6, -1.3); g.add(p); }
