@@ -1,6 +1,10 @@
-// Painel de entrada: a escola Educarte com o Rabisco acenando na frente (cena 3D "ultra realista"
-// em src/portal3d.js). Por cima, a vitrine com os jogos que estão no ar (JOGOS_NO_AR em src/catalogo.js):
-// cartões grandes com capa e profundidade 3D (inclinam ao passar o mouse ou tocar).
+// Tela de abertura: a Rabiscolândia como jogo de verdade. A escola Educarte em 3D (src/portal3d.js) com
+// sobrevoo da câmera até o Rabisco, que acena com o balão "Oi, <nome>!"; à esquerda o logo do jogo e o
+// JOGAR enorme (toque, Enter, A do controle ou Start). Ao jogar: som 8-bit, o Rabisco comemora, a câmera
+// avança até a porta e uma íris cobre a tela enquanto a cidade abre.
+//
+// O jogo da abertura é o primeiro de JOGOS_NO_AR (src/catalogo.js). Se voltar a ter mais jogos no ar,
+// os outros aparecem em miniatura embaixo dos botões (#mais-jogos), sem mexer aqui.
 //
 // Abertura rápida: a foto pré-renderizada da cena (assets/portal-entrada-*.webp) aparece na hora;
 // a cena viva (three.js) só carrega depois que a página abriu e entra com um esmaecer suave.
@@ -10,8 +14,9 @@ import { CAPAS } from "./portal-capas.js";
 import { falar, preCarregarFalas, saudar } from "./motor/voz.js";
 import { Familia } from "./motor/familia.js";
 import { sons } from "./motor/sons.js";
-import { ligarControle } from "./motor/controle.js";
+import { ligarControle, focar, moverFoco, modalAtivo } from "./motor/controle.js";
 import { registrarApp, pedirInstalacao, jaInstalado } from "./motor/instalar.js";
+import { saldo } from "./motor/rabiscoins.js";
 import "./motor/modotv.js"; // Modo TV (layout limpo) e a sugestão quando parece ligado numa TV
 import { botaoEngrenagem } from "./motor/engrenagem.js";
 
@@ -19,6 +24,34 @@ const RAIZ = ".";
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const reduzido = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const toque = matchMedia("(pointer: coarse)").matches;
+const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// ------------------------------------------------------------------ o jogo da abertura
+const destaque = jogosNoAr[0]?.jogo;
+const btnJogar = $("jogar");
+if (destaque) {
+  btnJogar.href = `jogos/${destaque.id}/`;
+  btnJogar.setAttribute("aria-label", `Jogar ${destaque.nome}`);
+  if (destaque.id !== "rabiscopolis") {
+    // outro jogo na abertura: o título e o slogan vêm do catálogo
+    $("titulo-jogo").textContent = destaque.nome;
+    $("titulo-jogo").removeAttribute("aria-label");
+    $("slogan").textContent = destaque.desc;
+    $("destaques").hidden = true;
+  }
+}
+// outros jogos no ar: miniaturas com a capa
+const outros = jogosNoAr.slice(1);
+if (outros.length) {
+  const nav = $("mais-jogos");
+  nav.hidden = false;
+  nav.innerHTML = outros.map(({ jogo: j }) => {
+    const est = estilos[j.estilo] || estilos.extra;
+    const capa = CAPAS.has(j.id) ? `<img src="assets/portal-capas/${j.id}.webp?v=${CAPAS.versao}" alt="" width="96" height="60" loading="lazy" decoding="async">` : `<span class="arte">${est.icone}</span>`;
+    return `<a class="mini" href="jogos/${j.id}/">${capa}<span>${esc(j.nome)}</span></a>`;
+  }).join("");
+}
 
 // ------------------------------------------------------------------ Cena 3D (sob demanda)
 // "leve": celular/tablet ou aparelho modesto (menos grama, sombra menor, resolução 1,5x)
@@ -27,11 +60,25 @@ const leve = matchMedia("(max-width: 900px), (pointer: coarse)").matches
 const economia = navigator.connection?.saveData && !params.has("foto-cena");
 let cena = null;
 if (params.has("foto-cena")) document.body.classList.add("foto-cena");
+
+// balão do Rabisco: acompanha a cabeça dele (a cena avisa a posição a cada quadro)
+const balao = $("balao");
+let balaoX = -1, balaoY = -1, balaoVisivel = false;
+function seguirBalao({ x, y, chegou }) {
+  const mostra = chegou && !document.body.classList.contains("saindo");
+  if (mostra !== balaoVisivel) { balaoVisivel = mostra; balao.classList.toggle("visivel", mostra); }
+  if (!mostra) return;
+  if (Math.abs(x - balaoX) < 0.4 && Math.abs(y - balaoY) < 0.4) return;
+  balaoX = x; balaoY = y;
+  balao.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+}
+
 function carregarCena() {
   import("./portal3d.js").then(({ iniciarCena }) => {
     cena = iniciarCena($("cena"), {
       raiz: RAIZ, leve: leve && !params.has("foto-cena"), quieto: reduzido, foto: params.has("foto-cena"),
       aoPronto: () => document.body.classList.add("cena-viva"),
+      aoQuadro: params.has("foto-cena") ? null : seguirBalao,
     });
     ajustarRitmo();
   }).catch((e) => { console.warn("Cena 3D indisponível; fica a foto da escola.", e); });
@@ -41,122 +88,127 @@ if (!economia) {
   if (document.readyState === "complete") ir(); else addEventListener("load", ir, { once: true });
 }
 // a cena para quando a aba fica em segundo plano
-function ajustarRitmo() {
-  if (!cena) return;
-  cena.pausar(document.hidden);
-}
-addEventListener("resize", ajustarRitmo);
+function ajustarRitmo() { cena?.pausar(document.hidden); }
 document.addEventListener("visibilitychange", ajustarRitmo);
 
-// ------------------------------------------------------------------ Vitrine de jogos
-const CORES = ["#00B5F0", "#FF5FA2"]; // uma cor por cartão (borda, sombra e selos)
-
-// Cartão de jogo: capa (foto do jogo ou arte com o ícone do estilo), selo de estilo,
-// botão de jogar sobre a capa, nome, descrição curta e a habilidade trabalhada.
-// Qualquer jogo novo do catálogo funciona: sem capa em assets/portal-capas/, entra a arte de reserva.
-const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-function cartaoJogo(j, i) {
-  const pronto = j.status === "pronto";
-  const est = estilos[j.estilo] || estilos.extra;
-  const temCapa = CAPAS.has(j.id);
-  const capa = temCapa
-    ? `<img class="capa-foto" src="assets/portal-capas/${j.id}.webp?v=${CAPAS.versao}" alt="" width="640" height="400" loading="${i < 2 ? "eager" : "lazy"}" decoding="async">`
-    : `<span class="capa-arte" aria-hidden="true">${est.icone}</span>`;
-  const conteudo = `
-    <div class="capa ${temCapa ? "" : "sem-foto"}" data-estilo="${esc(j.estilo)}">
-      ${capa}
-      <span class="capa-luz" aria-hidden="true"></span>
-      <div class="selos">
-        <span class="selo estilo">${est.icone} ${esc(est.nome)}</span>
-        ${j.ingles ? '<span class="selo ingles">English</span>' : ""}
-      </div>
-      <span class="selo ${pronto ? "pronto" : "breve"}">${pronto ? "Jogar ▶" : "Em breve"}</span>
-    </div>
-    <div class="corpo">
-      <h3>${esc(j.nome)}</h3>
-      <p>${esc(j.desc)}</p>
-      <span class="habilidade">${esc(j.habilidade)}</span>
-    </div>`;
-  const estilo = `style="--i:${i};--cor:${CORES[i % CORES.length]}"`;
-  return pronto
-    ? `<a class="jogo pronto" href="jogos/${j.id}/" ${estilo} aria-label="${esc(j.nome)}: ${esc(j.habilidade)}">${conteudo}</a>`
-    : `<div class="jogo breve" ${estilo}>${conteudo}</div>`;
+// ------------------------------------------------------------------ saudação com o nome da criança
+function desenharSaudacao() {
+  const c = Familia.crianca();
+  const nome = c?.nome?.trim().split(/\s+/)[0];
+  balao.innerHTML = `<div class="balao-corpo">${nome ? `Oi, <b>${esc(nome)}</b>!` : "Oi!"}<small>Vamos brincar?</small></div>`;
 }
 
-// Profundidade 3D: o cartão inclina na direção do ponteiro (mouse) ou do dedo (ao tocar), com um
-// brilho que acompanha. Um cartão por vez, atualizado no máximo uma vez por quadro.
-function ligarInclinacao(lista) {
-  if (reduzido) return;
-  let ativo = null, px = 0, py = 0, pedido = 0;
-  const aplicar = () => {
-    pedido = 0;
-    if (!ativo) return;
-    const r = ativo.getBoundingClientRect();
-    const x = Math.min(1, Math.max(0, (px - r.left) / r.width)), y = Math.min(1, Math.max(0, (py - r.top) / r.height));
-    const s = ativo.style;
-    s.setProperty("--rx", `${((0.5 - y) * 9).toFixed(2)}deg`);
-    s.setProperty("--ry", `${((x - 0.5) * 11).toFixed(2)}deg`);
-    s.setProperty("--mx", `${(x * 100).toFixed(1)}%`);
-    s.setProperty("--my", `${(y * 100).toFixed(1)}%`);
-    s.setProperty("--dx", `${((0.5 - x) * 10).toFixed(1)}px`);
-    s.setProperty("--dy", `${((0.5 - y) * 8).toFixed(1)}px`);
-  };
-  const soltar = () => {
-    if (!ativo) return;
-    ativo.classList.remove("inclinado");
-    for (const v of ["--rx", "--ry", "--mx", "--my", "--dx", "--dy"]) ativo.style.removeProperty(v);
-    ativo = null;
-  };
-  const mirar = (e) => {
-    const c = e.target.closest?.(".jogo");
-    if (c !== ativo) { soltar(); ativo = c; ativo?.classList.add("inclinado"); }
-    px = e.clientX; py = e.clientY;
-    if (ativo && !pedido) pedido = requestAnimationFrame(aplicar);
-  };
-  lista.addEventListener("pointermove", (e) => { if (e.pointerType !== "touch") mirar(e); });
-  lista.addEventListener("pointerdown", mirar);
-  lista.addEventListener("pointerleave", soltar);
-  for (const fim of ["pointerup", "pointercancel"]) lista.addEventListener(fim, (e) => { if (e.pointerType === "touch") soltar(); });
-  lista.addEventListener("scroll", soltar, { passive: true });
+// ------------------------------------------------------------------ JOGAR (com transição)
+// O clique é tratado no documento (depois de qualquer outro ouvinte do link): se alguém já barrou o
+// clique, não faz nada. Ctrl/⌘/botão do meio abrem em outra aba como um link comum.
+let saindo = false;
+function jogar(origem = btnJogar) {
+  if (saindo) return;
+  saindo = true;
+  const destino = btnJogar.href;
+  const r = origem.getBoundingClientRect();
+  const cortina = $("cortina");
+  cortina.style.setProperty("--cx", `${Math.round(r.left + r.width / 2)}px`);
+  cortina.style.setProperty("--cy", `${Math.round(r.top + r.height / 2)}px`);
+  const aro = document.querySelector(".cortina-aro");
+  aro.style.setProperty("--cx", cortina.style.getPropertyValue("--cx"));
+  aro.style.setProperty("--cy", cortina.style.getPropertyValue("--cy"));
+  document.body.classList.add("saindo");
+  try { sons.destravar(); sons.porta(); } catch { /* sem som */ }
+  cena?.entrar();
+  const espera = reduzido ? 120 : 1150;
+  setTimeout(() => cortina.classList.add("fechada"), reduzido ? 0 : 520);
+  setTimeout(() => location.assign(destino), espera);
 }
+document.addEventListener("click", (e) => {
+  const a = e.target.closest?.("a.jogar");
+  if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  e.preventDefault();
+  jogar(a);
+});
+// voltou pelo "voltar" do navegador e a página veio guardada: tudo de volta no lugar
+addEventListener("pageshow", (e) => {
+  if (!e.persisted) return;
+  saindo = false;
+  document.body.classList.remove("saindo");
+  $("cortina").classList.remove("fechada");
+  cena?.reiniciar();
+});
 
-$("vitrine").innerHTML = jogosNoAr.map(({ jogo }, i) => cartaoJogo(jogo, i)).join("");
-ligarInclinacao($("vitrine"));
-// ⚙️ Configurações (src/motor/engrenagem.js): som liga/desliga (M no teclado) e "📺 Jogar na TV" com os 3 jeitos
-// (aqui mesmo, + celular de controle, só controles). Fica no lugar do antigo 🔊.
-$("som").replaceWith(botaoEngrenagem({ classe: "som", id: "som", atalhoM: true }));
+// dica embaixo do JOGAR: muda com o jeito de jogar (toque, teclado ou controle)
+const dica = $("dica");
+function desenharDica(jeito) {
+  dica.dataset.jeito = jeito;
+  dica.innerHTML = jeito === "controle" ? `Aperte <kbd class="a">A</kbd> para entrar na cidade`
+    : jeito === "toque" ? "Toque em JOGAR para entrar na cidade"
+      : `Aperte <kbd>Enter</kbd> para entrar na cidade`;
+}
+desenharDica(toque ? "toque" : "teclado");
+
+// ⚙️ Configurações (src/motor/engrenagem.js): som liga/desliga (M no teclado) e "📺 Jogar na TV" com os 3 jeitos.
+const eng = botaoEngrenagem({ classe: "sec", id: "som", atalhoM: true });
+eng.innerHTML = `<span class="ico" aria-hidden="true">⚙️</span><span class="rot">Configurações</span>`;
+$("som").replaceWith(eng);
 
 // A narradora dá "oi" no primeiro toque (o navegador só deixa tocar som depois de um toque):
 // com a criança cadastrada, chama pelo nome; antes do cadastro, boas-vindas neutras gravadas.
 preCarregarFalas(["portal-oi", "portal-idade"]);
 let cumprimentou = false;
 addEventListener("pointerdown", (e) => {
-  if (cumprimentou || e.target.closest(".familia-tela, #familia")) return;
+  if (cumprimentou || e.target.closest(".familia-tela, #familia, a.jogar")) return;
   cumprimentou = true;
   sons.destravar();
-  if (!saudar({ gravada: false })) falar("portal-oi");
+  Promise.resolve(saudar({ gravada: false })).then((ok) => { if (!ok) falar("portal-oi"); }).catch(() => {});
 });
 
-// ------------------------------------------------------------------ Família (cadastro antes do primeiro jogo)
+// ------------------------------------------------------------------ Família e progresso (canto de cima)
 const btnFamilia = $("familia");
 function desenharFamilia() {
   const c = Familia.crianca();
-  btnFamilia.innerHTML = `<span class="roda">${c?.foto ? `<img src="${c.foto}" alt="">` : "🧒"}</span><span>${c ? c.nome : "Família"}</span>`;
+  btnFamilia.innerHTML = `<span class="roda">${c?.foto ? `<img src="${c.foto}" alt="">` : "🧒"}</span><span class="nome">${c ? esc(c.nome.trim().split(/\s+/)[0]) : "Família"}</span>`;
   btnFamilia.setAttribute("aria-label", c ? `Família: ${c.nome}. Editar cadastro` : "Cadastrar a família");
+  desenharSaudacao();
 }
 desenharFamilia();
 Familia.aoMudar(desenharFamilia);
 btnFamilia.addEventListener("click", () => Familia.abrirCadastro({ obrigatorio: false, titulo: "Nossa família" }));
 if (params.has("cadastro")) Familia.abrirCadastro({ obrigatorio: params.get("cadastro") !== "editar" });
 
-// Controle: direcional escolhe o jogo, A abre
+// Rabiscoins guardadas neste aparelho (só aparece quando já tem alguma)
+try {
+  const s = saldo();
+  if (s > 0) { const m = $("moedas"); m.hidden = false; m.innerHTML = `<span class="moeda" aria-hidden="true"></span>${s.toLocaleString("pt-BR")}`; m.title = "Rabiscoins"; }
+} catch { /* sem armazenamento */ }
+
+// ------------------------------------------------------------------ Controle e teclado
+// Direcional anda entre JOGAR, os botões e o perfil; A clica; Start joga direto.
 const controle = ligarControle({
   menu: () => document.body,
-  aoConectar: () => { sons.destravar(); },
+  aoStart: () => { if (!modalAtivo()) jogar(); },
+  aoConectar: () => {
+    sons.destravar();
+    desenharDica("controle");
+    if (!modalAtivo() && !document.querySelector(".controle-foco")) focar(btnJogar);
+  },
 });
-
-// o controle (gamepad) é lido a cada quadro, com ou sem a cena 3D
 (function lerControle() { controle.atualizar(); requestAnimationFrame(lerControle); })();
+
+addEventListener("keydown", (e) => {
+  if (saindo || modalAtivo() || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.target?.matches?.("input, textarea, select, [contenteditable]") || e.target?.closest?.(".familia-tela, .eng-tela")) return;
+  if (/^Arrow/.test(e.key)) {
+    e.preventDefault();
+    const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+    if (!document.querySelector(".controle-foco") && document.activeElement === document.body) focar(btnJogar);
+    else moverFoco(document.body, ...d);
+    return;
+  }
+  // Enter/Espaço sem nada em foco: joga (com algo em foco, o próprio botão recebe o clique)
+  if ((e.key === "Enter" || e.key === " ") && (document.activeElement === document.body || !document.activeElement)) {
+    e.preventDefault();
+    jogar();
+  }
+});
 
 // App: instala na tela inicial (o pedido aparece assim que a pessoa entra)
 registrarApp();

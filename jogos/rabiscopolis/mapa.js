@@ -327,6 +327,9 @@ export const VAGAS = [
   // Mar Azul: jet ski e lancha encostados no píer da orla (só andam no mar)
   { x: 33.6, z: 284, ang: 0, tipo: "jetski", cor: 0xec2e8c },
   { x: 21.5, z: 289, ang: 0, tipo: "lancha", cor: 0x2f6fc0 },
+  // roçador do Sítio Floresça, lá dentro (jogo.js ajusta ao ponto do sítio e põe o limite: só anda no terreno). No fim da
+  // lista, para não mudar a ordem dos outros
+  { x: -361, z: 72.4, ang: 0, tipo: "rocador" },
 ];
 export const LARGADA = { x: 0, z: 33, dir: Math.PI }; // na frente da praça, olhando para a igreja
 
@@ -350,7 +353,7 @@ export const PEGADAS_FIXAS = [
   { id: "heliponto-area", x0: HELIPONTO.x - HELIPONTO.r, x1: HELIPONTO.x + HELIPONTO.r, z0: HELIPONTO.z - HELIPONTO.r, z1: HELIPONTO.z + HELIPONTO.r },
   // pontos de parceira ainda livres ficam reservados (a próxima parceira já tem lugar)
   ...PONTOS_PARCEIROS.slice(PARCEIROS.length).map(([x, z, dx, dz], i, resto) => ({ id: `reserva-parceira-${i}`, nova: i < resto.length - 1, ...pegadaDe(x, z, [dx, dz], LOJA_MAX, 7.5, 1) })),
-  ...VAGAS.map((v, i) => [v, i]).filter(([v]) => !["heli", "barco", "trator", "jetski", "lancha"].includes(v.tipo)).map(([v, i]) => { const [meioC, meioL] = { onibus: [7.5, 3], bombeiro: [3.8, 1.4], ambulancia: [2.9, 1.4], sorvete: [2.9, 1.4], bici: [1.0, 0.5], patinete: [0.8, 0.4], moto: [1.1, 0.45] }[v.tipo] ?? [2.6, 1.4]; const deitado = Math.abs(Math.sin(v.ang)) > 0.5; return { id: `vaga-${i}`, x0: v.x - (deitado ? meioC : meioL), x1: v.x + (deitado ? meioC : meioL), z0: v.z - (deitado ? meioL : meioC), z1: v.z + (deitado ? meioL : meioC) }; }),
+  ...VAGAS.map((v, i) => [v, i]).filter(([v]) => !["heli", "barco", "trator", "rocador", "jetski", "lancha"].includes(v.tipo)).map(([v, i]) => { const [meioC, meioL] = { onibus: [7.5, 3], bombeiro: [3.8, 1.4], ambulancia: [2.9, 1.4], sorvete: [2.9, 1.4], bici: [1.0, 0.5], patinete: [0.8, 0.4], moto: [1.1, 0.45] }[v.tipo] ?? [2.6, 1.4]; const deitado = Math.abs(Math.sin(v.ang)) > 0.5; return { id: `vaga-${i}`, x0: v.x - (deitado ? meioC : meioL), x1: v.x + (deitado ? meioC : meioL), z0: v.z - (deitado ? meioL : meioC), z1: v.z + (deitado ? meioL : meioC) }; }),
   { id: "largada", x0: LARGADA.x - 3, x1: LARGADA.x + 3, z0: LARGADA.z - 3, z1: LARGADA.z + 3 },
 ];
 // lugares das parceiras novas (nova: true): o sorteio dos prédios de enchimento não os enxerga, senão a cidade inteira

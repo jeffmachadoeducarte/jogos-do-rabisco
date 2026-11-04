@@ -8,7 +8,9 @@
 // "revestidos" (troca de material na cópia montada para esta cena) e ganham detalhes extras.
 //
 // Leve no celular: carregado sob demanda pelo app.js (a foto pré-renderizada da cena aparece antes),
-// sombras menores, menos tufos de grama, pausa quando o painel de jogos cobre a tela.
+// sombras menores, menos tufos de grama, pausa quando a aba sai da frente.
+// Tela de abertura: sobrevoo da câmera até o Rabisco (lente deslocada para o título caber à esquerda)
+// e, ao JOGAR, a câmera avança até a porta da escola (entrar()).
 
 import { THREE, COR3D, carregarTextura, aleatorio, texturaCanvas } from "./motor3d/toon.js";
 import { escolaEducarte3D, onibus3D, sombraBlob, particulasAmbiente } from "./motor3d/objetos.js";
@@ -202,7 +204,7 @@ function cantos(w, h, r) {
 }
 
 // ------------------------------------------------------------------ cena
-export function iniciarCena(canvas, { raiz = ".", leve = false, quieto = false, foto = false, aoPronto = () => {} } = {}) {
+export function iniciarCena(canvas, { raiz = ".", leve = false, quieto = false, foto = false, aoPronto = () => {}, aoQuadro = null } = {}) {
   const renderer = new G.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance", preserveDrawingBuffer: foto });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, foto ? 2 : leve ? 1.5 : 2));
   renderer.outputColorSpace = G.SRGBColorSpace;
@@ -500,20 +502,37 @@ export function iniciarCena(canvas, { raiz = ".", leve = false, quieto = false, 
   if (polen) { polen.position.set(0, 0.2, 0); cena.add(polen); }
 
   // ---------------- Rabisco aprovado, acenando na frente da escola (sem mexer nele)
+  // Fica à direita da porta, virado para a câmera: na tela de abertura ele divide o quadro com o título
+  // (o título e o JOGAR ocupam a esquerda). Só os membros animam; o corpo não balança.
+  const POS_RABISCO = new G.Vector3(5.3, 0, 17.4);
   const rabisco = new Rabisco3D({ raiz, altura: 4.6 });
-  rabisco.grupo.position.set(-4.5, 0, 12.5);
-  rabisco.grupo.rotation.y = 0.35;
+  rabisco.grupo.position.copy(POS_RABISCO);
+  rabisco.grupo.rotation.y = -0.32;
   cena.add(rabisco.grupo);
   const sombraR = sombraBlob(1.5, 0.42);
-  sombraR.position.set(-4.5, 0.04, 12.5);
+  sombraR.position.set(POS_RABISCO.x, 0.04, POS_RABISCO.z);
   cena.add(sombraR);
 
-  // ------------------------------------------------------------------ tela, laço e controles
-  const alvoCam = new G.Vector3(-1, 2.6, 4);
+  // ------------------------------------------------------------------ câmera de abertura
+  // Sobrevoo: a câmera chega do alto (vendo a escola e o gramado de cima) e desce até o Rabisco, em ~3,4 s.
+  // Depois fica "respirando" bem devagar. Ao JOGAR, avança para a porta da escola (entrar()).
+  // Deitado, a lente é deslocada (setViewOffset) para a escola e o Rabisco ficarem à direita do título.
+  const REPOUSO = { pos: new G.Vector3(1.2, 4.3, 30.5), alvo: new G.Vector3(4.2, 4.1, 6), fov: 36 };
+  const INICIO = { pos: new G.Vector3(-16, 30, 58), alvo: new G.Vector3(3, 2, -4), fov: 44 };
+  const ENTRADA = { pos: new G.Vector3(5.6, 3.4, 9), alvo: new G.Vector3(3, 3.2, -6), fov: 30 };
+  const DUR_INTRO = 3.4, DUR_ENTRAR = 1.1;
   const alvo = new G.Vector3();
+  const cabeca = new G.Vector3();
+  let deslocar = 0; // fração da largura que a lente desloca a cena para a direita
+  let largura = 1, alturaTela = 1;
   function ajustarTela() {
-    renderer.setSize(innerWidth, innerHeight, false);
-    camera.aspect = innerWidth / innerHeight;
+    largura = innerWidth; alturaTela = innerHeight;
+    renderer.setSize(largura, alturaTela, false);
+    camera.aspect = largura / alturaTela;
+    const a = camera.aspect;
+    deslocar = a < 1.15 ? 0 : Math.min(0.15, 0.07 + (a - 1.15) * 0.12);
+    if (deslocar) camera.setViewOffset(largura, alturaTela, -deslocar * largura, 0, largura, alturaTela);
+    else camera.clearViewOffset();
     camera.updateProjectionMatrix();
     if (parado) desenhar(0);
   }
@@ -522,28 +541,66 @@ export function iniciarCena(canvas, { raiz = ".", leve = false, quieto = false, 
   const relogio = new G.Clock();
   let modoRabisco = "acenar", modoAte = 0, t = 0;
   let pausado = false, lento = false, impar = false, raf = 0, parado = false;
+  // -1: a cena ainda não apareceu (o sobrevoo começa quando ela aparece). A foto pré-renderizada
+  // (?foto-cena) é o primeiro quadro do sobrevoo: a cena viva entra por cima dela sem pulo.
+  let tIntro = foto ? 0 : quieto ? DUR_INTRO : -1;
+  let tEntrar = -1, ultimoReal = performance.now();
+  const suave = (x) => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
+  const saida = (x) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
+  const entrada = (x) => { x = Math.min(1, Math.max(0, x)); return x * x * x; };
   function posicionarCamera() {
+    const emPe = camera.aspect < 0.9;
+    const longe = emPe ? 1.75 : 1;
+    // repouso com uma deriva lenta (só a câmera anda; o Rabisco fica firme no chão)
     const tc = quieto || foto ? 0 : t;
-    const longe = camera.aspect < 0.9 ? 1.6 : 1;
-    camera.position.set(-3 + Math.sin(tc * 0.12) * 4, 5.2 + Math.sin(tc * 0.2) * 0.3, 4 + 25 * longe);
-    // em pé (celular/tablet) a câmera mira um pouco mais baixo: a cena sobe e o Rabisco fica acima do
-    // destaque da Rabiscolândia e das idades, que ocupam o pé da tela
-    alvo.copy(alvoCam);
-    if (longe > 1) alvo.y -= 2.4;
+    const px = REPOUSO.pos.x + Math.sin(tc * 0.11) * 1.6, py = REPOUSO.pos.y + Math.sin(tc * 0.17) * 0.18;
+    const pz = REPOUSO.alvo.z + (REPOUSO.pos.z - REPOUSO.alvo.z) * longe;
+    const k = tIntro < 0 ? 0 : saida(tIntro / DUR_INTRO);
+    const kz = suave(Math.max(0, (tIntro / DUR_INTRO - 0.15) / 0.85)); // o alvo desce um pouco depois
+    camera.position.set(
+      INICIO.pos.x + (px - INICIO.pos.x) * k,
+      INICIO.pos.y + (py - INICIO.pos.y) * k,
+      INICIO.pos.z + (pz - INICIO.pos.z) * k,
+    );
+    alvo.lerpVectors(INICIO.alvo, REPOUSO.alvo, tIntro < 0 ? 0 : kz);
+    if (emPe) alvo.y -= 1.6 * k;
+    let fov = INICIO.fov + (REPOUSO.fov - INICIO.fov) * k;
+    if (tEntrar >= 0) {
+      const e = entrada(tEntrar / DUR_ENTRAR);
+      camera.position.lerp(ENTRADA.pos, e);
+      alvo.lerp(ENTRADA.alvo, e);
+      fov += (ENTRADA.fov - fov) * e;
+    }
+    if (Math.abs(camera.fov - fov) > 0.001) { camera.fov = fov; camera.updateProjectionMatrix(); }
     camera.lookAt(alvo);
   }
   function desenhar(dt) {
     if (t > modoAte) modoRabisco = "acenar";
     rabisco.atualizar(dt, { modo: modoRabisco });
     if (!quieto) {
-      rabisco.grupo.rotation.y = 0.35 + Math.sin(t * 0.5) * 0.08;
       escola.userData.balanco.rotation.x = Math.sin(t * 1.6) * 0.35;
       escola.userData.bandeira.rotation.y = Math.sin(t * 2) * 0.12;
       for (const s of nuvens) { s.position.x += s.userData.vel * dt; if (s.position.x > 260) s.position.x = -260; }
       polen?.userData.atualizar(dt);
     }
+    // sobrevoo e entrada andam pelo relógio de verdade: em aparelho lento a câmera chega na hora certa
+    const agora = performance.now(), real = Math.min(0.5, (agora - ultimoReal) / 1000);
+    ultimoReal = agora;
+    if (dt > 0 || tEntrar >= 0) {
+      if (tIntro >= 0 && tIntro < DUR_INTRO) tIntro += real;
+      if (tEntrar >= 0) tEntrar += real;
+    }
     posicionarCamera();
     renderer.render(cena, camera);
+    // onde está a cabeça do Rabisco na tela (o balão "Oi, Alice!" acompanha)
+    if (aoQuadro) {
+      cabeca.copy(POS_RABISCO); cabeca.y += 4.75;
+      cabeca.project(camera);
+      aoQuadro({
+        x: (cabeca.x * 0.5 + 0.5) * largura, y: (-cabeca.y * 0.5 + 0.5) * alturaTela,
+        chegou: tIntro >= DUR_INTRO * 0.6 && tEntrar < 0,
+      });
+    }
   }
   function quadro() {
     raf = 0;
@@ -551,9 +608,9 @@ export function iniciarCena(canvas, { raiz = ".", leve = false, quieto = false, 
     raf = requestAnimationFrame(quadro);
     const dt = Math.min(relogio.getDelta(), 1 / 20);
     if (!foto) t += dt;
-    // painel aberto no computador: metade dos quadros (a lista rola mais solta)
+    // meio ritmo (aparelho fraco): metade dos quadros
     if (lento && (impar = !impar)) return;
-    desenhar(dt);
+    desenhar(foto ? 0 : dt);
   }
 
   // movimento reduzido: desenha só quando precisa (abertura, comemoração e mudança de tamanho)
@@ -573,7 +630,7 @@ export function iniciarCena(canvas, { raiz = ".", leve = false, quieto = false, 
     if (avisou) return;
     avisou = true;
     desenhar(0);
-    requestAnimationFrame(() => { aoPronto(); window.__cenaPronta = true; });
+    requestAnimationFrame(() => { if (tIntro < 0) tIntro = 0; aoPronto(); window.__cenaPronta = true; });
   };
   // espera as texturas (Rabisco, logos) para aparecer já completa; no máximo 5 s
   const gerente = G.DefaultLoadingManager;
@@ -588,7 +645,15 @@ export function iniciarCena(canvas, { raiz = ".", leve = false, quieto = false, 
       modoRabisco = "comemorar"; modoAte = t + 1.6;
       if (quieto) animarUmPouco(100);
     },
-    // pausa total (o painel cobre a tela no celular) e "meio ritmo" (painel aberto no computador)
+    // JOGAR: o Rabisco comemora e a câmera avança até a porta da escola
+    entrar() {
+      modoRabisco = "comemorar"; modoAte = t + 3;
+      if (quieto) { animarUmPouco(20); return; }
+      tIntro = DUR_INTRO; tEntrar = 0;
+      if (pausado) this.pausar(false);
+    },
+    // voltou pelo "voltar" do navegador (página guardada): câmera de novo no lugar
+    reiniciar() { tEntrar = -1; modoRabisco = "acenar"; modoAte = 0; if (quieto) animarUmPouco(5); },
     pausar(sim) {
       if (quieto || sim === pausado) return;
       pausado = sim;

@@ -581,11 +581,15 @@ def para_fala(texto):
     return re.sub(r"\bJ\.? ?E(?= Multimarcas)", "Jóta Ê", texto, flags=re.I)
 
 
+# "Kids II" a voz lê "Kids i i": fala-se "Kidis dois" (2026-11-04; só nas falas geradas daqui em diante)
+KIDS_II = re.compile(r"\bKids II\b")
+
+
 async def gerar(chave, texto, marcas=None, voz=None):
     caminho = os.path.join(SAIDA, f"{chave}.mp3")
     if os.path.exists(caminho) and not REFAZER and marcas is None:
         return
-    com = edge_tts.Communicate(para_fala(texto), voz or VOZ, rate=RITMO_FALA.get(chave, RITMO), boundary="WordBoundary")
+    com = edge_tts.Communicate(para_fala(KIDS_II.sub("Kidis dois", texto)), voz or VOZ, rate=RITMO_FALA.get(chave, RITMO), boundary="WordBoundary")
     with open(caminho, "wb") as f:
         async for parte in com.stream():
             if parte["type"] == "audio":

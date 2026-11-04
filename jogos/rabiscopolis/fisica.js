@@ -158,9 +158,11 @@ export function criarFisica(mundo) {
     // anti-deadlock: se já está sobreposto a algo, vale todo movimento que reduz a sobreposição
     const pen0 = barco ? 0 : veiculoPen(v, v.pos.x, v.pos.z, v.ang, outros);
     const pen1 = barco ? (veiculoBate(v, nx, nz, v.ang, outros) ? 1 : 0) : veiculoPen(v, nx, nz, v.ang, outros);
-    const sai = pen0 > FOLGA && pen1 < pen0 - 1e-4;
+    // limite (o roçador do Sítio Floresça): não sai do retângulo, como se fosse uma parede
+    const L = v.limite, fora = L && (nx < L.x0 + v.larg || nx > L.x1 - v.larg || nz < L.z0 + v.larg || nz > L.z1 - v.larg);
+    const sai = !fora && pen0 > FOLGA && pen1 < pen0 - 1e-4;
     const dx0 = v.pos.x, dz0 = v.pos.z;
-    if (pen1 <= FOLGA || sai) { v.pos.x = nx; v.pos.z = nz; }
+    if ((pen1 <= FOLGA && !fora) || sai) { v.pos.x = nx; v.pos.z = nz; }
     else {
       // batida só no trânsito (sem parede, árvore ou veículo parado): o carro encosta e para, sem quicar nem fazer barulho forte
       const soIA = !barco && outros.some((o) => o.ia) && veiculoPen(v, nx, nz, v.ang, outros.filter((o) => !o.ia)) <= FOLGA;
