@@ -1,7 +1,8 @@
 // Rabiscolândia: o Álbum de figurinhas (dados puros, sem DOM e sem three.js: dá para testar em node e no navegador).
 // Quatro páginas, cada uma com as suas figurinhas e uma raridade (a cor da moldura):
 //  - parceiros (dourada): as 12 lojas de src/parceiros.js, com o nome e o @ exatamente como estão lá. Ganha quem visita a loja.
-//  - amigos (azul): quem pede ajuda nas missões. Ganha quem conclui a missão. Pessoas de verdade ficam de fora.
+//  - amigos (azul): quem pede ajuda nas missões. Ganha quem conclui a missão. As pessoas de verdade entram com UMA figurinha cada
+//    (a:pessoa-<id>), ganha ao concluir qualquer missão em que ela aparece; a arte é o boneco de bloco do jogo (nenhuma foto).
 //  - versiculos (roxa): o versículo de cada missão da Bíblia. Ganha quem conclui a missão.
 //  - lugares (verde): os lugares do mapa. Ganha quem visita.
 // O id de cada figurinha: p:<parceiro> · a:<missão> · v:<missão> · l:<lugar>.
@@ -27,9 +28,15 @@ const ICONE_LUGAR = {
 
 const parceiros = PARCEIROS.map((p) => ({ id: `p:${p.id}`, pagina: "parceiros", nome: p.nome, sub: `@${p.instagram}`, tipo: p.tipo, parceiro: p.id, dica: "Visite a loja" }));
 const lugares = LUGARES.filter((l) => !l.parceiro).map((l) => ({ id: `l:${l.id}`, pagina: "lugares", nome: l.nome, sub: l.bairro || "Rabiscolândia", icone: ICONE_LUGAR[l.id] ?? "📍", lugar: l.id, dica: "Visite o lugar" }));
-const amigos = [], versiculos = [];
+const amigos = [], versiculos = [], pessoasFig = new Map();
 for (const M of MISSOES) {
   const q = M.npcs?.[Object.keys(M.npcs ?? {})[0]];
+  const gente = Object.values(M.npcs ?? {}).find((n) => n.tipo === "pessoa"); // a pessoa de verdade da missão (não precisa ser a primeira)
+  if (gente) {
+    const f = pessoasFig.get(gente.pessoa);
+    if (f) f.missoes.push(M.id);
+    else { const nova = { id: `a:pessoa-${gente.pessoa}`, pagina: "amigos", nome: gente.nome, sub: M.titulo, tipo: "pessoa", pessoa: gente.pessoa, missoes: [M.id], dica: `Missão: ${M.titulo}` }; pessoasFig.set(gente.pessoa, nova); amigos.push(nova); }
+  }
   if (q && q.tipo !== "pessoa") amigos.push({ id: `a:${M.id}`, pagina: "amigos", nome: q.nome, sub: M.titulo, tipo: q.tipo, cor: q.cor ?? null, missao: M.id, dica: `Missão: ${M.titulo}` });
   if (M.verso) versiculos.push({ id: `v:${M.id}`, pagina: "versiculos", nome: M.titulo, sub: M.verso.ref, texto: M.verso.texto, icone: M.icone, missao: M.id, dica: `Missão: ${M.titulo}` });
 }

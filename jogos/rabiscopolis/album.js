@@ -5,7 +5,7 @@
 //   const A = criarAlbum({ salvo: () => salvo, salvar: () => salvar(salvo), ganhar: (qtd, motivo) => … });
 //   A.ganhar(id) → { nova, fig, primeira, pagina: { id, nome, bonus } | null }      A.tem(id)
 //   A.contagem(pagina) → { tem, total }      A.surpresa(semente) → id de uma figurinha que falta, ou null
-//   A.visitou(lugarId) · A.missao(missaoId) → lista de resultados de ganhar()
+//   A.visitou(lugarId) · A.missao(missaoId) → lista de resultados de ganhar()      A.recuperar() → figurinhas de missões já concluídas
 import { PAGINAS, FIGURINHAS, figurinha, paginaDe, idDoLugar, BONUS_PAGINA, MOTIVO_PAGINA } from "./album-dados.js";
 
 export function criarAlbum({ salvo, salvar, ganhar }) {
@@ -45,6 +45,14 @@ export function criarAlbum({ salvo, salvar, ganhar }) {
     return faltam[h % faltam.length].id;
   }
   const visitou = (lugarId) => { const id = idDoLugar(lugarId); return id ? [ganharFig(id)] : []; };
-  const missao = (mid) => [`a:${mid}`, `v:${mid}`].filter((id) => figurinha(id)).map(ganharFig);
-  return { ganhar: ganharFig, tem, contagem, surpresa, visitou, missao, paginas: () => PAGINAS, total: () => dados().figs.length, completas: () => [...dados().paginas] };
+  // pessoas de verdade: uma figurinha só, vale qualquer uma das missões dela
+  const dePessoa = (mid) => FIGURINHAS.filter((f) => f.missoes?.includes(mid)).map((f) => f.id);
+  const missao = (mid) => [`a:${mid}`, `v:${mid}`, ...dePessoa(mid)].filter((id) => figurinha(id)).map(ganharFig);
+  // save antigo: quem concluiu a missão antes da figurinha existir recebe agora (sem duplicar, sem animação)
+  function recuperar() {
+    const feitas = salvo().missoesFeitas;
+    if (!Array.isArray(feitas)) return [];
+    return FIGURINHAS.filter((f) => f.missoes?.some((m) => feitas.includes(m)) && !tem(f.id)).map((f) => ganharFig(f.id)).filter((r) => r.nova);
+  }
+  return { ganhar: ganharFig, tem, contagem, surpresa, visitou, missao, recuperar, paginas: () => PAGINAS, total: () => dados().figs.length, completas: () => [...dados().paginas] };
 }

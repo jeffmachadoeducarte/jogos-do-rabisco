@@ -87,6 +87,36 @@ const SALDO = "teste.Rabiscoins.saldo()";
   ok(await ate(t, "document.querySelector('.alb-voa') != null || document.querySelector('.rbc-mais') != null", 10000, 80), "a página completa mostra festa (cartão e +30)");
   await espera(5000);
 
+  // ---- pessoas de verdade: UMA figurinha cada na página Amigos (boneco de bloco), ganha com qualquer missão dela
+  const PESSOAS = { sabrina: ["alvara", "parceiro-speedy-solucoes"], carina: ["uniformesCarina"], "vovo-leo": ["maletaLeo", "samuelLeo"], marlon: ["parceiro-marlon-maquinas"], samira: ["parceiro-ballet-e-cia"] };
+  const amigosIds = await t.ev(`${A}.paginas().find((p) => p.id === 'amigos').figs.map((f) => f.id)`);
+  ok(await t.ev("teste.album.album.paginas().reduce((n, p) => n + p.figs.length, 0)") === 144, "o álbum tem 144 figurinhas no total (139 + 5 pessoas)");
+  for (const [pes, ms] of Object.entries(PESSOAS)) {
+    ok(amigosIds.filter((id) => id === `a:pessoa-${pes}`).length === 1, `a página Amigos tem exatamente 1 figurinha de ${pes}`);
+    ok(!(await t.ev(TEM(`a:pessoa-${pes}`))), `${pes}: antes da missão não tem a figurinha`);
+    await t.ev(`teste.ganharMissao(${JSON.stringify(ms[0])})`);
+    ok(await t.ev(TEM(`a:pessoa-${pes}`)), `${pes}: concluir ${ms[0]} dá a figurinha`);
+    for (const m of ms.slice(1)) await t.ev(`teste.ganharMissao(${JSON.stringify(m)})`);
+    await t.ev(`teste.ganharMissao(${JSON.stringify(ms[0])})`);
+    ok((await t.ev("teste.salvo.album.figs")).filter((x) => x === `a:pessoa-${pes}`).length === 1, `${pes}: outra missão dela (e repetir) não duplica`);
+  }
+  // save antigo: missão já concluída antes de a figurinha existir; abrir o álbum entrega, uma vez, sem erro
+  // (teste.salvo é uma cópia lida do localStorage: o save antigo é escrito lá e o jogo recarregado)
+  await t.ev("(() => { const k = 'rabisco.rabiscopolis.v1', s = JSON.parse(localStorage.getItem(k)); s.album.figs = s.album.figs.filter((x) => !x.startsWith('a:pessoa-')); s.missoesFeitas = [...new Set([...(s.missoesFeitas ?? []), 'alvara', 'uniformesCarina', 'maletaLeo', 'samuelLeo', 'parceiro-marlon-maquinas', 'parceiro-ballet-e-cia', 'parceiro-speedy-solucoes'])]; localStorage.setItem(k, JSON.stringify(s)); })()");
+  await t.cmd("Page.reload"); await esperarJogo(t);
+  ok(!(await t.ev(TEM("a:pessoa-marlon"))), "save antigo simulado: sem as figurinhas das pessoas");
+  ok((await t.ev("teste.salvo.missoesFeitas")).includes("alvara"), "save antigo simulado: missões já concluídas");
+  await t.ev("teste.fone.abrir('album')"); await espera(600);
+  ok(await t.ev(Object.keys(PESSOAS).map((p) => TEM(`a:pessoa-${p}`)).join(" && ")), "abrir o álbum entrega as figurinhas das pessoas de missões antigas");
+  const fg = await t.ev("teste.salvo.album.figs");
+  ok(new Set(fg).size === fg.length, "save antigo: nenhum id repetido depois de recuperar");
+  await t.ev("document.querySelector('.alb-aba[data-pagina=amigos]').click()"); await espera(2500);
+  const cartoes = await t.ev("[...document.querySelectorAll('.alb-fig.tem')].map((b) => b.dataset.fig).filter((id) => id.startsWith('a:pessoa-'))");
+  ok(cartoes.length === 5 && new Set(cartoes).size === 5, `a página Amigos mostra os 5 cartões das pessoas (${cartoes.length})`);
+  await t.ev("document.querySelector('.rf-tela').scrollTop = 99999"); await espera(300);
+  await t.foto(`${OUT}8-amigos-pessoas-tv.png`);
+  await t.ev("teste.fone.fechar()");
+
   // ---- o app no Rabifone: contagem "x de y" e os @
   await t.ev("teste.fone.abrir('album')"); await espera(600);
   const resumo = await t.ev("document.querySelector('.alb-resumo')?.textContent");
