@@ -471,7 +471,16 @@ function cenaKids(ctx) {
     kids.forEach((k, i) => { k.modo = "chao"; k.alvo = [a.x + Math.cos(i * 1.6) * 1.6, a.z + Math.sin(i * 1.6) * 1.6]; });
     if (colhidas.size === TREES_KIDS.length) { fase = "balanco"; tFase = 1.4; } else setTimeout(seguir, 1600);
   }
+  // a criança desce do pneu (acabou o tempo, ou o Rabisco empurrou de novo para a próxima): conta uma balançada
+  function descerDoBalanco() {
+    const k = noBalanco, b = balanco(); if (!k) return;
+    s.soltar(b.i); gk.add(k.m.grupo); k.x = b.x + 1.2; k.z = b.z + 0.6; k.modo = "seguir"; k.m.pular(); noBalanco = null; balancou++;
+    if (balancou >= 2) { fase = "voltar"; fala(3); }
+  }
+  // o botão vale sempre (mesmo com alguém no pneu: essa criança desce e a próxima sobe), para nunca travar numa máquina lenta
   function balancar() {
+    if (noBalanco) descerDoBalanco();
+    if (fase !== "balancoPronto") return;
     const k = kids[balancou % kids.length], b = balanco();
     noBalanco = k; k.modo = "balanco"; s.sentar(b.i, k.m.grupo); s.empurrar(b.i, 4.2); tBal = 4.4; comemorar(); ctx.sons.pulo?.();
   }
@@ -479,7 +488,7 @@ function cenaKids(ctx) {
     contexto(p) {
       if (fase === "escola" && perto(p, escola(), 7)) return { rotulo: "🚌 Chamar o ônibus da escola", fazer: chamarOnibus };
       if (fase === "frutas") for (const a of arvores()) if (!colhidas.has(a.i) && perto(p, a, 2.8)) return { rotulo: "🍊 Colher frutas com as crianças", fazer: () => colher(a, p) };
-      if (fase === "balancoPronto" && !noBalanco && perto(p, balanco(), 3)) return { rotulo: "🛞 Empurrar o balanço", fazer: balancar };
+      if (fase === "balancoPronto" && perto(p, balanco(), 3)) return { rotulo: "🛞 Empurrar o balanço", fazer: balancar };
       return null;
     },
     atualizar(dt, t, p) {
@@ -502,7 +511,7 @@ function cenaKids(ctx) {
       } else marca.visible = false;
       if (fase === "parado" && v !== bus) { descer(); seguir(); fase = "frutas"; fala(1, 5200); }
       if (fase === "balanco") { tFase -= dt; if (tFase <= 0) { fase = "balancoPronto"; fala(2); seguir(); } }
-      if (noBalanco) { tBal -= dt; if (tBal <= 0) { const k = noBalanco, b = balanco(); s.soltar(b.i); gk.add(k.m.grupo); k.x = b.x + 1.2; k.z = b.z + 0.6; k.modo = "seguir"; k.m.pular(); noBalanco = null; balancou++; if (balancou >= 2) { fase = "voltar"; fala(3); } } }
+      if (noBalanco) { tBal -= dt; if (tBal <= 0) descerDoBalanco(); }
       if (fase === "voltar" && bus && !v && perto(p, bus.pos, 9)) { s.largar("cestaFrutas"); embarcar(); }
       if (fase === "embarcando2" && todosNoBus()) { fase = "volta"; fala(4); }
       if (fase === "volta" && bus && perto(bus.pos, escola(), 16) && Math.abs(bus.vel) < 1.5) {
