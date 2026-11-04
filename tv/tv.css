@@ -34,14 +34,14 @@ body {
 /* ------------------------------------------------------------ grade principal: QR | vagas, e os jogos embaixo */
 main {
   flex: 1; min-height: 0; display: grid; gap: calc(var(--u) * 1.8); padding: calc(var(--u) * 1.6) calc(var(--u) * 2.4) calc(var(--u) * 2);
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr); grid-template-rows: minmax(0, 1.05fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr); grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas: "entrar vagas" "entrar jogos";
 }
 .painel { background: #fff; border: calc(var(--u) * 0.45) solid var(--tinta); border-radius: calc(var(--u) * 2.6); box-shadow: calc(var(--u) * 0.6) calc(var(--u) * 0.7) 0 var(--tinta); padding: calc(var(--u) * 1.2) calc(var(--u) * 1.8); min-height: 0; display: flex; flex-direction: column; }
 .painel h2 { margin: 0 0 calc(var(--u) * 0.4); font-size: calc(var(--u) * 2.5); line-height: 1.1; font-weight: 800; }
 .entrar { grid-area: entrar; align-items: center; justify-content: space-evenly; text-align: center; gap: calc(var(--u) * 0.6); overflow: hidden; }
 .entrar h2 { margin: 0; }
-.vagas { grid-area: vagas; gap: calc(var(--u) * 1); }
+.vagas { grid-area: vagas; gap: calc(var(--u) * 0.9); }
 .jogos { grid-area: jogos; }
 
 /* QR grande e o código gigante */
@@ -53,28 +53,42 @@ main {
 .endereco { margin: 0; font-weight: 700; font-size: calc(var(--u) * 1.8); line-height: 1.25; }
 .endereco b { font-size: 1.25em; color: var(--rosa); white-space: nowrap; }
 
-/* vagas: "1 · Rabisco" e "2 · <criança>" com o jeito de cada um entrar */
-.vaga { display: flex; align-items: center; gap: calc(var(--u) * 1.4); border: calc(var(--u) * 0.45) solid var(--cor); border-radius: calc(var(--u) * 2); padding: calc(var(--u) * 0.6) calc(var(--u) * 1.4) calc(var(--u) * 0.6) calc(var(--u) * 0.6); flex: 1; min-height: 0; background: color-mix(in srgb, var(--cor) 9%, #fff); }
+/* vagas: uma LINHA por jogador (rosto | nome + como entrou | selo). Altura pelo conteúdo, nunca espremida:
+   o painel dos jogos embaixo é que cede espaço (sem texto em cima de texto em 720p, 1080p, 4K ou tela ultralarga). */
+.cabeca-vagas { display: flex; flex-direction: column; gap: calc(var(--u) * 0.6); flex: none; }
+.cabeca-vagas h2 { margin: 0; font-size: calc(var(--u) * 2.3); white-space: nowrap; }
+.lista-vagas { display: flex; flex-direction: column; gap: calc(var(--u) * 0.9); flex: none; }
+.vaga { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: calc(var(--u) * 1.2);
+  border: calc(var(--u) * 0.4) solid var(--cor); border-radius: calc(var(--u) * 1.8); padding: calc(var(--u) * 0.5) calc(var(--u) * 1.2) calc(var(--u) * 0.5) calc(var(--u) * 0.5);
+  background: color-mix(in srgb, var(--cor) 10%, #fff); min-height: calc(var(--u) * 5.6); }
 .vaga.livre { border-style: dashed; background: #fafafa; }
-.vaga .rosto { width: calc(var(--u) * 7.5); height: calc(var(--u) * 7.5); flex: none; border-radius: 50%; border: calc(var(--u) * 0.4) solid var(--cor); background: #e9f6fd center/cover no-repeat; display: grid; place-items: center; font-size: calc(var(--u) * 4.4); }
-.vaga .nome { display: block; font-weight: 800; font-size: calc(var(--u) * 3.4); line-height: 1.05; color: var(--tinta); }
-.vaga .como { display: flex; align-items: center; gap: calc(var(--u) * 0.8); font-weight: 800; font-size: calc(var(--u) * 2.2); line-height: 1.15; color: var(--tinta); }
-.vaga .como .ic { font-size: 1.5em; }
+.vaga.caiu { border-style: dashed; background: #fff0f6; }
+.vaga.fora { opacity: 0.6; }
+.vaga .rosto { width: calc(var(--u) * 4.6); height: calc(var(--u) * 4.6); flex: none; border-radius: 50%; border: calc(var(--u) * 0.35) solid var(--cor); background: #e9f6fd center/cover no-repeat; display: grid; place-items: center; font-size: calc(var(--u) * 3.2); line-height: 1; overflow: hidden; }
+.vaga.livre .rosto { filter: grayscale(0.6); opacity: 0.7; }
+.vaga .texto { min-width: 0; display: flex; flex-direction: column; gap: calc(var(--u) * 0.15); }
+.vaga .nome { display: flex; align-items: baseline; gap: calc(var(--u) * 0.7); font-weight: 800; font-size: calc(var(--u) * 2.3); line-height: 1.1; color: var(--tinta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vaga .nome .num { flex: none; display: inline-grid; place-items: center; min-width: calc(var(--u) * 2.6); height: calc(var(--u) * 2.6); border-radius: 50%; background: var(--cor); color: #fff; font-size: calc(var(--u) * 1.7); line-height: 1; align-self: center; }
+.vaga .nome .quem { overflow: hidden; text-overflow: ellipsis; }
+.vaga .como { display: flex; align-items: center; gap: calc(var(--u) * 0.6); font-weight: 800; font-size: calc(var(--u) * 1.6); line-height: 1.2; color: #2b2b2b; min-width: 0; }
+.vaga .como .ic { flex: none; font-size: 1.3em; line-height: 1; }
+.vaga .como .txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .vaga.livre .como { color: #666; }
-.vaga.caiu .como { color: var(--rosa); }
-.vaga .selo { margin-left: auto; font-size: calc(var(--u) * 4.4); }
+.vaga.caiu .como { color: #c4166b; }
+.vaga .selo { font-weight: 800; font-size: calc(var(--u) * 1.6); line-height: 1; white-space: nowrap; padding: calc(var(--u) * 0.45) calc(var(--u) * 1); border-radius: 999px; border: calc(var(--u) * 0.25) solid var(--tinta); background: var(--verde); color: #fff; }
+.vaga .selo.esperando { background: #fff; color: #c4166b; border-color: #c4166b; }
+.vaga .selo:empty { display: none; }
 /* escolha 1 / 2 jogadores */
 .quantos { display: flex; gap: calc(var(--u) * 1.2); flex: none; }
-.qtd { flex: 1; font: inherit; font-weight: 800; font-size: calc(var(--u) * 2.3); color: var(--tinta); background: #fff; cursor: pointer; padding: calc(var(--u) * 0.2) calc(var(--u) * 1); border: calc(var(--u) * 0.4) solid var(--tinta); border-radius: 999px; box-shadow: 0 calc(var(--u) * 0.35) 0 var(--tinta); }
+.qtd { flex: 1; min-width: 0; font: inherit; font-weight: 800; font-size: calc(var(--u) * 2.1); line-height: 1.3; color: var(--tinta); background: #fff; cursor: pointer; padding: calc(var(--u) * 0.25) calc(var(--u) * 1); border: calc(var(--u) * 0.4) solid var(--tinta); border-radius: 999px; box-shadow: 0 calc(var(--u) * 0.35) 0 var(--tinta); white-space: nowrap; }
 .qtd[aria-pressed="true"] { background: var(--amarelo); }
 .qtd:focus { outline: none; }
-.qtd.controle-foco, .qtd:focus-visible { outline: calc(var(--u) * 0.8) solid var(--rosa) !important; outline-offset: calc(var(--u) * 0.25); }
-.vaga.fora { opacity: 0.55; }
-.dica-controle { margin: 0; font-weight: 800; font-size: calc(var(--u) * 2.3); text-align: center; background: var(--amarelo); border: calc(var(--u) * 0.35) solid var(--tinta); border-radius: 999px; padding: calc(var(--u) * 0.2) calc(var(--u) * 1.4); flex: none; }
+.qtd.controle-foco, .qtd:focus-visible { outline: calc(var(--u) * 0.6) solid var(--rosa) !important; outline-offset: calc(var(--u) * 0.2); }
+.dica-controle { margin: 0; font-weight: 800; font-size: calc(var(--u) * 1.6); line-height: 1.25; text-align: center; background: var(--amarelo); border: calc(var(--u) * 0.3) solid var(--tinta); border-radius: 999px; padding: calc(var(--u) * 0.25) calc(var(--u) * 1.4); flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dica-controle.calma { background: #e9f6fd; }
 
 /* cards dos jogos, no estilo do portal (capa + nome) */
-.cards { flex: 1; min-height: 0; padding-top: calc(var(--u) * 1.3); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: calc(var(--u) * 1.8); }
+.cards { flex: 1; min-height: 0; padding-top: calc(var(--u) * 1); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: calc(var(--u) * 1.8); }
 .card {
   position: relative; display: flex; flex-direction: column; padding: 0; margin: 0; cursor: pointer; overflow: hidden; min-height: 0;
   font: inherit; color: var(--tinta); text-align: left; background: #fff;
@@ -84,9 +98,27 @@ main {
 .card .capa { flex: 1; min-height: 0; background: var(--ciano) center/cover no-repeat; position: relative; }
 .card .capa .jogar { position: absolute; right: calc(var(--u) * 0.8); bottom: calc(var(--u) * 0.8); font-weight: 800; font-size: calc(var(--u) * 1.9); color: #fff; background: var(--laranja); border: calc(var(--u) * 0.3) solid var(--tinta); border-radius: 999px; padding: 0 calc(var(--u) * 1.4) calc(var(--u) * 0.2); box-shadow: 0 calc(var(--u) * 0.35) 0 var(--tinta); }
 .card .capa .dois { position: absolute; left: calc(var(--u) * 0.8); top: calc(var(--u) * 0.8); font-weight: 800; font-size: calc(var(--u) * 1.6); color: #fff; background: rgba(15, 20, 28, 0.82); border-radius: 999px; padding: 0 calc(var(--u) * 1.2) calc(var(--u) * 0.15); }
-.card b { display: block; font-size: calc(var(--u) * 2.5); line-height: 1.1; padding: calc(var(--u) * 0.4) calc(var(--u) * 1.2) calc(var(--u) * 0.6); font-size: calc(var(--u) * 2.15); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card b { display: block; line-height: 1.1; padding: calc(var(--u) * 0.4) calc(var(--u) * 1.2) calc(var(--u) * 0.6); font-size: calc(var(--u) * 2.15); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card:focus { outline: none; }
 .card.controle-foco, .card:focus-visible { outline: calc(var(--u) * 0.9) solid var(--amarelo) !important; outline-offset: calc(var(--u) * 0.3); transform: translateY(calc(var(--u) * -0.6)) scale(1.03); box-shadow: 0 calc(var(--u) * 1.3) 0 var(--tinta); z-index: 2; }
+/* um jogo só no ar: o painel vira um botão grande "JOGAR" (capa à esquerda, nome e ▶ à direita) */
+.jogos.um-so { padding: calc(var(--u) * 1) calc(var(--u) * 1.2); }
+.jogos.um-so h2 { display: none; }
+.cards.um-so { padding-top: 0; grid-template-columns: minmax(0, 1fr); }
+.card.grande { flex-direction: row; align-items: stretch; background: var(--laranja); color: #fff; min-height: calc(var(--u) * 6); }
+.card.grande .capa { flex: 0 0 38%; border-right: calc(var(--u) * 0.45) solid var(--tinta); }
+.card.grande .rotulo { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 0 calc(var(--u) * 2); gap: calc(var(--u) * 0.5); }
+.card.grande .rotulo .play { font-weight: 800; font-size: calc(var(--u) * 3.6); line-height: 1.25; text-shadow: calc(var(--u) * 0.25) calc(var(--u) * 0.3) 0 var(--tinta); white-space: nowrap; }
+.card.grande .rotulo b { padding: 0; line-height: 1.25; font-size: calc(var(--u) * 2.4); color: #fff; text-shadow: calc(var(--u) * 0.18) calc(var(--u) * 0.2) 0 var(--tinta); }
+.card.grande .rotulo .dois-txt { font-weight: 800; font-size: calc(var(--u) * 1.5); line-height: 1.2; color: #fff8d6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* o texto do JOGAR acompanha a altura do botão (container query): nunca sai do botão, mesmo com as vagas mais altas.
+   Sem suporte a container query (TV antiga), vale o tamanho de cima. */
+.card.grande { container-type: size; }
+.card.grande .rotulo { gap: min(calc(var(--u) * 0.5), 3cqh); }
+.card.grande .rotulo .play { font-size: min(calc(var(--u) * 3.6), 30cqh); }
+.card.grande .rotulo b { font-size: min(calc(var(--u) * 2.4), 19cqh); }
+.card.grande .rotulo .dois-txt { font-size: min(calc(var(--u) * 1.5), 12cqh); }
+.card.grande.controle-foco, .card.grande:focus-visible { transform: translateY(calc(var(--u) * -0.3)) scale(1.01); }
 
 /* recado grande (alguém entrou, falta jogador...) */
 .recado {
@@ -100,6 +132,6 @@ main {
   :root { --u: min(1.6vw, 1vh); }
   body { overflow: auto; cursor: auto; }
   main { grid-template-columns: 1fr; grid-template-rows: auto; grid-template-areas: "entrar" "vagas" "jogos"; }
-  .vaga { min-height: calc(var(--u) * 10); }
   .cards { min-height: calc(var(--u) * 30); }
+  .cards.um-so { min-height: calc(var(--u) * 12); }
 }

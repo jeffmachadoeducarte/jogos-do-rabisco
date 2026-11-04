@@ -1,10 +1,14 @@
 // Rabiscolândia (Fatia 7): o jogador 2. Com 1 jogador só o Rabisco existe; quando o jogador 2 entra (controle, celular
 // pelo QR ou teclado dividido: src/motor/jogadores.js), ele escolhe quem quer ser — a criança do cadastro
 // (src/motor3d/companheiro3d.js, com o rosto/foto e o crachá) ou um amigo do estojo (personagens.js) — e passeia junto:
-//   · a pé: anda relativo à câmera, pula e acena; fica a no máximo RAIO m do Rabisco (a câmera enquadra os dois);
+//   · a pé: anda relativo à câmera, pula e acena. Câmera compartilhada (couch co-op): mira o meio dos dois, afasta e sobe
+//     sozinha até caber os dois (enquadrar); passando de RAIO_SUAVE m uma "coleira" macia segura, e em RAIO_J2 trava;
 //   · a ação dele também faz missões (pegar, entregar, plantar, chamar quem pede);
-//   · no veículo do Rabisco vai de passageiro (pulo = buzina, ação = acenar); sem banco (bicicleta, patinete, trator)
-//     ele vem correndo atrás;
+//   · segurar a ação 1 s longe do Rabisco = "vir para perto" (aparece do lado dele);
+//   · veículo: se o Rabisco entra com ele perto, vai de carona; longe, continua a pé (pode chegar perto do veículo parado
+//     e entrar de carona com a ação). Na carona: pulo = buzina, tocar a ação = acenar, segurar a ação (parado) = descer. Se o veículo
+//     vai longe demais, ele "vem junto" sozinho. Sem banco (bicicleta, patinete, trator) ele vem correndo atrás;
+//   · na tela: crachá com cor e nome sobre a cabeça dos dois e uma seta na borda apontando quem saiu do quadro;
 //   · casa e lugares por dentro: entra junto (aparece do lado do Rabisco).
 //
 //   const J2 = criarJogador2(ctx);  J2.quadro(dt) (uma vez por quadro: lê o controle)  J2.passo(dt)  J2.ativo  J2.pos
@@ -13,7 +17,11 @@ import { THREE, texturaCanvas, mesclar } from "./base3d.js";
 import { criarMorador } from "./personagens.js";
 import { criarCompanheiro3D } from "../../src/motor3d/companheiro3d.js";
 
-export const RAIO_J2 = 11;
+export const RAIO_J2 = 17;      // a coleira trava aqui (antes eram 11 m: agora os dois podem ficar mais longe)
+export const RAIO_SUAVE = 13;   // daqui em diante a coleira puxa de volta, macio
+const PERTO_CARONA = 7;         // o Rabisco entrou no veículo com o jogador 2 até aqui: vai de carona junto
+const SEGURAR_VIR = 1;          // segundos segurando a ação para "vir para perto"
+const SEGURAR_DESCER = 0.8;     // segundos segurando a ação (veículo parado) para descer da carona
 // amigos do estojo que o jogador 2 pode ser (a criança do cadastro entra na frente quando existe)
 export const AMIGOS_J2 = [
   { id: "lapis", tipo: "lapis", nome: "Lápis Rosa", cor: 0xec2e8c, emoji: "✏️" },
@@ -27,13 +35,13 @@ export const AMIGOS_J2 = [
 ];
 const hex = (c) => `#${c.toString(16).padStart(6, "0")}`;
 
-// crachá rosa do jogador 2 (o "quem é quem" na tela)
-function cracha(nome) {
+// crachá do jogador (o "quem é quem" na tela): rosa = jogador 2, azul = jogador 1 (o Rabisco, só aparece a 2)
+function cracha(nome, cor = "#ec2e8c", n = 2) {
   const tex = texturaCanvas(512, 128, (c, w, h) => {
     c.clearRect(0, 0, w, h);
     c.font = "800 56px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
-    const t = `🎮2 ${nome}`, lw = Math.min(w - 8, c.measureText(t).width + 56);
-    c.fillStyle = "#ec2e8c"; c.strokeStyle = "#151515"; c.lineWidth = 8;
+    const t = `🎮${n} ${nome}`, lw = Math.min(w - 8, c.measureText(t).width + 56);
+    c.fillStyle = cor; c.strokeStyle = "#151515"; c.lineWidth = 8;
     c.beginPath(); c.roundRect((w - lw) / 2, 14, lw, h - 28, 46); c.fill(); c.stroke();
     c.fillStyle = "#ffffff"; c.fillText(t, w / 2, h / 2 + 3);
   });
@@ -49,6 +57,11 @@ export function criarJogador2(ctx) {
   let modelo = null, escolha = null, ui = null, foco = 0, opcoes = [], acena = 0, buzina = 0, assento = null, seguindo = false;
   let ent = { x: 0, y: 0, pulo: false, puloNovo: false, acao: false, acaoNova: false };
   let ctxAcao = null;
+  let fora = false;       // o Rabisco está num veículo e o jogador 2 escolheu ficar a pé
+  let segurando = 0;      // segundos segurando a ação (vir para perto)
+  let zoom = 0;           // metros a mais da câmera compartilhada (cresce até caber os dois)
+  let cracha1 = null;     // crachá azul do Rabisco (só a 2)
+  let setas = null;       // setas na borda da tela (quem saiu do quadro)
 
   // ---------- escolha do personagem (o jogador 2 escolhe com o controle/teclado dele, ou tocando)
   function listaOpcoes() {
@@ -100,21 +113,25 @@ export function criarJogador2(ctx) {
         atualizar: (dt, { vel }) => m.atualizar(dt, { vel }), acenar: (s) => m.acenar(s), pular: () => m.pular() };
     }
     cena.add(modelo.grupo);
+    if (!cracha1) { cracha1 = cracha(ctx.nome1?.() || "Rabisco", "#00b5f0", 1); cracha1.scale.set(2.6, 0.65, 1); }
+    cena.add(cracha1);
     // a legenda "quem é quem" embaixo passa a mostrar o personagem escolhido
     if (J.j2) { J.j2.nome = o.nome; J.legenda?.(); }
     caixa.classList.add("dois-rp");
     // aparece do lado do Rabisco (ou no banco do carona, se ele estiver dirigindo)
     const v = ctx.veiculo();
-    if (v) entrar(v);
-    else colocarPerto();
+    colocarPerto();
+    if (v) entrar(v, true);
     sons.vitoria?.();
     dizer("Jogador 2", `${o.nome} chegou para passear junto! 🎮2`, 2600);
   }
   function remover() {
     if (!modelo) return;
     modelo.grupo.removeFromParent();
+    cracha1?.removeFromParent();
+    if (setas) for (const e of setas) e.hidden = true;
     caixa.classList.remove("dois-rp");
-    modelo = null; assento = null; seguindo = false;
+    modelo = null; assento = null; seguindo = false; fora = false; zoom = 0;
   }
   // ao lado do Rabisco, num ponto livre que ele ALCANÇA andando em linha reta: ao entrar numa sala o Rabisco nasce de
   // costas para a porta, e "atrás e ao lado" caía no vão da porta, do lado de fora da parede (o jogador 2 ficava preso)
@@ -129,8 +146,11 @@ export function criarJogador2(ctx) {
   }
 
   // ---------- veículo: banco do carona (ou correndo atrás)
-  function entrar(v) {
+  // o Rabisco acabou de entrar: só vai junto se estiver perto. forcar = entra de qualquer jeito (ação, "vem junto")
+  function entrar(v, forcar = false) {
     if (!modelo) return;
+    if (!forcar && Math.hypot(st.pos.x - v.pos.x, st.pos.z - v.pos.z) > PERTO_CARONA) { fora = true; return; }
+    fora = false;
     const a = v.g.userData.carona;
     if (!a) { seguindo = true; assento = null; return; }
     assento = v; seguindo = false;
@@ -147,6 +167,8 @@ export function criarJogador2(ctx) {
   }
   function sair(v, x, z) {
     if (!modelo) return;
+    fora = false;
+    if (!assento && !seguindo) return; // estava a pé por conta própria: fica onde está
     seguindo = false;
     if (assento) { assento = null; cena.add(modelo.grupo); }
     const [lx, lz] = fis.livre(x, z, 0.5);
@@ -187,6 +209,10 @@ export function criarJogador2(ctx) {
       if (assento !== v) { sair(assento, j.pos.x + 1.5, j.pos.z + 1.5); return; }
       sentar(v);
       if (ent.puloNovo && buzina <= 0) { sons.buzina(); buzina = 0.8; J.vibrar2?.(40); }
+      // tocar a ação = acenar; SEGURAR a ação com o veículo parado = descer (fica a pé, independente). Segurar, para
+      // ninguém descer sem querer num sinal vermelho.
+      segurando = ent.acao && paradoV(v) ? segurando + dt : 0;
+      if (segurando >= SEGURAR_DESCER) { segurando = 0; ent.puloNovo = ent.acaoNova = false; descer(v); return; }
       if (ent.acaoNova) { acena = 1.6; modelo.acenar(2); }
       ent.puloNovo = ent.acaoNova = false;
       if (modelo.tipo === "crianca") {
@@ -195,8 +221,8 @@ export function criarJogador2(ctx) {
       } else modelo.atualizar(dt, { vel: 0 });
       return;
     }
-    if (v && !seguindo) entrar(v);
-    if (!v && seguindo) seguindo = false;
+    if (!v) { seguindo = false; fora = false; }
+    else if (!seguindo && !fora) entrar(v, true); // (ex.: escolheu o personagem com o Rabisco já dirigindo)
     let ix = ent.x, iy = ent.y, puloNovo = ent.puloNovo, segura = ent.pulo;
     // sem banco (bicicleta, patinete, trator): corre atrás do Rabisco sozinho
     if (seguindo) {
@@ -215,16 +241,23 @@ export function criarJogador2(ctx) {
       if (ctx.travado?.()) ix = iy = 0;
       const { pulou } = fis.andar(st, { ix, iy, pular: puloNovo, segura }, ctx.yaw(), dt);
       if (pulou) { sons.pulo(); J.vibrar2?.(20); }
-      // a câmera é dos dois: o jogador 2 fica a no máximo RAIO_J2 do Rabisco
+      // a câmera é dos dois: coleira macia a partir de RAIO_SUAVE (puxa de volta) e firme em RAIO_J2
       const dx = st.pos.x - j.pos.x, dz = st.pos.z - j.pos.z, d = Math.hypot(dx, dz);
-      if (d > RAIO_J2 && d < RAIO_J2 + 5) { const nx = j.pos.x + (dx / d) * RAIO_J2, nz = j.pos.z + (dz / d) * RAIO_J2; if (!fis.bate(nx, nz, st.pos.y)) { st.pos.x = nx; st.pos.z = nz; } }
-      // a ação: missão perto dele; senão, acena
+      if (!v && d > RAIO_SUAVE && d < RAIO_J2 + 5) { // (com o Rabisco dirigindo não arrasta: passou de RAIO_J2, vem junto)
+        const alvoD = Math.min(RAIO_J2, RAIO_SUAVE + (d - RAIO_SUAVE) * Math.exp(-dt * 3));
+        const nx = j.pos.x + (dx / d) * alvoD, nz = j.pos.z + (dz / d) * alvoD;
+        if (!fis.bate(nx, nz, st.pos.y)) { st.pos.x = nx; st.pos.z = nz; }
+      }
+      // a ação: missão perto dele; entrar de carona; senão, acena
       if (ent.acaoNova) {
         if (ctxAcao) ctxAcao.fazer(); else { acena = 1.4; modelo.acenar(2); }
       }
+      // segurar a ação longe do Rabisco = "vir para perto"
+      segurando = ent.acao && d > 5 && !(v && !paradoV(v)) ? segurando + dt : 0;
+      if (segurando >= SEGURAR_VIR) { segurando = 0; virParaPerto(); }
     }
-    // longe demais (o Rabisco entrou numa casa, num lugar ou foi chamado pelo Rabisfone): aparece do lado dele
-    if (Math.hypot(st.pos.x - j.pos.x, st.pos.z - j.pos.z) > RAIO_J2 + 5) colocarPerto();
+    // longe demais (o Rabisco entrou numa casa, num lugar, foi chamado pelo Rabisfone ou o veículo foi embora): vem junto
+    if (!assento && Math.hypot(st.pos.x - j.pos.x, st.pos.z - j.pos.z) > RAIO_J2 + (v && !seguindo ? 0 : 5)) { if (v && !seguindo) entrar(v, true); else colocarPerto(); }
     ent.puloNovo = ent.acaoNova = false;
     modelo.grupo.position.copy(st.pos);
     modelo.grupo.rotation.set(0, st.dir, 0);
@@ -234,23 +267,96 @@ export function criarJogador2(ctx) {
   }
   // o que a ação do jogador 2 faria agora (missões); o rótulo aparece no balãozinho rosa
   function regras(contextoDe) {
-    ctxAcao = modelo && !assento && !seguindo ? contextoDe(st.pos) : null;
+    const v = ctx.veiculo();
+    ctxAcao = null;
+    if (!modelo || orando) return null;
+    if (assento) {
+      if (paradoV(assento)) ctxAcao = { rotulo: "Segure para descer ⬇️", fazer: () => {} };
+      return ctxAcao;
+    }
+    if (seguindo) return null;
+    ctxAcao = contextoDe(st.pos);
+    // o Rabisco está num veículo parado e o jogador 2 chegou perto: entra de carona (ou vai junto correndo)
+    if (!ctxAcao && v && fora && paradoV(v) && Math.hypot(st.pos.x - v.pos.x, st.pos.z - v.pos.z) < (v.comp ?? 2) + 2.6) {
+      const banco = Boolean(v.g.userData.carona);
+      ctxAcao = { rotulo: banco ? "🚗 Entrar de carona" : "🏃 Ir junto", fazer: () => { entrar(v, true); dizer("Jogador 2", banco ? `${modelo.nome} entrou de carona! 🚗` : `${modelo.nome} vai junto! 🏃`, 1800); } };
+    }
     return ctxAcao;
   }
-  // centro e afastamento da câmera para caber os dois
-  function enquadrar() {
-    if (!modelo || assento) return null;
+  function paradoV(v) { return Math.abs(v?.vel ?? 0) < 1.2 && (v?.tipo !== "heli" || (v.alt ?? 0) < 0.6); }
+  function descer(v) {
+    const lado = (v.larg ?? 1.2) + 1.1;
+    sair(v, v.pos.x - Math.cos(v.ang) * lado, v.pos.z + Math.sin(v.ang) * lado);
+    fora = true;
+    dizer("Jogador 2", `${modelo.nome} desceu para passear a pé 👟`, 1800);
+  }
+  function virParaPerto() {
+    const v = ctx.veiculo();
+    if (v) entrar(v, true); else colocarPerto(); // o Rabisco num veículo parado: vem de carona (nunca dentro do carro)
+    sons.vitoria?.();
+    J.vibrar2?.(60);
+    dizer("Jogador 2", `${modelo.nome} veio para perto! ✨`, 1600);
+  }
+  // câmera compartilhada: centro e afastamento para caber os dois. O afastamento cresce até os dois caberem com folga no
+  // quadro (medido na câmera do quadro anterior) e volta devagar quando eles se aproximam. Nunca menos que pela distância.
+  const _p = new THREE.Vector3();
+  function enquadrar(dt = 1 / 30) {
+    if (!modelo || assento || seguindo) { zoom = Math.max(0, zoom - dt * 6); return null; }
     const d = Math.hypot(st.pos.x - j.pos.x, st.pos.z - j.pos.z);
-    return { x: (st.pos.x + j.pos.x) / 2, y: (st.pos.y + j.pos.y) / 2, z: (st.pos.z + j.pos.z) / 2, afastar: Math.max(0, d - 2.5) * 0.75 };
+    const minimo = Math.max(0, d - 2.5) * 0.55;
+    const cam = ctx.cam?.();
+    let m = 0;
+    if (cam && dt > 0) for (const [x, y, z] of [[j.pos.x, j.pos.y, j.pos.z], [st.pos.x, st.pos.y, st.pos.z]]) {
+      for (const h of [0.2, 1.9]) { _p.set(x, y + h, z).project(cam); m = Math.max(m, _p.z > 1 ? 2 : Math.max(Math.abs(_p.x), Math.abs(_p.y))); }
+    }
+    if (m > 0.8) zoom += dt * (3 + (Math.min(m, 2) - 0.8) * 14);
+    else if (m < 0.55) zoom -= dt * 1.6;
+    zoom = Math.min(14, Math.max(minimo, zoom));
+    return { x: (st.pos.x + j.pos.x) / 2, y: (st.pos.y + j.pos.y) / 2, z: (st.pos.z + j.pos.z) / 2, afastar: zoom, d };
+  }
+  // crachás sobre a cabeça e setas na borda (uma vez por quadro, depois da câmera)
+  const _q = new THREE.Vector3();
+  function hud(cam, { alturaRabisco = 1.6, veiculo = null } = {}) {
+    if (!modelo) return;
+    if (cracha1) {
+      cracha1.visible = !veiculo;
+      if (!veiculo) cracha1.position.set(j.pos.x, j.pos.y + alturaRabisco + 0.55, j.pos.z);
+    }
+    if (!setas) setas = [1, 2].map((n) => { const e = document.createElement("div"); e.className = `seta-outro-rp j${n}`; e.hidden = true; caixa.append(e); return e; });
+    const quem = [
+      { e: setas[0], p: veiculo ? veiculo.pos : j.pos, nome: ctx.nome1?.() || "Rabisco", n: 1, some: false },
+      { e: setas[1], p: st.pos, nome: modelo.nome, n: 2, some: Boolean(assento) },
+    ];
+    const W = caixa.clientWidth || innerWidth, H = caixa.clientHeight || innerHeight;
+    for (const q of quem) {
+      if (q.some) { q.e.hidden = true; continue; }
+      _q.set(q.p.x, q.p.y + 1.2, q.p.z).project(cam);
+      const atras = _q.z > 1;
+      let x = atras ? -_q.x : _q.x, y = atras ? -_q.y : _q.y;
+      if (!atras && Math.abs(x) < 0.94 && Math.abs(y) < 0.94) { q.e.hidden = true; continue; }
+      const k = 0.86 / Math.max(Math.abs(x), Math.abs(y), 1e-3);
+      x *= k; y *= k;
+      const ang = (Math.atan2(-y, x) * 180) / Math.PI;
+      const html = `<span class="ponta" style="transform:rotate(${ang.toFixed(0)}deg)">➤</span><span class="nome">${q.n} · ${q.nome}</span>`;
+      if (q.e.dataset.h !== html) { q.e.innerHTML = html; q.e.dataset.h = html; }
+      q.e.style.left = `${(((x + 1) / 2) * W).toFixed(0)}px`;
+      q.e.style.top = `${(((1 - y) / 2) * H).toFixed(0)}px`;
+      q.e.hidden = false;
+    }
   }
 
   return {
-    quadro, passo, regras, enquadrar, entrar, sair, escolher, colocarPerto,
+    quadro, passo, regras, enquadrar, hud, entrar, sair, escolher, colocarPerto, virParaPerto, descer,
     orar(o) { if (!o) { orando = null; modelo?.m?.orar(false); return; } if (!modelo || assento) return; orando = o; },
     get ativo() { return Boolean(modelo); }, get escolhendo() { return Boolean(ui); }, get escolha() { return escolha; },
     get pos() { return modelo ? st.pos : null; }, get st() { return st; }, get modelo() { return modelo; },
     get sentado() { return Boolean(assento); }, get seguindo() { return seguindo; }, get acena() { return acena; }, get buzina() { return buzina; },
     get aPe() { return Boolean(modelo) && !assento && !seguindo; },
+    get fora() { return fora; }, get zoom() { return zoom; }, get segurando() { return segurando; },
+    get setas() { return setas ? setas.map((e) => !e.hidden) : [false, false]; },
+    get cracha1() { return cracha1 ? { visivel: cracha1.visible && Boolean(cracha1.parent) } : null; },
+    // dica no balãozinho: longe do Rabisco → "segure para vir para perto"
+    get longe() { return Boolean(modelo) && !assento && !seguindo && Math.hypot(st.pos.x - j.pos.x, st.pos.z - j.pos.z) > RAIO_SUAVE - 2; },
     get acao() { return ctxAcao?.rotulo ?? null; },
     opcoes: () => listaOpcoes().map((o) => o.id),
     navegar(dx) { if (ui) { foco = (foco + dx + opcoes.length) % opcoes.length; desenharFoco(); } },

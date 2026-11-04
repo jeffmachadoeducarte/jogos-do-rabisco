@@ -261,6 +261,14 @@ body.toque-oculto .rp-toque, body.toque-oculto .jd-camada { display: none !impor
 .ej2-dica { margin-top: 10px; text-align: center; font-weight: 700; opacity: 0.75; }
 .acao-j2-rp { position: absolute; z-index: 8; left: 50%; bottom: 96px; transform: translateX(-50%); padding: 4px 14px 6px; border-radius: 999px; background: #ec2e8c; color: #fff; border: 5px solid var(--tinta); box-shadow: 0 5px 0 var(--tinta); font: 800 19px var(--texto); pointer-events: none; }
 .acao-j2-rp[hidden] { display: none; }
+/* 2 jogadores: seta na borda da tela apontando quem saiu do quadro (cor e nome de cada um; jogador2.js, hud) */
+.seta-outro-rp { position: absolute; z-index: 9; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 6px; pointer-events: none; padding: 2px 12px 4px 6px; border-radius: 999px; border: 4px solid var(--tinta); box-shadow: 0 4px 0 var(--tinta); color: #fff; font: 800 18px var(--texto); white-space: nowrap; }
+.seta-outro-rp[hidden] { display: none; }
+.seta-outro-rp.j1 { background: #00b5f0; }
+.seta-outro-rp.j2 { background: #ec2e8c; }
+.seta-outro-rp .ponta { display: inline-block; font-size: 24px; line-height: 1; }
+html.modo-tv .seta-outro-rp { font-size: 24px; }
+html.modo-tv .seta-outro-rp .ponta { font-size: 30px; }
 .acao-j2-rp kbd { display: inline-block; margin-left: 6px; padding: 0 6px; border: 3px solid var(--tinta); border-radius: 8px; background: #fff; color: var(--tinta); font: 800 15px var(--texto); }
 /* Modo TV (src/motor/modotv.js): letras maiores; o minimapa segue a mesma regra (escondido até pedirem) e fica maior */
 html.modo-tv .minimapa-rp { width: 230px; height: 230px; }
