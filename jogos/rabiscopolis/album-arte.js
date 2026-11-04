@@ -157,6 +157,27 @@ function cenaAmigo(c, fig, x, y, w, h) {
     c.strokeStyle = "#262626"; c.lineWidth = 16; c.beginPath(); c.ellipse(cx - 8, base - 50, 30, 24, 0.15, 0, 7); c.stroke();
     return;
   }
+  if (t === "peixe") { // o peixe do lago: prateado de dorso verde, pulando na água
+    c.fillStyle = "#7cc8ef"; c.fillRect(x, base - 20, w, 44);
+    c.strokeStyle = "#ffffff"; c.lineWidth = 3; for (const d of [-40, 30]) { c.beginPath(); c.arc(cx + d, base - 8, 14, Math.PI, 0); c.stroke(); }
+    c.save(); c.translate(cx, base - 64); c.rotate(-0.35); c.lineWidth = 5; c.strokeStyle = TINTA;
+    c.fillStyle = "#c9d3d6"; c.beginPath(); c.ellipse(0, 0, 50, 24, 0, 0, 7); c.fill(); c.stroke();
+    c.fillStyle = "#4f8a5a"; c.beginPath(); c.ellipse(0, -10, 44, 11, 0, Math.PI, 0); c.fill();
+    c.fillStyle = "#9fb0b4"; c.beginPath(); c.moveTo(-46, 0); c.lineTo(-74, -20); c.lineTo(-74, 20); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = TINTA; c.beginPath(); c.arc(30, -4, 5, 0, 7); c.fill(); c.fillStyle = "#e2342b"; c.beginPath(); c.ellipse(4, 12, 12, 4, 0, 0, 7); c.fill();
+    c.restore();
+    return;
+  }
+  if (t === "container") { // a casa-container: container branco com nervuras, porta de vidro aberta com cortina e o deck
+    c.fillStyle = "#a57c57"; c.fillRect(x + 8, base - 22, w - 16, 12); c.strokeRect(x + 8, base - 22, w - 16, 12);
+    c.fillStyle = "#f4f4f0"; c.fillRect(x + 16, base - 102, w - 32, 80); c.strokeRect(x + 16, base - 102, w - 32, 80);
+    c.strokeStyle = "#cfcfc8"; c.lineWidth = 3; for (let px = x + 24; px < x + w - 20; px += 9) { c.beginPath(); c.moveTo(px, base - 98); c.lineTo(px, base - 26); c.stroke(); }
+    c.fillStyle = "#3a3532"; c.fillRect(cx - 34, base - 92, 68, 68); c.fillStyle = "#f6f6f2"; for (let i = 0; i < 4; i++) c.fillRect(cx - 32 + i * 9, base - 90, 6, 64); for (let i = 0; i < 4; i++) c.fillRect(cx + 5 + i * 9, base - 90, 6, 64);
+    c.fillStyle = "rgba(191,227,242,0.7)"; c.fillRect(cx - 34, base - 92, 20, 68); c.fillRect(cx + 14, base - 92, 20, 68);
+    c.lineWidth = 4; c.strokeStyle = TINTA; c.strokeRect(cx - 34, base - 92, 68, 68);
+    c.fillStyle = "#7a4a26"; c.fillRect(cx - 18, base - 26, 36, 5);
+    return;
+  }
   if (t === "borracha") {
     arredondado(c, cx - 50, base - 74, 100, 74, 14); c.fill(); c.stroke(); c.fillStyle = "#00b5f0"; arredondado(c, cx - 50, base - 38, 100, 38, 12); c.fill(); c.stroke(); fy = base - 56;
   } else if (t === "giz") {

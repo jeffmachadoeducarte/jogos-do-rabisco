@@ -17,6 +17,7 @@ import { prepararCelular } from "../../src/motor/celular.js";
 import { modoAtual } from "./modos.js";
 import { faseAtual } from "./fases.js";
 import { botaoVoltar } from "../../src/motor/voltar.js";
+import { armazem } from "../../src/motor/perfis.js"; // estrelas e fases: do jogador ativo
 
 const RAIZ = "../..";
 const $ = (id) => document.getElementById(id);
@@ -396,7 +397,7 @@ $("abertura").append(botaoVoltar({ raiz: RAIZ, faixa: MODO.faixa }));
 
 // ------------------------------------------------------------------ Fases (10 por modo)
 const CHAVE_FASES = `${MODO.chave}-fases`;
-const lerFases = () => { try { return JSON.parse(localStorage.getItem(CHAVE_FASES) || "{}"); } catch { return {}; } };
+const lerFases = () => { try { return JSON.parse(armazem.getItem(CHAVE_FASES) || "{}"); } catch { return {}; } };
 function irParaFase(n) {
   const q = new URLSearchParams(location.search);
   q.set("fase", n);
@@ -519,7 +520,7 @@ function reiniciar() {
   $("hud").classList.add("escondido");
   $("abertura").classList.remove("escondido");
   try {
-    const g = JSON.parse(localStorage.getItem(MODO.chave) || "{}");
+    const g = JSON.parse(armazem.getItem(MODO.chave) || "{}");
     for (const b of document.querySelectorAll("[data-nivel]")) b.classList.toggle("feito", Boolean(g[b.dataset.nivel]));
   } catch { /* sem armazenamento */ }
 }
@@ -910,10 +911,10 @@ function vitoria() {
   $("proximo").textContent = fimDoNivel ? "Próximo nível ▶" : `Próxima ${NOME_FASE.toLowerCase()} ▶`;
   $("proximo").hidden = fimDoNivel && nivel >= 3;
   if (fimDoNivel) {
-    try { const g = JSON.parse(localStorage.getItem(MODO.chave) || "{}"); g[nivel] = true; localStorage.setItem(MODO.chave, JSON.stringify(g)); } catch { /* sem armazenamento: tudo bem */ }
+    try { const g = JSON.parse(armazem.getItem(MODO.chave) || "{}"); g[nivel] = true; armazem.setItem(MODO.chave, JSON.stringify(g)); } catch { /* sem armazenamento: tudo bem */ }
   }
   $("vit-selos").textContent = `+ ${moedasPegas} selos · Fase ${FASE.numero}: ${TEMA.nome}`;
-  { const f = lerFases(); f[FASE.numero] = true; try { localStorage.setItem(CHAVE_FASES, JSON.stringify(f)); } catch { /* sem armazenamento */ } }
+  { const f = lerFases(); f[FASE.numero] = true; try { armazem.setItem(CHAVE_FASES, JSON.stringify(f)); } catch { /* sem armazenamento */ } }
   $("vitoria").classList.remove("escondido");
   const INICIO = 1200;
   const spans = [...$("vit-palavra").children].filter((s) => !s.classList.contains("hifen"));
@@ -999,7 +1000,7 @@ async function iniciar() {
   const pedida = NIVEIS.flatMap((n) => n.itens).find((p) => MODO.desafio(p).chave === params.get("palavra")) ?? null;
   preCarregarFalas(MODO.falasExtras);
   try {
-    const g = JSON.parse(localStorage.getItem(MODO.chave) || "{}");
+    const g = JSON.parse(armazem.getItem(MODO.chave) || "{}");
     for (const b of document.querySelectorAll("[data-nivel]")) if (g[b.dataset.nivel]) b.classList.add("feito");
   } catch { /* sem armazenamento */ }
 

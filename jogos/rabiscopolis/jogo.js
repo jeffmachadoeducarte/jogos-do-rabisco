@@ -9,7 +9,7 @@
 // · jogador2.js (2 jogadores: com 1 jogador só o Rabisco; o jogador 2 escolhe a criança do cadastro ou um amigo do estojo).
 // ?teste expõe window.teste.
 
-import { THREE, MAT, mesclar, placa } from "./base3d.js";
+import { THREE, MAT, mesclar } from "./base3d.js";
 import { PARCEIROS } from "../../src/parceiros.js";
 import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
 import { criarCasca, el } from "../../src/motor/casca.js";
@@ -29,6 +29,7 @@ import { criarDesafios } from "./desafios.js";
 import { criarNatal } from "./natal-cidade.js";
 import { criarPatioJE, enfeitarCarro } from "./je-patio.js";
 import { criarJogador2 } from "./jogador2.js";
+import { criarPlacaNome } from "./placa-nome.js";
 import { CODIGOS_J2, TECLAS_J1_EXTRA } from "../../src/motor/jogadores.js";
 import { criarMorador, criarVovo } from "./personagens.js";
 import { criarRabifone } from "./rabifone.js";
@@ -135,7 +136,9 @@ let hojeTeste = params.has("teste") && diaValido(params.get("hoje")) ? params.ge
 addEventListener("keydown", (e) => {
   if (jogo.estado !== "jogando" || jogo.pausado) return;
   if (e.target?.matches?.("input, textarea")) return; // digitando o nome no Meu Rabisco
-  if (J.tv && !ehAcao("mapa", e.code)) return; // TV como tela (página tv/): os dois jogam pelos controles e celulares
+  // TV como tela (página tv/): os dois jogam pelos controles e celulares; o teclado só vale quando é ele o jogador 1
+  // (ninguém entrou com controle nem celular: vaga 1 "teclado", src/motor/salatv.js)
+  if (J.tv && J.j1.entrada !== "teclado" && !ehAcao("mapa", e.code)) return;
   if (sorveteUI?.aberto) {
     const mapa = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
     if (mapa[e.code]) { sorveteUI.navegar(...mapa[e.code]); e.preventDefault(); return; }
@@ -285,29 +288,20 @@ const nomeDaPlaca = () => {
   const n = (nomeCrianca() || salvo.nomeRabisco || "").trim().replace(/\s+/g, " ");
   return (n.length > 12 ? n.split(" ")[0] : n).slice(0, 12);
 };
-let placaNome = null; // { sprite, nome }
+let placaNome = null; // etiqueta de nome (placa-nome.js): balãozinho ciano do jogador 1
 function criarPlaca() {
   placaNome = null;
   atualizarPlaca();
-  document.fonts?.ready.then(() => { if (placaNome) { placaNome.nome = null; atualizarPlaca(); } });
 }
 function atualizarPlaca() {
   if (!rabisco) return;
   const nome = nomeDaPlaca();
-  if (!nome) { if (placaNome) placaNome.sprite.visible = false; return; }
+  if (!nome) { placaNome?.esconder(); return; }
   if (!placaNome) {
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false }));
-    sprite.scale.set(0.76, 0.22, 1); sprite.position.y = 1.97; sprite.renderOrder = 7;
-    rabisco.grupo.add(sprite);
-    placaNome = { sprite, nome: null };
+    placaNome = criarPlacaNome({ estilo: "j1", altura: 1.97, veiculo: () => dentro, toque: Boolean(qualidade?.perfil?.toque) });
+    rabisco.grupo.add(placaNome.sprite);
   }
-  if (placaNome.nome !== nome) {
-    placaNome.sprite.material.map?.dispose();
-    placaNome.sprite.material.map = placa(nome, { cor: "#ec2e8c", w: 384, h: 112 });
-    placaNome.sprite.material.needsUpdate = true;
-    placaNome.nome = nome;
-  }
-  placaNome.sprite.visible = !dentro; // dentro de um veículo a plaquinha fica escondida (o teto e o vidro a cobririam)
+  placaNome.definir(nome); // dentro de um veículo ela sobe para cima do teto (placa-nome.js)
 }
 
 function iniciar() {
@@ -428,6 +422,7 @@ function iniciar() {
     salvo: () => salvo, salvar: (d) => salvar(d), crianca: () => { try { return window.Familia?.crianca?.() || null; } catch { return null; } },
     otimizar: (rb) => otimizarRabisco(rb, () => j2?.modelo?.c?.rabisco === rb),
     veiculo: () => dentro, yaw: () => camera.st.yaw, caronaDaMissao: () => missoes?.carona,
+    cam: () => cam, nome1: () => (J.j1?.nome || "Rabisco").trim().split(/\s+/)[0],
     travado: () => Boolean(fone?.aberto || decoCasa?.ativo || sorveteUI?.aberto || meuRb?.aberto || atelieUI?.aberto || mapaUI?.aberto),
   });
   acaoJ2 = el("div", { class: "acao-j2-rp", hidden: "" }); caixa.append(acaoJ2);
@@ -1218,11 +1213,13 @@ function regras(dt = 1 / 30) {
   }
 }
 let tMapa = 0;
-const _pOnibus = new THREE.Vector3(), _pDois = new THREE.Vector3();
+const _pDois = new THREE.Vector3();
 function posicionarCamera(k, dt, andando = false) {
   const giro = (tem("girarD") ? 1 : 0) - (tem("girarE") ? 1 : 0) + pad.gx * 1.2;
   const arrasto = toque && !dentro ? toque.girar() : 0;
-  const dois = j2?.enquadrar(); // 2 jogadores a pé: a câmera mira o meio dos dois e afasta para caber
+  // 2 jogadores (a pé, ou o Rabisco dirigindo e o jogador 2 a pé): a câmera compartilhada mira o meio dos dois e afasta/sobe
+  // até caber os dois no quadro (jogador2.js, enquadrar). Com o jogador 2 de carona, segue o veículo como com 1 jogador.
+  const dois = dentro?.tipo === "heli" ? null : j2?.enquadrar(dt || 1 / 30);
   if (oracao) { // oração: a câmera para atrás do Rabisco, olhando para a igreja (ou para a cruz)
     const fx = Math.sin(oracao.olhar), fz = Math.cos(oracao.olhar);
     camera.st.vista = { pos: [oracao.x - fx * 4.6, 2.5, oracao.z - fz * 4.6], alvo: [oracao.x + fx * 3, 1.6, oracao.z + fz * 3] };
@@ -1239,9 +1236,10 @@ function posicionarCamera(k, dt, andando = false) {
     mundo.visibilidade(j.pos.x, j.pos.z);
     return;
   }
-  const P = dentro?.tipo === "onibus" ? _pOnibus.set(dentro.pos.x + Math.sin(dentro.ang) * 2.6, dentro.pos.y, dentro.pos.z + Math.cos(dentro.ang) * 2.6) : dentro ? dentro.pos : dois ? _pDois.set(dois.x, dois.y, dois.z) : j.pos;
-  const afastar = !dentro && dois ? dois.afastar : dentro && j2?.seguindo ? 2.5 : 0;
-  camera.posicionar({ P, ref: dentro ? dentro.ang : j.dir, dirigindo: Boolean(dentro), andando, giro, arrasto, onibus: ["onibus", "ambulancia", "sorvete"].includes(dentro?.tipo), comp: dentro?.comp ?? 0, heli: dentro?.tipo === "heli", afastar }, k, dt);
+  // (o ônibus mirava 2,6 m à frente do centro; agora a câmera por tamanho do veículo, camera.js, já olha à frente e fica longe)
+  const P = dois ? _pDois.set(dois.x, dois.y, dois.z) : dentro ? dentro.pos : j.pos;
+  const afastar = dois ? dois.afastar : dentro && j2?.seguindo ? 2.5 : 0;
+  camera.posicionar({ P, ref: dentro ? dentro.ang : j.dir, dirigindo: Boolean(dentro), andando, giro, arrasto, onibus: ["onibus", "ambulancia", "sorvete"].includes(dentro?.tipo), comp: dentro?.comp ?? 0, heli: dentro?.tipo === "heli", afastar, dois: Boolean(dois), veiculo: dentro, pular: [rabisco.grupo, j2?.modelo?.grupo] }, k, dt);
   ceu.seguir(P.x, P.z);
   mundo.visibilidade(P.x, P.z);
 }
@@ -1263,6 +1261,8 @@ function quadro() {
   const doisToque = Boolean(j2?.ativo) && qualidade.perfil.toque;
   if (doisToque !== quadro.doisToque) { quadro.doisToque = doisToque; if (qualidade.perfil.toque) { mundo.alcance = doisToque ? 78 : 95; mundo.detalheAte = doisToque ? 28 : 35; cena.fog.far = mundo.alcance; } }
   for (let p = 0; p < passos; p++) passo(total / passos, p === passos - 1);
+  if (j2?.ativo) j2.hud(cam, { veiculo: dentro, alturaRabisco: emCasa || emLugar ? 1.5 : 1.6 });
+  if (placaNome) placaNome.sprite.visible = placaNome.estado.visivel && !j2?.ativo; // a 2 o Rabisco usa o "🎮1" (jogador2.js): sem etiqueta dupla
   somDoMotor();
   estat.tj = (estat.tj ?? 0) + total; // tempo de jogo (o que os passos simularam), para os testes
   r3.render(cena, cam);
@@ -1496,9 +1496,9 @@ function dizer(nome, texto, ms = 4200) {
 function atualizarHud() { hud.innerHTML = `<div class="chip-rp">🏙️ Rabiscolândia</div><div class="missao-rp" hidden></div>`; }
 // balãozinho rosa do jogador 2 (só quando a ação dele faz alguma coisa)
 function atualizarAcaoJ2() {
-  const r = j2?.acao;
+  const dica = J.tecladoDividido ? "F" : J.j2?.entrada === "celular" ? "✋" : "X";
+  const r = j2?.acao ?? (j2?.longe ? "Segure para vir para perto" : null);
   if (!r) { acaoJ2.hidden = true; return; }
-  const dica = J.tecladoDividido ? "F" : "X";
   const html = `<b>🎮2</b> ${r} <kbd>${dica}</kbd>`;
   if (acaoJ2.innerHTML !== html) acaoJ2.innerHTML = html;
   acaoJ2.hidden = false;
@@ -1560,31 +1560,49 @@ function irParaLugar(it) {
   atualizarBussola();
 }
 function cancelarDestino() { alvoMapa = null; atualizarBussola(); }
-// seta 3D (2 malhas: a seta e o contorno) e o farol no destino (1 malha): só com destino marcado, 3 chamadas de desenho
+// seta 3D (2 malhas: a seta e o brilho em volta) e o farol no destino (1 malha): só com destino marcado, 3 chamadas de desenho.
+// Discreta: pequena, rosa meio transparente, flutuando acima e um pouco à frente da cabeça (acima da etiqueta do nome),
+// girando suave para o destino e pulsando de leve. No veículo fica acima do teto (helicóptero inclusive).
 function criarGuia() {
   const s = new THREE.Shape();
   s.moveTo(-0.36, -1.3); s.lineTo(0.36, -1.3); s.lineTo(0.36, 0.05); s.lineTo(0.95, 0.05); s.lineTo(0, 1.4); s.lineTo(-0.95, 0.05); s.lineTo(-0.36, 0.05); s.closePath();
   const geo = new THREE.ExtrudeGeometry(s, { depth: 0.3, bevelEnabled: false });
   geo.translate(0, 0, -0.15); geo.rotateX(Math.PI / 2); // deitada, com a ponta para +z
-  const seta = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xff2a6a }));
-  const borda = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x151515, side: THREE.BackSide })); borda.scale.setScalar(1.16);
+  const seta = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xff4f9a, transparent: true, opacity: 0.85, depthWrite: false, fog: false }));
+  const borda = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, side: THREE.BackSide, depthWrite: false, fog: false })); borda.scale.setScalar(1.12);
+  seta.renderOrder = borda.renderOrder = 6;
   const g = new THREE.Group(); g.add(borda, seta);
-  const farol = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 70, 18, 1, true), new THREE.MeshBasicMaterial({ color: 0xff2a6a, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+  const farol = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 70, 18, 1, true), new THREE.MeshBasicMaterial({ color: 0xff4f9a, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide, fog: false }));
   g.visible = farol.visible = false;
   cena.add(g, farol);
-  return { g, farol };
+  return { g, farol, rot: 0, t: 0, tam: 0 };
 }
+// altura do teto do veículo (a etiqueta do nome usa a mesma conta: placa-nome.js guarda em userData.topoPlaca)
+const topoVeiculo = (v) => v.g.userData.topoPlaca ?? (v.tipo === "heli" ? 3.8 : v.tipo === "onibus" ? 3.5 : 2.2);
+const TMP_G = { d: new THREE.Vector3(), n: new THREE.Vector3(), x: new THREE.Vector3(), m: new THREE.Matrix4() };
 function atualizarGuia(t) {
   if (!guia) return;
   const a = alvoMapa, mostra = Boolean(a) && !emCasa && !emLugar && !roda;
+  const apareceu = mostra && !guia.g.visible, dt = Math.min(0.1, Math.max(0, t - guia.t)); guia.t = t;
   guia.g.visible = guia.farol.visible = mostra;
   if (!mostra) return;
   const base = dentro ? dentro.pos : j.pos, heli = dentro?.tipo === "heli";
   const dx = a.x - base.x, dz = a.z - base.z, d = Math.hypot(dx, dz) || 1;
-  const k = Math.min(dentro ? (heli ? 7 : 5) : 2.4, d * 0.5);
-  guia.g.position.set(base.x + (dx / d) * k, base.y + (dentro ? (heli ? -0.6 : 2.7) : 0.95) + Math.sin(t * 4) * 0.15, base.z + (dz / d) * k);
-  guia.g.rotation.y = Math.atan2(dx, dz);
-  guia.g.scale.setScalar(dentro ? (heli ? 2 : 1.4) : 0.6);
+  const k = Math.min(dentro ? (heli ? 1.2 : 0.8) : 0.45, d * 0.5); // um pouco à frente, na direção do destino
+  const alto = dentro ? topoVeiculo(dentro) + 1.35 : 2.95; // acima da cabeça (e da etiqueta do nome)
+  guia.g.position.set(base.x + (dx / d) * k, base.y + alto + Math.sin(t * 2.6) * 0.08, base.z + (dz / d) * k);
+  const ang = Math.atan2(dx, dz);
+  guia.rot = apareceu ? ang : guia.rot + Math.atan2(Math.sin(ang - guia.rot), Math.cos(ang - guia.rot)) * Math.min(1, dt * 7);
+  // a câmera fica quase na altura da seta: deitada ela sumiria de lado. Ela fica numa "cartinha" virada para a câmera
+  // (um pouco inclinada para cima), apontando para onde o destino fica dentro desse plano: longe = para cima, ao lado = de lado
+  const d3 = TMP_G.d.set(Math.sin(guia.rot), 0, Math.cos(guia.rot));
+  const N = TMP_G.n.copy(cam.position).sub(guia.g.position).normalize().multiplyScalar(0.8); N.y += 0.5; N.normalize();
+  d3.addScaledVector(N, -d3.dot(N)).normalize();
+  TMP_G.x.crossVectors(N, d3);
+  guia.g.quaternion.setFromRotationMatrix(TMP_G.m.makeBasis(TMP_G.x, N, d3));
+  const tam = dentro ? (heli ? 0.55 : 0.4) : 0.27; // ~30-45% do que era (0,6 a pé, 1,4 no carro, 2 no helicóptero)
+  guia.tam = apareceu ? tam : guia.tam + (tam - guia.tam) * Math.min(1, dt * 5);
+  guia.g.scale.setScalar(guia.tam * (1 + Math.sin(t * 4.2) * 0.06));
   guia.farol.position.set(a.x, 35, a.z);
 }
 // por cima do fundo do mapa grande: casinhas dos lotes, veículos e o alvo da missão (R: tamanho do alfinete; esc: px por metro)
@@ -1675,7 +1693,7 @@ if (params.has("teste")) window.teste = {
   get mundo() { return mundo; }, get dentro() { return dentro; }, get contexto() { return contexto?.rotulo ?? null; },
   get salvo() { return carregar(); }, get fone() { return fone; }, get transito() { return transito; }, get moradores() { return moradores; },
   get ceu() { return ceu; }, get estat() { return { ...estat, fps: qualidade?.fps ?? 0, blocos: mundo.blocosVisiveis(), malhas: mundo.malhas }; },
-  get vivo() { return vivo; }, get mapaLigado() { return mapaLigado; }, mapaPedido, get mapaUI() { return mapaUI; }, get alvoMapa() { return alvoMapa; }, get guia() { return guia ? { visivel: guia.g.visible, x: guia.g.position.x, z: guia.g.position.z, rot: guia.g.rotation.y, farol: guia.farol.visible } : null; }, Engrenagem, get meuRb() { return meuRb; }, get pecas() { return rabisco?.rp ? { ...rabisco.rp.atual } : null; }, get placa() { return placaNome ? { visivel: placaNome.sprite.visible, nome: placaNome.nome, y: placaNome.sprite.position.y } : null; }, get tempo() { return estat.tj ?? 0; }, get fis() { return fis; },
+  get vivo() { return vivo; }, get mapaLigado() { return mapaLigado; }, mapaPedido, get mapaUI() { return mapaUI; }, get alvoMapa() { return alvoMapa; }, get guia() { return guia ? { visivel: guia.g.visible, x: guia.g.position.x, y: guia.g.position.y, z: guia.g.position.z, rot: guia.rot, tam: guia.tam, farol: guia.farol.visible } : null; }, Engrenagem, get meuRb() { return meuRb; }, get pecas() { return rabisco?.rp ? { ...rabisco.rp.atual } : null; }, get placa() { return placaNome ? { ...placaNome.estado, y: placaNome.sprite.position.y, escala: placaNome.sprite.material.sizeAttenuation === false } : null; }, get tempo() { return estat.tj ?? 0; }, get fis() { return fis; },
   get modo() { return emCasa ? "casa" : emLugar ? "lugar" : dentro ? "veiculo" : "rua"; },
   get emLugar() { return emLugar ? { id: emLugar.id, est: emLugar.est, interativos: emLugar.interativos.map((i) => ({ id: i.id, rotulo: i.rotulo, pos: i.pos })) } : null; },
   get sorveteUI() { return sorveteUI; },
@@ -1709,6 +1727,7 @@ if (params.has("teste")) window.teste = {
   get oracao() { return oracao ? { i: oracao.i, total: ORACAO.length, painel: !painelOracao.hidden, texto: painelOracao.textContent } : null; },
   proximaFrase: () => proximaFrase(),
   get j2() { return j2; }, get dois() { return Boolean(j2?.ativo); }, get Jogadores() { return J; },
+  get camDist() { const p = dentro ? dentro.pos : j.pos; return { dist: Math.hypot(cam.position.x - p.x, cam.position.z - p.z), alt: cam.position.y - p.y, base: camera.st.dist, baseAlt: camera.st.alt, encurtou: Boolean(camera.st.encurtou) }; },
   // as duas pessoas aparecem na tela? (projeção dentro do quadro)
   get naTela() { const ps = [rabisco.grupo, j2?.modelo?.grupo].filter(Boolean); return ps.map((g) => { const v = new THREE.Vector3(); g.getWorldPosition(v); v.y += 1; v.project(cam); return Math.abs(v.x) < 1 && Math.abs(v.y) < 1 && v.z < 1; }); },
   luzPedestreVerde: (s, eixo) => luzDe(s, eixo, relogio.elapsedTime) === "vermelho",

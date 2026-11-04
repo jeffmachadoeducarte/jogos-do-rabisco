@@ -1,7 +1,8 @@
 // Rabiscolândia: duas salas maiores, com câmera e cena próprias (montadas por montarSala na primeira visita, longe da cidade):
 //  - o teatro da Ballet e Cia: palco com cortina, holofotes e plateia. O minijogo é seguir os passos no tempo da música: a estrelinha
-//    desliza pelo chão do palco e, quando chega no círculo, o botão faz o Rabisco dar o passo junto com as alunas. Sem errar de verdade
-//    (a música continua e o passo volta na próxima). Depois vem a apresentação: cortina, holofotes e coreografia com a turma.
+//    desliza pelo chão do palco e, quando chega no círculo, o botão faz o Rabisco dar o passo de street dance junto com as alunas. Sem
+//    errar de verdade (a batida continua e o passo volta na próxima). Depois vem a apresentação: cortina, holofotes e a coreografia de
+//    street dance com a turma (o modo "street" do Rabisco, em src/motor3d/rabisco3d.js), terminando no freeze.
 //  - o salão da BT Models: desfile de fantasias dos amigos do estojo. A criança estica o tapete, liga os refletores e pendura as
 //    bandeirinhas; depois, na mesa do apresentador, chama cada amigo quando a luz do portal fica verde, e por último entra o Rabisco.
 // Alunas e participantes são personagens de faz de conta (personagens.js). A Prof. Samira (pessoas.js) não fala: a anfitriã narra.
@@ -14,7 +15,8 @@ import { cx as pc, claro } from "./blocos.js";
 import { criarMorador } from "./personagens.js";
 import { criarPessoa } from "./pessoas.js";
 import { letreiro } from "./predios-parceiros.js";
-import { criarSequencia, VALSA, VALSA_SHOW, DESFILE, DESFILE_NATAL } from "./musica-cenas.js";
+import { criarSequencia, STREET, STREET_SHOW, DESFILE, DESFILE_NATAL } from "./musica-cenas.js";
+import { passoStreet } from "../../src/motor3d/rabisco3d.js";
 import { natalAtivo, DESFILE_NATAL as FANTASIAS_NATAL, FALAS_NATAL } from "./natal.js";
 import { estrela } from "./natal-cidade.js";
 
@@ -67,28 +69,22 @@ function holofote(din, x, y, z, cor = 0xfff0c8, abre = 1.5) {
   return { cone, poca, apontar(tx, ty, tz) { d.set(tx - x, ty - y, tz - z); const l = d.length(); cone.scale.set(1, l, 1); cone.quaternion.setFromUnitVectors(baixo, d.normalize()); poca.position.set(tx, ty + 0.02, tz); }, ligar(sim) { cone.visible = poca.visible = sim; } };
 }
 
-// ---- como cada personagem dança (membros, nunca o boneco inteiro balançando; k = 0..1 é a força do passo)
-function poseAluna(m, nome, k) {
+// ---- como as alunas dançam o street dance (membros, nunca o boneco inteiro balançando; b = batidas desde o começo do passo)
+// Passos simples, os mesmos nomes do Rabisco (rabisco3d.js): groove, pump, step, running, wave, quadril, giro, freeze.
+function poseAluna(m, passo, b) {
   const { bE, bD, pE, pD, raiz } = m.partes;
-  pE.rotation.z = pD.rotation.z = 0;
-  if (nome === "plie") { raiz.position.y -= 0.1 * k; pE.rotation.z = 0.38 * k; pD.rotation.z = -0.38 * k; bE.rotation.z = 0.25 + 0.9 * k; bD.rotation.z = -0.25 - 0.9 * k; }
-  else if (nome === "bracos" || nome === "giro") { bE.rotation.z = 0.25 + 2.5 * k; bD.rotation.z = -0.25 - 2.5 * k; raiz.position.y += 0.08 * k; }
-  else if (nome === "arabE") { pD.rotation.x = -1.15 * k; bE.rotation.z = 0.25 + 2.5 * k; bD.rotation.z = -0.25 - 1.2 * k; raiz.rotation.x = 0.16 * k; }
-  else if (nome === "arabD") { pE.rotation.x = -1.15 * k; bD.rotation.z = -0.25 - 2.5 * k; bE.rotation.z = 0.25 + 1.2 * k; raiz.rotation.x = 0.16 * k; }
-  else if (nome === "salto") { pE.rotation.x = 0.8 * k; pD.rotation.x = -0.8 * k; bE.rotation.z = 0.25 + 2.3 * k; bD.rotation.z = -0.25 - 2.3 * k; }
-  else if (nome === "reverencia") { raiz.rotation.x = 0.55 * k; bE.rotation.z = 0.25 + 0.5 * k; bD.rotation.z = -0.25 - 0.5 * k; raiz.position.y -= 0.05 * k; }
-}
-function poseRabisco(rb, nome, k) {
-  const q = (b, x, z) => { b.ombro.rotation.set(x, 0, z); };
-  const per = (p, qx, qz, j) => { p.quadril.rotation.set(qx, 0, qz); p.joelho.rotation.x = j; };
-  rb.tronco.rotation.x = 0; rb.pernaE.quadril.rotation.z = rb.pernaD.quadril.rotation.z = 0;
-  if (!k || nome === "nada") return;
-  if (nome === "plie") { per(rb.pernaE, -0.55 * k, 0.28 * k, 1.05 * k); per(rb.pernaD, -0.55 * k, -0.28 * k, 1.05 * k); q(rb.bracoE, 0, 0.3 + 1.0 * k); q(rb.bracoD, 0, -0.3 - 1.0 * k); rb.grupo.position.y -= 0.17 * k; }
-  else if (nome === "bracos" || nome === "giro") { q(rb.bracoE, 0, 0.17 + 2.75 * k); q(rb.bracoD, 0, -0.17 - 2.75 * k); rb.bracoE.cotovelo.rotation.x = -0.3 * k; rb.bracoD.cotovelo.rotation.x = -0.3 * k; }
-  else if (nome === "arabE") { per(rb.pernaD, 0.95 * k, 0, 0.3 * k); q(rb.bracoE, 0, 0.17 + 2.7 * k); q(rb.bracoD, 0, -0.17 - 1.25 * k); rb.tronco.rotation.x = 0.12 * k; }
-  else if (nome === "arabD") { per(rb.pernaE, 0.95 * k, 0, 0.3 * k); q(rb.bracoD, 0, -0.17 - 2.7 * k); q(rb.bracoE, 0, 0.17 + 1.25 * k); rb.tronco.rotation.x = 0.12 * k; }
-  else if (nome === "salto") { per(rb.pernaE, -0.8 * k, 0, 0.5 * k); per(rb.pernaD, 0.7 * k, 0, 0.5 * k); q(rb.bracoE, 0, 0.17 + 2.5 * k); q(rb.bracoD, 0, -0.17 - 2.5 * k); }
-  else if (nome === "reverencia") { rb.tronco.rotation.x = 0.55 * k; q(rb.bracoE, 0.2 * k, 0.17 + 0.4 * k); q(rb.bracoD, 0.2 * k, -0.17 - 0.4 * k); }
+  const u = ((b % 1) + 1) % 1, desce = Math.pow(0.5 + 0.5 * Math.cos(u * Math.PI * 2), 1.6);
+  raiz.position.x = 0; pE.rotation.z = pD.rotation.z = 0;
+  if (passo === "nada") return;
+  raiz.position.y -= 0.05 * desce; // bounce
+  bE.rotation.set(-0.35 - 0.2 * desce, 0, 0.3); bD.rotation.set(-0.35 - 0.2 * desce, 0, -0.3);
+  if (passo === "pump") { const e = Math.floor(b) % 2 === 0; bE.rotation.x = -0.4 - (e ? 1.3 * desce : 0); bD.rotation.x = -0.4 - (e ? 0 : 1.3 * desce); raiz.position.y -= 0.04 * desce; }
+  else if (passo === "step") { const S = Math.sin((Math.PI * b) / 2), wE = Math.max(0, S), wD = Math.max(0, -S); raiz.position.x = 0.14 * S; pE.rotation.z = 0.3 * wE; pD.rotation.z = -0.3 * wD; bE.rotation.set(-0.2, 0, 0.3 + 1.7 * wE); bD.rotation.set(-0.2, 0, -0.3 - 1.7 * wD); }
+  else if (passo === "running") { const e = Math.floor(b) % 2 === 0, sb = Math.sin(Math.PI * u); pE.rotation.x = e ? -1.0 * sb : 0.35 * u; pD.rotation.x = e ? 0.35 * u : -1.0 * sb; bE.rotation.x = e ? 0.3 * sb : -1.0 * sb; bD.rotation.x = e ? -1.0 * sb : 0.3 * sb; }
+  else if (passo === "wave") { const x = (((b % 2) + 2) % 2) / 2, onda = (c) => Math.exp(-((x - c) ** 2) / 0.02); bE.rotation.set(0, 0, 1.5 + 0.4 * onda(0.2)); bD.rotation.set(0, 0, -1.5 - 0.4 * onda(0.8)); }
+  else if (passo === "quadril") { const h = Math.sin(Math.PI * b); raiz.position.x = 0.09 * h; raiz.rotation.z = -0.08 * h; bE.rotation.set(-0.2, 0, 2.6); bD.rotation.set(0, 0, -0.6); }
+  else if (passo === "giro") { bE.rotation.set(-0.9, 0, 0.5); bD.rotation.set(-0.9, 0, -0.5); }
+  else if (passo === "freeze") { raiz.position.y -= 0.05; pE.rotation.z = 0.22; pD.rotation.z = -0.22; bE.rotation.set(-0.3, 0, 2.5); bD.rotation.set(0, 0, -0.9); }
 }
 
 // ==================================================================== teatro da Ballet e Cia
@@ -100,7 +96,13 @@ function criarAluna(cor, i) {
   mesclar(saia);
   return m;
 }
-const QUE_PASSO = ["plie", "bracos", "plie", "bracos", "arabE", "arabD", "giro", "bracos"];
+// os passos do ensaio (um a cada meio compasso) e quantas batidas cada um dura; stepE/stepD são o step-touch para cada lado
+const QUE_PASSO = ["pump", "stepE", "pump", "stepD", "running", "wave", "giro", "freeze"];
+const DURA = { freeze: 2.6, giro: 2 };
+const comoDanca = (nome, b) => (nome === "stepE" ? { passo: "step", b } : nome === "stepD" ? { passo: "step", b: b + 2 } : { passo: nome, b });
+// a apresentação, em batidas da música (104 BPM): street dance com a turma, terminando no freeze
+const SHOW = [[0, "groove"], [4, "pump"], [12, "step"], [20, "running"], [28, "wave"], [32, "quadril"], [36, "giro"], [38, "freeze"]];
+const SHOW_CORTINA = 42.5, SHOW_FIM = 46.5;
 const META = 8;
 export function montarTeatro({ id, def, ox, oz }) {
   const W = 24, D = 20, A = 8;
@@ -176,13 +178,13 @@ export function montarTeatro({ id, def, ox, oz }) {
   const CAM_PALCO = { pos: [ox, 3.3, oz + 3.2], alvo: [ox, 2.2, oz - 5] };
   let vista = null, api = null, seq = null;
   // ------------- ensaio: minijogo de passos
-  const rit = { apertos: 0, fase: "fora", passo: 0, proxBatida: 0, ultimoPasso: null, ultimoK: 0, acertos: 0, voltas: 0, tBrilho: 0, feitoNaJanela: false, giro: 0 };
-  const CONTA = 6, CADA = 3, ANDA = 2; // duas batidas de "vem aí" e o passo a cada compasso
+  const rit = { apertos: 0, fase: "fora", passo: 0, proxBatida: 0, ultimoPasso: null, bPasso: 0, acertos: 0, voltas: 0, tBrilho: 0, feitoNaJanela: false };
+  const CONTA = 8, CADA = 2, ANDA = 2; // dois compassos de "vem aí" e um passo a cada meio compasso (no 1 e no 3)
   function passoNo(n) { return QUE_PASSO[n % QUE_PASSO.length]; }
   const batidaDoPasso = (n) => CONTA + n * CADA;
   function comecar(a) {
     if (rit.fase !== "fora") return;
-    api = a; rit.fase = "ensaio"; rit.passo = 0; rit.acertos = 0; rit.feitoNaJanela = false; rit.ultimoPasso = null; rit.ultimoK = 0; rit.giro = 0;
+    api = a; rit.fase = "ensaio"; rit.passo = 0; rit.acertos = 0; rit.feitoNaJanela = false; rit.ultimoPasso = null; rit.bPasso = 0;
     mk.visible = false;
     est.dancou = 0; desenharMeta(0);
     vista = CAM_PALCO;
@@ -195,8 +197,8 @@ export function montarTeatro({ id, def, ox, oz }) {
     samira.acenar(2);
     api.dizer(NARRA, "Olhe as estrelinhas! Quando a estrelinha chegar no círculo, aperte o botão e dance no tempo da música, igual às alunas.", 6200);
     api.falar("rp-ballet-passos");
-    seq = criarSequencia(VALSA); seq.iniciar(0.6);
-    api.travar({ x: ox + LUGAR.x, z: oz + LUGAR.z, dir: 0, modo: "parado", segundos: 1e6, rotulo: "🩰 Passo!", aoAcao: apertou, posar: posarRabisco });
+    seq = criarSequencia(STREET); seq.iniciar(0.6);
+    api.travar({ x: ox + LUGAR.x, z: oz + LUGAR.z, dir: 0, modo: "street", segundos: 1e6, rotulo: "🩰 Passo!", aoAcao: apertou, posar: posarRabisco });
     est.ritmo = { get janela() { return rit.fase === "ensaio" && !rit.feitoNaJanela && Math.abs(seq.batida() - batidaDoPasso(rit.passo)) * seq.seg < 0.3; }, get apertos() { return rit.apertos; }, get acertos() { return rit.acertos; }, get fase() { return rit.fase; }, get t() { return rit.tFase ?? 0; }, get longe() { return Math.abs(seq.batida() - batidaDoPasso(rit.passo)) * seq.seg > 0.6; } };
   }
   const JANELA_S = 0.34;
@@ -206,7 +208,7 @@ export function montarTeatro({ id, def, ox, oz }) {
     const dif = (seq.batida() - batidaDoPasso(rit.passo)) * seq.seg;
     if (Math.abs(dif) > JANELA_S || rit.feitoNaJanela) return; // fora do tempo: nada acontece (ninguém perde), a próxima estrela já vem
     rit.feitoNaJanela = true; rit.acertos++;
-    rit.ultimoPasso = passoNo(rit.passo); rit.tPasso = 0; rit.giro = rit.ultimoPasso === "giro" ? 1 : 0;
+    rit.ultimoPasso = passoNo(rit.passo); rit.bPasso = batidaDoPasso(rit.passo); // o passo começa na batida certa, mesmo apertando um tiquinho antes
     desenharMeta(rit.acertos); api.sons.nota?.(rit.acertos - 1); rit.tBrilho = 0.35;
     if (rit.acertos % 3 === 0) samira.acenar(1);
     est.dancou = rit.acertos;
@@ -223,7 +225,7 @@ export function montarTeatro({ id, def, ox, oz }) {
   function comecarShow() {
     rit.fase = "show"; rit.tFase = 0;
     for (const s of spots) s.ligar(true);
-    seq = criarSequencia(VALSA_SHOW); seq.iniciar(0.2);
+    seq = criarSequencia(STREET_SHOW); seq.iniciar(0.2);
     abrirPara = 1;
     vista = { pos: [ox, 3.9, oz + 5.2], alvo: [ox, 2.4, oz - 5] };
     alunas.forEach((m, i) => m.grupo.position.set(V[i][0], PALCO, V[i][1]));
@@ -236,7 +238,7 @@ export function montarTeatro({ id, def, ox, oz }) {
     alunas.forEach((m, i) => m.grupo.position.set(V[i][0], PALCO, V[i][1]));
     mk.visible = true; est.ritmo = null;
     api.confete?.(); api.sons.vitoria?.(); samira.comemorar(3);
-    poseRabisco(api.rabisco, "nada", 0);
+    api.rabisco.danca = null;
     api.destravar(); api.rabisco.grupo.position.y = 0.07;
     // desce para a frente do palco, de costas para o corredor
     const dx = ox, dz = oz + ZF + 1.4; api.teleportar?.(dx, dz);
@@ -244,31 +246,24 @@ export function montarTeatro({ id, def, ox, oz }) {
     est.terminou = (est.terminou ?? 0) + 1;
     api.evento?.("dancou");
   }
-  // onde cada aluna está na coreografia (s = segundos de apresentação)
-  const CIRC = (i, s) => { const a = (i / alunas.length) * Math.PI * 2 + s * 0.7; return [Math.sin(a) * 3.6, -6.2 + Math.cos(a) * 1.3]; }; // sempre atrás do Rabisco
+  // onde cada aluna está na coreografia (B = batidas da apresentação): em V, depois em linha atrás do Rabisco e por fim a pose final
   const LINHA = (i) => [-4.5 + i * 3, -6.2];
   const FINAL = [[-4.4, -4.7], [-2.2, -5.5], [2.2, -5.5], [4.4, -4.7]];
   const lerp2 = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
   function coreografia(s, dt) {
+    const B = Math.max(0, seq.batida()), d = passoStreet(B, SHOW, 1e9);
     for (const [i, m] of alunas.entries()) {
-      let p = V[i], passo = "bracos", y = 0;
-      const b = seq.batida(), c = Math.floor(b / 3), k = Math.pow(Math.sin(((b % 3) / 3) * Math.PI), 0.7);
-      passo = ["plie", "bracos", "arabE", "arabD"][c % 4];
-      if (s > 8) p = lerp2(V[i], CIRC(i, s), faixa(s, 8, 9.2));
-      if (s > 15) p = lerp2(CIRC(i, s), LINHA(i), faixa(s, 15, 16));
-      if (s > 16) { p = LINHA(i); passo = "salto"; const q = ((s - 16) * 1.4 + i * 0.2) % 1; y = Math.sin(q * Math.PI) * 0.8; }
-      if (s > 19.5) { p = lerp2(LINHA(i), FINAL[i], faixa(s, 19.5, 20.5)); y = 0; passo = "bracos"; }
-      if (s > 23) passo = "reverencia";
-      const antes = [m.grupo.position.x, m.grupo.position.z], vai = Math.hypot(p[0] - antes[0], p[1] - antes[1]);
-      m.grupo.position.set(p[0], PALCO + y, p[1]);
-      m.atualizar(dt, { vel: vai > 0.03 && s < 19.5 && s > 8 ? 3 : 0 });
-      const forca = s > 23 ? faixa(s, 23, 23.6) : s > 19.5 ? 1 : passo === "salto" ? 1 : k;
-      poseAluna(m, passo, forca);
-      m.grupo.rotation.y = s > 8.5 && s < 15 ? ((i / alunas.length) * Math.PI * 2 + s * 0.7 + Math.PI / 2) : s > 15 && passo === "bracos" && s < 19.5 ? s * 6 : 0;
+      let p = V[i];
+      if (B > 28) p = lerp2(V[i], LINHA(i), faixa(B, 28, 30));
+      if (B > 36) p = lerp2(LINHA(i), FINAL[i], faixa(B, 36.5, 38));
+      m.grupo.position.set(p[0], PALCO, p[1]);
+      m.atualizar(dt, { vel: 0 });
+      poseAluna(m, d.passo, d.b);
+      m.grupo.rotation.y = d.passo === "giro" ? liso(d.b / 2) * Math.PI * 2 : 0;
     }
     for (const [i, h] of spots.entries()) {
       const fase = s * (0.5 + i * 0.09) + i * 1.3;
-      const alvo = s > 19.5 ? [[-3.2, -5], [-0.6, -3.9], [0.6, -3.9], [3.2, -5]][i] : [Math.sin(fase) * 6, -5.2 + Math.cos(fase * 1.2) * 1.6];
+      const alvo = B > 38 ? [[-3.2, -5], [-0.6, -3.9], [0.6, -3.9], [3.2, -5]][i] : [Math.sin(fase) * 6, -5.2 + Math.cos(fase * 1.2) * 1.6];
       h.apontar(alvo[0], YP, alvo[1]);
     }
   }
@@ -276,22 +271,12 @@ export function montarTeatro({ id, def, ox, oz }) {
   function posarRabisco(rb, dt, tr) {
     rb.grupo.position.y = PALCO;
     if (rit.fase !== "ensaio") tr.aoAcao = null; // na apresentação o botão some: é só assistir e dançar
-    if (rit.fase === "ensaio") {
-      rit.tPasso = (rit.tPasso ?? 9) + dt;
-      if (rit.ultimoPasso) {
-        const k = Math.sin(Math.min(1, rit.tPasso / 1.35) * Math.PI);
-        poseRabisco(rb, rit.ultimoPasso, k);
-        if (rit.giro) rb.grupo.rotation.y = tr.dir + Math.PI * 2 * liso(Math.min(1, rit.tPasso / 1.0));
-        if (rit.tPasso > 1.4) { rit.ultimoPasso = null; rit.giro = 0; }
-      }
-    } else if (rit.fase === "show") {
-      const s = rit.tFase, b = seq.batida(), c = Math.floor(b / 3), k = Math.pow(Math.sin(((b % 3) / 3) * Math.PI), 0.7);
-      if (s > 23) poseRabisco(rb, "reverencia", faixa(s, 23, 23.6));
-      else if (s > 19.5) poseRabisco(rb, "bracos", 1);
-      else if (s > 16) { const q = ((s - 16) * 1.4) % 1; rb.grupo.position.y = PALCO + Math.sin(q * Math.PI) * 0.8; poseRabisco(rb, "salto", 1); }
-      else if (s > 8.5) { poseRabisco(rb, "giro", 1); rb.grupo.rotation.y = tr.dir + s * 2.4; }
-      else poseRabisco(rb, ["plie", "bracos", "arabE", "arabD"][c % 4], k);
-    }
+    const b = Math.max(0, seq?.batida() ?? 0);
+    if (rit.fase === "ensaio") { // esperando: groove na batida; acertou: o passo da vez, contado da batida dele
+      if (rit.ultimoPasso && b - rit.bPasso > (DURA[rit.ultimoPasso] ?? 2)) rit.ultimoPasso = null;
+      rb.danca = rit.ultimoPasso ? comoDanca(rit.ultimoPasso, Math.max(0, b - rit.bPasso)) : { passo: "groove", b };
+    } else if (rit.fase === "show") rb.danca = passoStreet(b, SHOW, 1e9);
+    else rb.danca = { passo: "groove", b: (rit.tFase ?? 0) * 1.73 }; // cortina fechando: segue no balanço
   }
   I("dancar", "🩰 Subir no palco", 0, ZF + 1.4, (a) => comecar(a), 1.5);
 
@@ -309,9 +294,10 @@ export function montarTeatro({ id, def, ox, oz }) {
       seq?.atualizar();
       if (rit.fase === "show") {
         rit.tFase += dt;
-        if (rit.tFase > 23) abrirPara = rit.tFase > 25.5 ? 0 : 1;
+        const B = seq.batida();
+        if (B > SHOW_CORTINA - 2) abrirPara = B > SHOW_CORTINA ? 0 : 1;
         coreografia(rit.tFase, dt);
-        if (rit.tFase > 27) terminarShow();
+        if (B > SHOW_FIM) terminarShow();
         return;
       }
       if (rit.fase === "fecha") {
@@ -320,11 +306,12 @@ export function montarTeatro({ id, def, ox, oz }) {
         if (rit.tFase > 2.8) comecarShow();
         return;
       }
-      if (rit.fase !== "ensaio") { for (const m of alunas) { m.atualizar(dt, { vel: 0 }); poseAluna(m, "nada", 0); } return; }
+      if (rit.fase !== "ensaio") { for (const m of alunas) { m.atualizar(dt, { vel: 0 }); poseAluna(m, "nada", 0); m.grupo.rotation.y = 0; } return; }
       // ---- ensaio: as alunas dançam cada passo no tempo, mostrando como é
       const b = seq.batida(), nAgora = (b - CONTA) / CADA;
-      const nA = Math.floor(nAgora + 0.5), passoAl = passoNo(Math.max(0, nA)), kA = b < CONTA - 0.4 ? 0 : Math.pow(Math.max(0, 1 - Math.abs(nAgora - nA) * 2.2), 0.8);
-      alunas.forEach((m) => { m.atualizar(dt, { vel: 0 }); poseAluna(m, passoAl, kA); m.grupo.rotation.y = passoAl === "giro" ? liso(nAgora - nA + 0.5) * Math.PI * 2 : 0; });
+      const nA = Math.floor(nAgora), lb = b - batidaDoPasso(nA), nomeAl = passoNo(Math.max(0, nA));
+      const dAl = nA >= 0 && lb <= (DURA[nomeAl] ?? 2) ? comoDanca(nomeAl, lb) : { passo: "groove", b };
+      alunas.forEach((m) => { m.atualizar(dt, { vel: 0 }); poseAluna(m, dAl.passo, dAl.b); m.grupo.rotation.y = dAl.passo === "giro" ? liso(dAl.b / 2) * Math.PI * 2 : 0; });
       // a estrelinha da vez e as próximas deslizam até o círculo; cada uma vem de um lado
       const n = rit.passo;
       for (const [k, e] of estrelas.entries()) {

@@ -6,7 +6,10 @@
 //   - cada controle físico que aperta um botão ganha a primeira vaga livre (o navegador só "vê" o controle depois de um botão);
 //   - celular que entra pelo QR fica com a vaga que sobrar; sem vaga, espera ("as duas vagas já estão ocupadas");
 //   - caiu (controle desligou, tela do celular apagou): a vaga fica guardada e volta sozinha (mesmo controle ou mesmo celular);
-//     um controle novo também pode assumir uma vaga que caiu.
+//     um controle novo também pode assumir uma vaga que caiu — e assume a vaga 1 (o Rabisco) primeiro quando ela está sem
+//     ninguém jogando de fato (celular que caiu ou teclado), para 1 jogador com 1 controle nunca ficar "de fora";
+//   - teclado (computador no HDMI, controle remoto da TV): vaga 1 do tipo "teclado", só quando ninguém mais entrou;
+//     qualquer controle ou celular que chegar toma a vaga dele.
 //
 // A sala sobrevive à troca de página /tv → jogo → /tv: o código e o segredo do host ficam no sessionStorage desta aba
 // (chave "rabisco.tv", junto com quem está em cada vaga) e a página nova volta como host da MESMA sala (voltarHost).
@@ -42,7 +45,7 @@ export const urlTV = () => comSalaDeTeste(new URL(`${RAIZ}/tv/`));
 export const urlJogoTV = (id) => { const u = new URL(`${RAIZ}/jogos/${id}/`); u.searchParams.set("tv", "1"); return comSalaDeTeste(u); };
 export function voltarParaTV() { location.href = urlTV(); }
 // quem está numa vaga (para o nome ficar preso à pessoa): id do celular, "pad:0" do controle
-export const quemDaVaga = (v) => (v?.tipo === "celular" ? String(v.cel) : v?.tipo === "controle" ? `pad:${v.pad}` : null);
+export const quemDaVaga = (v) => (v?.tipo === "celular" ? String(v.cel) : v?.tipo === "controle" ? `pad:${v.pad}` : v?.tipo === "teclado" ? "teclado" : null);
 
 const primeiroNome = (n) => String(n || "").trim().split(/\s+/)[0].slice(0, 20); // para o celular vai só o primeiro nome
 
@@ -52,8 +55,8 @@ export function iniciarSalaTV({ layout = "padrao", pausar = false, permitirNovos
   const salvo = lerGuardado() || {};
   const vagas = [1, 2].map((n) => {
     const v = salvo.vagas?.[n - 1] || {};
-    const tipo = v.tipo === "controle" || v.tipo === "celular" ? v.tipo : null;
-    return { n, tipo, pad: tipo === "controle" ? Number(v.pad) : null, cel: tipo === "celular" ? String(v.cel) : null, conectado: false, visto: false, caiu: 0,
+    const tipo = v.tipo === "controle" || v.tipo === "celular" || (v.tipo === "teclado" && n === 1) ? v.tipo : null;
+    return { n, tipo, pad: tipo === "controle" ? Number(v.pad) : null, cel: tipo === "celular" ? String(v.cel) : null, conectado: tipo === "teclado", visto: tipo === "teclado", caiu: 0,
       d: { x: 0, y: 0, pulo: false, acao: false, baixo: false, start: false }, recebido: 0, pf: {}, pl: {}, antes: { pulo: false, acao: false } };
   });
   const espera = new Set(); // celulares a mais (as duas vagas ocupadas)
@@ -87,11 +90,18 @@ export function iniciarSalaTV({ layout = "padrao", pausar = false, permitirNovos
   function configurar(v) {
     if (sala && v.tipo === "celular" && v.conectado) sala.enviar(v.cel, { layout: layoutVaga[v.n - 1] || layout, nome: nomeDaVaga(v), cor: CORES_TV[v.n - 1], pausar, vibrar: 80, msg: "" });
   }
-  // escolhe a vaga de quem chega: livre (se pode entrar gente nova agora) → a de um celular que caiu → a de um controle que caiu
+  // escolhe a vaga de quem chega. Controle: a de um controle que caiu → a vaga 1 se ninguém joga nela de fato (teclado ou
+  // celular que caiu, ou ainda não voltou com "1 jogador" escolhido: 1 jogador com 1 controle sempre vira o Rabisco) → livre (se pode entrar gente nova agora) → a de
+  // um celular que caiu. Celular: a vaga 1 do teclado → livre → a de um celular que caiu.
   function vagaPara(quem) {
     const livre = permitirNovos() ? vagas.find((v) => !v.tipo) : null;
-    if (quem === "controle") return vagas.find((v) => v.tipo === "controle" && !v.conectado) || livre || vagas.find((v) => v.tipo === "celular" && !v.conectado && v.caiu);
-    return livre || vagas.find((v) => v.tipo === "celular" && !v.conectado && v.caiu);
+    const v1 = vagas[0];
+    if (quem === "controle") {
+      return vagas.find((v) => v.tipo === "controle" && !v.conectado)
+        || (v1.tipo === "teclado" || (v1.tipo === "celular" && !v1.conectado && (v1.caiu || escolhido === 1)) ? v1 : null)
+        || livre || vagas.find((v) => v.tipo === "celular" && !v.conectado && v.caiu);
+    }
+    return (v1.tipo === "teclado" ? v1 : null) || livre || vagas.find((v) => v.tipo === "celular" && !v.conectado && v.caiu);
   }
   if (sala) {
     sala.on("estado", (s) => {
@@ -172,7 +182,7 @@ export function iniciarSalaTV({ layout = "padrao", pausar = false, permitirNovos
       if (!novosPads.has(g.index) && !algumBotao(g)) continue;
       const v = vagaPara("controle");
       if (!v) continue;
-      const voltou = Boolean(v.caiu) || (v.tipo === "controle" && !v.visto);
+      const voltou = Boolean(v.caiu) || (v.tipo === "controle" && !v.visto) || (v.tipo === "celular" && !v.conectado);
       if (v.tipo === "celular" && v.cel && sala) { sala.enviar(v.cel, { msg: "Um controle 🎮 assumiu a sua vaga. Pode descansar o celular!" }); }
       zerar(v);
       v.tipo = "controle"; v.pad = g.index; v.conectado = true; v.visto = true;
@@ -263,6 +273,22 @@ export function iniciarSalaTV({ layout = "padrao", pausar = false, permitirNovos
       if (!v) return;
       if (v.tipo === "celular" && sala) sala.enviar(v.cel, { nome: "Obrigado!", msg: "O jogo seguiu sem este celular. Leia o QR de novo para voltar." });
       zerar(v); mudou();
+    },
+    // ninguém entrou e vão jogar pelo teclado (ou pelo controle remoto da TV): o teclado fica com a vaga 1
+    entrarTeclado() {
+      const v = vagas[0];
+      if (v.tipo && v.tipo !== "teclado") return false;
+      zerar(v); v.tipo = "teclado"; v.conectado = true; v.visto = true;
+      mudou();
+      return true;
+    },
+    // 1 jogador: quem está conectado vira o Rabisco (a vaga 1 caiu e a 2 está conectada → trocam de lugar)
+    trocarVagas() {
+      const [a, b] = vagas;
+      for (const k of ["tipo", "pad", "cel", "conectado", "visto", "caiu", "d", "recebido"]) { const x = a[k]; a[k] = b[k]; b[k] = x; }
+      if (b.tipo === "teclado") zerar(b); // o teclado só mora na vaga 1
+      configurar(a); configurar(b);
+      mudou();
     },
     // jogador 1 saiu e só o 2 ficou: o 2 vira o Rabisco
     subirVaga2() {

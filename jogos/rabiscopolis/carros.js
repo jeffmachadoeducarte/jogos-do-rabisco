@@ -115,16 +115,26 @@ export function carroFofo(cor = 0xec2e8c, pintura = null) {
   return g;
 }
 
-let texLogo = null;
+let texIcone = null, texTexto = null;
 export function onibusFofo() {
-  texLogo ??= carregarTextura("../../assets/marca/logos/azul-icone-rosa.png");
+  texIcone ??= carregarTextura("../../assets/marca/logos/icone-rosa.png");
+  texTexto ??= carregarTextura("../../assets/marca/logos/texto-azul.png");
   const g = new THREE.Group();
   const AMARELO = 0xffc61f, W = 2.9, L = 8.6;
   const forma = perfil([[L / 2 - 0.1, 0.5], [L / 2 + 0.05, 0.8, L / 2, 1.5], [L / 2 - 0.05, 1.85], [-L / 2 + 0.05, 1.85], [-L / 2 - 0.05, 1.5, -L / 2, 0.5]], [2.7, -2.7], 0.5);
   const corpo = corpoExtrudado(forma, W, mat(AMARELO), 0.25); g.add(corpo);
   const faixa = caixa(W + 0.04, 0.16, L - 0.4, mat(0x151515), { sombra: false }); faixa.position.y = 1.2; g.add(faixa);
-  // logo da escola nos dois lados
-  for (const s of [-1, 1]) { const lg = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.75), matNovo({ map: texLogo, transparent: true, alphaTest: 0.3 })); lg.position.set(s * (W / 2 + 0.02), 0.82, -0.3); lg.rotation.y = s * Math.PI / 2; g.add(lg); }
+  // logo da escola nos dois lados: na faixa amarela de cima (entre a faixa preta, 1,28, e a base das janelas, 1,85),
+  // centralizada entre as rodas (z = 0). Ícone rosa ao lado do texto azul (deitado o nome fica maior e legível),
+  // nas proporções das imagens; 2 materiais para os dois lados
+  const LOGO_H = 0.44, wIc = LOGO_H * 109 / 108, wTx = LOGO_H * 481 / 143, vao = 0.08, total = wIc + vao + wTx;
+  const matIc = matNovo({ map: texIcone, transparent: true, alphaTest: 0.3 }), matTx = matNovo({ map: texTexto, transparent: true, alphaTest: 0.3 });
+  const geoIc = new THREE.PlaneGeometry(wIc, LOGO_H), geoTx = new THREE.PlaneGeometry(wTx, LOGO_H);
+  for (const s of [-1, 1]) {
+    const lado = new THREE.Group(); lado.position.set(s * (W / 2 + 0.03), 1.56, 0); lado.rotation.y = s * Math.PI / 2; g.add(lado);
+    const ic = new THREE.Mesh(geoIc, matIc); ic.position.x = -total / 2 + wIc / 2; lado.add(ic);
+    const tx = new THREE.Mesh(geoTx, matTx); tx.position.x = total / 2 - wTx / 2; lado.add(tx);
+  }
   for (const z of [L / 2 + 0.08, -L / 2 - 0.08]) { const p = malha(new THREE.CapsuleGeometry(0.17, W - 0.6, 4, 10), mat(0x2f3440)); p.rotation.z = Math.PI / 2; p.position.set(0, 0.62, z); g.add(p); }
   for (const x of [-0.95, 0.95]) {
     const f = malha(new THREE.CircleGeometry(0.22, 16), farol, { sombra: false }); f.position.set(x, 1.0, L / 2 + 0.07); g.add(f);
