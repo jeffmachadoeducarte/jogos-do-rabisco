@@ -12,21 +12,21 @@
 export function criarJoystick(onde, { pulo = true } = {}) {
   const estilo = document.createElement("style");
   estilo.textContent = `
-  .jd-camada { position: absolute; inset: 0; z-index: 6; touch-action: none; display: none; }
+  .jd-camada { position: absolute; inset: 0; z-index: 6; touch-action: none; display: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   body.touch .jd-camada { display: block; }
   .jd-base { position: absolute; width: 132px; height: 132px; margin: -66px 0 0 -66px; border-radius: 50%; pointer-events: none;
     background: rgba(255,255,255,0.28); border: 5px solid rgba(21,21,21,0.45); opacity: 0; transition: opacity 0.15s; }
   .jd-base.ativo { opacity: 1; }
   .jd-pino { position: absolute; left: 50%; top: 50%; width: 62px; height: 62px; margin: -31px 0 0 -31px; border-radius: 50%;
     background: rgba(255,255,255,0.92); border: 4px solid #151515; }
-  .jd-dica { position: absolute; left: 22px; bottom: 22px; width: 110px; height: 110px; border-radius: 50%; pointer-events: none;
+  .jd-dica { position: absolute; left: calc(env(safe-area-inset-left, 0px) + 22px); bottom: calc(env(safe-area-inset-bottom, 0px) + 22px); width: 110px; height: 110px; border-radius: 50%; pointer-events: none;
     border: 4px dashed rgba(255,255,255,0.7); display: grid; place-items: center; font: 800 14px "Baloo 2", sans-serif; color: #fff;
     text-shadow: 0 1px 2px #000; text-align: center; transition: opacity 0.3s; }
-  .jd-pulo { position: absolute; right: 26px; bottom: 26px; width: 112px; height: 112px; border-radius: 50%; font-size: 48px; touch-action: none;
+  .jd-pulo { position: absolute; right: calc(env(safe-area-inset-right, 0px) + 26px); bottom: calc(env(safe-area-inset-bottom, 0px) + 26px); width: 112px; height: 112px; border-radius: 50%; font-size: 48px; touch-action: none;
     background: rgba(255,255,255,0.55); border: 6px solid rgba(21,21,21,0.55); }
   .jd-pulo.apertado { background: rgba(255,255,255,0.92); transform: scale(0.94); }
   @media (max-height: 520px) { .jd-base { width: 110px; height: 110px; margin: -55px 0 0 -55px; } .jd-pino { width: 50px; height: 50px; margin: -25px 0 0 -25px; }
-    .jd-pulo { width: 88px; height: 88px; font-size: 38px; right: 18px; bottom: 18px; } .jd-dica { width: 88px; height: 88px; left: 14px; bottom: 14px; font-size: 12px; } }`;
+    .jd-pulo { width: 88px; height: 88px; font-size: 38px; right: calc(env(safe-area-inset-right, 0px) + 18px); bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); } .jd-dica { width: 88px; height: 88px; left: calc(env(safe-area-inset-left, 0px) + 14px); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); font-size: 12px; } }`;
   document.head.append(estilo);
 
   const camada = document.createElement("div");
@@ -37,7 +37,7 @@ export function criarJoystick(onde, { pulo = true } = {}) {
   const botao = camada.querySelector(".jd-pulo");
   const api = { x: 0, y: 0, pulo: false, puloNovo: false, giro: 0, girar() { const g = this.giro; this.giro = 0; return g; } };
   let dedoAndar = null, dedoGirar = null, ox = 0, oy = 0, gx = 0;
-  const RAIO = 56;
+  const RAIO = 56, MORTA = 0.12;
 
   camada.addEventListener("pointerdown", (e) => {
     if (e.target === botao) return;
@@ -55,8 +55,18 @@ export function criarJoystick(onde, { pulo = true } = {}) {
     if (e.pointerId === dedoAndar) {
       let dx = e.clientX - ox, dy = e.clientY - oy;
       const d = Math.hypot(dx, dy);
-      if (d > RAIO) { dx *= RAIO / d; dy *= RAIO / d; }
-      api.x = dx / RAIO; api.y = -dy / RAIO;
+      // dedo passou da borda: a base vem atrás dele (não "perde" o dedo nem obriga a voltar até o centro para virar)
+      if (d > RAIO * 1.35) {
+        const r = camada.getBoundingClientRect(), puxa = d - RAIO * 1.35;
+        ox += (dx / d) * puxa; oy += (dy / d) * puxa;
+        base.style.left = `${ox - r.left}px`; base.style.top = `${oy - r.top}px`;
+        dx = e.clientX - ox; dy = e.clientY - oy;
+      }
+      const d2 = Math.hypot(dx, dy);
+      if (d2 > RAIO) { dx *= RAIO / d2; dy *= RAIO / d2; }
+      // zona morta no meio (dedo parado não anda sozinho) e o resto reescalado até 1
+      const m = Math.min(1, d2 / RAIO), k = m < MORTA ? 0 : (m - MORTA) / (1 - MORTA) / (m || 1);
+      api.x = (dx / RAIO) * k; api.y = (-dy / RAIO) * k;
       pino.style.transform = `translate(${dx}px, ${dy}px)`;
     } else if (e.pointerId === dedoGirar) {
       api.giro += e.clientX - gx; gx = e.clientX;
@@ -69,8 +79,9 @@ export function criarJoystick(onde, { pulo = true } = {}) {
   camada.addEventListener("pointerup", soltar);
   camada.addEventListener("pointercancel", soltar);
   if (botao) {
-    botao.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); if (!api.pulo) api.puloNovo = true; api.pulo = true; botao.classList.add("apertado"); navigator.vibrate?.(12); });
-    for (const ev of ["pointerup", "pointercancel", "pointerleave"]) botao.addEventListener(ev, () => { api.pulo = false; botao.classList.remove("apertado"); });
+    botao.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); try { botao.setPointerCapture(e.pointerId); } catch { /* dedo simulado */ } if (!api.pulo) api.puloNovo = true; api.pulo = true; botao.classList.add("apertado"); try { navigator.vibrate?.(12); } catch { /* */ } });
+    // o dedo pode escorregar para fora do botão: continua segurando até soltar
+    for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) botao.addEventListener(ev, () => { api.pulo = false; botao.classList.remove("apertado"); });
   }
   api.zerar = () => { api.x = api.y = 0; api.pulo = api.puloNovo = false; api.giro = 0; dedoAndar = dedoGirar = null; base.classList.remove("ativo"); pino.style.transform = ""; };
   return api;

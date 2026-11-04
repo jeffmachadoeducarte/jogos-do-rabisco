@@ -668,6 +668,8 @@ const api = {
   // para o teste e para quem quiser mostrar: as vagas da TV ({ n, tipo, pad, cel, conectado }) ou null
   get salaTV() { return tv ? { sala: tv.sala, vagas: tv.vagas.map(({ n, tipo, pad, cel, conectado }) => ({ n, tipo, pad, cel, conectado })) } : null; },
   voltarParaTV,
+  // TV como tela: troca o controle do celular do jogador 1 (ex.: "carro"/"heli" no veículo; null volta ao do jogo)
+  layoutJ1(l = null) { tv?.layoutDaVaga?.(1, l); },
   get tipo() { return tipo; },
   get modo() { return modo; },
   get ativo() { return modo === 2; },

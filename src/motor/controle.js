@@ -62,7 +62,8 @@ export function criarControle({ aoConectar = () => {}, aoDesconectar = () => {} 
   estilo.textContent = CSS;
   document.head.appendChild(estilo);
 
-  const vazio = () => ({ pulo: false, confirma: false, voltar: false, cima: false, baixo: false, esq: false, dir: false, start: false, select: false, acao: false });
+  // descer: só vem do celular de controle da TV (botão ▼ do helicóptero da Rabiscolândia); o gamepad usa LB/LT no próprio jogo
+  const vazio = () => ({ pulo: false, confirma: false, voltar: false, cima: false, baixo: false, esq: false, dir: false, start: false, select: false, acao: false, descer: false });
   let antes = vazio();
 
   // body.com-controle: o CSS do jogo pode trocar as dicas de toque pelas do controle
