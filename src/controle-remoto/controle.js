@@ -1,6 +1,6 @@
 // Celular de controle (abre pelo QR da tela do jogo: src/controle-remoto/?s=CÓDIGO).
 // Entra na sala do relay (contrato em .claude/tmp/protocolo-sala.md), mostra um controle grande no layout que o jogo
-// pedir ("kart", "cidade", "plataforma", "padrao") e manda o que a criança aperta: { x, y, pulo, acao, baixo, seq },
+// pedir ("kart", "cidade", "plataforma", "padrao", e na Rabiscolândia "carro"/"heli" quando o Rabisco entra num veículo) e manda o que a criança aperta: { x, y, pulo, acao, baixo, seq },
 // com y = +1 para CIMA. Reconecta sozinho (voltar + token guardado nesta aba) quando a tela apaga ou a rede cai.
 // Nada de nome, foto ou dado pessoal sai daqui: o nome que aparece no topo vem da tela do jogo.
 
@@ -172,20 +172,25 @@ function mostrarAviso(texto) {
 const vibrar = (ms) => { try { navigator.vibrate?.(ms); } catch { /* sem vibração (iPhone) */ } };
 
 // ------------------------------------------------------------------ Estado da entrada
-const estado = { x: 0, y: 0, pulo: false, acao: false, baixo: false, esq: false, dir: false, start: false };
+const estado = { x: 0, y: 0, pulo: false, acao: false, baixo: false, esq: false, dir: false, frente: false, re: false, start: false };
 let seq = 0, ultimoEnvio = 0, tEnvio = 0, ultimoTexto = "", ultimosBotoes = "";
 const envios = []; // horários dos últimos envios (teto por segundo)
 const TETO_POR_S = 45; // o relay derruba o que passar de 60/s: um "soltei" perdido deixava o botão preso até o batimento
 // Só manda o que MUDOU. Botão apertado/solto sai na hora (sem esperar o joystick); o joystick sai no máximo a ~30 por segundo.
-function enviarEstado(forcar = false) {
+function entradaAtual() {
   const x = estado.esq || estado.dir ? (estado.dir ? 1 : 0) - (estado.esq ? 1 : 0) : estado.x;
   // joystick arredondado em passos de 0,05: tremidinha do dedo não vira mensagem
   const q = (v) => Math.round(v * 20) / 20;
-  const d = { x: q(x), y: q(estado.y), pulo: estado.pulo, acao: estado.acao, baixo: estado.baixo };
+  // pedais (carro/helicóptero): Acelerar/Voar = para cima (+1), Ré = para baixo (−1); o protocolo segue o mesmo { x, y, ... }
+  const y = estado.frente || estado.re ? (estado.frente ? 1 : 0) - (estado.re ? 1 : 0) : estado.y;
+  return { x: q(x), y: q(y), pulo: estado.pulo, acao: estado.acao, baixo: estado.baixo };
+}
+function enviarEstado(forcar = false) {
+  const d = entradaAtual();
   if (estado.start) d.start = true; // ⏸ apertado
   const txt = JSON.stringify(d);
   if (!forcar && txt === ultimoTexto) { clearTimeout(tEnvio); tEnvio = 0; return; }
-  const botoes = `${d.pulo}${d.acao}${d.baixo}${Boolean(d.start)}${estado.esq}${estado.dir}`;
+  const botoes = `${d.pulo}${d.acao}${d.baixo}${Boolean(d.start)}${estado.esq}${estado.dir}${estado.frente}${estado.re}`;
   const agora = performance.now();
   while (envios.length && agora - envios[0] > 1000) envios.shift();
   const soJoy = botoes === ultimosBotoes;
@@ -206,6 +211,10 @@ const LAYOUTS = {
   cidade: { esq: ["joy"], dir: [["acao", "👋", "Ação"], ["pulo", "⬆", "Pulo", "menor"]] },
   plataforma: { esq: ["esq", "dir"], dir: [["pulo", "⬆", "Pulo"], ["baixo", "⬇", "", "baixo"]] },
   padrao: { esq: ["joy"], dir: [["pulo", "⬆", "Pulo"], ["acao", "⭐", "Ação", "menor"]] },
+  // Rabiscolândia no veículo (muda sozinho quando o Rabisco entra): ◀ ▶ grandes à esquerda; à direita o pedal Acelerar
+  // (alto, na borda), Ré embaixo ao lado, e Sair/Buzina pequenos lá em cima (longe dos pedais, para não sair sem querer)
+  carro: { esq: ["esq", "dir"], grade: true, dir: [["acao", "🚪", "Sair", "mini sair"], ["pulo", "📯", "Buzina", "mini buzina"], ["re", "⬇", "Ré", "re"], ["frente", "⬆", "Acelerar", "pedal"]] },
+  heli: { esq: ["esq", "dir"], grade: true, dir: [["acao", "🚪", "Sair", "mini sair"], ["frente", "➤", "Voar", "pedal voar"], ["pulo", "⬆", "Subir", "subir"], ["baixo", "⬇", "Descer", "descer"]] },
 };
 function botao(nome, ic, rotulo, extra = "") {
   const b = document.createElement("div");
@@ -232,7 +241,7 @@ function montar(qual) {
   };
   for (const e of L.esq) ze.append(peca(e));
   const col = L.dir.length > 1 ? document.createElement("div") : zd;
-  if (col !== zd) { col.className = "coluna"; zd.append(col); }
+  if (col !== zd) { col.className = L.grade ? "grade" : "coluna"; zd.append(col); }
   for (const e of L.dir) col.append(peca(e));
   todos = [...$("pad").querySelectorAll("[data-btn], [data-joy]")];
 }
@@ -242,7 +251,7 @@ let todos = []; // botões e joystick do layout atual (para achar o mais perto d
 const dedos = new Map(); // pointerId → { tipo: "btn"|"joy", el, nome }
 function aplicarBotoes() {
   const ativos = new Set([...dedos.values()].filter((d) => d.tipo === "btn").map((d) => d.nome));
-  for (const k of ["esq", "dir", "pulo", "acao", "baixo"]) estado[k] = ativos.has(k);
+  for (const k of ["esq", "dir", "pulo", "acao", "baixo", "frente", "re"]) estado[k] = ativos.has(k);
   for (const b of todos) if (b.dataset.btn) b.classList.toggle("apertado", ativos.has(b.dataset.btn));
   enviarEstado();
 }
@@ -312,7 +321,7 @@ function soltarTudo() {
   dedos.clear();
   for (const j of document.querySelectorAll(".joy.apertado")) j.classList.remove("apertado");
   for (const p of document.querySelectorAll(".joy .pino")) p.style.transform = "";
-  Object.assign(estado, { x: 0, y: 0, pulo: false, acao: false, baixo: false, esq: false, dir: false, start: false });
+  Object.assign(estado, { x: 0, y: 0, pulo: false, acao: false, baixo: false, esq: false, dir: false, frente: false, re: false, start: false });
   $("pausar").classList.remove("apertado");
   for (const b of document.querySelectorAll(".btn.apertado")) b.classList.remove("apertado");
   enviarEstado();
@@ -401,4 +410,6 @@ window.controleTeste = {
   derrubar() { try { ws?.close(); } catch { /* */ } }, // simula a rede caindo (reconecta sozinho)
   get enviadas() { return contagem.enviadas; }, // mensagens de entrada mandadas (medir o ritmo)
   emPe() { document.body.classList.add("em-pe"); }, // teste em retrato: dispensa o aviso "gire o celular"
+  get entrada() { return entradaAtual(); }, // o que iria para a tela agora ({ x, y, pulo, acao, baixo })
+  mostrarPad(l) { mostrar("pad"); montar(l); }, // foto/teste sem servidor: mostra o controle no layout pedido
 };
