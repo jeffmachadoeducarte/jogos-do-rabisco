@@ -1,7 +1,8 @@
 // Tela da TV (<site>/tv): sobe o relay real (servidor/sala.mjs), abre /tv como a TV (1280×720, sem toque), entra com
 // controle (gamepad simulado) e com "celulares" simulados (página do controle de verdade, toques de verdade) e confere:
 //  (a) /tv mostra QR (decodificado = atalho curto /c/) e o código;  (b) controle aperta botão → vaga 1 (Rabisco), celular → vaga 2;
-//  (c) sem controle, 2 celulares → vagas 1 e 2;  (d) escolhe o Kart pelas setas + celular → jogo em modo TV, cada kart só pelo seu celular;
+//  (c) sem controle, 2 celulares → vagas 1 e 2;  (d) setas + celular navegam o menu; o Kart (fora do menu por enquanto,
+//      src/catalogo.js JOGOS_NO_AR, mas pronto para a TV) abre por tvTeste.abrir → jogo em modo TV, cada kart só pelo seu celular;
 //  (n) 2 jogadores: "Qual é o seu nome?" (no celular de cada um e/ou no teclado da tela pelas setas), nomes nas vagas, HUD e avisos;
 //  (e) celular cai e volta na mesma vaga;  (f) "Voltar ao menu da TV" (pela pausa, só com o celular) volta com os jogadores;  (g) removido.
 // Uso: node --experimental-websocket ferramentas/teste/tv.mjs [http://localhost:8080]
@@ -130,7 +131,8 @@ if (quer("ab")) {
   ok(await t.ev(`document.getElementById('endereco').textContent.includes('localhost:8080/c ')`) || await t.ev(`document.getElementById('endereco').textContent.includes('/c e digite')`), "(a) texto 'ou abra <host>/c e digite o código'");
   ok(await t.ev("document.getElementById('vaga-1').textContent.includes('1 · Rabisco') && document.getElementById('vaga-2').textContent.includes('2 · Alice')"), "(a) vagas '1 · Rabisco' e '2 · Alice' (nome da criança do cadastro)");
   ok(await t.ev("!document.getElementById('dica-controle').hidden && document.getElementById('dica-controle').textContent.includes('Aperte qualquer botão do controle')"), "(a) dica '🎮 Aperte qualquer botão do controle'");
-  ok(await t.ev("tvTeste.foco === 'rabisco-kart'"), "(a) o foco já começa no primeiro jogo");
+  ok(await t.ev("tvTeste.foco === document.querySelector('.card').dataset.jogo && tvTeste.foco === 'rabiscopolis'"), "(a) o foco já começa no primeiro jogo (JOGAR Rabiscolândia)");
+  ok(await t.ev("!document.querySelector('[data-jogo=\"rabisco-kart\"]')"), "(a) Rabisco Kart fora do menu da TV (JOGOS_NO_AR)");
   ok(!(await t.ev("document.documentElement.scrollWidth > innerWidth + 1 || document.documentElement.scrollHeight > innerHeight + 1")), "(a) tudo cabe na tela da TV (sem rolagem)");
   await foto(t, "tv-menu-vazio.png");
 
@@ -147,12 +149,12 @@ if (quer("ab")) {
   ok(await ate(t, "tvTeste.vagas[1].tipo === 'celular' && tvTeste.vagas[1].conectado", 5000), "(b) celular → vaga 2 (companheiro) 📱");
   ok(await ate(c, "controleTeste.layout === 'padrao' && document.getElementById('chip-nome').textContent === 'Alice'"), "(b) celular no menu: layout 'padrao' e só o primeiro nome (Alice)");
   ok(await t.ev("document.getElementById('vaga-2').textContent.includes('📱') && document.getElementById('dica-controle').hidden"), "(b) vaga 2 mostra 📱 e a dica some (vagas cheias)");
-  // controle navega o menu: direcional → foco no 2º jogo
-  await t.ev("__btn(0, 15, true)"); await espera(200); await t.ev("__btn(0, 15, false)"); await espera(250);
-  ok(await t.ev("tvTeste.foco === 'rabiscopolis'"), "(b) direcional do controle move o foco entre os jogos");
-  // celular navega o menu: joystick para a esquerda → volta ao Kart
-  await joystick(c, -90, 0, 250);
-  ok(await ate(t, "tvTeste.foco === 'rabisco-kart'", 3000), "(b) joystick do celular move o foco no menu da TV");
+  // controle navega o menu: direcional ↑ → foco sobe para "1 / 2 jogadores"
+  await t.ev("__btn(0, 12, true)"); await espera(200); await t.ev("__btn(0, 12, false)"); await espera(250);
+  ok(await t.ev("!!document.querySelector('.qtd.controle-foco')"), "(b) direcional do controle move o foco no menu (JOGAR → 1/2 jogadores)");
+  // celular navega o menu: joystick para baixo → volta ao JOGAR
+  await joystick(c, 0, 90, 250);
+  ok(await ate(t, "tvTeste.foco === 'rabiscopolis'", 3000), "(b) joystick do celular move o foco no menu da TV");
   await espera(1900); // o recado "entrou" some
   await foto(t, "tv-menu.png");
   await foto(c, "controle-menu.png");
@@ -175,12 +177,13 @@ ok(await ate(t, "tvTeste.vagas[1].tipo === 'celular' && tvTeste.vagas[1].conecta
 ok(await ate(c2, "document.getElementById('chip-nome').textContent === 'Alice'"), "(c) 2º celular mostra 'Alice'");
 const v0 = await vagas(t);
 
-// ------------------------------------------------------------------ (d) escolhe o Kart pelas setas (controle remoto da TV) e o celular confirma
-await tecla(t, "ArrowRight", "ArrowRight", 39);
-ok(await t.ev("tvTeste.foco === 'rabiscopolis'"), "(d) seta → (controle remoto da TV) move o foco");
-await tecla(t, "ArrowLeft", "ArrowLeft", 37);
-ok(await t.ev("tvTeste.foco === 'rabisco-kart'"), "(d) seta ← volta ao Kart");
+// ------------------------------------------------------------------ (d) setas (controle remoto da TV) e o celular confirma; abre o Kart
+await tecla(t, "ArrowUp", "ArrowUp", 38);
+ok(await t.ev("!!document.querySelector('.qtd.controle-foco, .qtd:focus')"), "(d) seta ↑ (controle remoto da TV) move o foco para 1/2 jogadores");
+await t.ev("document.getElementById('jog-2').focus(); document.getElementById('jog-2').classList.add('controle-foco')");
 await segurar(c1, ".btn[data-btn=pulo]", 150); // botão do celular confirma (como o A do controle)
+ok(await ate(t, "tvTeste.jogadores === 2", 3000), "(d) o botão do celular confirmou '2 jogadores'");
+await t.ev("tvTeste.abrir('rabisco-kart')"); // o Kart está fora do menu por enquanto, mas continua pronto para a TV
 // ------------------------------------------------------------------ (n) 2 jogadores: "Qual é o seu nome?" antes de abrir o jogo
 // jogador 1 responde no PRÓPRIO celular (vem com o primeiro nome do cadastro); jogador 2 escreve na TV com as setas (teclado da tela)
 ok(await ate(t, "document.querySelector('.nomes-tela')?.dataset.jogador === '1' && location.pathname.endsWith('/tv/')", 5000), "(n) 2 jogadores: a TV pergunta o nome do jogador 1 antes de abrir o jogo");
