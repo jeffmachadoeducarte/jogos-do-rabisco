@@ -10,8 +10,8 @@
   <meta name="apple-mobile-web-app-title" content="Rabisco">
   <link rel="apple-touch-icon" href="assets/app/apple-touch-icon.png">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Jogos do Rabisco</title>
-  <meta name="description" content="Jogos pedagógicos do Rabisco, mascote da Educarte Escola Cristã.">
+  <title>Rabiscolândia · Jogos do Rabisco</title>
+  <meta name="description" content="Rabiscolândia: a cidade 3D do Rabisco, mascote da Educarte Escola Cristã.">
   <link rel="icon" href="assets/marca/logos/icone-rosa.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,6 +19,7 @@
   <!-- foto da cena (pré-renderizada) aparece na hora; a cena 3D viva entra por cima depois -->
   <link rel="preload" as="image" href="assets/portal-entrada-paisagem.webp" media="(orientation: landscape)" fetchpriority="high">
   <link rel="preload" as="image" href="assets/portal-entrada-retrato.webp" media="(orientation: portrait)" fetchpriority="high">
+  <link rel="preload" as="font" href="assets/fontes/NeulisCursive-Black.otf" type="font/otf" crossorigin>
   <link rel="stylesheet" href="src/style.css">
   <link rel="stylesheet" href="src/motor/familia.css">
 </head>
@@ -26,21 +27,57 @@
   <canvas id="cena" aria-hidden="true"></canvas>
   <div class="veu" aria-hidden="true"></div>
 
+  <!-- Tela de abertura da Rabiscolândia (o primeiro jogo de JOGOS_NO_AR em src/catalogo.js).
+       O JOGAR vem primeiro na página: é o primeiro item do controle e do teclado. -->
+  <main class="abertura" id="abertura">
+    <div class="marca-jogo">
+      <span class="serie"><img src="assets/marca/logos/icone-rosa.png" alt="" width="28" height="28">Jogos do Rabisco</span>
+      <h1 class="titulo-jogo" id="titulo-jogo" aria-label="Rabiscolândia"><span class="l1" aria-hidden="true">Rabisco</span><span class="l2" aria-hidden="true">lândia</span></h1>
+      <p class="slogan" id="slogan">A cidade do Rabisco para explorar do seu jeito</p>
+    </div>
+
+    <a class="jogo pronto jogar" id="jogar" href="jogos/rabiscopolis/" aria-label="Jogar Rabiscolândia">
+      <span class="jogar-icone" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24"><path d="M8 5.2v13.6a1 1 0 0 0 1.5.86l11-6.8a1 1 0 0 0 0-1.72l-11-6.8A1 1 0 0 0 8 5.2z" fill="currentColor"/></svg></span>
+      <span class="jogar-texto">Jogar</span>
+    </a>
+    <p class="dica" id="dica" aria-hidden="true"></p>
+
+    <div class="secundarios" id="secundarios">
+      <button class="sec" id="som" type="button" aria-label="Configurações: som e jogar na TV">⚙️</button>
+      <button class="sec instalar" id="instalar" type="button" hidden aria-label="Instalar o app"><span class="ico" aria-hidden="true">📲</span><span class="rot">Instalar</span></button>
+    </div>
+
+    <!-- mais jogos no ar (JOGOS_NO_AR com mais de um id): aparecem aqui, em miniatura -->
+    <nav class="mais-jogos" id="mais-jogos" aria-label="Outros jogos" hidden></nav>
+  </main>
+
   <header class="topo">
     <img class="logo" src="assets/marca/logos/azul-icone-rosa.png" alt="Educarte Escola Cristã">
-    <button class="familia-botao-portal" id="familia" aria-label="Cadastrar a família"><span class="roda">🧒</span><span>Família</span></button>
-    <button class="instalar" id="instalar" hidden aria-label="Instalar o app">📲 Instalar</button>
+    <div class="perfil">
+      <span class="moedas" id="moedas" hidden></span>
+      <button class="familia-botao-portal" id="familia" type="button" aria-label="Cadastrar a família"><span class="roda">🧒</span><span>Família</span></button>
+    </div>
   </header>
 
-  <section class="boas-vindas" id="boas-vindas">
-    <h1>Jogos do <span>Rabisco</span></h1>
-    <p>Escolha o jogo e vamos brincar!</p>
-  </section>
+  <ul class="destaques" id="destaques" aria-label="Na Rabiscolândia">
+    <li><span aria-hidden="true">🏠</span>Decore sua casa</li>
+    <li><span aria-hidden="true">🚗</span>Carros e helicóptero</li>
+    <li><span aria-hidden="true">👩‍🚒</span>Profissões</li>
+    <li><span aria-hidden="true">📒</span>Álbum de figurinhas</li>
+  </ul>
 
-  <!-- vitrine: os jogos que estão no ar (JOGOS_NO_AR em src/catalogo.js), desenhados por src/app.js -->
-  <main class="vitrine" id="vitrine" aria-label="Escolha o jogo"></main>
+  <!-- balão do Rabisco: segue a cabeça dele na cena 3D -->
+  <div class="balao" id="balao" aria-hidden="true"></div>
 
-  <button id="som" class="som" aria-label="Configurações: som e jogar na TV">⚙️</button>
+  <!-- transição ao JOGAR: a íris abre a partir do botão e cobre a tela enquanto a cidade carrega -->
+  <div class="cortina" id="cortina" aria-hidden="true">
+    <div class="cortina-miolo">
+      <span class="cortina-titulo"><span class="l1">Rabisco</span><span class="l2">lândia</span></span>
+      <span class="cortina-carrega"><i></i><i></i><i></i></span>
+      <span class="cortina-texto">Abrindo a cidade…</span>
+    </div>
+  </div>
+  <div class="cortina-aro" aria-hidden="true"></div>
 
   <script type="module" src="src/app.js"></script>
 </body>
