@@ -23,6 +23,8 @@ import { definirModal, focar } from "./controle.js";
 import { pausaAtual } from "./pausa.js";
 import { qrSvg } from "../../vendor/qr.js";
 import { SALA_JOGOS } from "../config.js";
+import { montarGuia, CSS_GUIA } from "./guia-tv.js";
+import "./tela-acesa.js"; // tela não apaga durante a partida (Screen Wake Lock)
 
 const CHAVE_SOM = "rabisco.som";
 const CHAVE_TELA = "rabisco.telaTV";
@@ -93,6 +95,8 @@ const CSS = `
 .eng-tela[hidden] { display: none; }
 .eng-cartao { position: relative; background: #fff; border: 5px solid #151515; border-radius: 30px; box-shadow: 8px 10px 0 #151515;
   padding: 16px 20px 18px; width: min(680px, 100%); max-height: 100%; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+.eng-cartao, .eng-cartao * { line-height: 1.2; }
+.eng-cartao > * { flex-shrink: 0; } /* sem isso os botões se espremem e o texto vaza quando o painel rola */
 .eng-cartao h2 { margin: 0 44px 0 0; font-size: clamp(24px, 4vw, 34px); line-height: 1.1; }
 .eng-cartao p { margin: 0; font-weight: 700; font-size: clamp(15px, 2vw, 18px); }
 .eng-fechar { position: absolute; top: 10px; right: 10px; width: 46px; height: 46px; border-radius: 50%; font-size: 22px; line-height: 1; padding: 0;
@@ -123,7 +127,7 @@ function garantirCss() {
   cssPronto = true;
   const s = document.createElement("style");
   s.dataset.engrenagem = "";
-  s.textContent = CSS;
+  s.textContent = CSS + CSS_GUIA;
   document.head.append(s);
 }
 const h = (tag, props = {}, filhos = []) => {
@@ -146,6 +150,7 @@ function botaoGrande(ic, titulo, sub, classe, acao, dados = {}) {
 }
 
 // ------------------------------------------------------------------ Painel
+let foco = null; // seletor do botão que mantém o foco quando o painel é redesenhado
 let tela = null, cartao = null, vista = "principal", pausouAqui = false, desligarOuvinte = null;
 const extras = [];
 function montar() {
@@ -172,13 +177,16 @@ function desenhar() {
     if (naTV()) filhos.push(botaoGrande("↩️", "Voltar ao normal", "Sair do jeito TV", "", () => { if (!voltarAoNormal()) { vista = "principal"; desenhar(); } }, { "data-eng": "normal" }));
   } else if (vista === "tv") {
     filhos.push(h("h2", { texto: "📺 Jogar na TV" }));
-    filhos.push(h("p", { texto: "Ligou o celular ou tablet na TV (espelhando ou no cabo)? Escolha como vão jogar:" }));
+    filhos.push(botaoGrande("📖", "Como ligar na TV", "Passo a passo para iPhone, Android e computador (Roku, Android TV, Samsung, LG, cabo).", "ligado", () => { vista = "guia"; desenhar(); }, { "data-eng": "guia" }));
+    filhos.push(h("p", { texto: "Já ligou o celular ou tablet na TV (espelhando ou no cabo)? Escolha como vão jogar:" }));
     const t = telaLocal();
     filhos.push(botaoGrande("👆", "Jogar aqui mesmo", "Vocês olham a TV e jogam tocando neste aparelho. Dá para ligar um controle 🎮 para o 2º jogador.", `rosa${t === "aqui" ? " escolhido" : ""}`, () => escolher("aqui"), { "data-eng": "aqui" }));
     filhos.push(botaoGrande("📱", "Mais um controle pelo celular", "Você joga no toque e o 2º jogador entra lendo o QR com o celular.", `ciano${t === "mais1" ? " escolhido" : ""}`, () => escolher("mais1"), { "data-eng": "mais1" }));
     filhos.push(botaoGrande("🎮", "Usar só controles", "Este aparelho vira só a tela. Jogam com controles 🎮 (com ou sem fio) ou celulares 📱.", `laranja${emModoTV ? " escolhido" : ""}`, () => escolher("controles"), { "data-eng": "controles" }));
     if (naTV()) filhos.push(botaoGrande("↩️", "Voltar ao normal", "", "", () => { if (!voltarAoNormal()) { vista = "principal"; desenhar(); } }, { "data-eng": "normal" }));
     filhos.push(botaoGrande("←", "Voltar", "", "", () => { vista = "principal"; desenhar(); }, { "data-eng": "voltar" }));
+  } else if (vista === "guia") {
+    filhos.push(...montarGuia({ redesenhar: (sel) => { foco = sel; desenhar(); }, voltar: () => { vista = "tv"; desenhar(); }, pronto: () => fechar(), botaoGrande }));
   } else if (vista === "pronto-aqui") {
     filhos.push(h("h2", { texto: "👆 Pronto! Jogue aqui mesmo" }));
     filhos.push(h("p", { texto: "Olhem a TV e joguem tocando neste aparelho. Os botões da tela ficam quase invisíveis: a metade esquerda e a direita da tela continuam funcionando." }));
@@ -211,9 +219,12 @@ function desenhar() {
     if (J?.aoMudar) desligarOuvinte = J.aoMudar(() => { if (vista === "pronto-mais1") desenharQr(); });
     filhos.push(botaoGrande("✓", "Pronto, vamos jogar!", "", "rosa", () => fechar(), { "data-eng": "ok" }));
   }
+  cartao.classList.toggle("guia", vista === "guia");
   cartao.replaceChildren(fecharB, ...filhos);
   // foco no primeiro botão grande (controle e setas já andam dentro do painel)
-  setTimeout(() => { if (tela && !tela.hidden) { const b = cartao.querySelector(".eng-grande"); if (b) focar(b); } }, 30);
+  const antes = foco;
+  foco = null;
+  setTimeout(() => { if (tela && !tela.hidden) { const b = (antes && cartao.querySelector(antes)) || cartao.querySelector(".eng-grande, .gtv-aba[aria-selected=true]"); if (b) focar(b); } }, 30);
 }
 function escolher(qual) {
   if (qual === "controles") { if (emModoTV) { fechar(); return; } irParaSoControles(); return; }
@@ -230,7 +241,7 @@ export function abrir(qual = "principal") {
   pausouAqui = false;
   if (p && !p.ativa && p.podePausar?.()) { p.pausar(); pausouAqui = true; }
   tela.hidden = false;
-  definirModal(tela, { aoVoltar: () => (vista === "principal" ? fechar() : (vista = "principal", desenhar())) });
+  definirModal(tela, { aoVoltar: () => (vista === "principal" ? fechar() : (vista = vista === "guia" ? "tv" : "principal", desenhar())) });
   desenhar();
 }
 export function fechar() {
