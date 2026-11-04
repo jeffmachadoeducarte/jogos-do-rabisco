@@ -137,17 +137,14 @@ addEventListener("pointerdown", (e) => {
   if (!saudar({ gravada: false })) falar("portal-oi");
 });
 
-// ------------------------------------------------------------------ Família (cadastro antes do primeiro jogo)
-const btnFamilia = $("familia");
-function desenharFamilia() {
-  const c = Familia.crianca();
-  btnFamilia.innerHTML = `<span class="roda">${c?.foto ? `<img src="${c.foto}" alt="">` : "🧒"}</span><span>${c ? c.nome : "Família"}</span>`;
-  btnFamilia.setAttribute("aria-label", c ? `Família: ${c.nome}. Editar cadastro` : "Cadastrar a família");
-}
-desenharFamilia();
-Familia.aoMudar(desenharFamilia);
-btnFamilia.addEventListener("click", () => Familia.abrirCadastro({ obrigatorio: false, titulo: "Nossa família" }));
-if (params.has("cadastro")) Familia.abrirCadastro({ obrigatorio: params.get("cadastro") !== "editar" });
+// ------------------------------------------------------------------ Quem vai jogar? (perfis da família: src/motor/perfis-ui.js)
+// O chip do topo mostra quem está jogando (montado com textContent, nunca innerHTML) e abre a troca de jogador.
+// Na 1ª entrada abre o cadastro único (responsável + filhos); ?semcadastro não abre (testes), ?cadastro abre a área dos pais.
+import("./motor/perfis-ui.js").then(({ ligarChip, primeiraEntrada }) => {
+  ligarChip($("familia"));
+  if (params.has("cadastro")) Familia.abrirCadastro();
+  else if (!params.has("semcadastro")) primeiraEntrada();
+});
 
 // Controle: direcional escolhe o jogo, A abre
 const controle = ligarControle({

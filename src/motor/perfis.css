@@ -1,0 +1,132 @@
+/* Perfis da família (src/motor/perfis-ui.js): cadastro da 1ª entrada, "Quem vai jogar?", portão e área dos pais.
+   Usa o cartão de familia.css; aqui ficam os pedaços novos. Pensado para celular em pé, celular deitado e TV. */
+.familia-tela.perfis-tela, .familia-tela.foto-tela { z-index: 120; }
+.perfis-tela { align-items: center; }
+.perfis-tela .familia-cartao { position: relative; }
+.perfis-tela h3 { margin: 10px 0 4px; font-size: 18px; font-weight: 800; color: var(--f-rosa); }
+.perfis-tela .familia-acoes { margin-top: 10px; }
+.perfis-tela .botao.perigo, .perfis-tela .perigo { background: #d7263d; color: #fff; }
+.perfis-tela button { touch-action: manipulation; }
+.perfis-tela button:focus-visible, .perfis-tela a:focus-visible, .perfis-tela .pilula:focus-within { outline: 5px solid var(--f-amarelo); outline-offset: 2px; }
+
+/* ---------- avatares (foto do rosto ou emoji num círculo colorido) ---------- */
+.perfil-avatar {
+  width: clamp(88px, 22vmin, 170px); aspect-ratio: 1; border-radius: 50%; border: 5px solid var(--f-tinta); overflow: hidden;
+  display: grid; place-items: center; font-size: clamp(44px, 11vmin, 90px); line-height: 1; background: #e9f6fd; box-shadow: 0 6px 0 var(--f-tinta);
+}
+.perfil-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.perfil-avatar.mini { width: 52px; font-size: 28px; border-width: 3px; box-shadow: 0 3px 0 var(--f-tinta); flex: none; }
+.cor-0 { background: #bfeeff; } .cor-1 { background: #ffd1e8; } .cor-2 { background: #ffe0bf; }
+.cor-3 { background: #d6f5c9; } .cor-4 { background: #e2d9ff; } .cor-5 { background: #fff1b3; }
+
+/* ---------- Quem vai jogar? ---------- */
+.quem-cartao { width: min(980px, 100%); text-align: center; }
+.quem-cartao .intro { text-align: center; }
+.quem-rabisco { position: absolute; right: 14px; top: -6px; height: clamp(60px, 14vmin, 120px); pointer-events: none; }
+.quem-grade { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(10px, 3vmin, 34px); margin: 10px 0 6px; }
+.quem-item {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; border: 0; cursor: pointer; padding: 8px 6px; border-radius: 26px;
+  font: 800 clamp(18px, 3.4vmin, 32px) "Baloo 2", system-ui, sans-serif; color: var(--f-tinta); min-width: 110px;
+}
+.quem-item small { font-size: clamp(13px, 2vmin, 18px); font-weight: 700; color: #667; min-height: 1.2em; }
+.quem-item.ativo small { color: var(--f-rosa); }
+.quem-item.ativo .perfil-avatar { border-color: var(--f-rosa); box-shadow: 0 6px 0 var(--f-rosa); }
+.quem-item:hover .perfil-avatar, .quem-item:focus-visible .perfil-avatar, .quem-item.controle-foco .perfil-avatar { transform: translateY(-4px) scale(1.04); }
+.quem-item .perfil-avatar { transition: transform 0.15s; }
+.quem-cartao .familia-acoes { justify-content: center; }
+.quem-contato { display: inline-block; margin: 2px 0 0; font-weight: 700; font-size: 14px; color: #0a6fb0; }
+.quem-nome { max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- cadastro (2 telas) ---------- */
+.cadastro-cartao { width: min(760px, 100%); }
+.cad-passos { margin: 0 auto 0 8px; font-weight: 800; color: #fff; background: var(--f-ciano); border: 3px solid var(--f-tinta); border-radius: 999px; padding: 0 12px; font-size: 15px; }
+.cad-etapa[hidden] { display: none; }
+.nota-cpf { margin: -4px 0 8px; font-size: 13px; font-weight: 700; color: #557; }
+.campo-pin { letter-spacing: 0.4em; font-weight: 800 !important; max-width: 180px; }
+.cad-filhos { display: grid; gap: 10px; }
+.cad-filho { border: 3px dashed #cfe3ee; border-radius: 18px; padding: 8px 10px; background: #fbfdff; }
+.cad-filho-topo { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.cad-filho-topo b { font-size: 17px; }
+.cad-remover { margin-left: auto; width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--f-tinta); background: #fff; font: 900 18px "Baloo 2", sans-serif; cursor: pointer; }
+.cad-genero { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.cad-genero .rotulo { font-weight: 700; font-size: 14px; }
+.pilulas { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.pilula { position: relative; display: inline-flex !important; flex-direction: row !important; cursor: pointer; }
+.pilula input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.pilula span { display: inline-block; font: 800 17px "Baloo 2", system-ui, sans-serif; border: 3px solid var(--f-tinta); border-radius: 999px; padding: 4px 16px; background: #fff; box-shadow: 0 3px 0 var(--f-tinta); }
+.pilula input:checked + span { background: var(--f-amarelo); }
+.pilula input:focus-visible + span, .pilula input.controle-foco + span { outline: 5px solid var(--f-amarelo); outline-offset: 2px; }
+.pilulas input[aria-invalid="true"] + span { border-color: var(--f-rosa); }
+.botao-mais { margin-top: 10px; width: 100%; font: 800 18px "Baloo 2", system-ui, sans-serif; cursor: pointer; background: #fff; color: var(--f-tinta);
+  border: 3px dashed var(--f-tinta); border-radius: 18px; padding: 8px 12px; }
+.cad-adulto-genero { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: -6px 0 10px 34px; font-weight: 700; font-size: 14px; }
+.cad-adulto-genero[hidden] { display: none; }
+.perfis-tela .familia-cartao label.familia-check { flex-direction: row; align-items: flex-start; font-weight: 600; }
+.cad-lgpd { background: #fff8dd; border: 2px dashed #e7c84a; padding: 8px 10px !important; }
+.cad-lgpd a, .pais-link { color: #0a6fb0; font-weight: 800; }
+.familia-check input[aria-invalid="true"] { outline: 4px solid var(--f-rosa); }
+.familia-foto .botoes .botao-tirar { background: #fff; }
+.familia-foto .roda { width: 64px; height: 64px; font-size: 28px; }
+
+/* ---------- portão dos pais ---------- */
+.portao-cartao { width: min(440px, 100%); text-align: center; }
+.portao-form .portao-dica { margin: -4px 0 8px; font-size: 14px; font-weight: 600; color: #667; }
+.portao-form .portao-dica:empty { display: none; }
+.portao-cartao #portao-resposta { display: block; width: min(260px, 100%); margin: 0 auto 8px; text-align: center; font: 800 32px "Baloo 2", system-ui, sans-serif;
+  border: 4px solid var(--f-tinta); border-radius: 18px; padding: 4px 8px; letter-spacing: 0.2em; }
+.portao-cartao #portao-resposta[type="email"] { font-size: 20px; letter-spacing: 0; }
+.portao-esqueci { background: none; border: 0; color: #0a6fb0; font: 800 15px "Baloo 2", sans-serif; text-decoration: underline; cursor: pointer; margin-bottom: 4px; }
+.portao-esqueci[hidden] { display: none; }
+
+/* ---------- área dos pais ---------- */
+.pais-cartao { width: min(720px, 100%); }
+.pais-cartao .portao-cadeado { text-align: center; }
+.pais-cartao h2 { text-align: center; }
+.pais-cartao > .pais-corpo > .intro { text-align: center; }
+.pais-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pais-jogador { display: flex; align-items: center; gap: 10px; border: 3px solid #e3eef5; border-radius: 18px; padding: 6px 10px; flex-wrap: wrap; }
+.pais-nome { display: flex; flex-direction: column; margin-right: auto; min-width: 0; }
+.pais-nome b { font-size: 18px; overflow: hidden; text-overflow: ellipsis; }
+.pais-nome small { font-weight: 700; color: #667; }
+.pais-mini { font: 800 15px "Baloo 2", system-ui, sans-serif; border: 3px solid var(--f-tinta); border-radius: 999px; padding: 3px 12px; background: #fff; cursor: pointer; box-shadow: 0 3px 0 var(--f-tinta); }
+.pais-botoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin: 12px 0; }
+.pais-grande { font: 800 17px "Baloo 2", system-ui, sans-serif; border: 3px solid var(--f-tinta); border-radius: 18px; padding: 8px 12px; background: #fff; cursor: pointer; box-shadow: 0 4px 0 var(--f-tinta); color: var(--f-tinta); }
+.pais-grande.perigo { color: #fff; }
+.pais-privacidade { border-top: 3px dashed #e3eef5; padding-top: 8px; display: grid; gap: 8px; justify-items: start; }
+.pais-privacidade p { margin: 0; font-weight: 700; font-size: 14px; }
+
+/* ---------- confirmação ---------- */
+.confirmar-cartao { width: min(480px, 100%); text-align: center; }
+.confirmar-cartao h2 { font-size: clamp(24px, 5vw, 32px); }
+.confirmar-cartao .familia-acoes { justify-content: center; }
+
+/* ---------- celular deitado: cartão largo, campos em 2-3 colunas, topo compacto ---------- */
+@media (max-height: 520px) and (orientation: landscape) {
+  .perfis-tela { align-items: flex-start; }
+  .perfis-tela .familia-cartao { padding: 10px 16px 14px; }
+  .perfis-tela .familia-cartao h2 { font-size: 28px; margin-top: 2px; }
+  .perfis-tela .familia-topo img.logo { height: 30px; }
+  .perfis-tela .familia-topo img.rabisco { height: 48px; }
+  .cadastro-cartao { width: min(820px, 100%); }
+  .cadastro-cartao .familia-topo { position: absolute; right: 14px; top: 8px; gap: 8px; }
+  .cadastro-cartao .familia-topo img.logo, .cadastro-cartao .familia-topo img.rabisco { display: none; }
+  .perfis-tela .intro { font-size: 14px; margin-bottom: 6px; }
+  .perfis-tela fieldset { padding: 4px 12px 8px; margin-bottom: 8px; }
+  .perfis-tela .familia-cartao input:not([type=checkbox]):not([type=radio]) { padding: 5px 10px; font-size: 16px; }
+  .cad-etapa[data-etapa="1"] .familia-campos .largo { grid-column: auto; }
+  .cad-filho .familia-campos { grid-template-columns: 1fr 1fr; }
+  .perfis-tela .familia-check { font-size: 13px; margin: 2px 0 8px; }
+  .perfil-avatar:not(.mini) { width: 96px; font-size: 48px; }
+  .quem-rabisco { display: none; }
+}
+/* ---------- TV / tela grande: tudo maior ---------- */
+@media (min-width: 1500px) and (min-height: 900px) {
+  .perfis-tela .familia-cartao { font-size: 22px; }
+  .quem-cartao { width: min(1400px, 100%); }
+  .cadastro-cartao { width: min(1000px, 100%); }
+  .perfis-tela .familia-cartao label, .perfis-tela .familia-check { font-size: 18px; }
+  .perfis-tela .familia-cartao input:not([type=checkbox]):not([type=radio]) { font-size: 22px; padding: 10px 14px; }
+  .perfis-tela .familia-cartao h2 { font-size: 52px; }
+  .perfis-tela .intro { font-size: 20px !important; }
+  .pilula span { font-size: 21px; }
+}

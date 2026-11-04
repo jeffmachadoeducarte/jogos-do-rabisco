@@ -1,39 +1,55 @@
-// Cadastro da família: responsável (nome, e-mail, WhatsApp, cidade/UF) e criança (nome, nascimento,
-// menina/menino, foto). Fica em localStorage (`rabisco.familia`) e, se `WEBHOOK_FAMILIA` (src/config.js)
-// estiver preenchido, vai por POST JSON sem a foto, com fila e retentativa quando estiver sem internet.
+// Família: o RESPONSÁVEL (nome completo, telefone, e-mail, PIN da área dos pais e o consentimento) e a ponte para os
+// JOGADORES deste aparelho (cada filho e, se quiser, o próprio responsável), que moram em src/motor/perfis.js.
+// Fica neste aparelho (localStorage `rabisco.familia` + `rabisco.perfis`) e o CADASTRO (responsável + primeiro nome e
+// nascimento de cada criança + consentimentos) vai por POST JSON para `API_CADASTRO` (src/config.js), servidor da
+// Educarte, só depois do consentimento do responsável legal (data/hora e versão do termo). Nunca a foto nem o progresso.
 //
 //   import { Familia } from "../../src/motor/familia.js";   // também em window.Familia
-//   Familia.crianca()        → { nome, nascimento, idade, genero, foto } ou null
+//   Familia.crianca()        → jogador ATIVO { id, nome, nascimento, idade, genero, foto, tipo } ou null (sem nome ainda)
 //   Familia.temFoto()        → true/false
-//   Familia.completo()       → cadastro mínimo feito neste aparelho
-//   Familia.aoMudar(cb)      → chama cb(perfil) sempre que o cadastro for salvo
+//   Familia.completo()       → cadastro feito neste aparelho (responsável + consentimento + 1 jogador com nome)
+//   Familia.aoMudar(cb)      → chama cb() quando o cadastro ou o jogador ativo mudam
 //   await Familia.abrirCadastro({ obrigatorio: true })  → não abre tela; resolve true na hora (o jogo segue)
-//   await Familia.abrirCadastro()  → portão dos pais + tela (botão Família); resolve true se salvou
+//   await Familia.abrirCadastro()  → portão dos pais + área dos pais (src/motor/perfis-ui.js)
 //
-// Privacidade: a foto da criança nunca sai do aparelho (não entra no envio).
-// Segurança: o botão Família (editar cadastro e foto) fica atrás do "portão dos pais" (uma conta de multiplicar, números sorteados).
-// Tocar num jogo nunca abre cadastro.
+// As telas (cadastro da 1ª entrada, "Quem vai jogar?", área dos pais) ficam em src/motor/perfis-ui.js.
+// Portão dos pais: o PIN de 4 números criado no cadastro (sem PIN, uma conta difícil de fazer de cabeça).
 // Foto: até 3 tentativas com orientação; o rosto é achado NO APARELHO (FaceDetector nativa ou o módulo opcional
 // DETECTOR_ROSTO de src/config.js), só vale foto com exatamente 1 rosto de tamanho razoável, e só o rostinho é
 // recortado em círculo (256 px): o resto da imagem é descartado na hora. Sem detector no navegador (ex.: iPhone),
-// o responsável posiciona um círculo sobre o rosto e aprova.
+// o responsável posiciona um círculo sobre o rosto e aprova. A foto nunca sai do aparelho.
 
-import { WEBHOOK_FAMILIA, VERSAO_APP, DETECTOR_ROSTO } from "../config.js";
-import { audioDoNome } from "./voz.js";
+import { API_CADASTRO, VERSAO_APP, DETECTOR_ROSTO } from "../config.js";
+import { Perfis } from "./perfis.js";
 
 const CHAVE = "rabisco.familia";
 const CHAVE_FILA = "rabisco.familia.fila";
-const UFS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"];
+// versão do termo de consentimento / política (privacidade.html): mudou o texto, sobe a data
+export const VERSAO_TERMO = "2026-11-06";
 const RAIZ = new URL("../..", import.meta.url).href.replace(/\/$/, "");
+export const URL_PRIVACIDADE = `${RAIZ}/privacidade.html`;
 
 const ler = (k, padrao) => { try { return JSON.parse(localStorage.getItem(k)) ?? padrao; } catch { return padrao; } };
 const gravar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } };
 
-let perfil = ler(CHAVE, null);
+// cadastro antigo (v1: whatsapp, consentimento { novidades, em }) → v2
+function normalizar(f) {
+  if (!f || typeof f !== "object") return null;
+  const R = f.responsavel || {}, c = f.consentimento || {};
+  const novidades = c.novidades && typeof c.novidades === "object" ? { aceito: Boolean(c.novidades.aceito), em: c.novidades.em || "" } : { aceito: Boolean(c.novidades), em: c.novidades ? c.em || "" : "" };
+  const legal = c.responsavelLegal?.aceito ? { aceito: true, em: c.responsavelLegal.em || "", versaoTermo: c.responsavelLegal.versaoTermo || "" } : null;
+  const resp = { nome: String(R.nome || ""), email: String(R.email || ""), telefone: String(R.telefone || R.whatsapp || "") };
+  if (R.cidade) resp.cidade = String(R.cidade);
+  if (R.uf) resp.uf = String(R.uf);
+  return { v: 2, id: typeof f.id === "string" ? f.id : "", segredo: typeof f.segredo === "string" ? f.segredo : "", responsavel: resp, pin: f.pin?.h && f.pin?.sal ? { sal: f.pin.sal, h: f.pin.h } : null, consentimento: { responsavelLegal: legal, novidades }, criadoEm: f.criadoEm || "", atualizadoEm: f.atualizadoEm || "" };
+}
+let familia = normalizar(ler(CHAVE, null));
+if (familia && ler(CHAVE, {})?.v !== 2) gravar(CHAVE, familia);
 const ouvintes = new Set();
+const avisar = () => { for (const cb of ouvintes) { try { cb(obterPerfil()); } catch { /* ouvinte com erro não trava o cadastro */ } } };
+Perfis.aoMudar(avisar);
 
 // ------------------------------------------------------------------ API
-export function obterPerfil() { return perfil ? structuredClone(perfil) : null; }
 export function idadeDe(nascimento) {
   if (!nascimento) return null;
   const n = new Date(`${nascimento}T12:00:00`);
@@ -44,56 +60,148 @@ export function idadeDe(nascimento) {
   return a >= 0 ? a : null;
 }
 export function crianca() {
-  const c = perfil?.crianca;
-  if (!c?.nome) return null;
-  return { nome: c.nome, nascimento: c.nascimento || null, idade: idadeDe(c.nascimento), genero: c.genero || null, foto: c.foto || null };
+  const p = Perfis.ativo();
+  if (!p?.nome) return null;
+  return { id: p.id, nome: p.nome, nascimento: p.nascimento || null, idade: idadeDe(p.nascimento), genero: p.genero || null, foto: p.foto || null, tipo: p.tipo };
 }
-export const temFoto = () => Boolean(perfil?.crianca?.foto);
-export const completo = () => Boolean(perfil?.responsavel?.nome && (perfil.responsavel.email || perfil.responsavel.whatsapp) && perfil.crianca?.nome);
+export function obterPerfil() { const c = crianca(); return familia ? { ...structuredClone(familia), crianca: c } : (c ? { crianca: c } : null); }
+export const responsavel = () => (familia?.responsavel ? { ...familia.responsavel } : null);
+export const consentimento = () => (familia ? structuredClone(familia.consentimento) : null);
+export const temFoto = () => Boolean(Perfis.ativo()?.foto);
+export const completo = () => Boolean(familia?.responsavel?.nome && familia.consentimento?.responsavelLegal?.aceito && Perfis.lista().some((p) => p.nome));
+export const cadastroFeito = completo;
 export function aoMudar(cb) { ouvintes.add(cb); return () => ouvintes.delete(cb); }
 
-function salvar(novo) {
-  perfil = { ...novo, atualizadoEm: new Date().toISOString() };
-  gravar(CHAVE, perfil);
-  for (const cb of ouvintes) { try { cb(obterPerfil()); } catch { /* ouvinte com erro não trava o cadastro */ } }
-  enfileirar(perfil);
+// Salva o responsável e o consentimento (chamado pela tela do cadastro, depois de validar)
+export function salvarCadastro({ responsavel: R, pin = undefined, novidades = false, consentiu = false, enviar = true }) {
+  const antes = familia || {};
+  const agora = new Date().toISOString();
+  const legalAntes = antes.consentimento?.responsavelLegal;
+  familia = {
+    v: 2,
+    id: antes.id || uuid(), segredo: antes.segredo || segredoNovo(),
+    responsavel: { ...(antes.responsavel || {}), nome: R.nome, email: R.email, telefone: R.telefone },
+    pin: pin === undefined ? antes.pin || null : pin ? cifrarPin(pin) : null,
+    consentimento: {
+      responsavelLegal: consentiu ? (legalAntes?.aceito && legalAntes.versaoTermo === VERSAO_TERMO ? legalAntes : { aceito: true, em: agora, versaoTermo: VERSAO_TERMO }) : null,
+      novidades: novidades ? (antes.consentimento?.novidades?.aceito ? antes.consentimento.novidades : { aceito: true, em: agora }) : { aceito: false, em: "" },
+    },
+    criadoEm: antes.criadoEm || agora,
+    atualizadoEm: agora,
+  };
+  gravar(CHAVE, familia);
+  avisar();
+  if (enviar) enfileirar();
+  return true;
 }
 
-// ------------------------------------------------------------------ Envio (sem a foto), com fila
-function pacote(p) {
-  const ua = navigator.userAgent || "";
-  const resumo = (ua.match(/\((.*?)\)/)?.[1] || ua).slice(0, 80);
+// ------------------------------------------------------------------ PIN dos pais (guardado só como "impressão", com sal)
+const fnv = (s) => { let h = 0x811c9dc5; for (const ch of s) { h ^= ch.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(36); };
+const impressao = (pin, sal) => { let x = `${sal}:${pin}`; for (let i = 0; i < 2000; i++) x = fnv(`${x}|${sal}|${i}`); return x; };
+function cifrarPin(pin) { const sal = Math.random().toString(36).slice(2, 10); return { sal, h: impressao(String(pin), sal) }; }
+export const temPin = () => Boolean(familia?.pin?.h);
+export const conferirPin = (pin) => Boolean(familia?.pin?.h) && impressao(String(pin), familia.pin.sal) === familia.pin.h;
+export function definirPin(pin) { if (!familia) return false; familia.pin = cifrarPin(pin); familia.atualizadoEm = new Date().toISOString(); gravar(CHAVE, familia); return true; }
+export const conferirEmail = (e) => Boolean(familia?.responsavel?.email) && String(e).trim().toLowerCase() === familia.responsavel.email.trim().toLowerCase();
+export const PINS_FACEIS = new Set(["0000", "1111", "2222", "3333", "4444", "5555", "6666", "7777", "8888", "9999", "1234", "4321", "0123", "1212"]);
+
+// "Apagar todos os dados deste aparelho": cadastro, fila de envio, perfis, fotos e progresso de todos
+// e pede ao servidor da Educarte para apagar o cadastro (DELETE com o segredo; se falhar, tenta de novo depois)
+export function apagarTudo() {
+  const quem = familia?.id && familia?.segredo ? { id: familia.id, segredo: familia.segredo } : null;
+  const pendentes = ler(CHAVE_EXCLUIR, []);
+  Perfis.apagarTudo();
+  familia = null;
+  if (API_CADASTRO && (quem || pendentes.length)) { gravar(CHAVE_EXCLUIR, [...pendentes.filter((x) => x.id !== quem?.id), ...(quem ? [quem] : [])]); sincronizar(); }
+  avisar();
+}
+
+// ------------------------------------------------------------------ Envio do cadastro para a Educarte (API_CADASTRO)
+// Só o cadastro: responsável + primeiro nome e nascimento de cada criança + consentimentos. Nunca a foto, nunca o
+// progresso. O `id` (UUID gerado no aparelho) faz o servidor ATUALIZAR em vez de duplicar; o `segredo` (aleatório, do
+// aparelho; o servidor guarda só o hash) autoriza a exclusão: DELETE <API_CADASTRO>/<id> com o cabeçalho X-Segredo.
+// Sem internet ou servidor fora: guarda o último pacote e tenta de novo depois (ao abrir, ao voltar a internet), sem
+// travar o jogo. Vazio em src/config.js = nada sai do aparelho.
+const CHAVE_EXCLUIR = "rabisco.familia.excluir"; // exclusões pendentes [{ id, segredo }] (sobrevivem ao "apagar tudo")
+const hex = (n) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => b.toString(16).padStart(2, "0")).join("");
+const uuid = () => crypto.randomUUID?.() || (() => { const x = hex(16); return `${x.slice(0, 8)}-${x.slice(8, 12)}-4${x.slice(13, 16)}-a${x.slice(17, 20)}-${x.slice(20, 32)}`; })();
+const segredoNovo = () => hex(24);
+export function pacote() {
+  if (!familia?.consentimento?.responsavelLegal?.aceito || !familia.id) return null;
+  const L = familia.consentimento.responsavelLegal, N = familia.consentimento.novidades;
   return {
-    origem: "jogos-do-rabisco", versao: VERSAO_APP, timestamp: new Date().toISOString(), userAgent: resumo,
-    responsavel: { nome: p.responsavel.nome, email: p.responsavel.email || "", whatsapp: p.responsavel.whatsapp || "", cidade: p.responsavel.cidade || "", uf: p.responsavel.uf || "" },
-    crianca: { nome: p.crianca.nome, nascimento: p.crianca.nascimento || "", genero: p.crianca.genero || "", temFoto: Boolean(p.crianca.foto) },
-    consentimento: { novidades: Boolean(p.consentimento?.novidades), em: p.consentimento?.em || "" },
+    id: familia.id, segredo: familia.segredo,
+    responsavel: { nome: familia.responsavel.nome, telefone: familia.responsavel.telefone || "", email: familia.responsavel.email || "" },
+    criancas: Perfis.lista().filter((p) => p.tipo === "crianca" && p.nome).map((p) => ({ nome: p.nome.split(" ")[0], nascimento: p.nascimento || "" })),
+    consentimento: { privacidade: true, versao: L.versaoTermo, em: L.em },
+    marketing: { aceito: Boolean(N?.aceito), em: N?.aceito && N.em ? N.em : null }, // servidor: em = data ISO ou null
+    origem: "jogos-do-rabisco", app: VERSAO_APP,
   };
 }
-function enfileirar(p) {
-  if (!WEBHOOK_FAMILIA) return;
-  const fila = ler(CHAVE_FILA, []);
-  fila.push(pacote(p));
-  gravar(CHAVE_FILA, fila.slice(-10));
+// guarda o pacote atual para envio (o mais novo substitui o anterior: o servidor atualiza pelo id) e tenta mandar
+export function enfileirar() {
+  if (!API_CADASTRO) return false; // vazio = nada sai do aparelho
+  const p = pacote();
+  if (!p) return false;
+  gravar(CHAVE_FILA, p);
   sincronizar();
+  return true;
 }
-let sincronizando = false;
-export async function sincronizar() {
-  if (!WEBHOOK_FAMILIA || sincronizando || !navigator.onLine) return;
-  sincronizando = true;
-  try {
-    let fila = ler(CHAVE_FILA, []);
-    while (fila.length) {
-      const r = await fetch(WEBHOOK_FAMILIA, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(fila[0]) });
-      if (!r.ok && r.status < 500) { fila.shift(); } // pedido recusado: não adianta repetir
-      else if (!r.ok) break;                           // servidor fora: tenta depois
-      else fila.shift();
-      gravar(CHAVE_FILA, fila);
-    }
-  } catch { /* sem rede: fica na fila */ } finally { sincronizando = false; }
+const tirar = (k) => { try { localStorage.removeItem(k); } catch { /* */ } };
+let sincronizando = null;
+export function sincronizar() {
+  if (!API_CADASTRO) return Promise.resolve(false);
+  if (sincronizando) return sincronizando;
+  sincronizando = (async () => {
+    try {
+      // 1) exclusões pendentes ("Apagar todos os dados")
+      let excluir = ler(CHAVE_EXCLUIR, []);
+      for (const x of [...excluir]) {
+        try {
+          const r = await fetch(`${API_CADASTRO.replace(/\/$/, "")}/${encodeURIComponent(x.id)}`, { method: "DELETE", headers: { "X-Segredo": x.segredo }, keepalive: true });
+          if (r.ok || (r.status < 500 && r.status !== 429)) excluir = excluir.filter((y) => y.id !== x.id); // feito (ou já não existe)
+        } catch { /* sem rede: tenta depois */ }
+      }
+      if (excluir.length) gravar(CHAVE_EXCLUIR, excluir); else tirar(CHAVE_EXCLUIR);
+      // 2) cadastro pendente
+      const p = ler(CHAVE_FILA, null);
+      if (!p || Array.isArray(p)) { if (Array.isArray(p)) tirar(CHAVE_FILA); return true; } // (fila antiga, do webhook)
+      try {
+        const r = await fetch(API_CADASTRO, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p), keepalive: true });
+        // enviado, ou recusado de vez (dado inválido): não repete; 5xx/429: tenta depois
+        if (r.ok || (r.status < 500 && r.status !== 429)) { if (JSON.stringify(ler(CHAVE_FILA, null)) === JSON.stringify(p)) tirar(CHAVE_FILA); }
+      } catch { /* sem rede: fica guardado */ }
+      return true;
+    } catch { return false; }
+  })();
+  // limpa DEPOIS de guardar a promessa (se tudo terminar na hora, um finally lá dentro rodaria antes da atribuição)
+  const esta = sincronizando;
+  esta.then(() => { if (sincronizando === esta) sincronizando = null; });
+  return esta;
 }
-addEventListener("online", sincronizar);
-setTimeout(sincronizar, 3000);
+if (API_CADASTRO) { addEventListener("online", () => sincronizar()); setTimeout(() => sincronizar(), 3000); }
+
+// ------------------------------------------------------------------ Fale com a gente (WhatsApp da Educarte)
+export const WHATSAPP = "5547999236042";
+export function linkWhatsApp() {
+  const nome = (familia?.responsavel?.nome || "").trim().split(/\s+/)[0];
+  const filhos = Perfis.lista().filter((p) => p.tipo === "crianca" && p.nome).map((p) => p.nome.split(" ")[0]);
+  const lista = filhos.length > 1 ? `${filhos.slice(0, -1).join(", ")} e ${filhos.at(-1)}` : filhos[0] || "";
+  const texto = nome
+    ? `Olá! Sou ${nome}${lista ? `, responsável por ${lista},` : ""} e vim pelo Jogo do Rabisco 🎨. Queria falar sobre: `
+    : "Olá! Vim pelo Jogo do Rabisco 🎨 e queria falar sobre: ";
+  return `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(texto)}`;
+}
+
+// ------------------------------------------------------------------ Telas (src/motor/perfis-ui.js, carregado sob demanda)
+const ui = () => import("./perfis-ui.js");
+// obrigatorio: true não abre nada e resolve true (os jogos funcionam sem cadastro). Sem obrigatorio: portão dos pais
+// e a área dos pais (editar o responsável, adicionar/editar/apagar jogadores, apagar tudo).
+export function abrirCadastro(opcoes = {}) {
+  if (opcoes.obrigatorio) return Promise.resolve(true);
+  return ui().then((m) => m.abrirAreaDosPais());
+}
+export function portaoDosPais(opcoes = {}) { return ui().then((m) => m.portaoDosPais(opcoes)); }
 
 // ------------------------------------------------------------------ Foto: recorte quadrado centralizado, 256px, JPEG
 export function prepararFoto(arquivo, lado = 256) {
@@ -115,7 +223,7 @@ export function prepararFoto(arquivo, lado = 256) {
   });
 }
 
-// ------------------------------------------------------------------ Máscara de WhatsApp (BR)
+// ------------------------------------------------------------------ Máscara de telefone (BR): (11) 99999-9999
 export function mascaraWhats(v) {
   const d = v.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "").slice(0, 11);
   if (d.length <= 2) return d.length ? `(${d}` : "";
@@ -123,9 +231,8 @@ export function mascaraWhats(v) {
   if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 }
-const emailOk = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
 
-// ------------------------------------------------------------------ Tela do cadastro
+// ------------------------------------------------------------------ Telas: CSS e montagem de elementos (sem innerHTML com dado do cadastro)
 let cssPronto = false;
 function garantirCss() {
   if (cssPronto) return;
@@ -147,63 +254,6 @@ const h = (tag, props = {}, filhos = []) => {
   for (const f of filhos) if (f) e.append(f);
   return e;
 };
-
-let telaAberta = null;
-// obrigatorio: true não abre nada e resolve true (ver abaixo).
-// titulo/intro: textos do topo. Sem obrigatorio (botão Família): antes da tela, o portão dos pais; se a pessoa voltar, nada abre.
-let portaoEmCurso = null;
-//
-// Regra do cadastro "obrigatório" (o que o portal abria sozinho ao tocar num jogo): não existe mais. Com
-// obrigatorio: true, abrirCadastro resolve true na hora, sem tela e sem marcar nada: o jogo segue direto.
-// Os jogos funcionam sem cadastro (comportamento neutro). Só o botão "Família" (obrigatorio: false) abre,
-// atrás do portão dos pais, para informar o nome da criança (a narradora usa) e a foto.
-export function abrirCadastro(opcoes = {}) {
-  if (telaAberta) return telaAberta.promessa;
-  if (portaoEmCurso) return portaoEmCurso;
-  const sozinho = Boolean(opcoes.obrigatorio);
-  if (sozinho) return Promise.resolve(true); // sem tela: o jogo segue direto
-  // botão Família: portão dos pais antes da tela
-  portaoEmCurso = portaoDosPais({ texto: "O cadastro e a foto da criança ficam aqui." })
-    .then((ok) => { portaoEmCurso = null; return ok ? montarCadastro(opcoes) : false; });
-  return portaoEmCurso;
-}
-
-// ------------------------------------------------------------------ Portão dos pais
-// "Quanto é 7 × 3?" com números sorteados (3 a 9). Errou: outra conta. Teclado numérico no celular.
-export function portaoDosPais({ texto = "Esta parte é para os adultos." } = {}) {
-  garantirCss();
-  return new Promise((resolver) => {
-    let a = 0, b = 0;
-    const conta = h("b", { class: "portao-conta" });
-    const campo = h("input", { id: "portao-resposta", type: "text", inputmode: "numeric", pattern: "[0-9]*", autocomplete: "off", maxlength: "3", enterkeyhint: "done", "aria-label": "Resposta da conta" });
-    const erro = h("p", { class: "erro", role: "alert" });
-    const sortear = () => { a = 3 + Math.floor(Math.random() * 7); b = 3 + Math.floor(Math.random() * 7); conta.textContent = `${a} × ${b}`; campo.value = ""; };
-    const form = h("form", { class: "familia-cartao portao-cartao", novalidate: true }, [
-      h("div", { class: "portao-cadeado", "aria-hidden": "true", texto: "🔒" }),
-      h("h2", { texto: "Área dos pais" }),
-      h("p", { class: "intro", texto }),
-      h("p", { class: "portao-pergunta" }, [document.createTextNode("Quanto é "), conta, document.createTextNode("?")]),
-      campo, erro,
-      h("div", { class: "familia-acoes" }, [
-        h("button", { type: "button", class: "botao branco", texto: "Voltar", onclick: () => fechar(false) }),
-        h("button", { type: "submit", class: "botao", texto: "Entrar ✓" }),
-      ]),
-    ]);
-    const tela = h("div", { class: "familia-tela portao-tela", role: "dialog", "aria-modal": "true", "aria-label": "Área dos pais" }, [form]);
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
-      if (Number(campo.value.replace(/\D/g, "")) === a * b && campo.value.trim()) { fechar(true); return; }
-      erro.textContent = "Ops! Essa não é. Peça ajuda a um adulto e tente esta outra:";
-      sortear();
-      campo.focus();
-    });
-    tela.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); fechar(false); } });
-    function fechar(ok) { tela.remove(); resolver(ok); }
-    sortear();
-    document.body.append(tela);
-    setTimeout(() => campo.focus({ preventScroll: true }), 50);
-  });
-}
 
 // ------------------------------------------------------------------ Foto com segurança (detecção de rosto local)
 const paramsFoto = new URLSearchParams(location.search);
@@ -373,167 +423,16 @@ export function abrirEtapaFoto() {
   });
 }
 
-function montarCadastro({ obrigatorio = false, titulo = "Quem vai brincar?", intro = null } = {}) {
-  if (telaAberta) return telaAberta.promessa;
-  garantirCss();
-  const p = perfil || {};
-  const R = p.responsavel || {}, C = p.crianca || {};
-  const campo = (id, rotulo, props = {}, { largo = false, dica = null } = {}) => {
-    const input = h("input", { id: `fam-${id}`, name: id, autocomplete: "off", ...props });
-    return h("label", { class: largo ? "largo" : "", for: `fam-${id}` }, [document.createTextNode(rotulo), dica && h("small", { texto: dica }), input]);
-  };
-  const q = (id) => tela.querySelector(`#fam-${id}`);
+export const emailOk = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
+export { h, garantirCss };
 
-  const fotoRoda = h("div", { class: "roda", "aria-hidden": "true" }, [C.foto ? h("img", { src: C.foto, alt: "" }) : document.createTextNode("🙂")]);
-  let foto = C.foto || null;
-  // a foto passa pela etapa segura (orientação, detecção de rosto local, recorte só do rosto, prévia para aprovar)
-  const desenharFoto = () => {
-    fotoRoda.innerHTML = "";
-    if (foto) fotoRoda.append(h("img", { src: foto, alt: "" })); else fotoRoda.textContent = "🙂";
-    btnTirar.hidden = !foto;
-    btnFoto.textContent = foto ? "📷 Trocar a foto" : "📷 Foto da criança";
-  };
-  const btnFoto = h("button", { type: "button", class: "botao-foto", texto: C.foto ? "📷 Trocar a foto" : "📷 Foto da criança", onclick: async () => {
-    const r = await abrirEtapaFoto();
-    if (r === undefined) return; // cancelou: fica como estava
-    foto = r; desenharFoto();
-  } });
-  const btnTirar = h("button", { type: "button", texto: "✕ Tirar foto", hidden: !C.foto, onclick: () => { foto = null; desenharFoto(); } });
-
-  const selUf = h("select", { id: "fam-uf", name: "uf" }, [h("option", { value: "", texto: "UF" }), ...UFS.map((u) => h("option", { value: u, texto: u, selected: R.uf === u }))]);
-  const btnLocal = h("button", { type: "button", class: "pequeno", "aria-label": "Usar minha localização para preencher cidade e estado", title: "Usar minha localização", texto: "📍", onclick: usarLocalizacao });
-  const erro = h("p", { class: "erro", role: "alert" });
-  const mostrarErro = (t) => { erro.textContent = t; };
-  const status = h("span", { class: "status" });
-  // aviso sutil: a narradora (voz gravada) tem o nome no banco? (src/motor/voz.js, assets/voz/nomes)
-  const avisoNome = h("p", { class: "aviso-nome", "aria-live": "polite" });
-  let conferindo = 0;
-  const conferirNome = (v) => {
-    const minha = ++conferindo;
-    clearTimeout(conferirNome.t);
-    conferirNome.t = setTimeout(async () => {
-      const chave = v.trim() ? await audioDoNome(v) : null;
-      if (minha !== conferindo) return;
-      avisoNome.textContent = chave ? `🔊 A narradora vai te chamar de ${v.trim().split(/\s+/).slice(0, chave.includes("-") ? 2 : 1).join(" ")}!` : "";
-    }, 350);
-  };
-  if (C.nome) conferirNome(C.nome);
-
-  const form = h("form", { novalidate: true, class: "familia-form" }, [
-    h("div", { class: "familia-topo" }, [
-      h("img", { class: "logo", src: `${RAIZ}/assets/marca/logos/azul-icone-rosa.png`, alt: "Educarte Escola Cristã" }),
-      h("img", { class: "rabisco", src: `${RAIZ}/assets/rabisco/poses/apresentando.png`, alt: "" }),
-    ]),
-    h("h2", { texto: titulo }),
-    h("p", { class: "intro", texto: intro ?? (obrigatorio ? "Um cadastro rapidinho, só uma vez neste aparelho, e o Rabisco já chama a criança pelo nome!" : "Edite os dados da família. A foto fica só neste aparelho.") }),
-    h("fieldset", {}, [
-      h("legend", { texto: "👩‍👧 Responsável" }),
-      h("div", { class: "familia-campos" }, [
-        campo("resp-nome", "Seu nome *", { value: R.nome || "", autocomplete: "name", required: true }, { largo: true }),
-        campo("email", "E-mail", { type: "email", value: R.email || "", inputmode: "email", autocomplete: "email", placeholder: "voce@exemplo.com" }, { dica: "e-mail ou WhatsApp, pelo menos um" }),
-        campo("whats", "WhatsApp", { type: "tel", value: R.whatsapp || "", inputmode: "tel", autocomplete: "tel-national", placeholder: "(11) 99999-9999", oninput: (e) => { e.target.value = mascaraWhats(e.target.value); } }),
-        h("div", { class: "familia-local" }, [
-          campo("cidade", "Cidade", { value: R.cidade || "", autocomplete: "address-level2" }),
-          h("label", { class: "uf", for: "fam-uf" }, [document.createTextNode("Estado"), selUf]),
-          btnLocal,
-        ]),
-      ]),
-    ]),
-    h("fieldset", {}, [
-      h("legend", { class: "crianca", texto: "🧒 Criança" }),
-      h("div", { class: "familia-campos" }, [
-        campo("crianca-nome", "Nome ou apelido *", { value: C.nome || "", required: true, maxlength: 30, oninput: (e) => conferirNome(e.target.value) }),
-        campo("nasc", "Nascimento", { type: "date", value: C.nascimento || "", max: new Date().toISOString().slice(0, 10) }, { dica: "opcional" }),
-        h("label", { for: "fam-genero" }, [document.createTextNode("Menina ou menino? *"), h("small", { texto: "para a narradora falar \"pronta\" ou \"pronto\"" }),
-          h("select", { id: "fam-genero", name: "genero", required: true }, [
-            h("option", { value: "", texto: "Escolha…", disabled: true, selected: !C.genero }),
-            ...[["menina", "Menina"], ["menino", "Menino"]].map(([v, t]) => h("option", { value: v, texto: t, selected: C.genero === v }))])]),
-        avisoNome,
-        h("div", { class: "familia-foto" }, [
-          fotoRoda,
-          h("div", { class: "botoes" }, [btnFoto, btnTirar]),
-        ]),
-        h("p", { class: "nota-foto", texto: "A foto é opcional, vira o rostinho da criança dentro dos jogos e fica guardada só neste aparelho. Ela nunca é enviada." }),
-      ]),
-    ]),
-    h("label", { class: "familia-check" }, [
-      h("input", { type: "checkbox", id: "fam-consente", checked: Boolean(p.consentimento?.novidades) }),
-      h("span", { html: "<b>Quero receber novidades da Educarte</b> por e-mail ou WhatsApp. Seus dados são usados só para isso e você pode cancelar quando quiser. A foto da criança não é enviada." }),
-    ]),
-    erro,
-    h("div", { class: "familia-acoes" }, [
-      status,
-      h("button", { type: "button", class: "botao branco", texto: "Agora não", onclick: () => fechar(false) }),
-      h("button", { type: "submit", class: "botao", texto: obrigatorio ? "Começar a brincar ▶" : "Salvar ✓" }),
-    ]),
-  ]);
-  const tela = h("div", { class: "familia-tela", role: "dialog", "aria-modal": "true", "aria-label": titulo }, [h("div", { class: "familia-cartao" }, [form])]);
-  document.body.append(tela);
-
-  async function usarLocalizacao() {
-    if (!navigator.geolocation) { mostrarErro("Este aparelho não compartilha localização."); return; }
-    status.textContent = "Procurando sua cidade…";
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      try {
-        // só pedimos cidade e UF; as coordenadas não são guardadas em lugar nenhum
-        const { latitude: la, longitude: lo } = pos.coords;
-        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&lat=${la.toFixed(2)}&lon=${lo.toFixed(2)}&accept-language=pt-BR`, { headers: { Accept: "application/json" } });
-        const d = await r.json();
-        const a = d.address || {};
-        const cidade = a.city || a.town || a.village || a.municipality || a.county || "";
-        const uf = UFS.find((u) => (a["ISO3166-2-lvl4"] || "").endsWith(`-${u}`)) || "";
-        if (cidade) q("cidade").value = cidade;
-        if (uf) selUf.value = uf;
-        status.textContent = cidade ? "" : "Não achei a cidade, pode digitar.";
-      } catch { status.textContent = "Não deu para achar a cidade agora."; }
-    }, () => { status.textContent = "Sem permissão para a localização, tudo bem: digite a cidade."; }, { timeout: 8000, maximumAge: 600000 });
-  }
-
-  const marcar = (el, ruim) => el.setAttribute("aria-invalid", ruim ? "true" : "false");
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const nome = q("resp-nome").value.trim(), email = q("email").value.trim(), whats = q("whats").value.trim();
-    const cNome = q("crianca-nome").value.trim();
-    marcar(q("resp-nome"), !nome); marcar(q("crianca-nome"), !cNome);
-    marcar(q("email"), email && !emailOk(email)); marcar(q("whats"), whats && whats.replace(/\D/g, "").length < 10);
-    if (!nome) { mostrarErro("Escreva o seu nome, por favor."); q("resp-nome").focus(); return; }
-    if (!email && !whats) { mostrarErro("Deixe um e-mail ou um WhatsApp para a gente falar com você."); marcar(q("email"), true); marcar(q("whats"), true); q("email").focus(); return; }
-    if (email && !emailOk(email)) { mostrarErro("Esse e-mail parece incompleto. Confere?"); q("email").focus(); return; }
-    if (whats && whats.replace(/\D/g, "").length < 10) { mostrarErro("O WhatsApp precisa ter DDD e número, como (11) 99999-9999."); q("whats").focus(); return; }
-    if (!cNome) { mostrarErro("E o nome da criança? É assim que o Rabisco vai chamar ela!"); q("crianca-nome").focus(); return; }
-    marcar(q("genero"), !q("genero").value);
-    if (!q("genero").value) { mostrarErro("A criança é menina ou menino? Escolha uma opção."); q("genero").focus(); return; }
-    const nasc = q("nasc").value;
-    if (nasc && idadeDe(nasc) === null) { mostrarErro("A data de nascimento não pode ser no futuro."); q("nasc").focus(); return; }
-    mostrarErro("");
-    salvar({
-      responsavel: { nome, email, whatsapp: whats, cidade: q("cidade").value.trim(), uf: selUf.value },
-      crianca: { nome: cNome, nascimento: nasc, genero: q("genero").value, foto },
-      consentimento: { novidades: q("consente").checked, em: q("consente").checked ? new Date().toISOString() : (p.consentimento?.em || "") },
-      criadoEm: p.criadoEm || new Date().toISOString(),
-    });
-    fechar(true);
-  });
-  // Esc fecha (quando não é obrigatório); o foco fica preso dentro do cartão
-  const teclas = (e) => {
-    if (e.key === "Escape") { e.preventDefault(); fechar(false); }
-    if (e.key === "Tab") {
-      const f = [...tela.querySelectorAll("input:not([type=file]), select, button")].filter((x) => !x.hidden && x.offsetParent !== null);
-      if (!f.length) return;
-      if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f.at(-1).focus(); }
-      else if (!e.shiftKey && document.activeElement === f.at(-1)) { e.preventDefault(); f[0].focus(); }
-    }
-  };
-  tela.addEventListener("keydown", teclas);
-
-  let resolver;
-  const promessa = new Promise((r) => { resolver = r; });
-  function fechar(salvou) { tela.remove(); telaAberta = null; resolver(salvou); }
-  telaAberta = { tela, promessa };
-  setTimeout(() => (completo() ? q("crianca-nome") : q("resp-nome")).focus({ preventScroll: true }), 50);
-  return promessa;
-}
-
-export const Familia = { obterPerfil, crianca, temFoto, completo, aoMudar, abrirCadastro, abrirEtapaFoto, portaoDosPais, sincronizar, idadeDe, UFS };
+export const Familia = {
+  obterPerfil, crianca, responsavel, consentimento, temFoto, completo, cadastroFeito, aoMudar, abrirCadastro, abrirEtapaFoto, portaoDosPais,
+  salvarCadastro, temPin, conferirPin, definirPin, conferirEmail, apagarTudo, sincronizar, pacote, enfileirar, linkWhatsApp, WHATSAPP, idadeDe, mascaraWhats, mascaraTelefone: mascaraWhats, emailOk,
+  VERSAO_TERMO, URL_PRIVACIDADE,
+};
 window.Familia = Familia;
 export default Familia;
+
+// "👤 Quem vai jogar?" no ⚙️ de cada jogo (e do portal): troca o jogador ativo
+ui().then((m) => m.ligarNaEngrenagem()).catch(() => { /* sem a tela: o jogo segue */ });

@@ -8,6 +8,7 @@ import { cx, pinos, plastico, plasticoMapa, texturaChao, texturaAsfalto, textura
   mesclarBlocos, lapisB, arvoreB, nuvemB, morroB, livrosB, escolaB, onibusB, lojaB, outdoorB, kartB, pilotoB } from "./blocos.js";
 import { sons, musica, motor } from "../../src/motor/sons.js";
 import { falar, preCarregarFalas, saudar, parabenizar, falarNome } from "../../src/motor/voz.js";
+import { armazem } from "../../src/motor/perfis.js"; // medalhas: do jogador ativo
 import "../../src/motor/familia.js"; // window.Familia: nome e foto da criança
 import { criarCompanheiro3D } from "../../src/motor3d/companheiro3d.js";
 import { criarPausa } from "../../src/motor/pausa.js";
@@ -598,7 +599,7 @@ $("abertura").append(botaoVoltar({ raiz: RAIZ, faixa: MODO.faixa }));
 
 // ------------------------------------------------------------------ Pistas (10 por modo) e medalhas
 const CHAVE_MEDALHAS = `kart-${MODO.nome}-medalhas`;
-const lerMedalhas = () => { try { return JSON.parse(localStorage.getItem(CHAVE_MEDALHAS) || "{}"); } catch { return {}; } };
+const lerMedalhas = () => { try { return JSON.parse(armazem.getItem(CHAVE_MEDALHAS) || "{}"); } catch { return {}; } };
 function irParaPista(n) {
   const q = new URLSearchParams(location.search);
   q.set("pista", n);
@@ -1241,7 +1242,7 @@ function terminar() {
   setTimeout(() => {
     $("res-lugar").textContent = `${lugar}º lugar!`;
     const med = lerMedalhas();
-    if (!med[PISTA.numero] || lugar < med[PISTA.numero]) { med[PISTA.numero] = lugar; try { localStorage.setItem(CHAVE_MEDALHAS, JSON.stringify(med)); } catch { /* sem armazenamento */ } }
+    if (!med[PISTA.numero] || lugar < med[PISTA.numero]) { med[PISTA.numero] = lugar; try { armazem.setItem(CHAVE_MEDALHAS, JSON.stringify(med)); } catch { /* sem armazenamento */ } }
     $("res-trofeu").textContent = ["🏆", "🥈", "🥉", "🏁"][lugar - 1];
     $("res-acertos").textContent = MODO.amigos ? `Você levou ${amigos} amigos para a escola!` : `Você acertou ${acertos} de ${perguntasFeitas} ${MODO.unidade}!`;
     if (lugar2) $("res-acertos").textContent = `${Jogadores.j1.nome}: ${lugar}º · ${kartJ2.nome}: ${lugar2}º${kartJ2.terminou ? "" : " (ainda correndo)"} — ${MODO.amigos ? `${amigos} amigos na escola!` : `${acertos} de ${perguntasFeitas} ${MODO.unidade} certos!`}`;
