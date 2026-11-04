@@ -30,7 +30,7 @@ const parceiros = PARCEIROS.map((p) => ({ id: `p:${p.id}`, pagina: "parceiros", 
 const lugares = LUGARES.filter((l) => !l.parceiro).map((l) => ({ id: `l:${l.id}`, pagina: "lugares", nome: l.nome, sub: l.bairro || "Rabiscolândia", icone: ICONE_LUGAR[l.id] ?? "📍", lugar: l.id, dica: "Visite o lugar" }));
 const amigos = [], versiculos = [], pessoasFig = new Map();
 for (const M of MISSOES) {
-  const q = M.npcs?.[Object.keys(M.npcs ?? {})[0]];
+  const q = M.npcs?.[M.figurinhaDe ?? Object.keys(M.npcs ?? {})[0]]; // figurinhaDe: quando quem pede (o 1º) não é o amigo da figurinha (Construrenova: o seu Albino pede, o Pedreiro Caderno é o amigo)
   const gente = Object.values(M.npcs ?? {}).find((n) => n.tipo === "pessoa"); // a pessoa de verdade da missão (não precisa ser a primeira)
   if (gente) {
     const f = pessoasFig.get(gente.pessoa);

@@ -771,11 +771,13 @@ export const MISSOES = [
     // Albino (pessoa de verdade: não fala, acena) e leva até a obra, na Avenida da Alegria. Ensina que a ferramenta certa,
     // alugada, ajuda a construir com segurança
     id: "parceiro-construrenova", titulo: "A obra do Pedreiro Caderno", icone: "🧱", tipo: "cidadania", parceiro: "construrenova",
+    figurinhaDe: "pedreiro",
+    // o 1º npc é quem pede: o seu Albino, na porta da Construrenova (a missão aparece quando o Rabisco chega lá); o Pedreiro só recebe
     npcs: {
-      pedreiro: { nome: "Pedreiro Caderno", tipo: "caderno", cor: 0x1fc08e, x: 171, z: 61.5, rot: Math.PI, acessorio: "capacete", corAcessorio: 0xffcc1f, obra: true },
       albino: { nome: "Seu Albino", tipo: "pessoa", pessoa: "albino", fachada: "parceiro-construrenova" },
+      pedreiro: { nome: "Pedreiro Caderno", tipo: "caderno", cor: 0x1fc08e, x: 171, z: 61.5, rot: Math.PI, acessorio: "capacete", corAcessorio: 0xffcc1f, obra: true },
     },
-    pedido: "Rabisco, o Pedreiro Caderno vai levantar um muro, mas falta equipamento! Vá até a Construrenova, alugue com o seu Albino uma betoneira e um carrinho de mão e traga tudo para a obra.",
+    pedido: "Rabisco, o Pedreiro Caderno vai levantar um muro, mas falta equipamento! Aqui na Construrenova, alugue com o seu Albino uma betoneira e um carrinho de mão e leve tudo para a obra dele, na Avenida da Alegria.",
     etapas: [
       { tipo: "pegar", itens: ALUGUEL_CONSTRURENOVA, fala: "Tudo alugado! O seu Albino conferiu a betoneira e o carrinho de mão. Agora leve até a obra do Pedreiro Caderno.", voz: "rp-m-parceiro-construrenova-alugou" },
       { tipo: "levar", ate: "pedreiro", icone: "🧱" },

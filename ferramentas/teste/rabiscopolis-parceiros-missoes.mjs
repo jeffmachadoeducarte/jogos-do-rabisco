@@ -1,5 +1,5 @@
 // Rabiscolândia: as 5 missões especiais das parceiras (Marlon Máquinas, Ballet e Cia, BT Models, Speedy Soluções, Construrenova).
-//  - Construrenova: o Pedreiro Caderno pede, o Rabisco aluga a betoneira e o carrinho de mão com o seu Albino (o boneco da porta,
+//  - Construrenova: o seu Albino pede (na porta), o Rabisco aluga a betoneira e o carrinho de mão com o seu Albino (o boneco da porta,
 //    que acena e não fala), leva até a obra (o equipamento aparece lá) e a anfitriã faz a propaganda com o @constru.renova;
 //  - a frente da Educarte Kids II começa antiga, troca ao concluir a missão da Speedy e continua trocada depois de recarregar;
 //  - largar a missão no meio da obra devolve a frente antiga;
@@ -173,12 +173,12 @@ await parte("construrenova", TV, async (t, ev) => {
   await t.foto(`${FOTOS}construrenova-frente.png`);
   const alb = await ev(`teste.missoes.npc("${CONSTRU}", "albino")`);
   ok(Math.hypot(alb.x - l.pessoa.x, alb.z - l.pessoa.z) < 0.1, "o seu Albino da missão é o boneco da porta (um só)");
-  // o pedido: com o Pedreiro Caderno, na obra da Avenida da Alegria
+  // o pedido: com o seu Albino, na porta da Construrenova (a missão aparece quando o Rabisco chega lá); o Pedreiro Caderno só recebe
   const ped = await ev(`teste.missoes.npc("${CONSTRU}", "pedreiro")`);
-  await ev(`teste.ir(${ped.x}, ${ped.z - 1.6}); teste.olhar(0)`); await espera(1300);
-  ok((await ev("teste.contexto"))?.includes("Pedreiro Caderno"), `na obra o Pedreiro Caderno tem a missão (${await ev("teste.contexto")})`);
+  await ev(`teste.ir(${alb.x - 1.8}, ${alb.z}); teste.olhar(Math.PI / 2)`); await espera(1300);
+  ok((await ev("teste.contexto"))?.includes("A obra do Pedreiro Caderno"), `na Construrenova o seu Albino tem a missão (${await ev("teste.contexto")})`);
   const cObra = await custo(t);
-  ok(cObra.calls <= 250, `na obra: ${cObra.calls} chamadas (≤ 250)`);
+  ok(cObra.calls <= 250, `na porta da Construrenova: ${cObra.calls} chamadas (≤ 250)`);
   await ev("teste.acao()"); await espera(500);
   ok((await ev("teste.missoes.ativa")) === CONSTRU, "missão da Construrenova aceita");
   ok((await ev("window.__voz")).includes(`rp-m-${CONSTRU}-pedido.mp3`), "a anfitriã fala o pedido");
