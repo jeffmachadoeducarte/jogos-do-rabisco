@@ -2,12 +2,16 @@
 // canto sudoeste (56 × 138 m), inventado a partir das fotos do lugar (nenhuma foto vai para o jogo):
 //  - portão de tela com moldura metálica entre palanques de madeira, cerca de tela em volta, a porteira com a placa
 //    "Escola de Campo Educarte · Sítio Floresça · Festas e eventos", a placa do @ e a CAMPAINHA do lado do portão;
-//  - a casa grande de tijolinho à esquerda da estradinha (telha escura, janelas e venezianas escuras, lambrequim de
-//    madeira no beiral, caixinha de madeira no oitão, calçada lateral) e o galinheiro;
-//  - a estradinha de cascalho atravessando o gramado até os fundos: o celeiro de tábuas com as portas amarelas e as
-//    mansardas, e a varanda comprida de treliça em losango (onde acontecem as aulas), com o coração vazado no oitão;
-//  - o lago cercado (palanques e tela, com o portãozinho), a grama alta na beira, o pinheiro alto, palmeiras e a mata;
-//  - quem mora lá: a Tia Regina (pessoas.js; não fala), o Duck (golden bem arteiro) e a pata Ale, com os patos e as galinhas.
+//  - TUDO o que é construído fica do lado ESQUERDO (de quem entra), encostado na divisa, em fila, da frente para o fundo:
+//    a casa grande de tijolinho (telha escura, janelas e venezianas escuras, lambrequim de madeira no beiral, caixinha de
+//    madeira no oitão, calçada lateral) → logo atrás, no mesmo eixo, o salão comprido de treliça em losango (onde
+//    acontecem as aulas), com telha laranja, duas mansardas e o coração vazado → o espaço verde com a hortinha → o
+//    galinheiro → o lago QUADRADO cercado (palanques e tela, com o portãozinho), com o pinheiro alto ao lado;
+//  - a estradinha de cascalho vai do portão até a porta da casa; uma trilha de terra acompanha a fila até o lago;
+//  - o lado DIREITO é todo gramado livre, com a fileira de árvores frutíferas na divisa (mangueira, laranjeira, goiabeira,
+//    pitangueira, com as frutinhas à mostra) e balanços de pneu em algumas; palmeiras e a mata no fundo. Não tem celeiro;
+//  - quem mora lá: a Tia Regina (pessoas.js; não fala), o Duck (golden bem arteiro) e a pata Ale, com os patos e as galinhas;
+//  - o roçador (carros.js) fica estacionado no gramado e só anda dentro do terreno.
 // Convenção das fachadas (predios-parceiros.js): frente (o portão) em z = 0 olhando para +z; coordenadas de sitio-dados.js.
 //
 // Custo: tudo o que é fixo entra na mesclagem do bloco (caixas lisas numa malha só por bloco, mais um material para cada
@@ -15,8 +19,9 @@
 // gotinhas) fica num grupo à parte, e só anima com o Rabisco perto. A água do lago é uma malha só.
 //
 //   FACHADA: sitioFloresca(l) → { grupo, solidos, porta, topo, vivo }   (mundo.js chama vivo({ origem, solidos, lugar }))
-//   api (mundo.sitio): ligar(ctx) · atualizar(dt, t, pos) · contexto(pos, noVeiculo) · e o que as cenas "ale" e "duck"
-//   (missoes-cenas.js) usam para mexer na Ale, no Duck e na Tia Regina.
+//   api (mundo.sitio): ligar(ctx) · atualizar(dt, t, pos) · contexto(pos, noVeiculo) · e o que as cenas "ale", "duck",
+//   "comida", "horta", "rocar" e "kids" (missoes-cenas.js) usam: a Ale, o Duck, a Tia Regina, o milho das galinhas e dos
+//   patos, o balde, o regador e as cestas, as plantas da hortinha, a grama alta e os balanços de pneu.
 
 import { THREE, mat, matNovo, MAT_LAGO, texturaCanvas, arvoreReal, mesclar } from "./base3d.js";
 import { cx as pc, claro, escuro, disco } from "./blocos.js";
@@ -179,6 +184,39 @@ function cachorro() {
   return { g, corpo, cab, cauda, pernas };
 }
 
+// árvore frutífera de blocos (tronco, copa em degraus e as frutinhas por fora da copa, para aparecerem de longe):
+// manga (copa grande e escura, mangas amarelo-alaranjadas), laranja (copa redondinha, laranjas), goiaba (verde mais claro,
+// tronco liso, goiabas verde-amarelas) e pitanga (arvoreta, pitangas vermelhas). bal: galho grosso para o balanço de pneu
+export const FRUTAS = {
+  manga: { tronco: 0x6b4a2e, copa: [0x2f6b34, 0x3a7a3c], fruta: [0xf2a33a, 0xffc93a, 0xa8d84a], h: 2.6, cw: 4.6, ch: 2.6, ft: 0.36 },
+  laranja: { tronco: 0x7a5532, copa: [0x3f8a3a, 0x4c9a42], fruta: [0xff8a1f, 0xff9f2a], h: 1.9, cw: 3.4, ch: 2.6, ft: 0.32 },
+  goiaba: { tronco: 0xa07a52, copa: [0x6aa84f, 0x7cb85a], fruta: [0xe6f07a, 0xd7e36a, 0xffb8a0], h: 2.0, cw: 3.6, ch: 2.2, ft: 0.3 },
+  pitanga: { tronco: 0x6b4a2e, copa: [0x2f7a3a, 0x3c8a44], fruta: [0xff2a20, 0xe0342b, 0xff6a3a], h: 1.4, cw: 2.7, ch: 2.2, ft: 0.22 },
+};
+export const GALHO = { dx: -2.3, y: 3.35 }; // ponta do galho do balanço (a partir do tronco, para o gramado), onde a corda amarra
+function frutifera(g, x, z, tipo, bal, sol) {
+  const T = FRUTAS[tipo], f = { sombra: false };
+  pc(g, 0.42, T.h + 0.6, 0.42, T.tronco, x, (T.h + 0.6) / 2, z);
+  const cy = T.h + T.ch / 2;
+  pc(g, T.cw, T.ch, T.cw * 0.92, T.copa[0], x, cy, z);
+  pc(g, T.cw * 0.7, T.ch * 0.55, T.cw * 0.66, T.copa[1], x + 0.2, T.h + T.ch + T.ch * 0.22, z - 0.15, f);
+  pc(g, T.cw * 0.55, T.ch * 0.5, T.cw * 0.5, T.copa[1], x - T.cw * 0.42, cy - 0.2, z + 0.3, f);
+  // frutinhas: nas quatro faces da copa e embaixo dela (penduradas)
+  const n = tipo === "pitanga" ? 24 : 18;
+  for (let i = 0; i < n; i++) {
+    const face = i % 5, a = ((i * 37) % 17) / 17 - 0.5, b = ((i * 53) % 13) / 13 - 0.5, cor = T.fruta[i % T.fruta.length];
+    const [fx, fy, fz] = face === 0 ? [x - T.cw / 2 - 0.05, cy + b * T.ch * 0.8, z + a * T.cw * 0.8] : face === 1 ? [x + T.cw / 2 + 0.05, cy + b * T.ch * 0.8, z + a * T.cw * 0.8]
+      : face === 2 ? [x + a * T.cw * 0.8, cy + b * T.ch * 0.8, z + T.cw * 0.46 + 0.05] : face === 3 ? [x + a * T.cw * 0.8, cy + b * T.ch * 0.8, z - T.cw * 0.46 - 0.05] : [x + a * T.cw * 0.8, T.h - T.ft * 0.6, z + b * T.cw * 0.8];
+    pc(g, T.ft, T.ft * (tipo === "manga" ? 1.3 : 1), T.ft, cor, fx, fy, fz, f);
+  }
+  if (bal) { // galho grosso saindo para o gramado, onde a corda do balanço amarra
+    const L = -GALHO.dx + 0.5;
+    pc(g, L, 0.24, 0.24, T.tronco, x + GALHO.dx / 2 - 0.1, GALHO.y + 0.12, z, { ...f, rz: -0.06 });
+    pc(g, 0.3, 0.12, 0.3, 0xc9a46a, x + GALHO.dx, GALHO.y + 0.02, z, f); // o nó da corda
+  }
+  sol(x - 0.3, x + 0.3, z - 0.3, z + 0.3, 6);
+}
+
 // ------------------------------------------------------------------ a fachada: o sítio inteiro
 export function sitioFloresca() {
   const S = { grupo: new THREE.Group(), solidos: [] }, g = S.grupo, M = texturas(), Q = SITIO;
@@ -186,12 +224,14 @@ export function sitioFloresca() {
   const sol = (x0, x1, z0, z1, y1 = 3) => { const s = { x0, x1, z0, z1, y1 }; S.solidos.push(s); return s; };
   const MAD = 0x8a6440, MADE = 0x6b4a2e, METAL = 0xc9ced4;
 
-  // ---- chão: a estradinha de cascalho (de fora da cerca até o celeiro), manchas de terra e o caminho até a casa
-  const E = Q.estrada;
+  // ---- chão: a estradinha de cascalho (de fora da cerca até a porta da casa), o caminho até a calçada, a trilha de terra
+  // ao longo da fila (até o portãozinho do lago) e umas manchas de terra no gramado
+  const E = Q.estrada, TR = Q.trilha, PORTA_CASA = Q.casa.z1 - 10.2;
   pc(g, E.larg, 0.05, -E.z1 + 1.5, 0xb3a07c, 0, 0.035, (E.z1 + 1.5) / 2, F);
   for (let z = -2; z > E.z1 + 1; z -= 3.7) pc(g, 0.7 + ((z * 7) % 3 + 3) % 3 * 0.3, 0.02, 1.1, 0xc9b892, ((z * 13) % 2) * 0.6, 0.065, z, D_);
-  pc(g, 8.2, 0.04, 1.4, 0xb3a07c, -6.6, 0.03, -22, F); // trilha até a calçada da casa
-  for (const [x, z, w, d] of [[12, -30, 2.2, 1.4], [18, -70, 1.6, 1.2], [-4, -48, 1.8, 1.0], [8, -84, 2.4, 1.2], [-14, -76, 1.4, 1.0], [22, -18, 1.2, 1.6]]) pc(g, w, 0.02, d, 0x8f7a58, x, 0.03, z, D_);
+  { const xa = Q.casa.x1 + 1.6, xb = -E.larg / 2; pc(g, xb - xa, 0.045, 1.8, 0xb3a07c, (xa + xb) / 2, 0.033, PORTA_CASA, F); } // até a calçada da casa
+  pc(g, 1.5, 0.04, TR.z0 - TR.z1, 0xa8916a, TR.x, 0.03, (TR.z0 + TR.z1) / 2, F);
+  for (const [x, z, w, d] of [[12, -30, 2.2, 1.4], [18, -76, 1.6, 1.2], [3, -48, 1.8, 1.0], [10, -112, 2.4, 1.2], [-2, -124, 1.4, 1.0], [6, -18, 1.2, 1.6]]) pc(g, w, 0.02, d, 0x8f7a58, x, 0.03, z, D_);
 
   // ---- cerca de tela com palanques em volta do terreno (o portão fica em x = ±2,2)
   const PM = Q.portao.meia, TH = 1.45;
@@ -271,103 +311,89 @@ export function sitioFloresca() {
   for (let i = 0; i < 4; i++) pc(g, 0.5, 0.18, 0.5, 0xc9b55a, GL.x1 - 1.2 - i * 0.9, 0.05, GL.z1 - 1.5 - (i % 2), D_); // milho no chão
   sol(GL.x0 - 0.1, GL.x1 + 0.1, GL.z0 - 0.1, GL.z1 + 0.1, 3);
 
-  // ---- celeiro de tábuas (nos fundos, no fim da estradinha): oitão da frente com as portas amarelas, mansardas de
-  // madeira na água da direita e telha laranja
-  const B = Q.celeiro, bw = B.x1 - B.x0, bd = B.z1 - B.z0, bxm = (B.x0 + B.x1) / 2, bzm = (B.z0 + B.z1) / 2, LAR = 0xd0643a;
-  pc(g, bw - 0.04, B.h, bd - 0.04, 0x8c6646, bxm, B.h / 2, bzm, F);
-  plano(g, M.tabua, bd, B.h, B.x1 + 0.01, B.h / 2, bzm, Math.PI / 2); plano(g, M.tabua, bw, B.h, bxm, B.h / 2, B.z0 - 0.01, Math.PI);
-  oitao(g, M.tabua, bw, B.cume, bxm, B.h, B.z1 + 0.01, 0); oitao(g, M.tabua, bw, B.cume, bxm, B.h, B.z0 - 0.01, Math.PI);
-  // frente: tábuas dos dois lados do vão da porta, o vão escuro e as duas folhas amarelas abertas encostadas na parede
-  const PV = 3.6, PH = 3.0; // vão da porta
-  for (const s of [-1, 1]) { const w = (bw - PV) / 2; plano(g, M.tabua, w, B.h, bxm + s * (PV / 2 + w / 2), B.h / 2, B.z1 + 0.01, 0); }
-  plano(g, M.tabua, PV, B.h - PH, bxm, PH + (B.h - PH) / 2, B.z1 + 0.01, 0);
-  pc(g, PV, PH, 0.1, 0x2a1d14, bxm, PH / 2, B.z1 - 0.6, F); pc(g, PV, 0.06, 0.7, 0x5a4636, bxm, 0.03, B.z1 - 0.3, F); // lá dentro, escuro
-  for (const s of [-1, 1]) {
-    const fx = bxm + s * (PV / 2 + PV / 4 + 0.05), z = B.z1 + 0.08;
-    pc(g, PV / 2, PH, 0.1, 0xe8b547, fx, PH / 2, z);
-    for (const [w, h, y] of [[PV / 2, 0.16, 0.12], [PV / 2, 0.16, PH - 0.12], [PV / 2, 0.16, PH / 2]]) pc(g, w, h, 0.05, 0xc99a30, fx, y, z + 0.07, F);
-    const dg = Math.hypot(PV / 2, PH / 2 - 0.2); for (const q of [-1, 1]) pc(g, 0.12, dg, 0.04, 0xc99a30, fx, PH * (q > 0 ? 0.75 : 0.25), z + 0.08, { ...F, rz: Math.atan2(PV / 2, PH / 2 - 0.2) * s });
-  }
-  pc(g, PV + 0.4, 0.18, 0.2, 0x6b4a2e, bxm, PH + 0.1, B.z1 + 0.1, F);
-  janela(g, bxm, B.h + 1.1, B.z1 + 0.03, 0, { w: 0.8, h: 0.7, moldura: 0x5a3f28, veneziana: 0xe8b547 });
-  const sB = telhado(g, { x0: B.x0, x1: B.x1, z0: B.z0, z1: B.z1, h: B.h, cume: B.cume, ov: 0.5, cor: LAR, eixo: "z" });
-  // mansardas na água da direita (+x): caixinha de tábua com telhadinho e o coração vazado no oitão
-  for (const z of [bzm + 2.6, bzm - 2.6]) {
-    const fx = bxm + (bw / 2) * 0.55, base = B.h + B.cume * 0.45;
-    pc(g, (fx - bxm) - 0.2, 1.5, 1.5, 0x8c6646, (fx + bxm + 0.2) / 2, base + 0.45, z, F);
-    plano(g, M.tabua, 1.5, 1.0, fx + 0.01, base + 0.55, z, Math.PI / 2);
-    oitao(g, M.tabua, 1.5, 0.7, fx + 0.01, base + 1.05, z, Math.PI / 2);
-    coracao(g, 0.34, 0x2a1a10, fx + 0.03, base + 1.3, z, Math.PI / 2);
-    for (const q of [-1, 1]) pc(g, (fx - bxm) + 0.2, 0.12, 1.02, LAR, (fx + bxm) / 2 + 0.1, base + 1.4, z + q * 0.42, { ...F, rx: q * 0.75 });
-    void sB;
-  }
-  sol(B.x0 - 0.1, B.x1 + 0.1, B.z0 - 0.1, B.z1 + 0.3, 7);
-
-  // ---- a varanda comprida (as aulas da Escola de Campo): tábua por dentro, telha laranja descendo até a frente da
-  // varanda, palanques e a treliça em losango, com duas entradas; mansardas com o coração vazado
-  const V = Q.varanda, vw = V.x1 - V.x0, vd = V.z1 - V.z0, vxm = (V.x0 + V.x1) / 2, vzm = (V.z0 + V.z1) / 2;
-  pc(g, vw, V.h, vd - 0.04, 0x8c6646, vxm, V.h / 2, vzm, F);
-  plano(g, M.tabua, vw, V.h, vxm, V.h / 2, V.z1 + 0.01, 0); plano(g, M.tabua, vw, V.h, vxm, V.h / 2, V.z0 - 0.01, Math.PI);
-  plano(g, M.tabua, vd, V.h, V.x0 - 0.01, V.h / 2, vzm, -Math.PI / 2); oitao(g, M.tabua, vd, 1.5, V.x0 - 0.01, V.h, vzm, -Math.PI / 2);
-  coracao(g, 0.5, 0x2a1a10, V.x0 - 0.03, V.h + 0.62, vzm, -Math.PI / 2); // o coração vazado no oitão
-  telhado(g, { x0: V.x0, x1: V.x1, z0: V.z0, z1: V.z1, h: V.h, cume: 1.5, ov: 0.35, cor: LAR, eixo: "x", frente: V.frente - V.z1 + 0.3 });
-  // portas das salinhas, ao longo da varanda
-  for (const x of [V.x0 + 3, V.x0 + 8, V.x0 + 13]) { pc(g, 1.1, 2.15, 0.06, 0x5a3f28, x, 1.08, V.z1 + 0.04, F); pc(g, 1.3, 0.12, 0.1, 0x3b2a20, x, 2.2, V.z1 + 0.05, F); pc(g, 0.06, 0.06, 0.06, 0xd4a941, x + 0.38, 1.05, V.z1 + 0.09, F); }
-  for (const x of [V.x0 + 5.5, V.x0 + 10.5, V.x0 + 15.5]) janela(g, x, 1.6, V.z1 + 0.02, 0, { w: 0.9, h: 0.9, moldura: 0x5a3f28, veneziana: 0x7a5a3a });
-  pc(g, vw, 0.1, V.frente - V.z1 + 0.3, 0xc8c4ba, vxm, 0.05, (V.z1 + V.frente + 0.3) / 2, F); // piso da varanda
-  const postes = []; for (let x = V.x0 + 0.15; x <= V.x1 - 0.1; x += vw / 6) postes.push(x);
+  // ---- o salão comprido (as aulas da Escola de Campo), logo atrás da casa, no mesmo eixo: tábua por dentro, telha laranja
+  // descendo até a frente da varanda, palanques e a treliça em losango com três entradas, duas mansardas com o coração
+  // vazado e o coração grande no oitão do fundo. Montado num grupo próprio, no jeito antigo (comprimento em x, frente em +z),
+  // e girado de 90°: o comprimento fica ao longo de z e a frente (a treliça) olha para o gramado (+x).
+  const SL = Q.salao, LAR = 0xd0643a;
+  const sox = (SL.x0 + SL.x1) / 2, soz = (SL.z0 + SL.z1) / 2, sg = new THREE.Group(); sg.position.set(sox, 0, soz); sg.rotation.y = Math.PI / 2; g.add(sg);
+  // retângulo no grupo girado → no terreno: (x, z) do grupo vira (sox + z, soz - x)
+  const solS = (x0, x1, z0, z1, y1) => sol(sox + z0, sox + z1, soz - x1, soz - x0, y1);
+  const V = { x0: -(SL.z1 - SL.z0) / 2, x1: (SL.z1 - SL.z0) / 2, z0: -(SL.x1 - SL.x0) / 2, z1: (SL.x1 - SL.x0) / 2, h: SL.h, frente: SL.frente - sox };
+  const vw = V.x1 - V.x0, vd = V.z1 - V.z0, vxm = 0, vzm = 0;
+  pc(sg, vw, V.h, vd - 0.04, 0x8c6646, vxm, V.h / 2, vzm, F);
+  plano(sg, M.tabua, vw, V.h, vxm, V.h / 2, V.z1 + 0.01, 0); plano(sg, M.tabua, vw, V.h, vxm, V.h / 2, V.z0 - 0.01, Math.PI);
+  for (const [x, ry] of [[V.x0 - 0.01, -Math.PI / 2], [V.x1 + 0.01, Math.PI / 2]]) { plano(sg, M.tabua, vd, V.h, x, V.h / 2, vzm, ry); oitao(sg, M.tabua, vd, 1.5, x, V.h, vzm, ry); }
+  coracao(sg, 0.5, 0x2a1a10, V.x1 + 0.03, V.h + 0.62, vzm, Math.PI / 2); // o coração vazado no oitão do fundo (para a hortinha)
+  telhado(sg, { x0: V.x0, x1: V.x1, z0: V.z0, z1: V.z1, h: V.h, cume: 1.5, ov: 0.35, cor: LAR, eixo: "x", frente: V.frente - V.z1 + 0.3 });
+  // portas das salinhas e as janelas, ao longo da varanda
+  for (let x = V.x0 + 3; x < V.x1 - 1; x += 5) { pc(sg, 1.1, 2.15, 0.06, 0x5a3f28, x, 1.08, V.z1 + 0.04, F); pc(sg, 1.3, 0.12, 0.1, 0x3b2a20, x, 2.2, V.z1 + 0.05, F); pc(sg, 0.06, 0.06, 0.06, 0xd4a941, x + 0.38, 1.05, V.z1 + 0.09, F); }
+  for (let x = V.x0 + 5.5; x < V.x1 - 1; x += 5) janela(sg, x, 1.6, V.z1 + 0.02, 0, { w: 0.9, h: 0.9, moldura: 0x5a3f28, veneziana: 0x7a5a3a });
+  pc(sg, vw, 0.1, V.frente - V.z1 + 0.3, 0xc8c4ba, vxm, 0.05, (V.z1 + V.frente + 0.3) / 2, F); // piso da varanda
+  const postes = []; for (let i = 0; i <= 9; i++) postes.push(V.x0 + 0.15 + ((vw - 0.3) * i) / 9);
   const sTel = 1.5 / (vd / 2), alturaFrente = V.h - sTel * (V.frente - V.z1);
-  for (const x of postes) pc(g, 0.2, alturaFrente, 0.2, 0x7a5532, x, alturaFrente / 2, V.frente, F);
-  pc(g, vw, 0.18, 0.22, 0x7a5532, vxm, alturaFrente - 0.05, V.frente, F);
-  const entradas = [2, 4]; // vãos sem treliça (entre os postes)
+  for (const x of postes) pc(sg, 0.2, alturaFrente, 0.2, 0x7a5532, x, alturaFrente / 2, V.frente, F);
+  pc(sg, vw, 0.18, 0.22, 0x7a5532, vxm, alturaFrente - 0.05, V.frente, F);
+  const entradas = [1, 4, 7]; // vãos sem treliça (entre os postes)
   for (let i = 0; i < postes.length - 1; i++) {
     if (entradas.includes(i)) continue;
     const a = postes[i] + 0.1, b = postes[i + 1] - 0.1, ht = alturaFrente - 0.45;
-    plano(g, M.trelica, b - a, ht, (a + b) / 2, 0.2 + ht / 2, V.frente, 0, 0.5);
-    pc(g, b - a, 0.08, 0.08, 0x7a5532, (a + b) / 2, 0.16, V.frente, F);
-    sol(a - 0.1, b + 0.1, V.frente - 0.12, V.frente + 0.12, 3);
+    plano(sg, M.trelica, b - a, ht, (a + b) / 2, 0.2 + ht / 2, V.frente, 0, 0.5);
+    pc(sg, b - a, 0.08, 0.08, 0x7a5532, (a + b) / 2, 0.16, V.frente, F);
+    solS(a - 0.1, b + 0.1, V.frente - 0.12, V.frente + 0.12, 3);
   }
-  for (const x of postes) sol(x - 0.12, x + 0.12, V.frente - 0.12, V.frente + 0.12, 3);
+  for (const x of postes) solS(x - 0.12, x + 0.12, V.frente - 0.12, V.frente + 0.12, 3);
   // mesinhas e cadeirinhas coloridas da Escola de Campo
-  for (const [x, c] of [[V.x0 + 5, 0x3fa9f5], [V.x0 + 12, 0xff8a3d]]) {
-    pc(g, 1.4, 0.06, 0.8, 0xf4f2ec, x, 0.62, V.z1 + 1.3, F); for (const q of [-1, 1]) for (const r of [-1, 1]) pc(g, 0.06, 0.56, 0.06, 0x9aa1a7, x + q * 0.6, 0.32, V.z1 + 1.3 + r * 0.32, F);
-    for (const q of [-0.45, 0.45]) { pc(g, 0.36, 0.05, 0.34, c, x + q, 0.36, V.z1 + 0.62, F); pc(g, 0.36, 0.38, 0.05, c, x + q, 0.56, V.z1 + 0.45, F); }
+  for (const [x, c] of [[V.x0 + 5, 0x3fa9f5], [V.x0 + 12, 0xff8a3d], [V.x0 + 19.5, 0x58c43a]]) {
+    pc(sg, 1.4, 0.06, 0.8, 0xf4f2ec, x, 0.62, V.z1 + 1.3, F); for (const q of [-1, 1]) for (const r of [-1, 1]) pc(sg, 0.06, 0.56, 0.06, 0x9aa1a7, x + q * 0.6, 0.32, V.z1 + 1.3 + r * 0.32, F);
+    for (const q of [-0.45, 0.45]) { pc(sg, 0.36, 0.05, 0.34, c, x + q, 0.36, V.z1 + 0.62, F); pc(sg, 0.36, 0.38, 0.05, c, x + q, 0.56, V.z1 + 0.45, F); }
   }
-  for (const x of [V.x0 + 4.5, V.x0 + 13.5]) { // mansardas na água da frente
+  for (const x of [V.x0 + 7, V.x0 + 21]) { // as duas mansardas na água da frente
     const fz = V.z1 + 0.9, yb = V.h - sTel * 0.9;
-    // caixa curta e alta: não aparece por baixo do telhado, dentro da varanda
-    pc(g, 1.6, 1.0, 1.0, 0x8c6646, x, yb + 0.8, fz - 0.5, F);
-    plano(g, M.tabua, 1.6, 1.25, x, yb + 0.6, fz + 0.01, 0); oitao(g, M.tabua, 1.6, 0.7, x, yb + 1.2, fz + 0.01, 0);
-    for (const q of [-1, 1]) pc(g, 0.05, 1.0, 1.0, 0x7a5532, x + q * 0.8, yb + 0.8, fz - 0.5, F);
-    coracao(g, 0.36, 0x2a1a10, x, yb + 1.45, fz + 0.03, 0);
-    for (const q of [-1, 1]) pc(g, 1.06, 0.12, 1.4, LAR, x + q * 0.44, yb + 1.54, fz - 0.55, { ...F, rz: -q * 0.75 });
+    pc(sg, 1.6, 1.0, 1.0, 0x8c6646, x, yb + 0.8, fz - 0.5, F); // caixa curta e alta: não aparece por baixo do telhado
+    plano(sg, M.tabua, 1.6, 1.25, x, yb + 0.6, fz + 0.01, 0); oitao(sg, M.tabua, 1.6, 0.7, x, yb + 1.2, fz + 0.01, 0);
+    for (const q of [-1, 1]) pc(sg, 0.05, 1.0, 1.0, 0x7a5532, x + q * 0.8, yb + 0.8, fz - 0.5, F);
+    coracao(sg, 0.36, 0x2a1a10, x, yb + 1.45, fz + 0.03, 0);
+    for (const q of [-1, 1]) pc(sg, 1.06, 0.12, 1.4, LAR, x + q * 0.44, yb + 1.54, fz - 0.55, { ...F, rz: -q * 0.75 });
   }
-  sol(V.x0 - 0.1, V.x1, V.z0 - 0.1, V.z1 + 0.05, 6);
+  solS(V.x0 - 0.1, V.x1 + 0.1, V.z0 - 0.1, V.z1 + 0.05, 6);
 
-  // ---- o lago cercado: água calma, a beira de terra com a grama alta, palanques e tela em volta e o portãozinho
-  const LG = Q.lago;
-  const agua = new THREE.Mesh(disco(LG.r, { passo: 0.5 }), MAT_LAGO); agua.rotation.x = -Math.PI / 2; agua.position.set(LG.x, 0.06, LG.z); agua.userData.dinamico = true; g.add(agua);
-  S.agua = agua;
-  { const m = new THREE.Mesh(disco(LG.r + 0.9, { furo: LG.r - 0.2, passo: 0.5 }), mat(0x8a7a55)); m.rotation.x = -Math.PI / 2; m.position.set(LG.x, 0.045, LG.z); g.add(m); }
-  const NP = 28;
-  for (let i = 0; i < NP; i++) {
-    const a = (i / NP) * Math.PI * 2, b = ((i + 1) / NP) * Math.PI * 2;
-    const [ax, az, bx, bz] = [LG.x + Math.sin(a) * LG.cerca, LG.z + Math.cos(a) * LG.cerca, LG.x + Math.sin(b) * LG.cerca, LG.z + Math.cos(b) * LG.cerca];
-    palanque(g, ax, az, 1.6, 0.13);
-    const L = Math.hypot(bx - ax, bz - az), ry = Math.atan2(-(bz - az), bx - ax);
-    if (i === 0) { // o portãozinho (de frente para a estradinha): moldura metálica e a tela
-      const p = new THREE.Group(); p.position.set((ax + bx) / 2, 0, (az + bz) / 2); p.rotation.y = ry; g.add(p);
-      for (const s of [-1, 1]) pc(p, 0.06, 1.3, 0.06, METAL, s * (L / 2 - 0.12), 0.78, 0, F);
-      for (const y of [0.16, 1.4]) pc(p, L - 0.2, 0.06, 0.06, METAL, 0, y, 0, F);
-      plano(p, M.tela, L - 0.3, 1.2, 0, 0.78, 0, 0, 1);
-    } else plano(g, M.tela, L, 1.3, (ax + bx) / 2, 0.75, (az + bz) / 2, ry, 1);
-    // grama alta na margem
-    for (let k = 0; k < 4; k++) { const aa = a + ((b - a) * (k + 0.5)) / 4, r = LG.r + 0.5 + ((i * 7 + k * 3) % 5) * 0.25; pc(g, 0.1, 0.45 + ((i + k) % 3) * 0.2, 0.1, [0x5aa83a, 0x78bf46, 0x9ccf5a][(i + k) % 3], LG.x + Math.sin(aa) * r, 0.3, LG.z + Math.cos(aa) * r, { ...D_, rz: ((k % 3) - 1) * 0.2 }); }
+  // ---- a hortinha (no espaço verde entre o salão e o galinheiro): três canteiros de terra com borda de tábua, a
+  // torneirinha e um banquinho. As plantas e o regador se mexem (criarVida)
+  const HT = Q.horta, hw = HT.x1 - HT.x0, hxm = (HT.x0 + HT.x1) / 2;
+  for (const z of HT.z) {
+    pc(g, hw, 0.22, HT.larg, 0x6b4a2e, hxm, 0.11, z, F);
+    for (const s of [-1, 1]) pc(g, hw + 0.12, 0.3, 0.08, 0x9a7350, hxm, 0.15, z + s * (HT.larg / 2 + 0.04), F);
+    for (const x of [HT.x0 - 0.04, HT.x1 + 0.04]) pc(g, 0.08, 0.3, HT.larg + 0.16, 0x9a7350, x, 0.15, z, F);
   }
-  S.solidos.push({ circulo: true, x: LG.x, z: LG.z, r: LG.cerca + 0.15 });
-  // a marca no chão, na frente do portãozinho (aparece quando a missão precisa)
-  { const m = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.85, 28), new THREE.MeshBasicMaterial({ color: 0xffcc1f, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }));
-    m.rotation.x = -Math.PI / 2; m.position.set(Q.marcaLago[0], 0.12, Q.marcaLago[1]); m.userData.dinamico = true; m.visible = false; g.add(m); S.marca = m; }
+  { const [tx, tz] = Q.regador; pc(g, 0.12, 0.9, 0.12, 0x9aa1a7, tx + 0.55, 0.45, tz - 0.4, F); pc(g, 0.22, 0.08, 0.08, 0x9aa1a7, tx + 0.45, 0.86, tz - 0.4, F); pc(g, 0.1, 0.1, 0.1, 0xe2342b, tx + 0.55, 0.95, tz - 0.4, F); sol(tx + 0.45, tx + 0.65, tz - 0.5, tz - 0.3, 1); }
+
+  // ---- o lago QUADRADO cercado (depois do galinheiro): água calma, a beira de terra com a grama alta, palanques e tela
+  // em volta e o portãozinho do lado do gramado (+x)
+  const LG = Q.lago, lw = LG.x1 - LG.x0, ld = LG.z1 - LG.z0, B0 = LG.borda;
+  const agua = new THREE.Mesh(new THREE.PlaneGeometry(lw - B0 * 2, ld - B0 * 2), MAT_LAGO); agua.rotation.x = -Math.PI / 2; agua.position.set(LG.x, 0.06, LG.z); agua.userData.dinamico = true; g.add(agua);
+  S.agua = agua;
+  pc(g, lw - 0.4, 0.03, ld - 0.4, 0x8a7a55, LG.x, 0.03, LG.z, F); // a beira de terra
+  {
+    const zg = LG.z, GW = 1.7; // o portãozinho: no lado +x, no meio
+    const lados = [[LG.x0, LG.z1, LG.x1, LG.z1], [LG.x1, LG.z1, LG.x1, zg + GW / 2], [LG.x1, zg - GW / 2, LG.x1, LG.z0], [LG.x1, LG.z0, LG.x0, LG.z0], [LG.x0, LG.z0, LG.x0, LG.z1]];
+    for (const [x0, z0, x1, z1] of lados) {
+      const L = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(L / 2.4)), ry = Math.atan2(-(z1 - z0), x1 - x0);
+      for (let i = 0; i <= n; i++) palanque(g, x0 + ((x1 - x0) * i) / n, z0 + ((z1 - z0) * i) / n, 1.6, 0.13);
+      plano(g, M.tela, L, 1.3, (x0 + x1) / 2, 0.75, (z0 + z1) / 2, ry, 1);
+    }
+    const p = new THREE.Group(); p.position.set(LG.x1, 0, zg); p.rotation.y = Math.PI / 2; g.add(p); // a tela do portãozinho, com moldura metálica
+    for (const s of [-1, 1]) pc(p, 0.06, 1.3, 0.06, METAL, s * (GW / 2 - 0.12), 0.78, 0, F);
+    for (const y of [0.16, 1.4]) pc(p, GW - 0.2, 0.06, 0.06, METAL, 0, y, 0, F);
+    plano(p, M.tela, GW - 0.3, 1.2, 0, 0.78, 0, 0, 1);
+    // grama alta na beira, por dentro da cerca
+    let k = 0;
+    for (const [x0, z0, x1, z1] of [[LG.x0 + 0.6, LG.z1 - 0.6, LG.x1 - 0.6, LG.z1 - 0.6], [LG.x1 - 0.6, LG.z1 - 0.6, LG.x1 - 0.6, LG.z0 + 0.6], [LG.x1 - 0.6, LG.z0 + 0.6, LG.x0 + 0.6, LG.z0 + 0.6], [LG.x0 + 0.6, LG.z0 + 0.6, LG.x0 + 0.6, LG.z1 - 0.6]]) {
+      const L = Math.hypot(x1 - x0, z1 - z0), n = Math.round(L / 0.55);
+      for (let i = 0; i < n; i++, k++) { const f = (i + 0.5) / n, x = x0 + (x1 - x0) * f, z = z0 + (z1 - z0) * f; if (Math.abs(z - zg) < 1.4 && Math.abs(x - LG.x1) < 1) continue; pc(g, 0.1, 0.45 + (k % 3) * 0.2, 0.1, [0x5aa83a, 0x78bf46, 0x9ccf5a][k % 3], x + ((k * 7) % 5 - 2) * 0.06, 0.3, z + ((k * 3) % 5 - 2) * 0.06, { ...D_, rz: ((k % 3) - 1) * 0.2 }); }
+    }
+  }
+  sol(LG.x0 - 0.15, LG.x1 + 0.15, LG.z0 - 0.15, LG.z1 + 0.15, 1.6);
 
   // ---- o pinheiro alto ao lado do lago, as palmeiras e a mata ao fundo
   { const [px, pz] = Q.pinheiro, pg = new THREE.Group(); pg.position.set(px, 0, pz); g.add(pg);
@@ -376,12 +402,20 @@ export function sitioFloresca() {
     copa.forEach(([w, h, y, dx, dz], i) => pc(pg, w, h, w * 0.85, i % 2 ? 0x2f5f33 : 0x3a7040, dx, y, dz, i < 3 ? {} : F));
     for (const [w, y, dx, rz] of [[1.6, 6.2, 0.9, -0.3], [1.4, 5.4, -0.8, 0.35]]) { pc(pg, w, 0.12, 0.12, 0x6b4a2e, dx, y, 0, { ...F, rz }); pc(pg, 1.2, 0.6, 1.0, 0x2f5f33, dx * 1.7, y + 0.2, 0, F); }
     sol(px - 0.35, px + 0.35, pz - 0.35, pz + 0.35, 10); }
-  for (const [x, z, a] of [[-24, -133, 7.5], [-6, -134, 8.5], [0, -131, 7], [26, -134, 8], [-25, -12, 6.5], [-24.5, -66, 7.8], [25.5, -88, 7.2]]) { const c = coqueiro(a); c.position.set(x, 0.03, z); c.rotation.y = (x * 0.37) % 6; g.add(c); sol(x - 0.4, x + 0.4, z - 0.4, z + 0.4, 6); }
-  for (const [x, z, e, t] of [[-20, -136, 1.5, 0], [-14, -135.5, 1.3, 1], [-10, -136.4, 1.6, 3], [6, -136, 1.4, 0], [10, -135, 1.2, 1], [21, -136.5, 1.5, 3], [-26, -100, 1.2, 0], [-26, -80, 1.4, 1], [26, -60, 1.3, 3], [-25.5, -40, 1.1, 0], [26, -102, 1.3, 1]]) {
+  for (const [x, z, a] of [[-24, -133, 7.5], [-6, -134, 8.5], [2, -131, 7], [12, -134, 8], [-25, -121, 7.2]]) { const c = coqueiro(a); c.position.set(x, 0.03, z); c.rotation.y = (x * 0.37) % 6; g.add(c); sol(x - 0.4, x + 0.4, z - 0.4, z + 0.4, 6); }
+  for (const [x, z, e, t] of [[-20, -136, 1.5, 0], [-14, -135.5, 1.3, 1], [-10, -136.4, 1.6, 3], [6, -136, 1.4, 0], [17, -135, 1.2, 1], [-15, -125, 1.3, 3], [-26.5, -70.5, 1.0, 1]]) {
     const a = arvoreReal(e, t); a.position.set(x, 0.03, z); a.rotation.y = x; g.add(a); sol(x - 0.5, x + 0.5, z - 0.5, z + 0.5, 6);
   }
-  // moitas e bananeirinha perto da casa
-  for (const [x, z] of [[-22.5, -18], [-22.5, -27], [-9.2, -35], [-21, -36]]) pc(g, 1.4, 0.9, 1.2, 0x4f9e3a, x, 0.45, z, D_);
+  // moitas perto da casa e do salão
+  for (const [x, z] of [[-27, -8], [-16.2, -26.3], [-27.3, -57.5], [-16, -72.5]]) pc(g, 1.4, 0.9, 1.2, 0x4f9e3a, x, 0.45, z, D_);
+
+  // ---- a fileira de árvores frutíferas na divisa da direita (mangueira, laranjeira, goiabeira e pitangueira, com as
+  // frutinhas coloridas à mostra) e o galho grosso das que têm balanço de pneu (o balanço se mexe: criarVida)
+  for (const [z, tipo, bal] of Q.frutiferas) frutifera(g, Q.frutX, z, tipo, bal, sol);
+
+  // a marca no chão (aparece quando a missão precisa: o portãozinho do lago, o balde, o regador, os canteiros...)
+  { const m = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.85, 28), new THREE.MeshBasicMaterial({ color: 0xffcc1f, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }));
+    m.rotation.x = -Math.PI / 2; m.position.set(Q.marcaLago[0], 0.12, Q.marcaLago[1]); m.userData.dinamico = true; m.visible = false; g.add(m); S.marca = m; }
 
   S.porta = [0, 1.2];
   S.grupo.updateMatrixWorld(true);
@@ -448,7 +482,7 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
 
   function abrirPortao() {
     if (aberto || abrindo || R.estado !== "casa") return;
-    R.estado = "vindo"; R.caminho = [[-1.4, -20], [-0.6, -3.2]];
+    R.estado = "vindo"; R.caminho = [[-1.6, Q.regina.casa[1]], [-0.6, -3.2]];
   }
   function reginaAlvo() {
     if (R.estado === "casa") return Q.regina.casa;
@@ -515,7 +549,7 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
       else v = 6;
     } else if (K.modo === "pulandoLago" || K.modo === "saindo") {
       K.voo += dt / 0.9;
-      const [x0, z0] = K.de, [x1, z1] = K.modo === "saindo" ? [Q.marcaLago[0] - 1.6, Q.marcaLago[1] + 0.9] : lagoAlvo, k = Math.min(1, K.voo);
+      const [x0, z0] = K.de, [x1, z1] = K.modo === "saindo" ? [Q.marcaLago[0] + 0.9, Q.marcaLago[1] + 1.6] : lagoAlvo, k = Math.min(1, K.voo);
       K.x = x0 + (x1 - x0) * k; K.z = z0 + (z1 - z0) * k; K.rot = Math.atan2(x1 - x0, z1 - z0);
       ny = (K.modo === "saindo" ? -0.55 + 0.58 * k : 0.03 - 0.58 * k) + Math.sin(k * Math.PI) * 1.7;
       if (k >= 1) {
@@ -526,7 +560,7 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
       K.a += dt * 0.35; const ax = LG.x + Math.sin(K.a) * 3.5, az = LG.z + Math.cos(K.a) * 3.5;
       passo(K, ax, az, 1.4, dt); ny = -0.55 + Math.sin(t * 2.4) * 0.04; v = 1.4;
     } else if (K.modo === "chamado") { // nada até o portãozinho
-      if (passo(K, Q.marcaLago[0], Q.marcaLago[1] - 4.6, 2.6, dt) < 0.2) { K.modo = "saindo"; K.voo = 0; K.de = [K.x, K.z]; }
+      if (passo(K, Q.dentroLago[0], Q.dentroLago[1], 2.6, dt) < 0.2) { K.modo = "saindo"; K.voo = 0; K.de = [K.x, K.z]; }
       ny = -0.55 + Math.sin(t * 4) * 0.05; v = 2.6;
     } else if (K.modo === "sacudir") {
       K.sacode -= dt; if (K.sacode <= 0) { secar(); K.modo = "seguir"; const f = K.fim; K.fim = null; f?.(); }
@@ -572,8 +606,15 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
   // ---- Ale: nada no lago; na missão foge pelo gramado (da Tia Regina e do Rabisco), vai no colo do Rabisco e volta voando para a água
   function atualizarAle(dt, t, pl) {
     if (A.modo === "lago") {
-      A.a += dt * 0.3; A.x = LG.x + Math.sin(A.a) * 5.2; A.z = LG.z + Math.cos(A.a) * 5.2; A.rot = A.a + Math.PI / 2;
-      ale.position.set(A.x, 0.02 + Math.sin(t * 2) * 0.02, A.z); ale.rotation.y = A.rot;
+      if (comidaPatos > 0) { // vem comer o milho, junto com os patos
+        if (passo(A, PONTO_PATOS[0] - 0.4, PONTO_PATOS[1] - 0.2, 2.2, dt) < 0.3) A.rot = Math.atan2(PONTO_PATOS[0] - A.x, PONTO_PATOS[1] - A.z);
+        A.a = Math.atan2(A.x - LG.x, A.z - LG.z);
+        ale.position.set(A.x, 0.02, A.z); ale.rotation.set(Math.max(0, Math.sin(t * 8)) * 0.45, A.rot, 0);
+      } else {
+        A.a += dt * 0.3; const ax = LG.x + Math.sin(A.a) * 5.2, az = LG.z + Math.cos(A.a) * 5.2;
+        if (Math.hypot(ax - A.x, az - A.z) > 0.4) passo(A, ax, az, 1.6, dt); else { A.x = ax; A.z = az; A.rot = A.a + Math.PI / 2; }
+        ale.position.set(A.x, 0.02 + Math.sin(t * 2) * 0.02, A.z); ale.rotation.set(0, A.rot, 0);
+      }
     } else if (A.modo === "fugida") {
       // foge de quem chega perto (o Rabisco, mais forte; a Tia Regina, um pouco), passeia e às vezes para, "cansada"
       let fx = 0, fz = 0;
@@ -593,16 +634,139 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
       ale.position.set(A.x, 1.05 * (1 - k) + Math.sin(k * Math.PI) * 1.6 + 0.02, A.z); ale.rotation.set(0, Math.atan2(x1 - x0, z1 - z0), 0);
       if (k >= 1) { A.modo = "lago"; A.a = Math.atan2(A.x - LG.x, A.z - LG.z); ctx?.sons?.bichinho?.("quack"); const f = A.fim; A.fim = null; f?.(); }
     }
-    for (const p of patos) { p.a += p.v * dt; const x = LG.x + Math.sin(p.a) * p.r, z = LG.z + Math.cos(p.a) * p.r; p.g.position.set(x, 0.02 + Math.sin(t * 2 + p.r) * 0.02, z); p.g.rotation.y = p.a + Math.PI / 2; }
+    patos.forEach((p, i) => {
+      p.a += p.v * dt;
+      let ax = LG.x + Math.sin(p.a) * p.r, az = LG.z + Math.cos(p.a) * p.r, bica = 0;
+      if (comidaPatos > 0) { ax = PONTO_PATOS[0] + Math.cos(i * 2.1) * 0.9; az = PONTO_PATOS[1] + Math.sin(i * 2.1) * 1.1; }
+      p.x ??= ax; p.z ??= az;
+      const d = passo(p, ax, az, comidaPatos > 0 ? 2.2 : 1.4, dt);
+      if (comidaPatos > 0 && d < 0.3) { bica = Math.max(0, Math.sin(t * 9 + i)) * 0.45; p.rot = Math.atan2(PONTO_PATOS[0] - p.x, PONTO_PATOS[1] - p.z); }
+      else if (d < 0.3) p.rot = p.a + Math.PI / 2;
+      p.g.position.set(p.x, 0.02 + Math.sin(t * 2 + p.r) * 0.02, p.z); p.g.rotation.set(bica, p.rot ?? 0, 0);
+    });
   }
   function atualizarGalinhas(dt, t) {
     for (const q of galinhas) {
+      if (comidaGal > 0) { // correndo para o milho e bicando sem parar
+        const [mx, mz] = Q.milhoGalinhas, i = galinhas.indexOf(q), ax = mx + Math.cos(i * 2.1) * 0.6, az = mz + Math.sin(i * 2.1) * 0.6;
+        const d = passo(q, ax, az, 2.6, dt);
+        if (d < 0.2) q.rot = Math.atan2(mx - q.x, mz - q.z);
+        q.g.position.set(q.x, 0.03 + (d > 0.2 ? Math.abs(Math.sin(t * 18 + q.fase)) * 0.08 : 0), q.z); q.g.rotation.set(d > 0.2 ? 0 : Math.max(0, Math.sin(t * 12 + q.fase)) * 0.7, q.rot ?? 0, 0);
+        continue;
+      }
       if (!q.alvo || Math.hypot(q.alvo[0] - q.x, q.alvo[1] - q.z) < 0.2 || Math.random() < dt * 0.1) q.alvo = [GL.x0 + 4 + Math.random() * (GL.x1 - GL.x0 - 4.8), GL.z0 + 0.8 + Math.random() * (GL.z1 - GL.z0 - 1.6)];
       const anda = Math.sin(t * 0.8 + q.fase) > 0;
       if (anda) passo(q, q.alvo[0], q.alvo[1], 0.9, dt);
       q.g.position.set(q.x, 0.03 + (anda ? Math.abs(Math.sin(t * 14 + q.fase)) * 0.06 : 0), q.z); q.g.rotation.set(anda ? 0 : Math.max(0, Math.sin(t * 5 + q.fase)) * 0.5, q.rot ?? 0, 0); // ciscando
     }
   }
+
+  // ---- o que as missões novas usam: milho, gotas e frutinhas voando (uma malha só), o balde, o regador e as cestas, as
+  // plantas da hortinha, a grama alta para roçar e os balanços de pneu
+  const NV = 40, voo = new THREE.InstancedMesh(new THREE.BoxGeometry(0.1, 0.07, 0.1), matNovo({ color: 0xffffff }), NV);
+  voo.userData.dinamico = true; voo.visible = false; voo.frustumCulled = false; raiz.add(voo);
+  const vooV = Array.from({ length: NV }, () => ({ de: new THREE.Vector3(), para: new THREE.Vector3(), t: 0, dur: 1, fica: 0, tam: 1, vivo: false }));
+  const _cor = new THREE.Color(), _v = new THREE.Vector3();
+  for (let i = 0; i < NV; i++) voo.setColorAt(i, _cor.set(0xffffff));
+  // joga n coisinhas de (x, y, z) até perto de [px, pz] (coordenadas do terreno), em arco; ficam no chão "fica" segundos
+  function jogar([x, y, z], [px, pz], { n = 10, cores = [0xf2c232], espalha = 0.7, fica = 5, tam = 1, alto = 1.4, py = 0.08 } = {}) {
+    let k = 0;
+    for (let i = 0; i < NV && k < n; i++) {
+      const q = vooV[i]; if (q.vivo) continue;
+      q.vivo = true; q.t = -k * 0.03; q.dur = 0.55 + Math.random() * 0.25; q.fica = fica; q.tam = tam; q.alto = alto;
+      q.de.set(x + (Math.random() - 0.5) * 0.2, y, z + (Math.random() - 0.5) * 0.2);
+      q.para.set(px + (Math.random() - 0.5) * espalha * 2, py, pz + (Math.random() - 0.5) * espalha * 2);
+      voo.setColorAt(i, _cor.set(cores[k % cores.length])); k++;
+    }
+    voo.instanceColor.needsUpdate = true; voo.visible = true;
+  }
+  function animarVoo(dt) {
+    if (!voo.visible) return;
+    let vivos = 0;
+    vooV.forEach((q, i) => {
+      if (q.vivo) {
+        q.t += dt;
+        const k = Math.max(0, Math.min(1, q.t / q.dur));
+        _v.lerpVectors(q.de, q.para, k); _v.y = q.de.y + (q.para.y - q.de.y) * k + Math.sin(k * Math.PI) * q.alto;
+        if (q.t > q.dur + q.fica) q.vivo = false;
+        _o.position.copy(_v); _o.rotation.set(q.t * 6 * (1 - k), q.t * 4 * (1 - k), 0); _o.scale.setScalar(q.vivo && q.t > 0 ? q.tam : 0.0001);
+      } else _o.scale.setScalar(0.0001);
+      _o.updateMatrix(); voo.setMatrixAt(i, _o.matrix);
+      if (q.vivo) vivos++;
+    });
+    voo.instanceMatrix.needsUpdate = true;
+    if (!vivos) voo.visible = false;
+  }
+  // os objetos de mão: balde de milho e regador (moram no chão, perto de onde se usa) e as cestas (só aparecem na mão)
+  const objeto = (lista) => { const o = new THREE.Group(); parte(o, lista); o.userData.dinamico = true; raiz.add(o); return o; };
+  const OBJ = {
+    balde: objeto([[0.36, 0.34, 0.36, 0x9aa1a7, 0, 0.17, 0], [0.32, 0.05, 0.32, 0xf2c232, 0, 0.33, 0], [0.4, 0.04, 0.04, 0x55595e, 0, 0.52, 0], [0.03, 0.2, 0.03, 0x55595e, 0.19, 0.42, 0], [0.03, 0.2, 0.03, 0x55595e, -0.19, 0.42, 0], [0.38, 0.04, 0.38, 0x7f868f, 0, 0.02, 0]]),
+    regador: objeto([[0.42, 0.3, 0.24, 0x2f9e57, 0, 0.15, 0], [0.07, 0.07, 0.48, 0x2f9e57, 0, 0.26, 0.3, -0.6], [0.14, 0.14, 0.05, 0x24804a, 0, 0.42, 0.5], [0.32, 0.05, 0.05, 0x24804a, -0.02, 0.4, -0.04], [0.05, 0.16, 0.05, 0x24804a, -0.16, 0.33, -0.04], [0.05, 0.16, 0.05, 0x24804a, 0.12, 0.33, -0.04]]),
+    cestaHorta: objeto([[0.62, 0.24, 0.42, 0xc98a4b, 0, 0.12, 0], [0.66, 0.05, 0.46, 0xa86f38, 0, 0.25, 0], [0.24, 0.18, 0.24, 0x6cc04a, -0.16, 0.3, 0.05], [0.22, 0.16, 0.22, 0x8fd65a, 0.12, 0.29, -0.06], [0.08, 0.08, 0.3, 0xff8a1f, 0.05, 0.3, 0.1, 0, 0.5], [0.08, 0.08, 0.28, 0xff8a1f, 0.2, 0.3, 0.06, 0, -0.4], [0.05, 0.16, 0.05, 0x3f9a3a, 0.05, 0.4, 0.24]]),
+    cestaFrutas: objeto([[0.62, 0.24, 0.42, 0xc98a4b, 0, 0.12, 0], [0.66, 0.05, 0.46, 0xa86f38, 0, 0.25, 0], [0.18, 0.18, 0.18, 0xff8a1f, -0.16, 0.3, 0.05], [0.2, 0.24, 0.18, 0xf2a33a, 0.08, 0.31, -0.05], [0.15, 0.15, 0.15, 0xd7e36a, 0.2, 0.3, 0.1], [0.12, 0.12, 0.12, 0xe0342b, -0.04, 0.3, 0.12], [0.12, 0.12, 0.12, 0xe0342b, -0.2, 0.31, -0.1]]),
+  };
+  const CASA_OBJ = { balde: [Q.balde[0], Q.balde[1], -Math.PI / 2], regador: [Q.regador[0], Q.regador[1] + 0.2, Math.PI / 2] };
+  const guardar = (nome) => { const o = OBJ[nome], c = CASA_OBJ[nome]; raiz.add(o); o.scale.setScalar(1); o.rotation.set(0, c?.[2] ?? 0, 0); if (c) o.position.set(c[0], 0.04, c[1]); o.visible = Boolean(c); o.userData.naMao = false; };
+  for (const n of Object.keys(OBJ)) guardar(n);
+  // as plantas da hortinha: alfaces e cenouras (uma malha só); "cresce" vai de 0,5 (mudinhas) a 1 (prontas para colher)
+  const HT = Q.horta, nPl = 6, plantas = [];
+  for (const [c, z] of HT.z.entries()) for (let i = 0; i < nPl; i++) {
+    const x = HT.x0 + 0.7 + ((HT.x1 - HT.x0 - 1.4) * i) / (nPl - 1), cenoura = c === 1;
+    plantas.push({ c, x, z, y: 0.22, w: cenoura ? 0.2 : 0.5, h: cenoura ? 0.42 : 0.32, cor: cenoura ? 0x3f9a3a : i % 2 ? 0x8fd65a : 0x6cc04a });
+    if (cenoura) plantas.push({ c, x, z, y: 0.21, w: 0.22, h: 0.13, cor: 0xff8a1f, fixa: true }); // o "ombro" laranja da cenoura, aparecendo na terra
+  }
+  const pl = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), matNovo({ color: 0xffffff }), plantas.length);
+  pl.userData.dinamico = true; raiz.add(pl);
+  plantas.forEach((q, i) => pl.setColorAt(i, _cor.set(q.cor)));
+  const horta = { cresce: [0.5, 0.5, 0.5], alvo: [0.5, 0.5, 0.5], colhida: false, sujo: true };
+  function animarHorta(dt) {
+    let mexeu = horta.sujo;
+    for (let c = 0; c < 3; c++) { const d = horta.alvo[c] - horta.cresce[c]; if (Math.abs(d) > 1e-3) { horta.cresce[c] += Math.sign(d) * Math.min(Math.abs(d), dt * 0.4); mexeu = true; } }
+    if (!mexeu) return;
+    horta.sujo = false;
+    plantas.forEach((q, i) => {
+      const k = horta.colhida ? 0.0001 : q.fixa ? Math.max(0.3, horta.cresce[q.c]) : horta.cresce[q.c];
+      _o.position.set(q.x, q.y, q.z); _o.rotation.set(0, (i * 0.7) % 1.5, 0); _o.scale.set(q.w * k, q.h * k, q.w * k); _o.updateMatrix(); pl.setMatrixAt(i, _o.matrix);
+    });
+    pl.instanceMatrix.needsUpdate = true;
+  }
+  // a grama alta (missão "Roçar a grama"): tufos em cada trecho, numa malha só; roçado, fica baixinho
+  const NT = 18, tufos = [];
+  for (const [p, [cx0, cz0]] of Q.capim.entries()) for (let i = 0; i < NT; i++) { const a = i * 2.4, r = Math.sqrt(((i * 37) % NT) / NT) * Q.capimR; tufos.push({ p, x: cx0 + Math.cos(a) * r, z: cz0 + Math.sin(a) * r, h: 0.7 + ((i * 13) % 5) * 0.1, rz: (((i * 7) % 5) - 2) * 0.12 }); }
+  const capim = new THREE.InstancedMesh(new THREE.BoxGeometry(0.16, 1, 0.16).translate(0, 0.5, 0), matNovo({ color: 0xffffff }), tufos.length);
+  capim.userData.dinamico = true; capim.visible = false; raiz.add(capim);
+  tufos.forEach((q, i) => capim.setColorAt(i, _cor.set([0x5aa83a, 0x78bf46, 0x9ccf5a, 0x6db343][i % 4])));
+  const cap = { k: Q.capim.map(() => 1), alvo: Q.capim.map(() => 1), sujo: true };
+  function animarCapim(dt) {
+    if (!capim.visible) return;
+    let mexeu = cap.sujo;
+    cap.k.forEach((v, i) => { if (v > cap.alvo[i]) { cap.k[i] = Math.max(cap.alvo[i], v - dt * 2.5); mexeu = true; } });
+    if (!mexeu) return;
+    cap.sujo = false;
+    tufos.forEach((q, i) => { _o.position.set(q.x, 0.02, q.z); _o.rotation.set(0, i, q.rz * cap.k[q.p]); _o.scale.set(1, Math.max(0.12, q.h * cap.k[q.p]), 1); _o.updateMatrix(); capim.setMatrixAt(i, _o.matrix); });
+    capim.instanceMatrix.needsUpdate = true;
+  }
+  // os balanços de pneu: a corda amarrada na ponta do galho e o pneu (uma malha cada), balançando devagar; empurrado, vai alto
+  const balancos = Q.frutiferas.filter((f) => f[2]).map(([z], i) => {
+    const piv = new THREE.Group(); piv.position.set(Q.frutX + GALHO.dx, GALHO.y, z); piv.userData.dinamico = true; raiz.add(piv);
+    const lista = [[0.05, 2.0, 0.05, 0xc9a46a, 0, -1.0, 0]];
+    for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2; lista.push([0.32, 0.2, 0.24, 0x262626, Math.cos(a) * 0.42, -2.42 + Math.sin(a) * 0.42, 0, 0, 0, a + Math.PI / 2]); }
+    parte(piv, lista);
+    return { piv, z, amp: 0.12, fase: i * 1.7, alto: 0, sentado: null };
+  });
+  function animarBalancos(dt, t) {
+    for (const b of balancos) {
+      b.alto = Math.max(0, b.alto - dt);
+      const alvo = b.alto > 0 ? 0.55 : 0.12;
+      b.amp += (alvo - b.amp) * Math.min(1, dt * (b.alto > 0 ? 1.6 : 0.5));
+      b.piv.rotation.x = Math.sin(t * 1.8 + b.fase) * b.amp;
+    }
+  }
+  let comidaGal = 0, comidaPatos = 0;
+  const PONTO_PATOS = [Q.dentroLago[0] + 0.3, Q.dentroLago[1]];
+  const _mundo = (o) => { o.getWorldPosition(_v); return { x: _v.x, y: _v.y, z: _v.z }; };
+
+  animarHorta(0);
 
   let perto = false;
   const api = {
@@ -632,7 +796,8 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
       atualizarDuck(dt, t, pl, plRot);
       atualizarAle(dt, t, pl);
       atualizarGalinhas(dt, t);
-      animarGotas(dt);
+      animarGotas(dt); animarVoo(dt); animarHorta(dt); animarCapim(dt); animarBalancos(dt, t);
+      comidaGal = Math.max(0, comidaGal - dt); comidaPatos = Math.max(0, comidaPatos - dt);
       if (marca.visible) marca.scale.setScalar(1 + Math.sin(t * 4) * 0.08);
     },
     // ---- para as cenas das missões (missoes-cenas.js) e para os testes
@@ -641,7 +806,45 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
     duckMundo: () => { const [x, z] = paraMundo(K.x, K.z); return { x, z, modo: K.modo, molhado: K.molhado }; },
     marcaLagoMundo: () => { const [x, z] = paraMundo(...Q.marcaLago); return { x, z }; },
     perto: (p, o, r) => Math.hypot(p.x - o.x, p.z - o.z) < r,
-    mostrarMarca(sim) { marca.visible = Boolean(sim); },
+    // a marca amarela no chão: no portãozinho do lago (padrão) ou em [x, z] do terreno
+    mostrarMarca(sim, onde = Q.marcaLago) { marca.visible = Boolean(sim); marca.position.set(onde[0], 0.12, onde[1]); },
+    marcaMundo: () => { const [x, z] = paraMundo(marca.position.x, marca.position.z); return { x, z, visivel: marca.visible }; },
+    pontoMundo: (x, z) => { const [wx, wz] = paraMundo(x, z); return { x: wx, z: wz }; },
+    // retângulo do terreno, por dentro da cerca, no mundo (o roçador não sai daqui)
+    limiteMundo() { const cs = [[-27.2, -0.8], [27.2, -0.8], [27.2, -137.2], [-27.2, -137.2]].map(([x, z]) => paraMundo(x, z)); const xs = cs.map((c) => c[0]), zs = cs.map((c) => c[1]); return { x0: Math.min(...xs), x1: Math.max(...xs), z0: Math.min(...zs), z1: Math.max(...zs) }; },
+    // o portão abre (a Tia Regina vem da casa, se estiver lá): o ônibus da Kids II chegou
+    abrirJa() { if (!aberto && !abrindo && R.estado === "casa") abrirPortao(); },
+    // ---- missões novas: objetos de mão, milho, hortinha, grama alta e balanços
+    pegar(nome, rabisco) {
+      const o = OBJ[nome]; if (!o || o.userData.naMao) return false;
+      const sy = rabisco.grupo.scale.y || 1; rabisco.grupo.add(o); o.visible = true; o.userData.naMao = true;
+      o.position.set(0, 0.62 / sy, 0.44 / sy); o.rotation.set(0, 0, 0); o.scale.setScalar(1 / sy); return true;
+    },
+    largar(nome) { if (OBJ[nome]) guardar(nome); },
+    naMao: (nome) => Boolean(OBJ[nome]?.userData.naMao),
+    objetoMundo: (nome) => { const o = OBJ[nome]; return o ? _mundo(o) : null; },
+    // joga milho (ou água, ou frutinhas) de um ponto do mundo até [x, z] do terreno
+    jogarDe(wx, wy, wz, alvo, op = {}) { const [lx, lz] = paraLocal(wx, wz); jogar([lx, wy, lz], alvo, op); ctx?.sons?.pulo?.(); },
+    milhoGalinhas(seg = 9) { comidaGal = seg; ctx?.sons?.bichinho?.("cocorico"); },
+    milhoPatos(seg = 9) { comidaPatos = seg; ctx?.sons?.bichinho?.("quack"); },
+    get comendo() { return { galinhas: comidaGal > 0, patos: comidaPatos > 0 }; },
+    galinhasMundo: () => galinhas.map((q) => { const [x, z] = paraMundo(q.x, q.z); return { x, z }; }),
+    patosMundo: () => patos.map((p) => { const [x, z] = paraMundo(p.x ?? LG.x, p.z ?? LG.z); return { x, z }; }),
+    canteiroMundo: (i) => { const [x, z] = paraMundo(HT.x1 + 1.0, HT.z[i]); return { x, z }; },
+    regar(i) { horta.alvo[i] = 1; horta.colhida = false; horta.sujo = true; const [x0, z0] = [HT.x1 + 0.6, HT.z[i]]; jogar([x0, 1.0, z0], [(HT.x0 + HT.x1) / 2 + 1, HT.z[i]], { n: 14, cores: [0x4fc3ff, 0x8fd6ff], espalha: 1.4, fica: 0.2, alto: 0.4, py: 0.25 }); },
+    colher() { horta.colhida = true; horta.sujo = true; },
+    replantar() { horta.alvo = [0.5, 0.5, 0.5]; horta.cresce = [0.5, 0.5, 0.5]; horta.colhida = false; horta.sujo = true; },
+    get horta() { return { cresce: [...horta.cresce], colhida: horta.colhida }; },
+    capimMostrar(sim) { capim.visible = Boolean(sim); cap.k = Q.capim.map(() => 1); cap.alvo = Q.capim.map(() => 1); cap.sujo = true; animarCapim(0); },
+    capimMundo: () => Q.capim.map(([x, z], i) => { const [wx, wz] = paraMundo(x, z); return { x: wx, z: wz, cortado: cap.alvo[i] < 1, i }; }),
+    cortarCapim(i) { if (cap.alvo[i] < 1) return false; cap.alvo[i] = 0; ctx?.sons?.bloco?.(); jogar([Q.capim[i][0], 0.8, Q.capim[i][1]], Q.capim[i], { n: 12, cores: [0x78bf46, 0x9ccf5a], espalha: 1.8, fica: 1.2, alto: 0.9 }); return true; },
+    // balanços de pneu: onde ficam (no mundo), empurrar (vai alto por uns segundos) e alguém sentado no pneu
+    balancosMundo: () => balancos.map((b, i) => { const [x, z] = paraMundo(b.piv.position.x, b.z); return { x, z, i, amp: b.amp, sentado: Boolean(b.sentado) }; }),
+    empurrar(i, seg = 4.5) { const b = balancos[i]; if (b) { b.alto = seg; ctx?.sons?.pulo?.(); } },
+    sentar(i, obj) { const b = balancos[i]; if (!b) return; if (b.sentado && b.sentado !== obj) b.sentado.removeFromParent(); b.sentado = obj; if (obj) { b.piv.add(obj); obj.position.set(0, -2.95, 0.1); obj.rotation.set(0, Math.PI / 2, 0); } },
+    soltar(i) { const b = balancos[i]; if (!b?.sentado) return null; const o = b.sentado; b.sentado = null; o.removeFromParent(); return o; },
+    frutiferasMundo: () => Q.frutiferas.map(([z, tipo, bal], i) => { const [x, wz] = paraMundo(Q.frutX - 2.8, z); const [tx, tz] = paraMundo(Q.frutX, z); return { x, z: wz, tx, tz, tipo, bal: Boolean(bal), i }; }),
+    frutasDe: (i) => FRUTAS[Q.frutiferas[i][1]].fruta,
     get ale() { return A.modo; }, get duck() { return K.modo; },
     aleFugir() { if (A.modo === "colo") return; A.modo = "fugida"; A.x = 11; A.z = -17; A.alvo = null; ctx?.sons?.bichinho?.("quack"); },
     pegarAle(rabisco) {
@@ -662,7 +865,7 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
     cancelarDuck() { if (K.modo === "seguir" || K.modo === "sacudir" || K.modo === "chamado" || K.modo === "saindo") { secar(); K.modo = "brincar"; K.fim = null; } },
     info: () => ({ portao, aberto, regina: R.estado, ale: A.modo, duck: K.modo, molhado: K.molhado, perto }),
     // testes: onde estão as coisas para fotografar
-    pontos: () => Object.fromEntries(Object.entries({ portao: [0, 1], casa: [(Q.casa.x0 + Q.casa.x1) / 2, Q.casa.z1], celeiro: [(Q.celeiro.x0 + Q.celeiro.x1) / 2, Q.celeiro.z1], varanda: [(Q.varanda.x0 + Q.varanda.x1) / 2, Q.varanda.frente], lago: [LG.x, LG.z], galinheiro: [(GL.x0 + GL.x1) / 2, (GL.z0 + GL.z1) / 2] }).map(([k, v]) => [k, paraMundo(...v)])),
+    pontos: () => Object.fromEntries(Object.entries({ portao: [0, 1], casa: [(Q.casa.x0 + Q.casa.x1) / 2, Q.casa.z1], salao: [Q.salao.frente, (Q.salao.z0 + Q.salao.z1) / 2], horta: [(Q.horta.x0 + Q.horta.x1) / 2, Q.horta.z[1]], lago: [LG.x, LG.z], galinheiro: [(GL.x0 + GL.x1) / 2, (GL.z0 + GL.z1) / 2], frutiferas: [Q.frutX, -60] }).map(([k, v]) => [k, paraMundo(...v)])),
   };
   regina.grupo.position.set(R.x, 0, R.z); regina.grupo.rotation.y = R.rot;
   return api;

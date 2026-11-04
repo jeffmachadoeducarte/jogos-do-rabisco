@@ -119,6 +119,44 @@ function cenaAmigo(c, fig, x, y, w, h) {
     c.fillStyle = "#ff6f8f"; c.beginPath(); c.ellipse(cx + 48, base - 76, 6, 8, 0, 0, 7); c.fill(); // linguinha
     return;
   }
+  if (t === "galinha") { // as galinhas do sítio: duas galinhas bicando o milho no chão
+    c.fillStyle = "#f2c232"; for (let i = 0; i < 9; i++) { c.beginPath(); c.arc(cx - 50 + i * 12, base - 4 + (i % 2) * 3, 3.5, 0, 7); c.fill(); }
+    for (const [dx, cor, s] of [[-26, "#ffffff", 1], [30, "#b5651d", 0.85]]) {
+      const x = cx + dx; c.fillStyle = cor; c.strokeStyle = TINTA; c.lineWidth = 4;
+      c.beginPath(); c.ellipse(x, base - 34 * s, 30 * s, 22 * s, 0, 0, 7); c.fill(); c.stroke();
+      c.beginPath(); c.ellipse(x + 26 * s, base - 22 * s, 13 * s, 12 * s, 0.4, 0, 7); c.fill(); c.stroke(); // cabeça baixinha, bicando
+      c.fillStyle = "#e2342b"; c.beginPath(); c.arc(x + 28 * s, base - 34 * s, 6 * s, 0, 7); c.fill();
+      c.fillStyle = "#f2b632"; c.beginPath(); c.moveTo(x + 36 * s, base - 22 * s); c.lineTo(x + 46 * s, base - 14 * s); c.lineTo(x + 34 * s, base - 14 * s); c.fill();
+      c.fillStyle = TINTA; c.beginPath(); c.arc(x + 29 * s, base - 25 * s, 2.5, 0, 7); c.fill();
+      c.strokeStyle = "#f2b632"; c.lineWidth = 3; for (const q of [-8, 6]) { c.beginPath(); c.moveTo(x + q * s, base - 14 * s); c.lineTo(x + q * s, base); c.stroke(); }
+    }
+    return;
+  }
+  if (t === "horta") { // a hortinha: canteiro de terra com alfaces e cenouras e o regador verde
+    c.fillStyle = "#6b4a2e"; arredondado(c, x + 12, base - 24, w - 24, 24, 6); c.fill(); c.stroke();
+    for (let i = 0; i < 4; i++) { const px = x + 34 + i * 38; if (i % 2) { c.fillStyle = "#ff8a1f"; c.beginPath(); c.moveTo(px - 7, base - 24); c.lineTo(px + 7, base - 24); c.lineTo(px, base - 4); c.fill(); c.fillStyle = "#3f9a3a"; for (const q of [-6, 0, 6]) { c.beginPath(); c.ellipse(px + q, base - 36, 4, 12, q * 0.05, 0, 7); c.fill(); } } else { c.fillStyle = "#6cc04a"; c.beginPath(); c.arc(px, base - 32, 15, 0, 7); c.fill(); c.stroke(); c.fillStyle = "#8fd65a"; c.beginPath(); c.arc(px, base - 34, 8, 0, 7); c.fill(); } }
+    c.fillStyle = "#2f9e57"; arredondado(c, cx + 18, base - 104, 52, 38, 8); c.fill(); c.stroke();
+    c.lineWidth = 6; c.strokeStyle = "#2f9e57"; c.beginPath(); c.moveTo(cx + 18, base - 92); c.lineTo(cx - 12, base - 112); c.stroke();
+    c.fillStyle = "#4fc3ff"; for (let i = 0; i < 5; i++) { c.beginPath(); c.arc(cx - 16 - i * 5, base - 98 + i * 12, 3, 0, 7); c.fill(); }
+    return;
+  }
+  if (t === "rocador") { // o roçador do sítio: verde, banco amarelo, rodas grandes atrás e a grama baixinha
+    c.fillStyle = "#3f9a3a"; arredondado(c, cx - 56, base - 62, 96, 34, 10); c.fill(); c.stroke();
+    arredondado(c, cx + 20, base - 76, 42, 30, 8); c.fill(); c.stroke(); // capô
+    c.fillStyle = "#ffcc1f"; arredondado(c, cx - 50, base - 92, 34, 32, 6); c.fill(); c.stroke(); // encosto
+    c.fillStyle = "#2f3440"; arredondado(c, cx - 50, base - 30, 96, 12, 4); c.fill(); // plataforma de corte
+    for (const [dx, r] of [[-38, 24], [36, 15]]) { c.fillStyle = "#262626"; c.beginPath(); c.arc(cx + dx, base - r + 2, r, 0, 7); c.fill(); c.fillStyle = "#ffcc1f"; c.beginPath(); c.arc(cx + dx, base - r + 2, r * 0.45, 0, 7); c.fill(); }
+    c.lineWidth = 4; c.strokeStyle = TINTA; c.beginPath(); c.moveTo(cx + 10, base - 62); c.lineTo(cx, base - 92); c.stroke(); c.beginPath(); c.ellipse(cx, base - 94, 12, 5, 0, 0, 7); c.stroke(); // volante
+    return;
+  }
+  if (t === "balanco") { // o balanço de pneu: corda num galho da árvore e o pneu pendurado
+    c.fillStyle = "#6b4a2e"; c.fillRect(x + w - 40, y + 10, 18, h - 36); c.fillRect(x + 20, y + 30, w - 50, 14);
+    c.fillStyle = "#3f8a3a"; c.beginPath(); c.arc(x + w - 30, y + 26, 34, 0, 7); c.arc(x + w - 70, y + 20, 26, 0, 7); c.fill();
+    c.fillStyle = "#ff8a1f"; for (let i = 0; i < 6; i++) { c.beginPath(); c.arc(x + w - 70 + Math.cos(i * 2.3) * 28, y + 22 + Math.sin(i * 2.3) * 16, 5, 0, 7); c.fill(); }
+    c.strokeStyle = "#c9a46a"; c.lineWidth = 4; c.beginPath(); c.moveTo(cx - 20, y + 42); c.lineTo(cx - 10, base - 74); c.stroke();
+    c.strokeStyle = "#262626"; c.lineWidth = 16; c.beginPath(); c.ellipse(cx - 8, base - 50, 30, 24, 0.15, 0, 7); c.stroke();
+    return;
+  }
   if (t === "borracha") {
     arredondado(c, cx - 50, base - 74, 100, 74, 14); c.fill(); c.stroke(); c.fillStyle = "#00b5f0"; arredondado(c, cx - 50, base - 38, 100, 38, 12); c.fill(); c.stroke(); fy = base - 56;
   } else if (t === "giz") {

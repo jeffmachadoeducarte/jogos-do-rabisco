@@ -21,6 +21,7 @@ import { criarFisica, VEL } from "./fisica.js";
 import { criarCamera } from "./camera.js";
 import { criarCeu } from "./ceu.js";
 import { criarVeiculo, animarVeiculo, criarTransito, atualizarTransito, atualizarSemaforos, luzDe } from "./veiculos.js";
+import { SITIO } from "./sitio-dados.js";
 import { criarMissoes } from "./missoes.js";
 import { criarProfissoes } from "./profissoes.js";
 import { natalAtivo } from "./natal.js";
@@ -339,6 +340,9 @@ function iniciar() {
   if (qualidade.perfil.toque) { mundo.alcance = 95; mundo.detalheAte = 35; mundo.semaforoAte = 55; cena.fog.far = 95; cena.fog.near = 40; }
   j.pos.set(LARGADA.x, 0.07, LARGADA.z); j.vel.set(0, 0, 0); j.dir = LARGADA.dir; camera.st.yaw = LARGADA.dir;
   for (const v of VAGAS) { const q = criarVeiculo(v.tipo, v.cor); q.pos.set(v.x, 0.03, v.z); q.ang = v.ang; cena.add(q.g, q.parado); animarVeiculo(q, 0, 0); veiculos.push(q); }
+  // o roçador do Sítio Floresça: estacionado no gramado do sítio e preso ao terreno (não sai pelo portão)
+  { const r = veiculos.find((v) => v.tipo === "rocador"), S = mundo.sitio;
+    if (r && S) { const p = S.pontoMundo(...SITIO.rocador); r.pos.set(p.x, 0.03, p.z); r.ang = S.paraMundo(0, -1)[1] > S.paraMundo(0, 0)[1] ? 0 : Math.PI; r.limite = S.limiteMundo(); animarVeiculo(r, 0, 0); } }
   transito = criarTransito(cena);
   patioJE = criarPatioJE(cena, { solidos: mundo.solidos }); // pátio de carros da J.E (montado só de perto)
   criarMoradores();
@@ -359,6 +363,8 @@ function iniciar() {
     raio: () => (qualidade.perfil.toque ? 35 : 45),
     distRua, luzDe, semaforos: () => mundo.semaforos,
     chamarCarro: () => chamarVeiculo("carro", 0x00b5f0),
+    // Sítio Floresça: o ônibus da escola (Kids II) e o roçador; descer do veículo (o ônibus estacionou na frente do sítio)
+    chamarVeiculo: (tipo, cor) => chamarVeiculo(tipo, cor), veiculos: () => veiculos, sairVeiculo: () => { if (dentro) { dentro.vel = 0; sair(); } },
     aoConcluir: (M) => { alvoMapa = null; ganharMissao(M); },
     // Missão do dia: a estrela no lugar do "!" até o extra do dia sair
     marcaDoDia: (id) => (id === missaoDoDiaAgora() && !diario?.extraPagoHoje() ? texMarcaDoDia() : null),
@@ -950,7 +956,7 @@ function entrar(v) {
   camera.st.manual = 0;
   toque?.modo(v.tipo === "heli" ? "heli" : "carro");
   // rádio: carros, vans, caminhão e ônibus (não na bicicleta, patinete, barquinho nem helicóptero)
-  if (!["heli", "bici", "patinete", "barco", "jetski", "lancha"].includes(v.tipo)) { garantirRadio(); radioUI.entrarNoCarro(); } // dentro do gesto da criança (ação/toque)
+  if (!["heli", "bici", "patinete", "barco", "jetski", "lancha", "rocador"].includes(v.tipo)) { garantirRadio(); radioUI.entrarNoCarro(); } // dentro do gesto da criança (ação/toque)
   toque?.especial(ESPECIAL[v.g.userData.especial] ?? null);
   j2?.entrar(v); // o jogador 2 vai de carona (ou correndo atrás, se não tem banco)
   if (v.tipo === "heli") {
@@ -1153,7 +1159,7 @@ function regras() {
   else {
     const v = pertoDeVeiculo();
     const lp = mundo.lugares.find((l) => SALAS[l.id] && Math.hypot(l.x - j.pos.x, l.z - j.pos.z) < 3.2);
-    const ROT = { onibus: "🚌 Dirigir", heli: "🚁 Pilotar", bici: "🚲 Pedalar", moto: "🏍️ Pilotar", patinete: "🛴 Andar", barco: "🚣 Remar", jetski: "🌊 Pilotar", lancha: "🚤 Pilotar", trator: "🚜 Dirigir", bombeiro: "🚒 Dirigir", ambulancia: "🚑 Dirigir", sorvete: "🍦 Dirigir" };
+    const ROT = { onibus: "🚌 Dirigir", heli: "🚁 Pilotar", bici: "🚲 Pedalar", moto: "🏍️ Pilotar", patinete: "🛴 Andar", barco: "🚣 Remar", jetski: "🌊 Pilotar", lancha: "🚤 Pilotar", trator: "🚜 Dirigir", rocador: "🚜 Subir no roçador", bombeiro: "🚒 Dirigir", ambulancia: "🚑 Dirigir", sorvete: "🍦 Dirigir" };
     if (v) contexto = { rotulo: ROT[v.tipo] ?? "🚗 Entrar", fazer: () => entrar(v) };
     else if (lp) contexto = { rotulo: `🚪 Entrar: ${SALAS[lp.id].nome}`, fazer: () => entrarLugar(lp.id) };
     else if (pertoDoAtelie()) contexto = { rotulo: "🎨 Entrar no Ateliê", fazer: () => abrirAtelie() };
@@ -1210,7 +1216,7 @@ function posicionarCamera(k, dt, andando = false) {
   mundo.visibilidade(P.x, P.z);
 }
 // ronco do veículo que o Rabisco dirige (som de motor do Kart, com perfil por tipo); cala ao sair, pausar ou entrar em casa
-const PERFIL_MOTOR = { heli: "heli", moto: "moto", jetski: "moto", barco: "barco", lancha: "barco", trator: "barco" };
+const PERFIL_MOTOR = { heli: "heli", moto: "moto", jetski: "moto", barco: "barco", lancha: "barco", trator: "barco", rocador: "barco" };
 function somDoMotor() {
   if (!dentro || jogo.pausado || ["bici", "patinete"].includes(dentro.tipo)) { motor.desligar(); return; }
   motor.ligar(PERFIL_MOTOR[dentro.tipo] ?? "carro");
