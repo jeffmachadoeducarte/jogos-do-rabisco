@@ -9,9 +9,10 @@
 //
 //   const J2 = criarJogador2(ctx);  J2.quadro(dt) (uma vez por quadro: lê o controle)  J2.passo(dt)  J2.ativo  J2.pos
 
-import { THREE, texturaCanvas, mesclar } from "./base3d.js";
+import { THREE, mesclar } from "./base3d.js";
 import { criarMorador } from "./personagens.js";
 import { criarCompanheiro3D } from "../../src/motor3d/companheiro3d.js";
+import { criarPlacaNome } from "./placa-nome.js";
 
 export const RAIO_J2 = 11;
 // amigos do estojo que o jogador 2 pode ser (a criança do cadastro entra na frente quando existe)
@@ -27,20 +28,9 @@ export const AMIGOS_J2 = [
 ];
 const hex = (c) => `#${c.toString(16).padStart(6, "0")}`;
 
-// crachá rosa do jogador 2 (o "quem é quem" na tela)
-function cracha(nome) {
-  const tex = texturaCanvas(512, 128, (c, w, h) => {
-    c.clearRect(0, 0, w, h);
-    c.font = "800 56px 'Baloo 2', sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
-    const t = `🎮2 ${nome}`, lw = Math.min(w - 8, c.measureText(t).width + 56);
-    c.fillStyle = "#ec2e8c"; c.strokeStyle = "#151515"; c.lineWidth = 8;
-    c.beginPath(); c.roundRect((w - lw) / 2, 14, lw, h - 28, 46); c.fill(); c.stroke();
-    c.fillStyle = "#ffffff"; c.fillText(t, w / 2, h / 2 + 3);
-  });
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
-  s.scale.set(3, 0.75, 1); s.renderOrder = 7;
-  return s;
-}
+// etiqueta lilás do jogador 2 (o "quem é quem" na tela): a mesma do Rabisco (placa-nome.js), com o emoji do personagem;
+// dentro de um veículo sobe um degrau acima da do jogador 1
+const cracha = (nome, emoji, altura, veiculo) => criarPlacaNome({ nome, estilo: "j2", icone: emoji, altura, veiculo, toque: document.body.classList.contains("touch"), degrau: 1 });
 
 export function criarJogador2(ctx) {
   const { cena, caixa, fis, J, j, sons, dizer } = ctx;
@@ -88,14 +78,15 @@ export function criarJogador2(ctx) {
     escolha = o.id;
     const s = ctx.salvo(); s.j2 = o.id; ctx.salvar(s);
     if (o.crianca) {
-      const c = criarCompanheiro3D({ raiz: ctx.raiz, altura: 1.55, cracha: true });
+      const c = criarCompanheiro3D({ raiz: ctx.raiz, altura: 1.55 });
       ctx.otimizar?.(c.rabisco);
+      c.grupo.add(cracha(o.nome, o.emoji, 1.72, () => assento).sprite);
       modelo = { tipo: "crianca", grupo: c.grupo, c, nome: o.nome, escala: c.escala, altura: 1.55,
         atualizar: (dt, { modo, vel }) => { c.atualizar(dt, { modo, vel, vmax: 6.5 }); },
         acenar: () => {}, pular: () => {} };
     } else {
       const m = criarMorador(o.tipo, { cor: o.cor, nome: o.nome, semente: 7, escala: 0.86 });
-      const placa = cracha(o.nome); placa.position.y = (m.altura / 0.86) + 0.85; m.grupo.add(placa);
+      m.grupo.add(cracha(o.nome, o.emoji, (m.altura / 0.86) + 0.3, () => assento).sprite);
       modelo = { tipo: "estojo", grupo: m.grupo, m, nome: o.nome, altura: m.altura,
         atualizar: (dt, { vel }) => m.atualizar(dt, { vel }), acenar: (s) => m.acenar(s), pular: () => m.pular() };
     }
