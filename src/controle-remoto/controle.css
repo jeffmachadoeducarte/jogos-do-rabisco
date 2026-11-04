@@ -105,6 +105,23 @@ body.jogando .pausar { width: 48px; height: 48px; font-size: 22px; }
 .btn.mini { --t: min(13vw, 28vh, 104px); border-width: 5px; box-shadow: 0 6px 0 var(--tinta); font-size: clamp(16px, 5vh, 24px); }
 .btn.mini.apertado { transform: translateY(4px) scale(0.96); box-shadow: 0 2px 0 var(--tinta); }
 
+/* Rabiscolândia no veículo (carro/heli): grade à direita. Pedal alto encostado na borda, o outro pedal embaixo à esquerda dele,
+   Sair e Buzina pequenos em cima (Sair no canto de cima, longe do polegar que acelera) */
+.grade { display: grid; gap: 12px 14px; height: 100%; max-height: min(100%, 92vh); padding: 1vh 0; align-items: end; justify-items: center;
+  grid-template-columns: auto auto; grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "sair buzina" "re pedal"; }
+.grade .sair { grid-area: sair; align-self: start; } .grade .buzina { grid-area: buzina; align-self: start; }
+.grade .re { grid-area: re; } .grade .pedal { grid-area: pedal; }
+.btn.sair { --b: var(--amarelo); color: var(--tinta); text-shadow: none; }
+.btn.buzina { --b: #fff; color: var(--tinta); text-shadow: none; }
+.btn.pedal { --b: #58c43a; border-radius: 40px; width: min(20vw, 52vh, 180px); height: 100%; max-height: 300px; min-height: 120px; }
+.btn.re { --b: #e8413c; --t: min(15vw, 30vh, 136px); }
+.pad[data-layout="carro"] .btn.seta, .pad[data-layout="heli"] .btn.seta { --t: min(19vw, 50vh, 190px); height: min(66vh, 300px); border-radius: 40px; }
+.pad[data-layout="heli"] .grade { grid-template-columns: auto auto; grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "sair subir" "pedal subir" "pedal descer"; }
+.grade .subir { grid-area: subir; align-self: end; } .grade .descer { grid-area: descer; align-self: end; }
+.btn.subir { --b: var(--ciano); --t: min(15vw, 27vh, 136px); }
+.pad .btn.descer { --b: var(--rosa); --t: min(15vw, 27vh, 136px); }
+.btn.voar { max-height: 260px; }
+
 /* ------------------------------------------------------------ celular em pé: pede para girar */
 .girar { display: none; position: fixed; inset: 0; z-index: 10; align-items: center; justify-content: center; padding: 16px;
   background: radial-gradient(circle at 50% 120%, #7fdcff 0, var(--ciano) 55%, #0091c4 100%); }
