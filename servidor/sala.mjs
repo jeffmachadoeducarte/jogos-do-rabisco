@@ -1,9 +1,10 @@
 // Relay de salas dos Jogos do Rabisco: celular vira controle lendo um QR.
-// Só repassa mensagens; nada em disco, nada de conteúdo no log.
+// Só repassa mensagens, nada de conteúdo no log. O cadastro das famílias (cadastro.mjs) é o único dado em disco.
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
+import { criarCadastros } from './cadastro.mjs';
 
 const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ'; // sem I, O, L (e sem 0/1)
 const MAX_BYTES = 2048;
@@ -25,6 +26,8 @@ const LIMITES = {
   salasPorIp: 25, // salas abertas ao mesmo tempo por IP
   criadasPorJanela: 100, // salas criadas por IP na janela
   janelaCriadas: 10 * 60e3,
+  cadastrosPorJanela: 20, // requisições de /cadastro e /admin por IP na janela
+  janelaCadastros: 10 * 60e3,
 };
 const NOME_MAX = 14;
 // só letras (qualquer língua), espaço, apóstrofo e hífen: o mesmo que src/motor/nomes.js mostra na TV
@@ -50,7 +53,7 @@ export function ipDe(req) {
 }
 
 // Tempos em ms; TEMPO_ESCALA encolhe tudo (só para teste).
-export function iniciar({ porta = Number(process.env.PORT) || 8090, origens = process.env.ORIGENS ?? '', escala = Number(process.env.TEMPO_ESCALA) || 1, log = true, limites = {} } = {}) {
+export function iniciar({ porta = Number(process.env.PORT) || 8090, origens = process.env.ORIGENS ?? '', escala = Number(process.env.TEMPO_ESCALA) || 1, log = true, limites = {}, dataDir = process.env.DATA_DIR ?? '/data', adminToken = process.env.ADMIN_TOKEN ?? '', origensCadastro } = {}) {
   const L = { ...LIMITES, ...limites };
   const T = {
     host: 2 * 60e3 * escala, // host fora: sala expira
@@ -64,11 +67,19 @@ export function iniciar({ porta = Number(process.env.PORT) || 8090, origens = pr
   const ips = new Map(); // ip -> { conexoes, novas: [t], falhas: [t], criadas: [t], bloqueadoAte }
   const estadoIp = (ip) => {
     let e = ips.get(ip);
-    if (!e) ips.set(ip, e = { conexoes: 0, novas: [], falhas: [], criadas: [], bloqueadoAte: 0 });
+    if (!e) ips.set(ip, e = { conexoes: 0, novas: [], falhas: [], criadas: [], cadastros: [], bloqueadoAte: 0 });
     return e;
   };
   const recente = (lista, janela, agora) => { while (lista.length && agora - lista[0] > janela) lista.shift(); return lista.length; };
   let abertas = 0, fechadas = 0;
+  // Cadastro das famílias: se o disco não estiver gravável, só /cadastro responde 503; a sala segue.
+  const cad = criarCadastros({ dataDir, adminToken, log, ...(origensCadastro && { origens: origensCadastro }) });
+  const limitarCadastro = (ip) => {
+    const e = estadoIp(ip), agora = Date.now();
+    if (recente(e.cadastros, L.janelaCadastros, agora) >= L.cadastrosPorJanela) return true;
+    e.cadastros.push(agora);
+    return false;
+  };
 
   const token = () => crypto.randomBytes(16).toString('hex');
   const igual = (a, b) => {
@@ -100,7 +111,11 @@ export function iniciar({ porta = Number(process.env.PORT) || 8090, origens = pr
   }
 
   const server = http.createServer((req, res) => {
-    if (req.method === 'GET' && req.url.split('?')[0] === '/saude') {
+    if (/^\/(cadastro|admin)(\/|$)/.test(req.url)) {
+      cad.rota(req, res, ipDe(req), limitarCadastro).then((tratou) => {
+        if (!tratou && !res.headersSent) { res.writeHead(404); res.end(); }
+      }, () => { if (!res.headersSent) { res.writeHead(500); res.end(); } });
+    } else if (req.method === 'GET' && req.url.split('?')[0] === '/saude') {
       res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
       res.end(JSON.stringify({ ok: true }));
     } else {
@@ -281,7 +296,7 @@ export function iniciar({ porta = Number(process.env.PORT) || 8090, origens = pr
       if (pingar && ws.readyState === 1) ws.ping();
     }
     for (const [ip, e] of ips) {
-      if (e.conexoes <= 0 && agora >= e.bloqueadoAte && !recente(e.novas, 60e3, agora) && !recente(e.falhas, L.janelaFalhas, agora) && !recente(e.criadas, L.janelaCriadas, agora)) ips.delete(ip);
+      if (e.conexoes <= 0 && agora >= e.bloqueadoAte && !recente(e.novas, 60e3, agora) && !recente(e.falhas, L.janelaFalhas, agora) && !recente(e.criadas, L.janelaCriadas, agora) && !recente(e.cadastros, L.janelaCadastros, agora)) ips.delete(ip);
     }
     for (const [codigo, s] of salas) {
       if (agora - s.criada > T.sala || (!s.host && agora - s.hostSaiu > T.host)) { fecharSala(codigo); continue; }
@@ -297,7 +312,7 @@ export function iniciar({ porta = Number(process.env.PORT) || 8090, origens = pr
         parar: () => new Promise((fim) => {
           clearInterval(varredor);
           for (const ws of wss.clients) ws.terminate();
-          wss.close(() => server.close(() => fim()));
+          wss.close(() => server.close(() => { cad.fechar(); fim(); }));
         }),
       });
     });

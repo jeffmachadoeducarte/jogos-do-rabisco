@@ -2,16 +2,23 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import crypto from 'node:crypto';
 import { iniciar, ipDe } from './sala.mjs';
+import { montarCsv } from './cadastro.mjs';
 
-let srv, url;
+let srv, url, dirDados;
+const TOKEN = 'token-de-teste-bem-longo-123456';
 const abertos = [];
 
 before(async () => {
-  srv = await iniciar({ porta: 0, origens: '', escala: 0.01, log: false }); // 2 min viram 1,2 s
+  dirDados = fs.mkdtempSync(path.join(os.tmpdir(), 'sala-'));
+  srv = await iniciar({ porta: 0, origens: '', escala: 0.01, log: false, dataDir: dirDados, adminToken: TOKEN, limites: { cadastrosPorJanela: 100000 } }); // 2 min viram 1,2 s
   url = `ws://127.0.0.1:${srv.porta}`;
 });
-after(async () => { abertos.forEach((w) => w.terminate()); await srv.parar(); });
+after(async () => { abertos.forEach((w) => w.terminate()); await srv.parar(); fs.rmSync(dirDados, { recursive: true, force: true }); });
 
 // Cliente com fila de mensagens e espera por tipo.
 async function cliente() {
@@ -302,4 +309,192 @@ test('nome do controle (texto que aparece na TV) é higienizado: só letras, 14 
   assert.match(i.d.nome, /^[\p{L}\p{M} '-]{1,14}$/u);
   c.mandar({ t: 'in', d: { x: 0, nome: 123 } });
   assert.equal('nome' in (await host.espera('in')).d, false);
+});
+
+// ---------- Cadastro das famílias ----------
+const ORIGEM = 'https://jogos.educarte.qzz.io';
+const base = () => `http://127.0.0.1:${srv.porta}`;
+const novoId = () => crypto.randomUUID();
+const novoSegredo = () => crypto.randomBytes(24).toString('hex');
+const corpo = (o = {}) => ({
+  id: novoId(), segredo: novoSegredo(),
+  responsavel: { nome: 'Maria Souza', telefone: '+55 (11) 99999-1234', email: 'maria@exemplo.com' },
+  criancas: [{ nome: 'Ana', nascimento: '2018-05-10' }],
+  consentimento: { privacidade: true, versao: '2026-11', em: '2026-11-06T12:00:00Z' },
+  marketing: { aceito: true, em: '2026-11-06T12:00:00Z' },
+  ...o,
+});
+const post = (c, { origin = ORIGEM, b = base(), tipo = 'application/json' } = {}) =>
+  fetch(`${b}/cadastro`, { method: 'POST', headers: { 'content-type': tipo, ...(origin && { origin }) }, body: typeof c === 'string' ? c : JSON.stringify(c) });
+const apaga = (id, segredo, origin = ORIGEM, b = base()) =>
+  fetch(`${b}/cadastro/${id}`, { method: 'DELETE', headers: { ...(origin && { origin }), ...(segredo && { 'x-segredo': segredo }) } });
+const admin = (ext, token = TOKEN, q = '', b = base()) =>
+  fetch(`${b}/admin/cadastros.${ext}${q}`, { headers: token ? { authorization: `Bearer ${token}` } : {} });
+const dirTemp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'sala-'));
+
+test('cadastro: cria, atualiza com o segredo certo e recusa o errado', async () => {
+  const c = corpo();
+  assert.equal((await post(c)).status, 200);
+  assert.deepEqual(await (await post({ ...c, responsavel: { ...c.responsavel, nome: 'Maria Nova' }, criancas: [{ nome: 'Bia', nascimento: '2020-01-02' }, { nome: 'Caio', nascimento: '2015-03-04' }] })).json(), { ok: true });
+  const lista = await (await admin('json')).json();
+  const f = lista.find((x) => x.id === c.id);
+  assert.equal(f.responsavel.nome, 'Maria Nova');
+  assert.deepEqual(f.criancas.map((k) => k.nome), ['Bia', 'Caio']);
+  assert.equal(f.criado_em <= f.atualizado_em, true);
+  assert.equal(JSON.stringify(f).includes(c.segredo), false);
+  const r = await post({ ...c, segredo: novoSegredo(), responsavel: { ...c.responsavel, nome: 'Invasor' } });
+  assert.equal(r.status, 401);
+  const depois = (await (await admin('json')).json()).find((x) => x.id === c.id);
+  assert.equal(depois.responsavel.nome, 'Maria Nova');
+});
+
+test('cadastro: o segredo só fica guardado como hash', async () => {
+  const c = corpo();
+  await post(c);
+  const bruto = fs.readFileSync(path.join(dirDados, 'cadastros.sqlite')).toString('latin1');
+  assert.equal(bruto.includes(c.segredo), false);
+});
+
+test('cadastro: validações estritas devolvem 400', async () => {
+  const resp = (nome, telefone = '11999991234', email = 'a@b.co') => corpo({ responsavel: { nome, telefone, email } });
+  const kid = (nome, nascimento) => corpo({ criancas: [{ nome, nascimento }] });
+  const ruins = [
+    corpo({ id: 'nao-uuid' }),
+    corpo({ segredo: 'curto' }),
+    resp('x'.repeat(81)),
+    resp(''),
+    resp('Ok', 'abc12345678'),
+    resp('Ok', '1'.repeat(21)),
+    resp('Ok', '11999991234', 'sem-arroba'),
+    resp('Ok', '11999991234', 'x'.repeat(120) + '@b.co'),
+    corpo({ criancas: Array.from({ length: 9 }, () => ({ nome: 'A', nascimento: '2018-01-01' })) }),
+    kid('x'.repeat(31), '2018-01-01'),
+    kid('Ana', '2018-02-30'),
+    kid('Ana', '2099-01-01'),
+    kid('Ana', '1900-01-01'),
+    kid('Ana', '10/05/2018'),
+    corpo({ criancas: 'x' }),
+    corpo({ consentimento: { privacidade: false, versao: '1', em: '2026-11-06T12:00:00Z' } }),
+    corpo({ consentimento: { privacidade: 'true', versao: '1', em: '2026-11-06T12:00:00Z' } }),
+    corpo({ consentimento: undefined }),
+    corpo({ marketing: { aceito: 'sim' } }),
+    '{nao e json',
+    '[1,2]',
+  ];
+  for (const r of ruins) assert.equal((await post(r)).status, 400, JSON.stringify(r).slice(0, 90));
+  assert.equal((await post(corpo(), { tipo: 'text/plain' })).status, 400);
+});
+
+test('cadastro: corpo acima de 8 KB dá 413', async () => {
+  const r = await post(corpo({ responsavel: { nome: 'x'.repeat(9000), telefone: '11999991234', email: 'a@b.co' } }));
+  assert.equal(r.status, 413);
+  const r2 = await post(JSON.stringify(corpo()) + ' '.repeat(9000));
+  assert.equal(r2.status, 413);
+});
+
+test('cadastro: CORS exige Origin válido e responde o preflight', async () => {
+  assert.equal((await post(corpo(), { origin: null })).status, 403);
+  assert.equal((await post(corpo(), { origin: 'https://malvado.example' })).status, 403);
+  const ok = await post(corpo(), { origin: 'http://localhost:5173' });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.headers.get('access-control-allow-origin'), 'http://localhost:5173');
+  const pre = await fetch(`${base()}/cadastro`, { method: 'OPTIONS', headers: { origin: ORIGEM, 'access-control-request-method': 'POST', 'access-control-request-headers': 'content-type' } });
+  assert.equal(pre.status, 204);
+  assert.equal(pre.headers.get('access-control-allow-origin'), ORIGEM);
+  assert.match(pre.headers.get('access-control-allow-methods'), /POST.*DELETE.*OPTIONS/);
+  assert.match(pre.headers.get('access-control-allow-headers'), /X-Segredo/i);
+  const preRuim = await fetch(`${base()}/cadastro`, { method: 'OPTIONS', headers: { origin: 'https://malvado.example' } });
+  assert.equal(preRuim.status, 403);
+  assert.equal(preRuim.headers.get('access-control-allow-origin'), null);
+  assert.equal((await fetch(`${base()}/cadastro`, { method: 'GET', headers: { origin: ORIGEM } })).status, 405);
+});
+
+test('cadastro: DELETE apaga de verdade e só registra id e data na auditoria', async () => {
+  const c = corpo({ responsavel: { nome: 'Fulana Apagavel', telefone: '11999991234', email: 'apagar@exemplo.com' } });
+  await post(c);
+  assert.equal((await apaga(c.id, novoSegredo())).status, 401);
+  assert.equal((await apaga(c.id, null)).status, 401);
+  assert.equal((await apaga(c.id, c.segredo, null)).status, 403);
+  assert.equal((await apaga(c.id, c.segredo)).status, 200);
+  assert.equal((await apaga(c.id, c.segredo)).status, 401); // já foi
+  assert.equal((await (await admin('json')).json()).some((x) => x.id === c.id), false);
+  const bruto = fs.readFileSync(path.join(dirDados, 'cadastros.sqlite')).toString('latin1');
+  assert.equal(bruto.includes('Fulana Apagavel'), false);
+  assert.equal(bruto.includes('apagar@exemplo.com'), false);
+  assert.equal(bruto.includes(c.id), true); // auditoria: só o id
+});
+
+test('cadastro: CSV com BOM, separador ;, uma linha por criança, filtro de marketing', async () => {
+  const sim = corpo({ responsavel: { nome: 'Zelia CSV', telefone: '11988887777', email: 'zelia@exemplo.com' }, criancas: [{ nome: 'Luz', nascimento: '2019-04-05' }, { nome: 'Sol', nascimento: '2021-06-07' }] });
+  const nao = corpo({ responsavel: { nome: 'Nando CSV', telefone: '11977776666', email: 'nando@exemplo.com' }, marketing: { aceito: false } });
+  await post(sim); await post(nao);
+  const r = await admin('csv');
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('content-type'), /text\/csv/);
+  const buf = Buffer.from(await r.arrayBuffer());
+  assert.deepEqual([...buf.subarray(0, 3)], [0xef, 0xbb, 0xbf]);
+  const linhas = buf.toString('utf8').slice(1).trim().split('\r\n');
+  assert.equal(linhas[0], '"responsável";"telefone";"e-mail";"aceita novidades";"criança";"nascimento";"idade";"cadastrado em"');
+  const zelia = linhas.filter((l) => l.includes('Zelia CSV'));
+  assert.equal(zelia.length, 2);
+  assert.match(zelia[0], /^"Zelia CSV";"11988887777";"zelia@exemplo.com";"Sim";"Luz";"2019-04-05";"\d+";"\d{4}-\d{2}-\d{2} \d{2}:\d{2}"$/);
+  assert.equal(linhas.some((l) => l.includes('Nando CSV') && l.includes('"Não"')), true);
+  const so = await (await admin('csv', TOKEN, '?marketing=1')).text();
+  assert.equal(so.includes('Zelia CSV'), true);
+  assert.equal(so.includes('Nando CSV'), false);
+  const js = await (await admin('json', TOKEN, '?marketing=1')).json();
+  assert.equal(js.every((f) => f.marketing.aceito), true);
+});
+
+test('cadastro: CSV protege contra injeção de fórmula', async () => {
+  const c = corpo({ responsavel: { nome: '=HYPERLINK("http://x")', telefone: '+55 11 99999-0000', email: '+cmd@x.co' }, criancas: [{ nome: '-2+3', nascimento: '2018-05-10' }] });
+  assert.equal((await post(c)).status, 200);
+  const linha = (await (await admin('csv')).text()).split('\r\n').find((l) => l.includes('HYPERLINK'));
+  assert.ok(linha.startsWith('"\'=HYPERLINK(""http://x"")";"\'+55 11 99999-0000";"\'+cmd@x.co";"Sim";"\'-2+3"'), linha);
+  assert.match(montarCsv([{ responsavel_nome: 'Ok', telefone: '1', email: 'e', marketing_aceito: 1, criado_em: '2026-11-06T12:00:00Z', criancas: [] }]), /"Ok";"1";"e";"Sim";"";"";"";/);
+});
+
+test('admin: exige token certo; sem ADMIN_TOKEN as rotas somem (404)', async () => {
+  assert.equal((await admin('csv', null)).status, 401);
+  assert.equal((await admin('csv', 'token-errado-token-errado-123456')).status, 401);
+  assert.equal((await admin('json', TOKEN + 'x')).status, 401);
+  const dir = dirTemp();
+  const s2 = await iniciar({ porta: 0, log: false, dataDir: dir, adminToken: '' });
+  try {
+    const b = `http://127.0.0.1:${s2.porta}`;
+    assert.equal((await admin('csv', TOKEN, '', b)).status, 404);
+    assert.equal((await admin('json', null, '', b)).status, 404);
+    assert.equal((await post(corpo(), { b })).status, 200); // o cadastro em si funciona
+  } finally { await s2.parar(); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('cadastro: limite por IP devolve 429 (vale também para admin e DELETE)', async () => {
+  const dir = dirTemp();
+  const s2 = await iniciar({ porta: 0, log: false, dataDir: dir, adminToken: TOKEN, limites: { cadastrosPorJanela: 4 } });
+  try {
+    const b = `http://127.0.0.1:${s2.porta}`;
+    for (let i = 0; i < 4; i++) assert.equal((await post(corpo(), { b })).status, 200);
+    assert.equal((await post(corpo(), { b })).status, 429);
+    assert.equal((await admin('csv', TOKEN, '', b)).status, 429);
+    assert.equal((await apaga(novoId(), novoSegredo(), ORIGEM, b)).status, 429);
+    assert.equal((await fetch(`${b}/saude`)).status, 200); // o relay segue de pé
+  } finally { await s2.parar(); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('sem DATA_DIR gravável: /cadastro dá 503 e a sala segue funcionando', async () => {
+  const dir = dirTemp();
+  const arquivo = path.join(dir, 'arquivo-comum'); // um arquivo no lugar da pasta: não dá para gravar
+  fs.writeFileSync(arquivo, 'x');
+  const s2 = await iniciar({ porta: 0, log: false, dataDir: arquivo, adminToken: TOKEN, escala: 0.01 });
+  try {
+    const b = `http://127.0.0.1:${s2.porta}`;
+    assert.equal((await post(corpo(), { b })).status, 503);
+    assert.equal((await apaga(novoId(), novoSegredo(), ORIGEM, b)).status, 503);
+    assert.equal((await admin('csv', TOKEN, '', b)).status, 503);
+    assert.equal((await fetch(`${b}/saude`)).status, 200);
+    const host = new WebSocket(`ws://127.0.0.1:${s2.porta}`);
+    abertos.push(host);
+    const msg = await new Promise((ok, no) => { host.on('open', () => host.send(JSON.stringify({ t: 'criar' }))); host.on('message', (m) => ok(JSON.parse(m.toString()))); host.on('error', no); });
+    assert.equal(msg.t, 'sala');
+  } finally { await s2.parar(); fs.rmSync(dir, { recursive: true, force: true }); }
 });
