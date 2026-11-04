@@ -1,0 +1,25 @@
+/* Página de privacidade (privacidade.html): texto simples, legível no celular e no computador. */
+:root { --tinta: #151515; --ciano: #00b5f0; --rosa: #ec2e8c; --fundo: #eaf7fd; --cartao: #ffffff; --suave: #445; }
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--fundo); color: var(--tinta);
+  font: 600 17px/1.55 "Baloo 2", system-ui, sans-serif;
+  padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(24px, env(safe-area-inset-bottom, 0px));
+}
+.pagina {
+  max-width: 760px; margin: 0 auto; background: var(--cartao); border: 5px solid var(--tinta); border-radius: 28px;
+  box-shadow: 8px 10px 0 var(--tinta); padding: 18px clamp(16px, 4vw, 34px) 24px;
+}
+header .logo { height: 44px; }
+h1 { margin: 8px 0 0; font-size: clamp(28px, 6vw, 40px); line-height: 1.05; color: var(--ciano); text-shadow: 3px 3px 0 var(--rosa); }
+.versao { margin: 4px 0 10px; color: var(--suave); font-size: 14px; }
+h2 { margin: 18px 0 4px; font-size: 21px; color: var(--rosa); }
+p, li { overflow-wrap: anywhere; }
+ul { padding-left: 1.2em; margin: 4px 0; }
+li { margin: 3px 0; }
+.destaque { background: #fff8dd; border: 3px dashed #e7c84a; border-radius: 18px; padding: 4px 14px; }
+a { color: #0a6fb0; font-weight: 800; }
+.voltar { margin-top: 22px; }
+@media (prefers-color-scheme: dark) {
+  :root { --tinta: #0b0b0b; --fundo: #0f2232; --cartao: #f7fbfe; }
+}

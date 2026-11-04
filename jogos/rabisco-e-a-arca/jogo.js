@@ -11,6 +11,7 @@
 // Sons 8-bit próprios (sons-arca.js) e falas gravadas (dados.js → falas.json → ferramentas/gerar_vozes.py).
 
 import { criarCasca, el } from "../../src/motor/casca.js";
+import { armazem } from "../../src/motor/perfis.js"; // recorde: do jogador ativo
 import { sons } from "../../src/motor/sons.js";
 import { falar, preCarregarFalas } from "../../src/motor/voz.js";
 import { carregarRabisco, Rabisco } from "../../src/motor/rabisco.js";
@@ -99,8 +100,8 @@ function fecharStart() {
   telaStart.classList.add("saindo");
   setTimeout(() => { if (telaStart) telaStart.hidden = true; abertura?.querySelector(".casca-nivel")?.focus({ preventScroll: true }); }, 380);
 }
-function lerRecorde() { try { return Number(localStorage.getItem("rabisco-arca-recorde")) || 0; } catch { return 0; } }
-function salvarRecorde(v) { try { localStorage.setItem("rabisco-arca-recorde", String(v)); } catch { /* sem armazenamento */ } }
+function lerRecorde() { try { return Number(armazem.getItem("rabisco-arca-recorde")) || 0; } catch { return 0; } }
+function salvarRecorde(v) { try { armazem.setItem("rabisco-arca-recorde", String(v)); } catch { /* sem armazenamento */ } }
 
 // ------------------------------------------------------------------ Entrada (teclado, controle e toque)
 const teclas = new Set();

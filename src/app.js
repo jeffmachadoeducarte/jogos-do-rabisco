@@ -161,18 +161,17 @@ addEventListener("pointerdown", (e) => {
   Promise.resolve(saudar({ gravada: false })).then((ok) => { if (!ok) falar("portal-oi"); }).catch(() => {});
 });
 
-// ------------------------------------------------------------------ Família e progresso (canto de cima)
-const btnFamilia = $("familia");
-function desenharFamilia() {
-  const c = Familia.crianca();
-  btnFamilia.innerHTML = `<span class="roda">${c?.foto ? `<img src="${c.foto}" alt="">` : "🧒"}</span><span class="nome">${c ? esc(c.nome.trim().split(/\s+/)[0]) : "Família"}</span>`;
-  btnFamilia.setAttribute("aria-label", c ? `Família: ${c.nome}. Editar cadastro` : "Cadastrar a família");
-  desenharSaudacao();
-}
-desenharFamilia();
-Familia.aoMudar(desenharFamilia);
-btnFamilia.addEventListener("click", () => Familia.abrirCadastro({ obrigatorio: false, titulo: "Nossa família" }));
-if (params.has("cadastro")) Familia.abrirCadastro({ obrigatorio: params.get("cadastro") !== "editar" });
+// ------------------------------------------------------------------ Quem vai jogar? (perfis da família: src/motor/perfis-ui.js)
+// O chip do topo mostra quem está jogando (montado com textContent, nunca innerHTML) e abre "Quem vai jogar?" (troca de
+// jogador; a área dos pais fica lá, atrás do PIN). Na 1ª entrada abre o cadastro único (responsável + filhos);
+// ?semcadastro não abre (testes), ?cadastro abre a área dos pais.
+desenharSaudacao();
+Familia.aoMudar(desenharSaudacao);
+import("./motor/perfis-ui.js").then(({ ligarChip, primeiraEntrada }) => {
+  ligarChip($("familia"));
+  if (params.has("cadastro")) Familia.abrirCadastro();
+  else if (!params.has("semcadastro")) primeiraEntrada();
+});
 
 // Rabiscoins guardadas neste aparelho (só aparece quando já tem alguma)
 try {

@@ -139,7 +139,7 @@ const andar = async (t, m, iy = 1) => {
   ok(await t.ev("teste.Rabiscoins.tem('rabiscolandia:bichinho:coelho') && teste.salvo.bichinho.nomes.gato === 'Mingau'"), "as compras e o nome continuam guardados");
   ok(await t.ev(SALDO) === 10, "o saldo continua 10");
   // bichinho não trocado no salvo (mexido à mão) não vale
-  await t.ev("(() => { const k = 'rabisco.rabiscopolis.v1', d = JSON.parse(localStorage.getItem(k)); d.bichinho.atual = 'tartaruga'; localStorage.setItem(k, JSON.stringify(d)); })()");
+  await t.ev("(() => { const k = Perfis.chave('rabisco.rabiscopolis.v1'), d = JSON.parse(localStorage.getItem(k)); d.bichinho.atual = 'tartaruga'; localStorage.setItem(k, JSON.stringify(d)); })()");
   await t.cmd("Page.reload"); await esperarJogo(t);
   ok(await t.ev(`${PET}`) === null, "bichinho que não foi trocado (salvo mexido à mão) não aparece");
   ok(t.erros.filter((e) => !/assets\/voz\/(rp-|nomes\/)|favicon|fonts\.g/.test(e)).length === 0, "sem erro de console: " + t.erros.slice(0, 3).join(" | "));
