@@ -21,13 +21,22 @@ import { PARCEIROS } from "../../src/parceiros.js";
 import { PROPAGANDA, falaDaPropaganda } from "./propaganda.js";
 import { gatinho, bau, foguinho, portico, placaNumero, caixaFrutas, caixaCorreio, texturaEnvelope, tapeteOracao, alvara, rackVidros } from "./missoes-objetos.js";
 import { criarCena } from "./missoes-cenas.js";
+import { obraPedreiro } from "./predios-parceiros.js";
+import { desenharItemObra } from "../../src/parceiros-arte.js";
 import { anjo } from "./natal-cidade.js";
 const OBJETOS_MAO = { alvara };
 
 // figurinha redonda com emoji (itens, buraquinhos da horta)
 const texEmoji = new Map();
-function spriteEmoji(emoji, escala = 1.2, cor = null) {
+function spriteEmoji(emoji, escala = 1.2, cor = null, desenho = null) {
   if (cor != null) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaEnvelope(cor) })); s.scale.setScalar(escala); return s; }
+  // desenho: em vez do emoji, a figurinha desenhada (betoneira e carrinho de mão da Construrenova, src/parceiros-arte.js)
+  if (desenho && !texEmoji.has(`d:${desenho}`)) texEmoji.set(`d:${desenho}`, texturaCanvas(128, 128, (c) => {
+    c.clearRect(0, 0, 128, 128);
+    c.fillStyle = "#ffffff"; c.beginPath(); c.arc(64, 64, 56, 0, 7); c.fill(); c.lineWidth = 8; c.strokeStyle = "#151515"; c.stroke();
+    desenharItemObra(c, desenho, 66, 66, 82);
+  }));
+  if (desenho) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: texEmoji.get(`d:${desenho}`) })); s.scale.setScalar(escala); return s; }
   if (!texEmoji.has(emoji)) texEmoji.set(emoji, texturaCanvas(128, 128, (c, w, h) => {
     c.clearRect(0, 0, w, h);
     c.fillStyle = "#ffffff"; c.beginPath(); c.arc(64, 64, 56, 0, 7); c.fill(); c.lineWidth = 8; c.strokeStyle = "#151515"; c.stroke();
@@ -201,6 +210,12 @@ export function criarMissoes(ctx) {
       cx.position.set(px - 1.1, 0.03, pz); n.extras.add(cx);
       n.casaExtras = [px, pz];
     }
+    // a obra do pedreiro (missão da Construrenova): o que foi alugado aparece lá depois da entrega (e fica, missão feita)
+    if (d.obra) {
+      n.extras = new THREE.Group(); grupo.add(n.extras);
+      const o = obraPedreiro(d.rot ?? 0); // a obra fica atrás de quem espera o.g.position.set(d.x, 0.04, d.z); n.extras.add(o.g);
+      mesclar(o.g, { juntas: new Set([o.chegou]) }); n.obraChegou = o.chegou; o.chegou.visible = feitas.has(M.id);
+    }
     // o que fica em volta (não se mexe): a árvore do Zaqueu, a arca do Noé
     if (d.naArvore || d.acessorio === "barba") {
       n.extras = new THREE.Group(); grupo.add(n.extras);
@@ -240,6 +255,7 @@ export function criarMissoes(ctx) {
     clearTimeout(n.tFesta); n.tFesta = setTimeout(() => n.m.comemorar(2.5), 1300);
   }
   function voltarAoLugar(n) {
+    if (n.obraChegou) n.obraChegou.visible = false; // jogando de novo: a obra espera o equipamento outra vez
     if (n.fixo) return;
     if (n.g.parent !== grupo) grupo.add(n.g);
     n.g.position.set(n.casa[0], n.dados.naArvore ? 2.45 : n.dados.naAgua ? -0.55 : n.bicho ? 0.03 : 0.07, n.casa[1]); n.g.rotation.set(0, n.dados.rot ?? (n.bicho ? Math.PI : 0), 0);
@@ -268,7 +284,7 @@ export function criarMissoes(ctx) {
   function prepararEtapa() {
     const E = ativa.etapas[etapa];
     if (!E) return concluir();
-    if (E.tipo === "pegar") for (const it of E.itens) { const s = spriteEmoji(it.emoji, 1.2, it.cor); s.position.set(it.x, 1.3, it.z); grupo.add(s); itens.push({ missao: ativa.id, ...it, sprite: s, pego: false }); }
+    if (E.tipo === "pegar") for (const it of E.itens) { const s = spriteEmoji(it.emoji, 1.2, it.cor, it.desenho); s.position.set(it.x, 1.3, it.z); grupo.add(s); itens.push({ missao: ativa.id, ...it, sprite: s, pego: false }); }
     if (E.tipo === "plantar") for (const p of E.pontos) { const s = spriteEmoji("🕳️", 0.9); s.position.set(p.x, 1.0, p.z); grupo.add(s); plantas.push({ missao: ativa.id, ...p, sprite: s, feito: false }); }
     prepararNova(E);
   }
@@ -383,13 +399,14 @@ export function criarMissoes(ctx) {
     if (E.tipo === "falar") { const n = npcDe(ativa, E.com); const [x, z] = npcPos(n); if (Math.hypot(p.x - x, p.z - z) < 3.2) return { rotulo: `💬 Falar com ${nomeDe(E.com)}`, fazer: () => { n.m?.acenar(2); sons.moeda?.(); avancar(); } }; }
     if (E.tipo === "pegar") for (const it of itens) if (!it.pego && it.missao === ativa.id && Math.hypot(p.x - it.x, p.z - it.z) < 2.2) return { rotulo: it.rotulo ?? `${it.emoji} Pegar ${it.nome}`, fazer: () => pegar(it) };
     if (E.tipo === "plantar") for (const pl of plantas) if (!pl.feito && pl.missao === ativa.id && Math.hypot(p.x - pl.x, p.z - pl.z) < 2) return { rotulo: "🌱 Plantar a semente", fazer: () => plantar(pl) };
-    if (E.tipo === "levar") { const n = npcDe(ativa, E.ate); const [x, z] = npcPos(n); if (Math.hypot(p.x - x, p.z - z) < 3.2) return { rotulo: `${E.icone ?? "🎁"} Entregar para ${nomeDe(E.ate)}`, fazer: () => { if (n.pessoa) entregarNaMao(n); else reagir(n); avancar(); } }; }
+    if (E.tipo === "levar") { const n = npcDe(ativa, E.ate); const [x, z] = npcPos(n); if (Math.hypot(p.x - x, p.z - z) < 3.2) return { rotulo: `${E.icone ?? "🎁"} Entregar para ${nomeDe(E.ate)}`, fazer: () => { if (n.pessoa) entregarNaMao(n); else reagir(n); if (n.obraChegou) n.obraChegou.visible = true; avancar(); } }; }
     if (E.tipo === "dirigir" && !carona && ctx.chamarCarro) { const n = npcDe(ativa, E.passageiro); const [x, z] = npcPos(n); if (Math.hypot(p.x - x, p.z - z) < 3.2) return { rotulo: "📱 Chamar um carro", fazer: () => ctx.chamarCarro() }; }
     return contextoNovo(E, p);
   }
   function pegar(it) {
     it.pego = true; grupo.remove(it.sprite);
-    const s = spriteEmoji(it.emoji, 0.6, it.cor); s.position.set(((levando.length % 3) - 1) * 0.5, Math.floor(levando.length / 3) * 0.5, 0); s.userData.item = it.id; sobreCabeca.add(s);
+    if (it.de) npcDe(ativa, it.de).m?.acenar?.(2); // quem entrega (o seu Albino, na Construrenova) acena
+    const s = spriteEmoji(it.emoji, 0.6, it.cor, it.desenho); s.position.set(((levando.length % 3) - 1) * 0.5, Math.floor(levando.length / 3) * 0.5, 0); s.userData.item = it.id; sobreCabeca.add(s);
     levando.push(it.id); sons.moeda?.();
     if (itens.every((x) => x.missao !== ativa.id || x.pego)) avancar();
   }

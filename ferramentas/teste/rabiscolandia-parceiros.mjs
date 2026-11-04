@@ -11,9 +11,9 @@ const OUT = PASTA.endsWith("/") ? PASTA : `${PASTA}/`;
 mkdirSync(OUT, { recursive: true });
 const soMedidas = SO.includes("so-medidas"), semFotos = soMedidas;
 const IDS = SO.filter((s) => s !== "so-medidas");
-const NOVOS = ["gala-presentes", "see-love-joias", "bella-company", "marlon-maquinas", "cafe-com-deus-pai-kids", "ballet-e-cia", "bt-models", "speedy-solucoes"];
+const NOVOS = ["gala-presentes", "see-love-joias", "bella-company", "marlon-maquinas", "cafe-com-deus-pai-kids", "ballet-e-cia", "bt-models", "speedy-solucoes", "construrenova"];
 // os mesmos pontos valem para medir a cidade de antes: as coordenadas ficam aqui, sem depender dos lugares do mapa
-const PONTOS = { "gala-presentes": [-41, 30, -1, 0], "see-love-joias": [59, -120, -1, 0], "bella-company": [216, 59.5, 0, -1], "marlon-maquinas": [-106, 149.5, 0, -1], "cafe-com-deus-pai-kids": [-41, -162, -1, 0], "ballet-e-cia": [-165, 59.5, 0, -1], "bt-models": [98, 149.5, 0, -1], "speedy-solucoes": [-116, -149.5, 0, 1] };
+const PONTOS = { "gala-presentes": [-41, 30, -1, 0], "see-love-joias": [59, -120, -1, 0], "bella-company": [216, 59.5, 0, -1], "marlon-maquinas": [-106, 149.5, 0, -1], "cafe-com-deus-pai-kids": [-41, -162, -1, 0], "ballet-e-cia": [-165, 59.5, 0, -1], "bt-models": [98, 149.5, 0, -1], "speedy-solucoes": [-116, -149.5, 0, 1], construrenova: [149.5, 100, -1, 0] };
 const FAMILIA = `localStorage.setItem("rabisco.familia", JSON.stringify({ responsavel: { nome: "Teste", email: "t@t" }, crianca: { nome: "Alice", genero: "menina" } }))`;
 const OCULTA = `(() => { const s = document.createElement("style"); s.textContent = ".cena-rp > *:not(canvas), canvas.minimapa-rp, .casca-redondo, .pausa-botao, .engrenagem-pausa, [class*='radio'], .casca-topo, .casca-dica, .casca-aviso, .casca-balao { display: none !important; }"; document.head.append(s); })()`;
 const ate = async (t, expr, ms = 90000) => { const fim = Date.now() + ms; while (Date.now() < fim) { if (await t.ev(expr).catch(() => false)) return true; await espera(150); } return false; };
@@ -47,10 +47,10 @@ const tv = await abrirJogo({ largura: 1920, altura: 1080 });
 const novo = await tv.ev("teste.PARCEIROS.length > 4");
 medidas.tv = await medir(tv, "TV", novo ? 250 : 0);
 if (novo) {
-  ok(await tv.ev("teste.PARCEIROS.length") === 12, "12 parceiras");
+  ok(await tv.ev("teste.PARCEIROS.length") === 13, "13 parceiras");
   const lg = await tv.ev(`(${JSON.stringify(NOVOS)}).map((id) => { const l = teste.mundo.lugares.find((q) => q.id === "parceiro-" + id); return l ? [id, l.x, l.z, l.topo, l.porta] : [id, null]; })`);
   for (const [id, x, z, topo, porta] of lg) { ok(x != null && topo > 6 && topo < 30, `${id}: em (${x}, ${z}), topo ${topo?.toFixed(1)} m, porta em (${porta?.map((v) => +v.toFixed(1))})`); }
-  ok(await tv.ev("teste.mundo.anima.pessoas.length") === 2, "Marlon e Samira na porta dos prédios");
+  ok(await tv.ev("teste.mundo.anima.pessoas.length") === 3, "Marlon, Samira e Albino na porta dos prédios");
   if (!semFotos) {
     await tv.ev(OCULTA);
     for (const id of NOVOS) {
@@ -89,7 +89,7 @@ if (novo && !semFotos) {
   await ate(p, "!!window.previa");
   await espera(1200);
   await p.ev(`document.querySelectorAll(".barra,.titulo,.info").forEach((e) => e.style.display = "none")`);
-  for (const id of ["marlon", "samira"]) {
+  for (const id of ["marlon", "samira", "albino"]) {
     await p.ev(`previa.mostrar(${JSON.stringify(id)})`);
     for (const [nome, ang, op] of [["frente", 0, {}], ["diagonal", 0.75, {}], ["costas", Math.PI, {}], ["rosto", 0.3, { dist: 2.2, alt: 1.95, alvoY: 1.85 }], ["maos", 0.45, { dist: 1.6, alt: 0.95, alvoY: 0.85 }]]) {
       await p.ev(`previa.vista(${ang}, ${JSON.stringify(op)})`);

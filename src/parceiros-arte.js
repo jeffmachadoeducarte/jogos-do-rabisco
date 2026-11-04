@@ -71,6 +71,28 @@ function estrela(c, x, y, r, cor) {
   c.closePath(); c.fill();
 }
 
+// ferramentas da vitrine da Construrenova (desenhos simples feitos aqui): martelete, betoneira, gerador, escada e furadeira
+function ferramenta(c, qual, x, y, s) {
+  c.save(); c.translate(x, y); c.lineCap = c.lineJoin = "round";
+  const L = "#f07a1a", E = "#2b2d31", A = "#8e98a2";
+  if (qual === "martelete") { c.fillStyle = L; c.fillRect(-s * 0.18, -s * 0.42, s * 0.36, s * 0.42); c.fillStyle = E; c.fillRect(-s * 0.32, -s * 0.48, s * 0.64, s * 0.1); c.fillRect(-s * 0.05, 0, s * 0.1, s * 0.4); c.fillStyle = A; c.beginPath(); c.moveTo(-s * 0.05, s * 0.4); c.lineTo(s * 0.05, s * 0.4); c.lineTo(0, s * 0.5); c.fill(); }
+  if (qual === "betoneira") { c.fillStyle = L; c.beginPath(); c.ellipse(0, -s * 0.08, s * 0.3, s * 0.24, -0.5, 0, 7); c.fill(); c.fillStyle = E; c.beginPath(); c.ellipse(s * 0.18, -s * 0.24, s * 0.1, s * 0.07, -0.5, 0, 7); c.fill(); c.strokeStyle = E; c.lineWidth = s * 0.06; c.beginPath(); c.moveTo(-s * 0.3, s * 0.42); c.lineTo(0, s * 0.12); c.lineTo(s * 0.3, s * 0.42); c.stroke(); c.fillStyle = E; c.beginPath(); c.arc(-s * 0.3, s * 0.42, s * 0.07, 0, 7); c.fill(); }
+  if (qual === "gerador") { c.strokeStyle = E; c.lineWidth = s * 0.06; c.strokeRect(-s * 0.4, -s * 0.3, s * 0.8, s * 0.6); c.fillStyle = L; c.fillRect(-s * 0.3, -s * 0.2, s * 0.6, s * 0.36); c.fillStyle = E; c.fillRect(-s * 0.16, -s * 0.12, s * 0.32, s * 0.2); }
+  if (qual === "escada") { c.strokeStyle = A; c.lineWidth = s * 0.06; c.beginPath(); c.moveTo(-s * 0.2, s * 0.48); c.lineTo(-s * 0.08, -s * 0.48); c.moveTo(s * 0.2, s * 0.48); c.lineTo(s * 0.08, -s * 0.48); for (let i = 0; i < 5; i++) { const q = -0.36 + i * 0.2; c.moveTo(-s * (0.17 - q * 0.12) , s * q); c.lineTo(s * (0.17 - q * 0.12), s * q); } c.stroke(); }
+  if (qual === "furadeira") { c.fillStyle = L; c.fillRect(-s * 0.32, -s * 0.22, s * 0.48, s * 0.2); c.fillStyle = E; c.fillRect(-s * 0.14, -s * 0.04, s * 0.14, s * 0.38); c.fillStyle = A; c.fillRect(s * 0.16, -s * 0.15, s * 0.22, s * 0.06); }
+  c.restore();
+}
+
+// figurinha redonda de item de missão (missoes.js): a betoneira e o carrinho de mão alugados na Construrenova
+export function desenharItemObra(c, qual, x, y, s) {
+  if (qual !== "carrinho") { ferramenta(c, qual, x, y, s); return; }
+  c.save(); c.translate(x, y); c.lineCap = c.lineJoin = "round";
+  c.fillStyle = "#4f5660"; c.beginPath(); c.moveTo(-s * 0.46, -s * 0.2); c.lineTo(s * 0.2, -s * 0.2); c.lineTo(s * 0.08, s * 0.14); c.lineTo(-s * 0.3, s * 0.14); c.fill();
+  c.strokeStyle = "#2b2d31"; c.lineWidth = s * 0.07; c.beginPath(); c.moveTo(-s * 0.1, s * 0.12); c.lineTo(s * 0.46, s * 0.02); c.moveTo(-s * 0.2, s * 0.14); c.lineTo(-s * 0.16, s * 0.36); c.stroke();
+  c.fillStyle = "#f07a1a"; c.beginPath(); c.arc(-s * 0.38, s * 0.28, s * 0.13, 0, 7); c.fill(); c.fillStyle = "#2b2d31"; c.beginPath(); c.arc(-s * 0.38, s * 0.28, s * 0.05, 0, 7); c.fill();
+  c.restore();
+}
+
 // ---------------------------------------------------------------- letreiros
 const LETREIROS = {
   "gala-presentes": (c, w, h) => {
@@ -127,6 +149,35 @@ const LETREIROS = {
     c.beginPath(); c.moveTo(x0 + q / 2, y0); c.lineTo(x0 + q / 2, y0 + q); c.moveTo(x0, y0 + q / 2); c.lineTo(x0 + q, y0 + q / 2); c.stroke();
     c.fillStyle = "#6fd0f2"; for (const [y, a] of [[0.34, 0.18], [0.5, 0.26], [0.66, 0.18]]) c.fillRect(h * 0.1, h * y - h * 0.018, h * a, h * 0.036);
     texto(c, "Speedy Soluções", w / 2 + h * 0.5, h * 0.46, w - h * 1.6, h * 0.62, { peso: 800, estilo: "italic", cor: "#ffffff" });
+  },
+  // faixa preta com CONSTRU (branco) RENOVA (laranja) e os serviços nas pontas; embaixo, a faixa clara da vitrine com as
+  // ferramentas desenhadas. Sem telefone e sem mascote
+  construrenova: (c, w, h) => {
+    const fh = h * 0.64; // a faixa preta
+    c.fillStyle = "#141416"; c.fillRect(0, 0, w, fh);
+    c.fillStyle = "#f07a1a"; c.fillRect(0, fh - h * 0.035, w, h * 0.035);
+    const lado = Math.min(w * 0.17, fh * 2.1), m = fh * 0.12;
+    for (const [x, a] of [[m + lado / 2, "LOCAÇÃO DE"], [w - m - lado / 2, "VENDA DE"]]) {
+      texto(c, a, x, fh * 0.34, lado, fh * 0.28, { cor: "#ffffff" });
+      texto(c, "MÁQUINAS", x, fh * 0.66, lado, fh * 0.28, { cor: "#ffffff" });
+    }
+    c.fillStyle = "#f07a1a"; for (const x of [m * 2 + lado, w - m * 2 - lado]) c.fillRect(x - fh * 0.02, fh * 0.16, fh * 0.04, fh * 0.64);
+    // CONSTRU + RENOVA no mesmo tamanho, juntos no meio
+    const area = w - (m * 3 + lado) * 2;
+    let n = fh * 0.82;
+    const pega = () => { c.font = `800 ${n}px ${BALOO}`; };
+    pega(); while (c.measureText("CONSTRURENOVA").width > area && n > 8) { n -= 2; pega(); }
+    const a = c.measureText("CONSTRU").width, b = c.measureText("RENOVA").width, x0 = w / 2 - (a + b) / 2;
+    c.textAlign = "left"; c.textBaseline = "middle";
+    c.fillStyle = "#ffffff"; c.fillText("CONSTRU", x0, fh * 0.54);
+    c.fillStyle = "#f07a1a"; c.fillText("RENOVA", x0 + a, fh * 0.54);
+    // faixa da vitrine: painéis claros com as ferramentas
+    const y0 = fh, vh = h - fh;
+    c.fillStyle = "#eef1f3"; c.fillRect(0, y0, w, vh);
+    const qs = ["martelete", "betoneira", "gerador", "escada", "furadeira", "martelete", "gerador", "betoneira", "escada", "furadeira"];
+    const n2 = Math.max(4, Math.min(qs.length, Math.round(w / (vh * 1.5))));
+    c.fillStyle = "#c3c9ce"; for (let i = 1; i < 3; i++) c.fillRect((w * i) / 3 - 2, y0, 4, vh);
+    for (let i = 0; i < n2; i++) ferramenta(c, qs[i], (w * (i + 0.5)) / n2, y0 + vh * 0.5, vh * 0.78);
   },
 };
 // etiqueta do @ no canto de baixo do letreiro, só na "foto" do Kart. Na Rabiscolândia o @ tem placa própria na fachada
@@ -266,6 +317,36 @@ const FOTOS = {
     portaDesenho(c, W / 2 - 90, H - 180, 180, 180, "#b8c2cc", "#bfe6ff");
     for (const x of [130, W - 130]) { c.strokeStyle = "#5a4630"; c.lineWidth = 12; c.beginPath(); c.moveTo(x - 40, H); c.lineTo(x, H - 170); c.lineTo(x + 40, H); c.stroke(); c.fillStyle = "rgba(180,228,250,0.92)"; c.fillRect(x - 54, H - 150, 108, 134); c.strokeStyle = "#e6ecf1"; c.lineWidth = 7; c.strokeRect(x - 54, H - 150, 108, 134); }
   },
+};
+// Construrenova (fora do FOTOS acima por ser a mais longa): galpão cinza-claro de painéis, pele de vidro com a moldura laranja
+// à esquerda, portão do galpão com toldo à direita; na calçada, betoneira laranja e carrinhos de mão
+FOTOS.construrenova = (c, W, H) => {
+  c.fillStyle = "#d9dcdf"; c.fillRect(0, 0, W, H);
+  c.fillStyle = "#c4c8cc"; for (let y = 40; y < H; y += 58) c.fillRect(0, y, W, 4);
+  const fx = 24, fw = 600, fy = H * 0.4;
+  c.fillStyle = "#f07a1a"; c.fillRect(fx, fy - 30, fw, H - fy + 30);
+  c.fillStyle = "#33414d"; c.fillRect(fx + 30, fy, fw - 60, 120);
+  c.fillStyle = "rgba(255,255,255,0.18)"; for (let i = 0; i < 4; i++) { const x = fx + 70 + i * 140; c.beginPath(); c.moveTo(x, fy + 120); c.lineTo(x + 70, fy); c.lineTo(x + 105, fy); c.lineTo(x + 35, fy + 120); c.fill(); }
+  c.fillStyle = "#1c242c"; for (let i = 1; i < 6; i++) c.fillRect(fx + 30 + ((fw - 60) * i) / 6 - 3, fy, 6, 120); c.fillRect(fx + 30, fy + 58, fw - 60, 5);
+  const vy = fy + 120, vh = H - vy;
+  c.fillStyle = "#cfd8de"; c.fillRect(fx + 30, vy, fw - 60, vh);
+  c.strokeStyle = "#7d868e"; c.lineWidth = 3;
+  for (let x = fx + 30; x <= fx + fw - 30; x += 22) { c.beginPath(); c.moveTo(x, vy + 10); c.lineTo(x, H); c.stroke(); }
+  for (let y = vy + 10; y <= H; y += 22) { c.beginPath(); c.moveTo(fx + 30, y); c.lineTo(fx + fw - 30, y); c.stroke(); }
+  c.fillStyle = "#2b2f35"; c.fillRect(fx + 250, vy + 10, 100, vh - 10);
+  // portão do galpão e o toldo
+  const px = 700, pw = 290, py = H * 0.5;
+  c.fillStyle = "#3a3f45"; c.fillRect(px, py, pw, H - py);
+  c.fillStyle = "#4c535a"; c.fillRect(px + 14, py + 14, pw - 28, H - py - 14);
+  c.fillStyle = "#a7adb3"; c.beginPath(); c.moveTo(px - 16, py - 6); c.lineTo(px + pw + 16, py - 6); c.lineTo(px + pw + 30, py + 36); c.lineTo(px - 30, py + 36); c.fill();
+  c.fillStyle = "#8e959b"; for (let x = px - 20; x < px + pw + 20; x += 18) c.fillRect(x, py - 4, 6, 40);
+  // betoneira e carrinhos de mão na calçada
+  ferramenta(c, "betoneira", fx + 420, H - 60, 120);
+  for (const x of [fx + 80, fx + 175]) {
+    c.fillStyle = "#3c4148"; c.beginPath(); c.moveTo(x - 46, H - 70); c.lineTo(x + 40, H - 70); c.lineTo(x + 24, H - 34); c.lineTo(x - 30, H - 34); c.fill();
+    c.strokeStyle = "#2b2d31"; c.lineWidth = 6; c.beginPath(); c.moveTo(x + 30, H - 40); c.lineTo(x + 70, H - 26); c.stroke();
+    c.fillStyle = "#f07a1a"; c.beginPath(); c.arc(x - 36, H - 22, 14, 0, 7); c.fill();
+  }
 };
 // a foto: fachada desenhada, com o letreiro em cima (legível de longe na beira da pista)
 export function desenharFoto(c, id, W, H, { instagram = null } = {}) {

@@ -1,4 +1,4 @@
-// Rabiscolândia: a placa do @ na fachada das 12 parceiras. Confere o texto (igual a src/parceiros.js, sem cortar) e fotografa da
+// Rabiscolândia: a placa do @ na fachada das 13 parceiras. Confere o texto (igual a src/parceiros.js, sem cortar) e fotografa da
 // rua com a câmera real do jogo: o jogador no meio da rua, de frente para o prédio.
 // Uso: node --experimental-websocket ferramentas/teste/rabiscolandia-placas.mjs <http://localhost:porta> <pasta> [ids...]
 // Variáveis: TAM=1280x720 · MOBILE=1 · RECUO=9 (metros do ponto da parceira até o jogador) · ANGULO=0 (de lado, em radianos) · HORA=11
@@ -25,7 +25,7 @@ await t.ev(OCULTA);
 
 const textos = await t.ev(`import("/jogos/rabiscopolis/placas-instagram.js").then(({ medidasPlacas }) => teste.PARCEIROS.map((p) => [p.id, "@" + p.instagram, medidasPlacas[p.id]]))`);
 for (const [id, arroba, m] of textos) ok(m?.arroba === arroba && m.largura <= m.area, `${id}: ${m?.arroba}, fonte ${m?.px}px, ocupa ${Math.round(m?.largura)} de ${Math.round(m?.area)}px`);
-ok(new Set(textos.map((q) => q[2]?.arroba)).size === 12, "12 placas diferentes");
+ok(new Set(textos.map((q) => q[2]?.arroba)).size === textos.length && textos.length === 13, `${textos.length} placas diferentes (13 parceiras)`);
 
 const lista = await t.ev(`teste.PARCEIROS.map((p) => { const l = teste.mundo.lugares.find((q) => q.id === "parceiro-" + p.id); return [p.id, l.x, l.z, l.dir[0], l.dir[1]]; })`);
 for (const [id, x, z, dx, dz] of lista) {

@@ -1,5 +1,5 @@
 // Rabiscolândia: a placa do @ do Instagram na frente do prédio de cada parceira (src/parceiros.js).
-// Mesma placa nas 12: moldura de blocos na cor da parceira, ícone do Instagram (desenhado em vetor) e o @ escuro em fundo claro.
+// Mesma placa nas 13: moldura de blocos na cor da parceira, ícone do Instagram (desenhado em vetor) e o @ escuro em fundo claro.
 // Cada uma fica numa faixa livre da fachada, na altura que a câmera da rua enxerga (sem cobrir letreiro, porta nem janela).
 // Custo: todas usam UMA textura e UM material; a mesclagem de cada bloco junta a placa numa malha só, então cada placa na
 // tela é no máximo uma chamada de desenho a mais. A moldura entra na malha de cores lisas do bloco (nenhuma chamada a mais).
@@ -29,6 +29,7 @@ const PLACAS = {
   "ballet-e-cia": { x: 0, y: 5.5, z: 0, w: 8.6, h: 0.98, cor: 0x7d1f4f },
   "bt-models": { x: 0, y: 5.85, z: 0, w: 7.6, h: 0.98, cor: 0xe7c35a },
   "speedy-solucoes": { x: 0, y: 4.43, z: 0.14, w: 8, h: 0.84, cor: 0x2f8fe8 },
+  construrenova: { x: 7.6, y: 7.85, z: 0.02, w: 5.6, h: 0.86, cor: 0xf07a1a }, // em cima do portão do galpão, acima do toldo
 };
 
 // glifo do Instagram em vetor: quadrado de cantos redondos com degradê (amarelo embaixo à esquerda → rosa → roxo em cima à direita),
@@ -74,7 +75,7 @@ function desenharPlaca(c, x0, y0, w, h, cor, arroba) {
   return { px, largura: m.width, area };
 }
 
-// as 12 placas numa textura só, em prateleiras
+// as 13 placas numa textura só, em prateleiras
 const encaixe = new Map();
 const larguraT = 2048; let alturaT = 0;
 {

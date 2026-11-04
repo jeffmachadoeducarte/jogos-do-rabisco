@@ -76,7 +76,7 @@ ok(idsP.size === PARCEIROS.length && nomesP.size === PARCEIROS.length, "ids e no
 ok(idsP.has("bella-cat") && idsP.has("bella-company") && PARCEIROS.find((p) => p.id === "bella-cat").nome !== PARCEIROS.find((p) => p.id === "bella-company").nome, "Bella Cat e Bella Company são parceiras diferentes");
 ok(PARCEIROS.every((p) => p.foto && existsSync(new URL(p.foto.split("?")[0], raiz))), "toda parceira tem a imagem no disco");
 ok(PARCEIROS.every((p) => p.tipo && /ESTILO_PARCEIRO/.test(parceirosSrc) && new RegExp(`\\b${p.tipo}: \\{`).test(parceirosSrc)), "todo tipo de parceira tem estilo");
-const CONFIRMADOS = { "speedy-solucoes": "speedysolucoes.sc", "gala-presentes": "gala.presentes", "see-love-joias": "seelovesemijoias", "bella-company": "somosbellacompany", "ballet-e-cia": "balleteciaitajai", "marlon-maquinas": "marlonmaquinas", "cafe-com-deus-pai-kids": "cafecomdeuspai", "bt-models": "btmodels.agency" };
+const CONFIRMADOS = { "speedy-solucoes": "speedysolucoes.sc", "gala-presentes": "gala.presentes", "see-love-joias": "seelovesemijoias", "bella-company": "somosbellacompany", "ballet-e-cia": "balleteciaitajai", "marlon-maquinas": "marlonmaquinas", "cafe-com-deus-pai-kids": "cafecomdeuspai", "bt-models": "btmodels.agency", construrenova: "constru.renova" };
 ok(Object.entries(CONFIRMADOS).every(([id, ig]) => PARCEIROS.find((p) => p.id === id)?.instagram === ig), "@ das parceiras novas conferido");
 const espaco = M.PEGADAS_FIXAS.filter((p) => p.id.startsWith("reserva-parceira"));
 ok(espaco.length >= 1, `lugares guardados no mapa: ${espaco.length}`);

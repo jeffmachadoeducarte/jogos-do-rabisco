@@ -51,6 +51,11 @@
 // item.objeto (evento): vai na MÃO do Rabisco como objeto 3D (missoes-objetos.js), não na cabeça. levar.icone: do botão.
 // corAcessorio (cor do laço) e tenis (cor do tênis): cada personagem com as suas cores.
 
+// betoneira e carrinho de mão alugados na Construrenova: na calçada, em frente ao portão do galpão, do lado do seu Albino
+const ALUGUEL_CONSTRURENOVA = [
+  { id: "betoneira", nome: "betoneira", emoji: "🏗️", desenho: "betoneira", x: 148.3, z: 105.3, de: "albino", rotulo: "🔑 Alugar a betoneira" },
+  { id: "carrinho", nome: "carrinho de mão", emoji: "🛞", desenho: "carrinho", x: 148.3, z: 107, de: "albino", rotulo: "🔑 Alugar o carrinho de mão" },
+];
 // garrafas PET na calçada, perto do galpão da Marlon Máquinas
 const GARRAFAS_MARLON = [[-125, 147.5], [-112, 147.6], [-97, 147.5], [-84, 147.6]].map(([x, z], i) => ({ id: `pet${i + 1}`, nome: "garrafa PET", emoji: "🧴", x, z }));
 
@@ -697,7 +702,7 @@ export const MISSOES = [
     fimNome: "Muito bem, {nome}! Todo mundo sentadinho! O Vovô Léo contou do menino Samuel, que ouviu Deus chamar de noite e aprendeu a escutar.",
     verso: { texto: "O menino Samuel respondeu a Deus: fala, que o teu servo está ouvindo.", ref: "baseado em 1 Samuel 3.10" },
   },
-  // ---- missões especiais das parceiras, pelo ramo de cada uma. Pessoas de verdade (seu Marlon, Prof. Samira, Diretora Sabrina) não falam: a anfitriã narra
+  // ---- missões especiais das parceiras, pelo ramo de cada uma. Pessoas de verdade (seu Marlon, seu Albino, Prof. Samira, Diretora Sabrina) não falam: a anfitriã narra
   {
     // Marlon Máquinas: junta garrafas PET pela rua e vê a máquina do galpão separar rótulo, tampa e flocos
     id: "parceiro-marlon-maquinas", titulo: "A máquina das garrafas", icone: "♻️", tipo: "cidadania", parceiro: "marlon-maquinas",
@@ -760,6 +765,24 @@ export const MISSOES = [
     fim: "Olhe que linda! Agora a Educarte Kids II tem uma fachada nova, de pele de vidro com perfis de alumínio. A Diretora Sabrina ficou muito feliz.",
     fimNome: "Muito bem, {nome}! Olhe que linda! Agora a Educarte Kids II tem uma fachada nova, de pele de vidro com perfis de alumínio. A Diretora Sabrina ficou muito feliz.",
     verso: { texto: "Se o Senhor não construir a casa, o trabalho dos construtores não adianta.", ref: "baseado em Salmos 127.1" },
+  },
+  {
+    // Construrenova: o Pedreiro Caderno precisa de equipamento; o Rabisco aluga a betoneira e o carrinho de mão com o seu
+    // Albino (pessoa de verdade: não fala, acena) e leva até a obra, na Avenida da Alegria. Ensina que a ferramenta certa,
+    // alugada, ajuda a construir com segurança
+    id: "parceiro-construrenova", titulo: "A obra do Pedreiro Caderno", icone: "🧱", tipo: "cidadania", parceiro: "construrenova",
+    npcs: {
+      pedreiro: { nome: "Pedreiro Caderno", tipo: "caderno", cor: 0x1fc08e, x: 171, z: 61.5, rot: Math.PI, acessorio: "capacete", corAcessorio: 0xffcc1f, obra: true },
+      albino: { nome: "Seu Albino", tipo: "pessoa", pessoa: "albino", fachada: "parceiro-construrenova" },
+    },
+    pedido: "Rabisco, o Pedreiro Caderno vai levantar um muro, mas falta equipamento! Vá até a Construrenova, alugue com o seu Albino uma betoneira e um carrinho de mão e traga tudo para a obra.",
+    etapas: [
+      { tipo: "pegar", itens: ALUGUEL_CONSTRURENOVA, fala: "Tudo alugado! O seu Albino conferiu a betoneira e o carrinho de mão. Agora leve até a obra do Pedreiro Caderno.", voz: "rp-m-parceiro-construrenova-alugou" },
+      { tipo: "levar", ate: "pedreiro", icone: "🧱" },
+    ],
+    fim: "Agora sim! Com a ferramenta certa, alugada na Construrenova, o Pedreiro Caderno constrói um muro firme e trabalha com segurança.",
+    fimNome: "Muito bem, {nome}! Com a ferramenta certa, alugada na Construrenova, o Pedreiro Caderno constrói um muro firme e trabalha com segurança.",
+    verso: { texto: "Quem ouve as palavras de Jesus e faz o que ele ensina é como quem constrói a casa em cima da rocha.", ref: "baseado em Mateus 7.24" },
   },
 ];
 // palavras que não podem aparecer em nada que a criança vê ou ouve (teste rabiscopolis-conteudo.mjs)

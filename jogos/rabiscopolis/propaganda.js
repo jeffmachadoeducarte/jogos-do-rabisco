@@ -19,6 +19,7 @@ export const PROPAGANDA = {
   "ballet-e-cia": { texto: "Ballet e Cia: ballet e jazz, com a Professora Samira. Em cada passo, aprendendo e crescendo juntos.", arroba: "arroba ballet e cia Itajaí" },
   "bt-models": { texto: "BT Models: agência de campanhas publicitárias e desfiles, em Balneário Camboriú.", arroba: "arroba BT Models ponto agency" },
   "speedy-solucoes": { texto: "Speedy Soluções: box, esquadrias e vidros temperados. Reflexos de excelência a cada instalação.", falado: "Speedy Soluções: bóx, esquadrias e vidros temperados. Reflexos de excelência a cada instalação.", arroba: "arroba Speedy soluções ponto S C" },
+  construrenova: { texto: "Construrenova, locação e venda de máquinas para construção.", arroba: "arroba constru ponto renova" },
 };
 // o texto da voz rp-prop-<id>
 export const falaDaPropaganda = (id) => { const P = PROPAGANDA[id]; return `${P.falado ?? P.texto} No Instagram: ${P.arroba}.`.trim(); };

@@ -174,8 +174,8 @@ export const LOJA_MAX = 19;
 // A Crescente Contabilidade (a 4ª) fica longe das outras, no oeste: lado sul da Avenida da Esperança, entre a Avenida do
 // Contorno e a Educarte Kids I, num prédio-escritório maior (PEGADA_ESCRITORIO).
 // [x, z, dir x, dir z, bairro?]. As parceiras novas ficam ESPALHADAS pela cidade, nunca juntas (o teste confere: 60 m ou mais
-// de qualquer outra parceira). Do índice 4 ao 11: Gala, See Love, Bella Company, Marlon, Café com Deus Pai Kids, Ballet e Cia,
-// BT Models e Speedy Soluções. O último é o ponto livre de antes (segue reservado para a próxima parceira).
+// de qualquer outra parceira). Do índice 4 ao 12: Gala, See Love, Bella Company, Marlon, Café com Deus Pai Kids, Ballet e Cia,
+// BT Models, Speedy Soluções e Construrenova. O último é o ponto livre de antes (segue reservado para a próxima parceira).
 export const PONTOS_PARCEIROS = [
   [164, -59.5, 0, 1], [93, 9, 0, -1], [116, 9, 0, -1], [-160, -40.5, 0, -1],
   [-41, 30, -1, 0, "Centro"], // Gala Presentes: Rua do Sol, ao lado da praça
@@ -186,10 +186,11 @@ export const PONTOS_PARCEIROS = [
   [-165, 59.5, 0, -1, "Oeste"], // Ballet e Cia: Avenida da Alegria, para o lado da Educarte Kids I
   [98, 149.5, 0, -1, "Sul"], // BT Models: sul da Avenida do Contorno
   [-116, -149.5, 0, 1, "Noroeste"], // Speedy Soluções: norte da Avenida do Contorno
+  [149.5, 100, -1, 0, "Sudeste"], // Construrenova: leste da Avenida do Contorno, de frente para ela (entre os prédios 58 e 60)
   [118, -59.5, 0, 1],
 ];
 // largura e fundo do prédio de cada tipo de parceira que tem fachada própria (as outras: LOJA_MAX × 7,5)
-export const PEGADA_TIPO = { presentes: [17, 9], joias: [15, 9], confeccao: [19, 10], reciclagem: [24, 16], livraria: [17, 10], ballet: [21, 12], agencia: [19, 11], vidracaria: [18, 10] };
+export const PEGADA_TIPO = { presentes: [17, 9], joias: [15, 9], confeccao: [19, 10], reciclagem: [24, 16], livraria: [17, 10], ballet: [21, 12], agencia: [19, 11], vidracaria: [18, 10], locacao: [24, 15] };
 export const PEGADA_ESCRITORIO = [16, 12];
 // pátio da J.E (atrás da loja, no bairro Leste, longe da praça: de lá não se vê nem custa nada): cercado, com o portão
 // aberto para a Avenida do Contorno (no lado x0, de z = portao[0] a portao[1]) e 5 carros em leque, cada um com o bico

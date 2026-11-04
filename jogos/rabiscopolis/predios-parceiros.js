@@ -648,4 +648,132 @@ export function speedySolucoes(l) {
   return fechar(S, W, D);
 }
 
-export const FACHADAS = { presentes: galaPresentes, joias: seeLoveJoias, confeccao: bellaCompany, reciclagem: marlonMaquinas, livraria: cafeComDeusPaiKids, ballet: balletECia, agencia: btModels, vidracaria: speedySolucoes };
+// ==================================================================== Construrenova: galpão de locação e venda de máquinas para construção.
+// Inventado, inspirado na loja real (sem foto, logotipo, mascote nem telefone): galpão cinza-claro alto de painéis; à esquerda a
+// pele de vidro com a moldura laranja grossa, a faixa preta do letreiro e a vitrine com grade; à direita o portão do galpão
+// com toldo cinza. Na calçada, a betoneira laranja e carrinhos de mão.
+export function betoneira(g, x, z, ry = 0) {
+  const a = new THREE.Group(); a.position.set(x, 0.09, z); a.rotation.y = ry; g.add(a);
+  const LJ = 0xf07a1a, PT = 0x2b2d31;
+  for (const q of [-1, 1]) { pc(a, 0.1, 1.0, 0.1, PT, q * 0.42, 0.62, -0.25, { ...F, rz: q * 0.25 }); pc(a, 0.1, 1.0, 0.1, PT, q * 0.42, 0.62, 0.25, { ...F, rz: q * 0.25 }); }
+  pc(a, 1.0, 0.1, 0.62, PT, 0, 1.08, 0, F);
+  for (const q of [-1, 1]) { pc(a, 0.12, 0.34, 0.34, 0x1b1c1f, q * 0.62, 0.17, 0, F); pc(a, 0.13, 0.14, 0.14, 0xb8bec4, q * 0.62, 0.17, 0, F); }
+  pc(a, 1.36, 0.08, 0.08, PT, 0, 0.17, 0, F); // eixo das rodas
+  // o tambor, inclinado para a boca: três caixas cada vez menores
+  const t = new THREE.Group(); t.position.set(0.05, 1.55, 0); t.rotation.z = -0.55; a.add(t);
+  pc(t, 0.92, 0.72, 0.92, LJ, 0, 0, 0); pc(t, 0.78, 0.36, 0.78, claro(LJ, 0.12), 0, 0.5, 0, F); pc(t, 0.5, 0.26, 0.5, LJ, 0, 0.78, 0, F);
+  pc(t, 0.36, 0.06, 0.36, 0x1b1c1f, 0, 0.92, 0, F); // a boca
+  pc(t, 0.7, 0.26, 0.7, escuro(LJ, 0.82), 0, -0.46, 0, F);
+  for (const q of [-1, 1]) pc(t, 0.96, 0.06, 0.06, escuro(LJ, 0.7), 0, 0.12, q * 0.47, F); // anel
+  pc(a, 0.5, 0.36, 0.4, 0x3a3f45, -0.42, 1.3, 0, F); // motor
+  pc(a, 0.08, 0.08, 0.7, PT, -0.62, 1.7, 0, { ...F, rx: 0 }); // volante
+}
+export function carrinhoDeMao(g, x, z, ry = 0, cor = 0x3c4148) {
+  const a = new THREE.Group(); a.position.set(x, 0.09, z); a.rotation.y = ry; g.add(a);
+  pc(a, 0.66, 0.1, 0.9, cor, 0, 0.52, 0, F); // fundo da caçamba
+  for (const q of [-1, 1]) pc(a, 0.08, 0.34, 0.95, claro(cor, 0.08), q * 0.38, 0.68, 0.02, { ...F, rz: q * -0.25 });
+  pc(a, 0.82, 0.34, 0.08, claro(cor, 0.08), 0, 0.68, 0.5, { ...F, rx: 0.35 }); pc(a, 0.72, 0.3, 0.08, claro(cor, 0.08), 0, 0.66, -0.46, F);
+  for (const q of [-1, 1]) { pc(a, 0.07, 0.07, 1.25, 0x2b2d31, q * 0.28, 0.44, -0.55, F); pc(a, 0.07, 0.4, 0.07, 0x2b2d31, q * 0.24, 0.2, -0.3, F); }
+  for (const q of [-1, 1]) pc(a, 0.1, 0.07, 0.24, 0xf07a1a, q * 0.28, 0.44, -1.18, F); // manoplas
+  pc(a, 0.12, 0.38, 0.38, 0xf07a1a, 0, 0.21, 0.62, F); pc(a, 0.13, 0.16, 0.16, 0x1b1c1f, 0, 0.21, 0.62, F); // roda
+}
+// a obra do pedreiro (missão da Construrenova, montada só quando a missão precisa): muro de tijolos pela metade, monte de
+// areia, sacos de cimento e cones. chegou: a betoneira e o carrinho alugados, que aparecem depois da entrega
+export function obraPedreiro(rot = 0) {
+  const g = new THREE.Group(), base = new THREE.Group(), chegou = new THREE.Group();
+  base.rotation.y = rot; chegou.rotation.y = rot; g.add(base, chegou);
+  const TJ = 0xc8643c;
+  for (let k = 0; k < 6; k++) for (let i = 0; i < 9 - (k > 3 ? (k - 3) * 3 : 0); i++) pc(base, 0.46, 0.22, 0.3, k % 2 ? TJ : escuro(TJ, 0.9), -2.0 + i * 0.5 + (k % 2) * 0.25, 0.2 + k * 0.24, -1.6, F);
+  for (const [w, h, y] of [[2.2, 0.35, 0.18], [1.6, 0.3, 0.5], [0.9, 0.25, 0.76]]) pc(base, w, h, w * 0.8, 0xe2c27a, 2.3, y, -1.4, F);
+  for (let i = 0; i < 3; i++) pc(base, 0.7, 0.24, 0.5, 0xd8d4c8, -3.2, 0.2 + i * 0.25, -1.2 + (i % 2) * 0.06, F);
+  for (const x of [-3.4, 3.6]) { pc(base, 0.36, 0.06, 0.36, 0x2b2d31, x, 0.12, 0.2, F); pc(base, 0.22, 0.5, 0.22, 0xff7a1a, x, 0.4, 0.2, F); pc(base, 0.24, 0.08, 0.24, 0xffffff, x, 0.42, 0.2, F); }
+  betoneira(chegou, 1.7, -0.9, 0.5); carrinhoDeMao(chegou, -1.6, -0.6, -0.4);
+  return { g, chegou }; // quem usa esconde o chegou DEPOIS de mesclar (a mesclagem descarta o que está invisível)
+}
+export function construrenova(l) {
+  const S = novo(), g = S.grupo, W = 23, H = 9.6, D = 14, prof = 7, CZ = 0xd9dcdf, LJ = 0xf07a1a, PT = 0x141416, GR = 0x8e959b;
+  const FX0 = -11.1, FX1 = 2.7, FY = 8.9, E = 0.75, R = 1.5; // moldura laranja (de fora a fora) e o recuo da loja atrás do vidro
+  const GX0 = 4.5, GX1 = 10.7, GH = 5.6; // portão do galpão
+  casco(g, { W, H, D, prof, cor: CZ, beiral: 0xc4c8cc, rodape: 0x9aa1a7 });
+  // paredes da frente: tudo fundo (prof), menos o recuo da loja e o vão do portão
+  const cheio = (x0, x1, y0, y1) => pc(g, x1 - x0, y1 - y0, prof, CZ, (x0 + x1) / 2, (y0 + y1) / 2, -prof / 2);
+  cheio(-W / 2, FX0, 0, H); cheio(FX1, GX0, 0, H); cheio(GX1, W / 2, 0, H); cheio(FX0, FX1, FY, H); cheio(GX0, GX1, GH, H);
+  pc(g, FX1 - FX0, FY, prof - R, CZ, (FX0 + FX1) / 2, FY / 2, -R - (prof - R) / 2); // fundo da loja
+  // painéis: juntas horizontais e algumas verticais (fora da moldura e do portão)
+  const juntas = (x0, x1, y0, y1) => { for (let y = 1.25; y < H - 0.1; y += 1.55) if (y > y0 && y < y1) pc(g, x1 - x0, 0.07, 0.05, 0xb9bec3, (x0 + x1) / 2, y, 0.01, F); };
+  juntas(-W / 2, FX0, 0, H); juntas(FX1, GX0, 0, H); juntas(GX1, W / 2, 0, H); juntas(FX0, FX1, FY + 0.5, H); juntas(GX0, GX1, GH + 0.4, H);
+  for (const x of [FX1 + 0.9, GX0 + 3.1, GX1 + 0.45]) pc(g, 0.06, x === GX0 + 3.1 ? H - GH - 0.6 : H, 0.05, 0xb9bec3, x, x === GX0 + 3.1 ? (H + GH + 0.6) / 2 : H / 2, 0.01, F);
+  for (const s of [-1, 1]) for (let y = 1.25; y < H; y += 1.55) pc(g, 0.05, 0.07, D - 0.4, 0xb9bec3, s * (W / 2 + 0.01), y, -D / 2, F);
+  for (let y = 1.25; y < H; y += 1.55) pc(g, W - 0.4, 0.07, 0.05, 0xb9bec3, 0, y, -D - 0.01, F);
+  // ---- a moldura laranja grossa, saltada da parede
+  const mz = 0.25, mq = 0.55, fxm = (FX0 + FX1) / 2;
+  pc(g, FX1 - FX0, E, mq, LJ, fxm, FY - E / 2, mz);
+  for (const x of [FX0 + E / 2, FX1 - E / 2]) pc(g, E, FY - E, mq, LJ, x, (FY - E) / 2, mz);
+  pc(g, FX1 - FX0 - E * 2, 0.12, R, escuro(LJ, 0.85), fxm, FY - E - 0.06, -R / 2 + 0.1, F); // forro do recuo, laranja
+  for (let i = 0; i < 6; i++) pc(g, 0.22, 0.05, 0.22, 0, FX0 + E + 1 + i * 2.1, FY - E - 0.14, -0.4, { ...F, material: MAT.lampada }); // spots no forro
+  const ix0 = FX0 + E, ix1 = FX1 - E, iw = ix1 - ix0, ixm = (ix0 + ix1) / 2;
+  // ---- pele de vidro (em cima): vidro escuro espelhado, reflexos e caixilhos finos
+  const vy0 = 5.75, vy1 = FY - E;
+  pc(g, iw, vy1 - vy0, 0.08, 0x34495a, ixm, (vy0 + vy1) / 2, -0.12, F);
+  for (let i = 0; i < 4; i++) pc(g, 0.7, (vy1 - vy0) * 1.05, 0.02, 0x5d7a8f, ix0 + 1.8 + i * 3.1, (vy0 + vy1) / 2, -0.07, { ...F, rz: -0.45 });
+  for (let i = 0; i <= 6; i++) pc(g, 0.09, vy1 - vy0, 0.12, 0x1f262d, ix0 + (iw * i) / 6, (vy0 + vy1) / 2, -0.06, F);
+  pc(g, iw, 0.09, 0.12, 0x1f262d, ixm, (vy0 + vy1) / 2, -0.06, F);
+  // ---- faixa preta do letreiro (com a faixa clara das ferramentas embaixo)
+  letreiro(g, "construrenova", { w: iw - 0.25, h: 2.2, x: ixm, y: 4.55, z: -0.22, cor: PT });
+  // ---- vitrines com grade e a porta, embaixo
+  const ay = 0.16, by = 3.28, DOOR = [-4.6, -2.8];
+  for (const [x0, x1] of [[ix0, DOOR[0]], [DOOR[1], ix1]]) {
+    const w = x1 - x0, xm = (x0 + x1) / 2;
+    pc(g, w, 0.1, 0.12, 0x4c535a, xm, by, -0.08, F); pc(g, w, ay, 0.2, 0x4c535a, xm, ay / 2, -0.08, F);
+    pc(g, w, by - ay, 0.04, 0, xm, (ay + by) / 2, -0.16, { ...F, material: VIDRO });
+    for (let x = x0 + 0.28; x < x1 - 0.1; x += 0.32) pc(g, 0.04, by - ay, 0.04, 0x7d868e, x, (ay + by) / 2, -0.1, F);
+    for (let y = ay + 0.3; y < by - 0.1; y += 0.32) pc(g, w, 0.04, 0.04, 0x7d868e, xm, y, -0.1, F);
+    for (const x of [x0 + 0.05, x1 - 0.05]) pc(g, 0.12, by - ay, 0.14, 0x4c535a, x, (ay + by) / 2, -0.08, F);
+  }
+  pc(g, iw, 0.1, R, 0x9aa1a7, ixm, 0.05, -R / 2, F); // piso da loja
+  pc(g, iw - 0.4, 0.08, 0.3, 0, ixm, by - 0.08, -R / 2, { ...F, material: MAT.lampada });
+  // lá dentro, atrás da grade: gerador, compactador, escada e furadeiras na prateleira
+  pc(g, 1.0, 0.7, 0.6, LJ, ix0 + 1.2, 0.5, -0.9); pc(g, 1.1, 0.08, 0.7, 0x2b2d31, ix0 + 1.2, 0.9, -0.9, F); pc(g, 0.4, 0.3, 0.05, 0x2b2d31, ix0 + 1.2, 0.55, -0.58, F);
+  pc(g, 0.6, 0.5, 0.5, 0xffc21a, ix0 + 3.0, 0.42, -0.9); pc(g, 0.08, 1.1, 0.08, 0x2b2d31, ix0 + 3.0, 1.1, -0.9, F); pc(g, 0.5, 0.08, 0.08, 0x2b2d31, ix0 + 3.0, 1.62, -0.9, F);
+  for (const q of [-1, 1]) pc(g, 0.08, 2.8, 0.08, 0xc9ced4, DOOR[1] + 1.4 + q * 0.3, 1.5, -1.1, { ...F, rz: 0.08 });
+  for (let i = 0; i < 6; i++) pc(g, 0.6, 0.06, 0.06, 0xc9ced4, DOOR[1] + 1.4 + i * 0.02, 0.5 + i * 0.45, -1.1, F);
+  pc(g, 3.2, 0.08, 0.5, 0x8a6a48, ix1 - 2.0, 1.7, -1.2, F); for (let i = 0; i < 4; i++) { pc(g, 0.42, 0.2, 0.3, LJ, ix1 - 3.2 + i * 0.8, 1.86, -1.2, F); pc(g, 0.12, 0.24, 0.12, 0x2b2d31, ix1 - 3.3 + i * 0.8, 1.66, -1.2, F); }
+  pc(g, 0.9, 0.6, 0.6, LJ, ix1 - 1.0, 0.45, -0.9);
+  // porta: vão escuro com batente e a marquise
+  pc(g, DOOR[1] - DOOR[0], by - ay, 0.08, 0x23272c, (DOOR[0] + DOOR[1]) / 2, (ay + by) / 2, -1.3, F);
+  for (const x of DOOR) pc(g, 0.16, by, 0.2, 0x4c535a, x, by / 2, -0.06, F);
+  pc(g, 1.4, 2.6, 0.04, 0, (DOOR[0] + DOOR[1]) / 2, 1.45, -0.12, { ...F, material: VIDRO_FORTE });
+  // ---- portão do galpão: vão fundo com o chão de concreto, máquinas lá dentro e o toldo cinza
+  const gm = (GX0 + GX1) / 2, gw = GX1 - GX0;
+  pc(g, gw, 0.12, prof, 0xa3a8ad, gm, 0.06, -prof / 2); pc(g, gw, 0.08, 1.8, 0xa3a8ad, gm, 0.05, 0.9, F);
+  pc(g, gw, GH, 0.1, 0x5a6168, gm, GH / 2, -prof + 0.06, F);
+  for (const x of [GX0, GX1]) pc(g, 0.3, GH, 0.3, 0x9aa1a7, x, GH / 2, 0.02, F);
+  pc(g, gw + 0.5, 0.36, 0.4, 0x9aa1a7, gm, GH + 0.05, 0.02, F); // verga com a porta de enrolar recolhida
+  for (let i = 0; i < 3; i++) pc(g, gw - 0.2, 0.16, 0.08, 0xb4bac0, gm, GH - 0.3 - i * 0.2, -0.3, F);
+  for (const x of [-2, 2]) pc(g, 1.8, 0.1, 0.4, 0, gm + x, GH - 0.15, -3.2, { ...F, material: MAT.lampada });
+  // andaime (laranja e azul) e compactador lá dentro
+  for (const [x, z] of [[GX0 + 0.8, -4.6], [GX0 + 2.6, -4.6], [GX0 + 0.8, -5.9], [GX0 + 2.6, -5.9]]) pc(g, 0.1, 4.2, 0.1, 0x2f6fc0, x, 2.1, z, F);
+  for (const y of [1.4, 2.8, 4.2]) { pc(g, 2.0, 0.1, 1.5, 0x8a6a48, GX0 + 1.7, y, -5.25, F); pc(g, 1.9, 0.08, 0.08, LJ, GX0 + 1.7, y + 0.6, -4.55, F); }
+  pc(g, 0.8, 0.6, 0.9, LJ, GX1 - 1.6, 0.5, -3.2); pc(g, 1.0, 0.12, 1.1, 0x2b2d31, GX1 - 1.6, 0.15, -3.2, F); pc(g, 0.08, 1.2, 0.08, 0x2b2d31, GX1 - 1.6, 1.25, -3.75, { ...F, rx: 0.4 });
+  betoneira(g, GX1 - 1.4, -5.6, 0.6); carrinhoDeMao(g, GX0 + 4.2, -2.2, 0.3, 0x5a6168);
+  // toldo inclinado de chapa ondulada, com duas mãos-francesas
+  const ty = GH + 0.9;
+  pc(g, gw + 1.2, 0.1, 2.2, 0xa7adb3, gm, ty, 1.0, { rx: 0.3 });
+  for (let x = GX0 - 0.45; x <= GX1 + 0.45; x += 0.42) pc(g, 0.14, 0.06, 2.2, 0x8e959b, x, ty + 0.07, 1.0, { ...F, rx: 0.3 });
+  for (const x of [GX0 + 0.3, GX1 - 0.3]) pc(g, 0.1, 0.1, 2.3, 0x6b7279, x, ty - 0.6, 0.9, { ...F, rx: -0.42 });
+  placaInstagram(g, "construrenova"); // na parede cinza, entre o toldo e o topo, em cima do portão
+  // ---- calçada: carrinhos de mão na frente da vitrine e a betoneira laranja ao lado da porta
+  piso(g, W, 0xd5d2c8);
+  carrinhoDeMao(g, ix0 + 0.9, 1.0, 0.25); carrinhoDeMao(g, ix0 + 2.4, 1.05, -0.15, 0x4f5660);
+  betoneira(g, DOOR[1] + 1.2, 1.0, -0.4);
+  // no telhado: claraboias e a caixa d'água
+  const Y = H + 0.42;
+  for (const q of [-1, 1]) pc(g, 2.4, 0.14, 4, 0xbfe6ff, q * 5, Y + 0.08, -D * 0.55, F);
+  pc(g, 2.2, 1.6, 2.2, 0x6fa8d8, 7.5, Y + 0.8, -D * 0.78); pc(g, 2.4, 0.16, 2.4, 0x5a8fbd, 7.5, Y + 1.68, -D * 0.78, F);
+  janelasEmVolta(g, W, D, { y0: 6.4, cor: 0xb9bec3, zFrente: prof });
+  S.porta = [(DOOR[0] + DOOR[1]) / 2, 0.8];
+  S.pessoa = { id: "albino", x: 3.6, z: 1.3 };
+  return fechar(S, W, D);
+}
+
+export const FACHADAS = { presentes: galaPresentes, joias: seeLoveJoias, confeccao: bellaCompany, reciclagem: marlonMaquinas, livraria: cafeComDeusPaiKids, ballet: balletECia, agencia: btModels, vidracaria: speedySolucoes, locacao: construrenova };
