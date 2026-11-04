@@ -19,7 +19,7 @@ const ok = (c, msg) => { console.log(c ? "✓" : "✗", msg); if (!c) falhas++; 
 const vigia = setTimeout(() => { console.log("✗ o teste travou"); process.exit(2); }, 8 * 60 * 1000);
 
 // ---------------------------------------------------------------- tabela e vozes (sem navegador)
-ok(PARCEIROS.length === 13 && Object.keys(PROPAGANDA).length === 13, `13 parceiras e 13 entradas na tabela (${PARCEIROS.length} e ${Object.keys(PROPAGANDA).length})`);
+ok(PARCEIROS.length === 14 && Object.keys(PROPAGANDA).length === 14, `14 parceiras e 14 entradas na tabela (${PARCEIROS.length} e ${Object.keys(PROPAGANDA).length})`);
 for (const p of PARCEIROS) {
   const k = `rp-prop-${p.id}`;
   ok(PROPAGANDA[p.id] && falas[k] === falaDaPropaganda(p.id) && existsSync(`${RAIZ}assets/voz/${k}.mp3`) && /\barroba\b/.test(falas[k]), `${p.nome}: fala e MP3 ${k}`);
@@ -44,7 +44,7 @@ try {
   // anota cada MP3 que começa a tocar (a voz é HTMLAudio; o Chrome de teste está sempre com --mute-audio)
   await ev(`window.__voz = []; { const p = HTMLMediaElement.prototype.play; HTMLMediaElement.prototype.play = function () { window.__voz.push(this.src.replace(/^.*\\/voz\\//, "")); return p.call(this); }; }`);
 
-  // ---- as 13: balão e voz
+  // ---- as 14: balão e voz
   for (const p of PARCEIROS) {
     await ev("window.__voz.length = 0");
     const mostrou = await ev(`teste.missoes.mostrarPropaganda(${JSON.stringify(p.id)})`);

@@ -110,6 +110,8 @@ export const sons = {
     (f[tipo] ?? f.au)();
     nota(N("C7"), 0.3, 0.12, { onda: 0.125, vol: 0.05, solta: 0.1 });
   },
+  // campainha (Sítio Floresça): ding-dong de dois tons, 8-bit original
+  campainha() { nota(N("E6"), 0, 0.45, { onda: 0.25, vol: 0.09, solta: 0.4 }); nota(N("C6"), 0.42, 0.7, { onda: 0.25, vol: 0.09, solta: 0.6 }); nota(N("E5"), 0, 0.4, { onda: "tri", vol: 0.12, solta: 0.3 }); nota(N("C5"), 0.42, 0.6, { onda: "tri", vol: 0.12, solta: 0.5 }); },
   buzina() { for (const t of [0, 0.32]) { nota(N("F4"), t, 0.22, { onda: 0.5, vol: 0.09 }); nota(N("A4"), t, 0.22, { onda: 0.25, vol: 0.07 }); } },
   estouro() { ruido(0, 0.12, { vol: 0.25, freq: 2500 }); nota(N("C6"), 0, 0.1, { onda: 0.125, vol: 0.06, ate: N("C4") }); },
   nota(i) { const escala = ["C5", "D5", "E5", "G5", "A5", "C6", "D6", "E6"]; nota(N(escala[i % escala.length]), 0, 0.25, { onda: 0.25, vol: 0.09, solta: 0.2 }); },

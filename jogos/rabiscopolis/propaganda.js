@@ -3,6 +3,7 @@
 // rp-prop-<id> e o balão mostra o texto, o nome e o @, esses dois lidos de PARCEIROS (src/parceiros.js): missoes.js cuida disso.
 //  - texto: o que aparece escrito no balão ("" = só o nome e o @: a Crescente já agradece na fala de fim da missão)
 //  - falado: como a voz diz o mesmo texto, só quando a escrita normal sai errada no TTS (sem ele, vale o texto)
+//  - inteira (opcional): a fala completa, quando o @ vem no meio da frase (Sítio Floresça); sem ela, "texto. No Instagram: arroba."
 //  - arroba: o @ escrito para a voz, com "ponto", "underline" e separado em palavras, para ela não soletrar
 // Trocou um texto? Apague o MP3 e gere de novo: node jogos/rabiscopolis/falas.mjs && python3 ferramentas/gerar_vozes.py
 // (para não pegar a cópia antiga guardada no aparelho, melhor dar um id/nome de arquivo novo).
@@ -20,6 +21,8 @@ export const PROPAGANDA = {
   "bt-models": { texto: "BT Models: agência de campanhas publicitárias e desfiles, em Balneário Camboriú.", arroba: "arroba BT Models ponto agency" },
   "speedy-solucoes": { texto: "Speedy Soluções: box, esquadrias e vidros temperados. Reflexos de excelência a cada instalação.", falado: "Speedy Soluções: bóx, esquadrias e vidros temperados. Reflexos de excelência a cada instalação.", arroba: "arroba Speedy soluções ponto S C" },
   construrenova: { texto: "Construrenova, locação e venda de máquinas para construção.", arroba: "arroba constru ponto renova" },
+  "sitio-floresca": { texto: "Que dia lindo no Sítio Floresça, a Escola de Campo Educarte! E sabia que dá para fazer a sua festa ou o seu evento aqui? É só chamar a Tia Regina no Instagram!", arroba: "arroba floresca onde estiver",
+    inteira: "Que dia lindo no Sítio Floresça, a Escola de Campo Educarte! E sabia que dá pra fazer a sua festa ou o seu evento aqui? É só entrar no Instagram arroba floresca onde estiver e chamar a Tia Regina!" },
 };
 // o texto da voz rp-prop-<id>
-export const falaDaPropaganda = (id) => { const P = PROPAGANDA[id]; return `${P.falado ?? P.texto} No Instagram: ${P.arroba}.`.trim(); };
+export const falaDaPropaganda = (id) => { const P = PROPAGANDA[id]; if (P.inteira) return P.inteira; return `${P.falado ?? P.texto} No Instagram: ${P.arroba}.`.trim(); };

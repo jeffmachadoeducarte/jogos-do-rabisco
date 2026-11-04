@@ -1,6 +1,6 @@
 // Rabiscolândia: o Álbum de figurinhas (dados puros, sem DOM e sem three.js: dá para testar em node e no navegador).
 // Quatro páginas, cada uma com as suas figurinhas e uma raridade (a cor da moldura):
-//  - parceiros (dourada): as 12 lojas de src/parceiros.js, com o nome e o @ exatamente como estão lá. Ganha quem visita a loja.
+//  - parceiros (dourada): as lojas de src/parceiros.js, com o nome e o @ exatamente como estão lá. Ganha quem visita a loja.
 //  - amigos (azul): quem pede ajuda nas missões. Ganha quem conclui a missão. As pessoas de verdade entram com UMA figurinha cada
 //    (a:pessoa-<id>), ganha ao concluir qualquer missão em que ela aparece; a arte é o boneco de bloco do jogo (nenhuma foto).
 //  - versiculos (roxa): o versículo de cada missão da Bíblia. Ganha quem conclui a missão.
@@ -37,7 +37,9 @@ for (const M of MISSOES) {
     if (f) f.missoes.push(M.id);
     else { const nova = { id: `a:pessoa-${gente.pessoa}`, pagina: "amigos", nome: gente.nome, sub: M.titulo, tipo: "pessoa", pessoa: gente.pessoa, missoes: [M.id], dica: `Missão: ${M.titulo}` }; pessoasFig.set(gente.pessoa, nova); amigos.push(nova); }
   }
-  if (q && q.tipo !== "pessoa") amigos.push({ id: `a:${M.id}`, pagina: "amigos", nome: q.nome, sub: M.titulo, tipo: q.tipo, cor: q.cor ?? null, missao: M.id, dica: `Missão: ${M.titulo}` });
+  // missão de pessoa de verdade com um bichinho que também ganha figurinha (a pata Ale e o Duck do Sítio Floresça)
+  if (M.figurinha) amigos.push({ id: `a:${M.id}`, pagina: "amigos", nome: M.figurinha.nome, sub: M.titulo, tipo: M.figurinha.tipo, cor: M.figurinha.cor ?? null, missao: M.id, dica: `Missão: ${M.titulo}` });
+  else if (q && q.tipo !== "pessoa") amigos.push({ id: `a:${M.id}`, pagina: "amigos", nome: q.nome, sub: M.titulo, tipo: q.tipo, cor: q.cor ?? null, missao: M.id, dica: `Missão: ${M.titulo}` });
   if (M.verso) versiculos.push({ id: `v:${M.id}`, pagina: "versiculos", nome: M.titulo, sub: M.verso.ref, texto: M.verso.texto, icone: M.icone, missao: M.id, dica: `Missão: ${M.titulo}` });
 }
 

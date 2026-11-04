@@ -7,7 +7,7 @@
 //  - nome: como aparece no passaporte e no mapa · foto: caminho a partir da raiz do site
 //  - larguraMax (opcional): largura máxima do prédio (a J.E é mais estreita para caber o pátio de carros ao lado)
 //  - tipo: "carros" | "academia" | "moda" | "contabilidade" | "presentes" | "joias" | "confeccao" | "reciclagem" |
-//    "livraria" | "ballet" | "agencia" | "vidracaria" | "locacao" (cor das laterais e do telhado; na Rabiscolândia, também a fachada própria)
+//    "livraria" | "ballet" | "agencia" | "vidracaria" | "locacao" | "sitio" (cor das laterais e do telhado; na Rabiscolândia, também a fachada própria)
 // As parceiras depois da Crescente não têm foto real nem logotipo: a "foto" delas é arte inventada, gerada por
 // ferramentas/gerar_fotos_parceiros.mjs, e a fachada delas na cidade está em jogos/rabiscopolis/predios-parceiros.js.
 export const PARCEIROS = [
@@ -31,6 +31,9 @@ export const PARCEIROS = [
   // locação e venda de máquinas e equipamentos para construção civil e pedreiros. Fachada inventada (galpão cinza-claro,
   // pele de vidro com moldura laranja), sem logotipo, mascote nem telefone da fachada real
   { id: "construrenova", nome: "Construrenova", foto: "assets/parceiros/construrenova.webp?v=1", tipo: "locacao", instagram: "constru.renova" },
+  // Escola de Campo Educarte no Sítio Floresça, da Tia Regina: aulas no campo, festas e eventos. Na Rabiscolândia é um
+  // sítio inteiro (portão, casa de tijolinho, celeiro de madeira, lago cercado) no canto sudoeste: jogos/rabiscopolis/sitio.js
+  { id: "sitio-floresca", nome: "Sítio Floresça", foto: "assets/parceiros/sitio-floresca.webp?v=1", tipo: "sitio", instagram: "florescaondestiver" },
 ];
 
 // cores das laterais/fundo (parede) e do telhado (beiral) por tipo de loja
@@ -48,6 +51,7 @@ export const ESTILO_PARCEIRO = {
   agencia: { parede: "#23242b", beiral: "#e7c35a" },
   vidracaria: { parede: "#3a4653", beiral: "#b8c2cc" },
   locacao: { parede: "#d9dcdf", beiral: "#f07a1a" }, // galpão cinza-claro e a moldura laranja da Construrenova
+  sitio: { parede: "#b5583a", beiral: "#3f8f3a" }, // tijolinho da casa e o verde do gramado do Sítio Floresça
   igreja: { parede: "#a9a8a3", beiral: "#f4f4f1" }, // concreto cinza com a moldura branca da Igreja Reviver
 };
 

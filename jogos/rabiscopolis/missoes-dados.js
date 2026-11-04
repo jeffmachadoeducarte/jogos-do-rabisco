@@ -702,7 +702,7 @@ export const MISSOES = [
     fimNome: "Muito bem, {nome}! Todo mundo sentadinho! O Vovô Léo contou do menino Samuel, que ouviu Deus chamar de noite e aprendeu a escutar.",
     verso: { texto: "O menino Samuel respondeu a Deus: fala, que o teu servo está ouvindo.", ref: "baseado em 1 Samuel 3.10" },
   },
-  // ---- missões especiais das parceiras, pelo ramo de cada uma. Pessoas de verdade (seu Marlon, seu Albino, Prof. Samira, Diretora Sabrina) não falam: a anfitriã narra
+  // ---- missões especiais das parceiras, pelo ramo de cada uma. Pessoas de verdade (seu Marlon, seu Albino, Tia Regina, Prof. Samira, Diretora Sabrina) não falam: a anfitriã narra
   {
     // Marlon Máquinas: junta garrafas PET pela rua e vê a máquina do galpão separar rótulo, tampa e flocos
     id: "parceiro-marlon-maquinas", titulo: "A máquina das garrafas", icone: "♻️", tipo: "cidadania", parceiro: "marlon-maquinas",
@@ -783,6 +783,38 @@ export const MISSOES = [
     fim: "Agora sim! Com a ferramenta certa, alugada na Construrenova, o Pedreiro Caderno constrói um muro firme e trabalha com segurança.",
     fimNome: "Muito bem, {nome}! Com a ferramenta certa, alugada na Construrenova, o Pedreiro Caderno constrói um muro firme e trabalha com segurança.",
     verso: { texto: "Quem ouve as palavras de Jesus e faz o que ele ensina é como quem constrói a casa em cima da rocha.", ref: "baseado em Mateus 7.24" },
+  },
+  // ---- Sítio Floresça (Escola de Campo Educarte, da Tia Regina): duas missões curtas, uma depois da outra, com a mesma Tia
+  // Regina (pessoa de verdade: não fala; a anfitriã narra). Antes, o Rabisco toca a campainha e ela abre o portão (sitio.js).
+  // depois: só aparece com a outra feita · semPropaganda: a propaganda fica para o fim da segunda · figurinha: o bichinho
+  // da missão ganha figurinha na página Amigos (além da Tia Regina)
+  {
+    // a pata Ale fugiu do lago: o Rabisco corre atrás dela pelo gramado (a Tia Regina ajuda, tocando a Ale para o lado
+    // dele), pega a Ale e solta de volta no lago cercado (cena "ale" de missoes-cenas.js)
+    id: "parceiro-sitio-floresca", titulo: "A pata Ale fugiu", icone: "🦆", tipo: "cidadania", parceiro: "sitio-floresca", semPropaganda: true,
+    figurinha: { nome: "Pata Ale", tipo: "pata" },
+    npcs: { regina: { nome: "Tia Regina", tipo: "pessoa", pessoa: "regina", fachada: "parceiro-sitio-floresca" } },
+    pedido: "Rabisco, a pata Ale fugiu do lago e está correndo pelo gramado! Corra atrás dela, com a ajuda da Tia Regina, e leve a Ale de volta para o lago cercado.",
+    etapas: [{ tipo: "cena", cena: "ale", ate: "regina", falas: [
+      { texto: "Muito bem! A Ale está com o Rabisco. Agora leve a Ale até o portãozinho do lago.", voz: "rp-m-parceiro-sitio-floresca-pegou" },
+    ] }],
+    fim: "A Ale voltou para o lago e saiu nadando, toda feliz! Cuidar dos bichinhos é cuidar da criação de Deus.",
+    fimNome: "Muito bem, {nome}! A Ale voltou para o lago e saiu nadando, toda feliz. Cuidar dos bichinhos é cuidar da criação de Deus.",
+    verso: { texto: "Deus olhou para tudo o que tinha feito, e viu que era muito bom.", ref: "baseado em Gênesis 1.31" },
+  },
+  {
+    // o Duck (golden bem arteiro) pulou no lago: o Rabisco vai até o portãozinho, pega o Duck (ele sai e se sacode todo)
+    // e leva de volta para a Tia Regina, que espera no meio da estradinha (cena "duck")
+    id: "parceiro-sitio-floresca-duck", titulo: "Duck no lago", icone: "🐕", tipo: "cidadania", parceiro: "sitio-floresca", depois: "parceiro-sitio-floresca",
+    figurinha: { nome: "Duck", tipo: "cachorro" },
+    npcs: { regina: { nome: "Tia Regina", tipo: "pessoa", pessoa: "regina", fachada: "parceiro-sitio-floresca" } },
+    pedido: "Rabisco, o Duck é muito arteiro e pulou no lago! Vá até o portãozinho do lago, pegue o Duck e leve ele de volta para a Tia Regina.",
+    etapas: [{ tipo: "cena", cena: "duck", ate: "regina", falas: [
+      { texto: "Splash! O Duck saiu do lago e se sacudiu todinho. Agora leve o Duck até a Tia Regina.", voz: "rp-m-parceiro-sitio-floresca-duck-saiu" },
+    ] }],
+    fim: "O Duck voltou para a Tia Regina, abanando o rabo! Quem ama os animais cuida bem deles.",
+    fimNome: "Muito bem, {nome}! O Duck voltou para a Tia Regina, abanando o rabo. Quem ama os animais cuida bem deles.",
+    verso: { texto: "Quem é justo cuida bem dos seus animais.", ref: "baseado em Provérbios 12.10" },
   },
 ];
 // palavras que não podem aparecer em nada que a criança vê ou ouve (teste rabiscopolis-conteudo.mjs)
