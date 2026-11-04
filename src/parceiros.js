@@ -32,7 +32,7 @@ export const PARCEIROS = [
   // pele de vidro com moldura laranja), sem logotipo, mascote nem telefone da fachada real
   { id: "construrenova", nome: "Construrenova", foto: "assets/parceiros/construrenova.webp?v=1", tipo: "locacao", instagram: "constru.renova" },
   // Escola de Campo Educarte no Sítio Floresça, da Tia Regina: aulas no campo, festas e eventos. Na Rabiscolândia é um
-  // sítio inteiro (portão, casa de tijolinho, celeiro de madeira, lago cercado) no canto sudoeste: jogos/rabiscopolis/sitio.js
+  // sítio inteiro (portão, casa de tijolinho, salão de treliça, hortinha, galinheiro, lago cercado, frutíferas) no canto sudoeste: jogos/rabiscopolis/sitio.js
   { id: "sitio-floresca", nome: "Sítio Floresça", foto: "assets/parceiros/sitio-floresca.webp?v=1", tipo: "sitio", instagram: "florescaondestiver" },
 ];
 

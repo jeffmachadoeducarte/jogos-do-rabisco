@@ -444,6 +444,28 @@ export function trator() {
   return g;
 }
 
+// roçador do Sítio Floresça: cortador de grama de sentar e dirigir (verde-folha, banco amarelo, a plataforma de corte
+// embaixo e a lâmina que gira quando anda). Só anda dentro do sítio (jogo.js põe o limite)
+export function rocador() {
+  const g = new THREE.Group(), V = 0x3f9a3a, f = { sombra: false };
+  pc(g, 1.0, 0.42, 1.0, V, 0, 0.62, 0.55); pc(g, 0.92, 0.3, 0.7, claroV(V), 0, 0.78, 0.7, f); // capô
+  pc(g, 0.7, 0.06, 0.1, 0x2f3440, 0, 0.62, 1.06, f); for (const x of [-0.3, 0.3]) pc(g, 0.16, 0.12, 0.05, 0xfff1c8, x, 0.7, 1.06, f); // grade e faróis
+  pc(g, 1.06, 0.22, 1.3, V, 0, 0.5, -0.35); // corpo de trás
+  pc(g, 1.36, 0.16, 1.0, 0x2f3440, 0, 0.24, 0.05); // a plataforma de corte, entre as rodas
+  pc(g, 1.4, 0.06, 1.04, 0xffcc1f, 0, 0.33, 0.05, f);
+  const assento = caixaRedonda(0.62, 0.16, 0.5, mat(0xffcc1f)); assento.position.set(0, 0.7, -0.45); g.add(assento);
+  const enc = caixaRedonda(0.6, 0.45, 0.12, mat(0xffcc1f)); enc.position.set(0, 0.98, -0.72); enc.rotation.x = -0.15; g.add(enc);
+  pc(g, 0.08, 0.5, 0.08, 0x2f3440, 0, 0.98, 0.18, { ...f, rx: -0.5 }); // coluna do volante
+  const volante = malha(new THREE.TorusGeometry(0.2, 0.035, 8, 16), mat(0x262626)); volante.position.set(0, 1.22, 0.06); volante.rotation.x = -0.8; volante.userData.dinamico = true; g.add(volante);
+  const rodas = [];
+  for (const [x, z, r] of [[-0.62, -0.55, 0.36], [0.62, -0.55, 0.36], [-0.56, 0.72, 0.24], [0.56, 0.72, 0.24]]) { const rd = roda(0xffcc1f); rd.position.set(x, r, z); rd.scale.setScalar(r / R_RODA); g.add(rd); rodas.push(rd); }
+  const seta = seta3D(2.6); g.add(seta);
+  mesclar(g, { juntas: new Set(rodas) });
+  Object.assign(g.userData, { rodas, seta, volante, motorista: new THREE.Vector3(0, 0.82, -0.42), carona: null, especial: "buzina", raioRoda: 0.36 });
+  return g;
+}
+const claroV = (c) => new THREE.Color(c).lerp(new THREE.Color(0xffffff), 0.12).getHex();
+
 // Carro da rua (trânsito da cidade), de blocos, em três formatos que se alternam. veiculos.js mescla o grupo.
 let nCarro = 0;
 export function carro(cor) {

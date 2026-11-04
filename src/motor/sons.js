@@ -104,6 +104,7 @@ export const sons = {
       miau: () => nota(N("A5"), 0, 0.34, { onda: 0.5, vol: 0.07, ate: N("E5"), solta: 0.2 }),
       pulinho: () => [0, 0.09, 0.18].forEach((t, i) => nota(N(["C5", "E5", "G5"][i]), t, 0.07, { onda: 0.125, vol: 0.08 })),
       quack: () => { nota(N("C5"), 0, 0.09, { onda: 0.5, vol: 0.09, ate: N("G4") }); nota(N("C5"), 0.12, 0.09, { onda: 0.5, vol: 0.09, ate: N("G4") }); },
+      cocorico: () => [["A5", 0, 0.06], ["A5", 0.09, 0.06], ["D6", 0.18, 0.22]].forEach(([n, t, d]) => nota(N(n), t, d, { onda: 0.125, vol: 0.07, ate: N(n) * 0.94 })), // galinhas do sítio (8-bit original)
       bee: () => nota(N("D5"), 0, 0.4, { onda: 0.125, vol: 0.07, ate: N("F5"), solta: 0.15 }),
       plim: () => ["G5", "C6", "E6"].forEach((n, i) => nota(N(n), i * 0.07, 0.1, { onda: 0.25, vol: 0.08 })),
     };

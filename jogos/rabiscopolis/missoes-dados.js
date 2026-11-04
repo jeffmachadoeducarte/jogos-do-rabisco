@@ -818,6 +818,72 @@ export const MISSOES = [
     fimNome: "Muito bem, {nome}! O Duck voltou para a Tia Regina, abanando o rabo. Quem ama os animais cuida bem deles.",
     verso: { texto: "Quem é justo cuida bem dos seus animais.", ref: "baseado em Provérbios 12.10" },
   },
+  // ---- Sítio Floresça, depois do Duck: mais quatro missões curtas, em fila, com a Tia Regina pedindo (cenas "comida",
+  // "horta", "rocar" e "kids" de missoes-cenas.js). Só a última faz a propaganda de novo (para não cansar)
+  {
+    // pegar o balde de milho no galinheiro, jogar milho para as galinhas e depois para os patos do lago
+    id: "parceiro-sitio-floresca-comida", titulo: "Hora de dar comida", icone: "🌽", tipo: "cidadania", parceiro: "sitio-floresca", depois: "parceiro-sitio-floresca-duck", semPropaganda: true,
+    figurinha: { nome: "Galinhas do sítio", tipo: "galinha" },
+    npcs: { regina: { nome: "Tia Regina", tipo: "pessoa", pessoa: "regina", fachada: "parceiro-sitio-floresca" } },
+    pedido: "Rabisco, é hora de dar comida para os bichinhos do sítio! Pegue o balde de milho no galinheiro, jogue milho para as galinhas e depois para os patos do lago.",
+    etapas: [{ tipo: "cena", cena: "comida", ate: "regina", falas: [
+      { texto: "O Rabisco pegou o balde de milho! Agora jogue milho para as galinhas, aqui no galinheiro.", voz: "rp-m-parceiro-sitio-floresca-comida-balde" },
+      { texto: "Có-có-có! As galinhas vieram correndo bicar o milho. Agora leve o balde até o lago, para os patos.", voz: "rp-m-parceiro-sitio-floresca-comida-galinhas" },
+    ] }],
+    fim: "As galinhas e os patos comeram bem e ficaram felizes! Deus cuida de cada bichinho que Ele criou.",
+    fimNome: "Muito bem, {nome}! As galinhas e os patos comeram bem e ficaram felizes. Deus cuida de cada bichinho que Ele criou.",
+    verso: { texto: "Olhem as aves do céu: o Pai do céu dá comida para elas.", ref: "baseado em Mateus 6.26" },
+  },
+  {
+    // pegar o regador, regar os três canteiros (as plantas crescem), colher as alfaces e as cenouras e entregar à Tia Regina
+    id: "parceiro-sitio-floresca-horta", titulo: "Cuidar da hortinha", icone: "🥕", tipo: "cidadania", parceiro: "sitio-floresca", depois: "parceiro-sitio-floresca-comida", semPropaganda: true,
+    figurinha: { nome: "Hortinha", tipo: "horta" },
+    npcs: { regina: { nome: "Tia Regina", tipo: "pessoa", pessoa: "regina", fachada: "parceiro-sitio-floresca" } },
+    pedido: "Rabisco, a hortinha do sítio está com sede! Pegue o regador, regue os três canteiros, colha as alfaces e as cenouras e entregue para a Tia Regina.",
+    etapas: [{ tipo: "cena", cena: "horta", ate: "regina", falas: [
+      { texto: "O Rabisco pegou o regador! Agora regue os três canteiros da hortinha.", voz: "rp-m-parceiro-sitio-floresca-horta-regador" },
+      { texto: "Que capricho! A hortinha cresceu bonita. Agora é só colher as alfaces e as cenouras.", voz: "rp-m-parceiro-sitio-floresca-horta-regou" },
+      { texto: "Que cesta cheinha! Agora leve a colheita até a Tia Regina.", voz: "rp-m-parceiro-sitio-floresca-horta-colheu" },
+    ] }],
+    fim: "A Tia Regina adorou a colheita fresquinha! Quem planta e cuida com carinho vê a obra de Deus crescer.",
+    fimNome: "Muito bem, {nome}! A Tia Regina adorou a colheita fresquinha. Quem planta e cuida com carinho vê a obra de Deus crescer.",
+    verso: { texto: "Um planta, outro rega, mas é Deus quem faz crescer.", ref: "baseado em 1 Coríntios 3.6" },
+  },
+  {
+    // subir no roçador (veículo que só anda dentro do sítio) e passar por cima de cada trecho de grama alta do lado direito
+    id: "parceiro-sitio-floresca-rocar", titulo: "Roçar a grama", icone: "🚜", tipo: "cidadania", parceiro: "sitio-floresca", depois: "parceiro-sitio-floresca-horta", semPropaganda: true,
+    figurinha: { nome: "Roçador", tipo: "rocador" },
+    npcs: { regina: { nome: "Tia Regina", tipo: "pessoa", pessoa: "regina", fachada: "parceiro-sitio-floresca" } },
+    pedido: "Rabisco, a grama do sítio cresceu demais! Suba no roçador, dirija pelo gramado e passe por cima de cada trecho de grama alta até ficar tudo baixinho.",
+    etapas: [{ tipo: "cena", cena: "rocar", ate: "regina", falas: [
+      { texto: "O Rabisco subiu no roçador! Passe por cima da grama alta, um trecho de cada vez.", voz: "rp-m-parceiro-sitio-floresca-rocar-subiu" },
+      { texto: "Falta só um trecho de grama alta!", voz: "rp-m-parceiro-sitio-floresca-rocar-falta" },
+    ] }],
+    fim: "O gramado ficou lindo e baixinho, pronto para as crianças brincarem! Trabalhar com capricho também é um jeito de agradecer a Deus.",
+    fimNome: "Muito bem, {nome}! O gramado ficou lindo e baixinho, pronto para as crianças brincarem. Trabalhar com capricho também é um jeito de agradecer a Deus.",
+    verso: { texto: "Tudo o que vocês fizerem, façam de coração, como quem trabalha para Deus.", ref: "baseado em Colossenses 3.23" },
+  },
+  {
+    // buscar as crianças da Educarte Kids II de ônibus, colher frutas e brincar no balanço de pneu no sítio, e levar todos
+    // de volta para a escola, onde a Diretora Sabrina recebe (a mesma Diretora do Alvará). No fim, a propaganda de novo
+    id: "parceiro-sitio-floresca-kids", titulo: "Dia no sítio com a Kids II", icone: "🚌", tipo: "cidadania", parceiro: "sitio-floresca", depois: "parceiro-sitio-floresca-rocar",
+    figurinha: { nome: "Balanço de pneu", tipo: "balanco" },
+    npcs: {
+      regina: { nome: "Tia Regina", tipo: "pessoa", pessoa: "regina", fachada: "parceiro-sitio-floresca" },
+      diretora: { nome: "Diretora Sabrina", tipo: "pessoa", pessoa: "sabrina", mesmo: "alvara:diretora" },
+    },
+    pedido: "Rabisco, hoje as crianças da Educarte Kids II vão passar o dia no Sítio Floresça! Vá até a escola, chame o ônibus e traga as crianças para cá.",
+    etapas: [{ tipo: "cena", cena: "kids", ate: "diretora", falas: [
+      { texto: "As crianças da Kids II entraram no ônibus, todas animadas! Agora dirija até o Sítio Floresça.", voz: "rp-m-parceiro-sitio-floresca-kids-embarcou" },
+      { texto: "Chegamos ao Sítio Floresça! As crianças vão colher frutas nas árvores do gramado. Leve todo mundo até as frutíferas.", voz: "rp-m-parceiro-sitio-floresca-kids-chegou" },
+      { texto: "Que cesta colorida de frutas! Agora as crianças vão brincar no balanço de pneu.", voz: "rp-m-parceiro-sitio-floresca-kids-frutas" },
+      { texto: "Que tarde divertida! Agora leve as crianças de volta para o ônibus.", voz: "rp-m-parceiro-sitio-floresca-kids-balanco" },
+      { texto: "Todo mundo no ônibus! Agora leve as crianças de volta para a Educarte Kids II.", voz: "rp-m-parceiro-sitio-floresca-kids-volta" },
+    ] }],
+    fim: "As crianças voltaram para a Kids II felizes, contando tudo para a Diretora Sabrina! Um dia no campo é um presente de Deus.",
+    fimNome: "Muito bem, {nome}! As crianças voltaram para a Kids II felizes, contando tudo para a Diretora Sabrina. Um dia no campo é um presente de Deus.",
+    verso: { texto: "Este é o dia que o Senhor fez: vamos nos alegrar!", ref: "baseado em Salmos 118.24" },
+  },
 ];
 // palavras que não podem aparecer em nada que a criança vê ou ouve (teste rabiscopolis-conteudo.mjs)
 export const PROIBIDAS = ["arma", "revólver", "pistola", "tiro", "matar", "morte", "morreu", "sangue", "prisão", "preso", "polícia prende", "ladrão", "roubo", "roubar", "briga", "brigar", "soco", "susto", "monstro", "fantasma", "zumbi", "namor", "beijo", "roblox", "brookhaven", "robux", "dinheiro", "comprar", "pagar"];
