@@ -1221,7 +1221,7 @@ function regras(dt = 1 / 30) {
   }
 }
 let tMapa = 0;
-const _pOnibus = new THREE.Vector3(), _pDois = new THREE.Vector3();
+const _pDois = new THREE.Vector3();
 function posicionarCamera(k, dt, andando = false) {
   const giro = (tem("girarD") ? 1 : 0) - (tem("girarE") ? 1 : 0) + pad.gx * 1.2;
   const arrasto = toque && !dentro ? toque.girar() : 0;
@@ -1244,7 +1244,8 @@ function posicionarCamera(k, dt, andando = false) {
     mundo.visibilidade(j.pos.x, j.pos.z);
     return;
   }
-  const P = dois ? _pDois.set(dois.x, dois.y, dois.z) : dentro?.tipo === "onibus" ? _pOnibus.set(dentro.pos.x + Math.sin(dentro.ang) * 2.6, dentro.pos.y, dentro.pos.z + Math.cos(dentro.ang) * 2.6) : dentro ? dentro.pos : j.pos;
+  // (o ônibus mirava 2,6 m à frente do centro; agora a câmera por tamanho do veículo, camera.js, já olha à frente e fica longe)
+  const P = dois ? _pDois.set(dois.x, dois.y, dois.z) : dentro ? dentro.pos : j.pos;
   const afastar = dois ? dois.afastar : dentro && j2?.seguindo ? 2.5 : 0;
   camera.posicionar({ P, ref: dentro ? dentro.ang : j.dir, dirigindo: Boolean(dentro), andando, giro, arrasto, onibus: ["onibus", "ambulancia", "sorvete"].includes(dentro?.tipo), comp: dentro?.comp ?? 0, heli: dentro?.tipo === "heli", afastar, dois: Boolean(dois), veiculo: dentro, pular: [rabisco.grupo, j2?.modelo?.grupo] }, k, dt);
   ceu.seguir(P.x, P.z);
@@ -1678,7 +1679,7 @@ if (params.has("teste")) window.teste = {
   get oracao() { return oracao ? { i: oracao.i, total: ORACAO.length, painel: !painelOracao.hidden, texto: painelOracao.textContent } : null; },
   proximaFrase: () => proximaFrase(),
   get j2() { return j2; }, get dois() { return Boolean(j2?.ativo); }, get Jogadores() { return J; },
-  get camDist() { const p = dentro ? dentro.pos : j.pos; return { dist: Math.hypot(cam.position.x - p.x, cam.position.z - p.z), alt: cam.position.y - p.y }; },
+  get camDist() { const p = dentro ? dentro.pos : j.pos; return { dist: Math.hypot(cam.position.x - p.x, cam.position.z - p.z), alt: cam.position.y - p.y, base: camera.st.dist, baseAlt: camera.st.alt, encurtou: Boolean(camera.st.encurtou) }; },
   // as duas pessoas aparecem na tela? (projeção dentro do quadro)
   get naTela() { const ps = [rabisco.grupo, j2?.modelo?.grupo].filter(Boolean); return ps.map((g) => { const v = new THREE.Vector3(); g.getWorldPosition(v); v.y += 1; v.project(cam); return Math.abs(v.x) < 1 && Math.abs(v.y) < 1 && v.z < 1; }); },
   luzPedestreVerde: (s, eixo) => luzDe(s, eixo, relogio.elapsedTime) === "vermelho",

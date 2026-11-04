@@ -53,7 +53,9 @@ if (quer("dois")) {
   const cp = await t.ev("teste.camDist");
   await foto(t, "jogo2-perto.png");
   // longe: o jogador 2 a 15 m, de lado → a câmera afasta e sobe até caber os dois
-  await t.ev(`(() => { const y = teste.camYaw, rx = Math.cos(y), rz = -Math.sin(y); teste.j2.st.pos.set(teste.j.pos.x + rx * 15, 0.07, teste.j.pos.z + rz * 15); })()`);
+  // "direita" da câmera (a alavanca ▶ do jogador 2 anda para cá)
+  const LADO = "const y = teste.camYaw, rx = -Math.cos(y), rz = Math.sin(y);";
+  await t.ev(`(() => { ${LADO} teste.j2.st.pos.set(teste.j.pos.x + rx * 15, 0.07, teste.j.pos.z + rz * 15); })()`);
   await ate(t, "teste.naTela.every(Boolean) && teste.j2.zoom > 3", 15000, 300); await espera(1500);
   const cl = await t.ev("teste.camDist"), zl = await t.ev("teste.j2.zoom"), dl = await t.ev(dist12);
   ok((await t.ev("teste.naTela")).every(Boolean) && cl.alt > cp.alt + 2 && zl > 3, `longe (${dl.toFixed(1)} m): a câmera afastou e subiu (alt ${cp.alt.toFixed(1)} → ${cl.alt.toFixed(1)} m, zoom ${zl.toFixed(1)}) e os dois cabem`);
@@ -61,22 +63,22 @@ if (quer("dois")) {
   ok(m.total.calls <= 250, `orçamento TV com os dois longe: ${m.total.calls} chamadas com sombra (${m.semSombra.calls} sem), ${Math.round(m.total.tris / 1000)} mil triângulos`);
   await foto(t, "jogo2-longe.png");
   // coleira: o jogador 2 continua indo para longe e para em ~17 m
-  await t.ev(`(() => { const y = teste.camYaw; window.__lado = [Math.cos(y), -Math.sin(y)]; })()`);
   await t.ev("__eixo(1, 1, 0)"); await espera(3500); await t.ev("__eixo(1, 0, 0)");
   const dc = await t.ev(dist12);
   ok(dc <= 17.3 && dc >= 12, `coleira macia: o jogador 2 para a ${dc.toFixed(1)} m (máx. 17)`);
   ok(await t.ev("document.querySelector('.acao-j2-rp:not([hidden])')?.textContent.includes('vir para perto')"), "longe: balão do jogador 2 ensina 'Segure para vir para perto'");
-  // seta: o jogador 2 atrás da câmera (fora do quadro) → seta rosa na borda
-  await t.ev(`(() => { const y = teste.camYaw, fx = Math.sin(y), fz = Math.cos(y); teste.j2.st.pos.set(teste.j.pos.x - fx * 16, 0.07, teste.j.pos.z - fz * 16); teste.j2.hud(teste.cam, {}); })()`);
-  const seta = await t.ev("teste.j2.setas[1]");
+  // seta: câmera fixa olhando para o outro lado (como numa vista de lugar) → o jogador 2 sai do quadro → seta rosa na borda
+  await t.ev(`(() => { ${LADO} const p = teste.j.pos; teste.vista([p.x - rx * 3, 3.2, p.z - rz * 3 + 0.01], [p.x - rx * 14, 1, p.z - rz * 14]); })()`);
+  const seta = await ate(t, "teste.j2.setas[1] && !teste.naTela[1]", 5000, 200);
   await foto(t, "jogo2-seta-indicador.png");
-  ok(seta, "jogador 2 fora do quadro: seta rosa '2 · Alice' na borda");
-  await ate(t, "teste.naTela.every(Boolean)", 8000, 300);
-  ok(await t.ev("teste.naTela.every(Boolean)"), "e a câmera volta a enquadrar os dois");
+  ok(seta, "jogador 2 fora do quadro: seta rosa '2 · Alice' na borda apontando para ele");
+  await t.ev("teste.vista(null)");
+  await ate(t, "teste.naTela.every(Boolean) && !teste.j2.setas[1]", 8000, 300);
+  ok(await t.ev("teste.naTela.every(Boolean) && !teste.j2.setas[1]"), "e a câmera volta a enquadrar os dois (a seta some)");
   // vir para perto: segurar X 1 s
-  await t.ev(`(() => { const y = teste.camYaw, rx = Math.cos(y), rz = -Math.sin(y); teste.j2.st.pos.set(teste.j.pos.x + rx * 12, 0.07, teste.j.pos.z + rz * 12); })()`); await espera(500);
+  await t.ev(`(() => { ${LADO} teste.j2.st.pos.set(teste.j.pos.x + rx * 12, 0.07, teste.j.pos.z + rz * 12); })()`); await espera(500);
   await t.ev("__btn(1, 2, true)"); await ate(t, `${dist12} < 4`, 6000, 200); await t.ev("__btn(1, 2, false)");
-  ok(await t.ev(`${dist12} < 4`), `segurar X = 'vir para perto' (${(await t.ev(dist12)).toFixed(1)} m)`);
+  ok(await t.ev(`${dist12} < 4`), `segurar X = 'vir para perto' (${(await t.ev(dist12)).toFixed(1)} m; ${await t.ev("JSON.stringify({ s: teste.j2.segurando, pausa: teste.jogo.pausado, aPe: teste.j2.aPe })")})`);
   // veículo independente: o Rabisco entra no carro com o jogador 2 longe → o 2 fica a pé
   await t.ev("teste.ir(4, 33)"); await espera(600);
   await t.ev(`(() => { const v = teste.veiculos[0]; teste.j2.st.pos.set(v.pos.x + 11, 0.07, v.pos.z); teste.entrar(0); })()`); await espera(900);
@@ -107,12 +109,12 @@ if (quer("veiculos")) {
   medidas.pe = await t.ev("teste.camDist");
   await foto(t, "camera-1-a-pe.png");
   for (const [tipo, nome] of [["carro", "carro"], ["onibus", "onibus"], ["reciclagem", "caminhao-marlon"]]) {
-    await t.ev("teste.sair(); teste.ir(0, 33); teste.olhar(Math.PI)"); await espera(600);
+    await t.ev("teste.sair(); teste.ir(0, 33); teste.olhar(0)"); await espera(600); // já olhando para onde o veículo aponta: só a distância muda
     await t.ev(`teste.garagem(${JSON.stringify(tipo)})`); await espera(600);
     const i = await t.ev(`(() => { let m = -1, d = 1e9; teste.veiculos.forEach((v, k) => { if (v.tipo !== ${JSON.stringify(tipo)}) return; const e = Math.hypot(v.pos.x - teste.j.pos.x, v.pos.z - teste.j.pos.z); if (e < d) { d = e; m = k; } }); return m; })()`);
     ok(i >= 0, `${nome}: veículo na garagem`);
     if (i < 0) continue;
-    await t.ev(`(() => { const v = teste.veiculos[${i}]; teste.posVeiculo(${i}, 0, 30, Math.PI); teste.entrar(${i}); })()`);
+    await t.ev(`(() => { const v = teste.veiculos[${i}]; teste.posVeiculo(${i}, 0, 30, 0); teste.entrar(${i}); })()`);
     // transição sem pulo: a câmera anda no máximo ~2,5 m por amostra (≈ 0,1 s) ao entrar
     let antes = await t.ev("[teste.cam.position.x, teste.cam.position.y, teste.cam.position.z]"), salto = 0;
     for (let k = 0; k < 15; k++) { await espera(100); const p = await t.ev("[teste.cam.position.x, teste.cam.position.y, teste.cam.position.z]"); salto = Math.max(salto, Math.hypot(p[0] - antes[0], p[1] - antes[1], p[2] - antes[2])); antes = p; }
@@ -121,11 +123,13 @@ if (quer("veiculos")) {
     ok(salto < 3, `${nome}: transição suave ao entrar (maior passo da câmera ${salto.toFixed(2)} m)`);
     await foto(t, `camera-2-${nome}.png`);
   }
-  console.log("  câmera (distância atrás / altura):", Object.entries(medidas).map(([k, v]) => `${k} ${v.dist.toFixed(1)}/${v.alt.toFixed(1)}`).join(" · "));
+  console.log("  câmera (distância atrás / altura):", Object.entries(medidas).map(([k, v]) => `${k} ${v.dist.toFixed(1)}/${v.alt.toFixed(1)}${v.encurtou ? " (prédio atrás: encurtou; queria " + v.base.toFixed(1) + ")" : ""}`).join(" · "));
+  // compara o enquadramento pedido pelo tamanho do veículo (com prédio atrás a câmera encurta de propósito, sem atravessar)
+  for (const v of Object.values(medidas)) if (v.encurtou) { v.dist = v.base; v.alt = v.baseAlt; }
   ok(medidas.carro && medidas.carro.dist > medidas.pe.dist, "carro: câmera um pouco mais longe que a pé");
   ok(medidas.onibus && medidas.onibus.dist > medidas.carro.dist + 2 && medidas.onibus.alt > medidas.carro.alt + 1.5, "ônibus: bem mais longe e mais alta que o carro");
   ok(medidas["caminhao-marlon"] && medidas["caminhao-marlon"].dist > medidas.carro.dist + 1.5 && medidas["caminhao-marlon"].alt > medidas.carro.alt + 1, "caminhão da Marlon Máquinas: mais longe e mais alta que o carro");
-  await t.ev("teste.sair()"); await espera(1500);
+  await t.ev("teste.sair()"); await ate(t, `teste.camDist.dist < ${medidas.pe.dist + 2.5}`, 8000, 250); // volta devagar (sem pulo)
   const volta = await t.ev("teste.camDist");
   ok(Math.abs(volta.dist - medidas.pe.dist) < 2.5, `saiu do veículo: a câmera volta para perto (${volta.dist.toFixed(1)} m)`);
   ok(!errosRP(t).length, "veículos: sem erros " + errosRP(t).join(" ; "));
