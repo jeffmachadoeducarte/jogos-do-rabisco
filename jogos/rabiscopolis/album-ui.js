@@ -7,7 +7,8 @@
 //   U.montar(tela, lista, { botao }) (chamado pelo Rabifone)      U.visitou(lugarId) · U.missao(id) · U.bau()      U.album (o estado)
 import { criarAlbum } from "./album.js";
 import { PAGINAS, FIGURINHAS, RARIDADES, BONUS_PAGINA } from "./album-dados.js";
-import { desenharFigurinha, TAMANHO } from "./album-arte.js";
+import { desenharFigurinha, TAMANHO, usarRetratos } from "./album-arte.js";
+import { retrato, prepararRetratos } from "./album-pessoas.js";
 import { tocar8bit } from "../../src/motor/rabiscoins-ui.js";
 
 const hz = (semi) => 440 * 2 ** (semi / 12);
@@ -71,6 +72,8 @@ html.modo-tv .alb-voa canvas { width: 170px; height: 238px; }
 export function criarAlbumUI({ caixa, salvo, salvar, ganhar, falar, aguardarFim, contador, confete, hoje = () => "" }) {
   estilo();
   const album = criarAlbum({ salvo, salvar, ganhar });
+  usarRetratos(retrato);
+  const retratosPara = (figs) => prepararRetratos([...new Set(figs.filter((f) => f.tipo === "pessoa").map((f) => f.pessoa))]);
   const fila = []; let rodando = false;
   const reduz = () => matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
   const cartao = (fig, tem = true, largura = TAMANHO.w) => {
@@ -83,6 +86,7 @@ export function criarAlbumUI({ caixa, salvo, salvar, ganhar, falar, aguardarFim,
   // ---------------------------------------------------------------- o app do Rabifone
   let aba = "parceiros";
   function montar(tela, lista, { botao }) {
+    album.recuperar(); // save antigo: missão já concluída antes da figurinha da pessoa existir
     lista.replaceChildren();
     const resumo = document.createElement("p"); resumo.className = "alb-resumo";
     const abas = document.createElement("div"); abas.className = "alb-abas"; abas.setAttribute("role", "tablist");
@@ -107,6 +111,8 @@ export function criarAlbumUI({ caixa, salvo, salvar, ganhar, falar, aguardarFim,
       cab.innerHTML = c.tem === c.total ? `⭐ Página completa! <span data-pag-contagem>${c.tem} de ${c.total}</span>` : `<b>${P.icone} ${P.nome}:</b> <span data-pag-contagem>${c.tem} de ${c.total}</span>`;
       corpo.append(cab);
       const grade = document.createElement("div"); grade.className = "alb-grade"; grade.dataset.pagina = P.id;
+      const faltaArte = P.figs.some((f) => f.tipo === "pessoa" && album.tem(f.id) && !retrato(f.pessoa));
+      if (faltaArte) retratosPara(P.figs.filter((f) => album.tem(f.id))).then(() => { if (aba === P.id && corpo.isConnected && !corpo.querySelector(".alb-detalhe")) pintar(); });
       for (const f of P.figs) {
         const tem = album.tem(f.id);
         const b = botao("", () => detalhe(f), `alb-fig${tem ? " tem" : " falta"}`);
@@ -121,7 +127,8 @@ export function criarAlbumUI({ caixa, salvo, salvar, ganhar, falar, aguardarFim,
       const tem = album.tem(f.id);
       corpo.replaceChildren(); abas.hidden = true; resumo.hidden = true;
       const d = document.createElement("div"); d.className = "alb-detalhe";
-      d.append(cartao(f, tem, 260));
+      let carta = cartao(f, tem, 260); d.append(carta);
+      if (tem && f.tipo === "pessoa" && !retrato(f.pessoa)) retratosPara([f]).then(() => { const n = cartao(f, tem, 260); carta.replaceWith(n); carta = n; });
       const t = document.createElement("p"); t.className = "alb-texto";
       t.textContent = !tem ? f.dica : f.texto ? `${f.texto} (${f.sub})` : `${f.nome} · ${f.sub}`;
       const v = botao(`<span class="rf-emoji">◀</span>Voltar ao álbum`, () => { abas.hidden = false; resumo.hidden = false; pintar(); tela.querySelector(`[data-fig="${f.id}"]`)?.focus?.(); });
@@ -147,6 +154,7 @@ export function criarAlbumUI({ caixa, salvo, salvar, ganhar, falar, aguardarFim,
     const R = RARIDADES[r.fig.raridade];
     somFigurinha(R.estrelas);
     const el = document.createElement("div"); el.className = "alb-voa"; el.dataset.fig = r.fig.id;
+    await retratosPara([r.fig]); // pessoa: o retrato do boneco fica pronto antes do cartão aparecer
     el.append(cartao(r.fig, true, 200));
     const rot = document.createElement("b"); rot.textContent = r.primeira ? "Sua primeira figurinha!" : "Figurinha nova!"; el.append(rot);
     const cx = caixa.getBoundingClientRect(), W = cx.width, H = cx.height, alvo = alvoDoVoo();

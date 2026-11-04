@@ -7,6 +7,9 @@ import { ESTILO_PARCEIRO } from "../../src/parceiros.js";
 import { desenharLetreiro, IDS_ARTE } from "../../src/parceiros-arte.js";
 
 export const TAMANHO = { w: 200, h: 280 };
+// retratos dos bonecos (album-pessoas.js): quem usa a arte liga o cache aqui; sem ele a figurinha mostra um espaço reservado
+let retratos = null;
+export const usarRetratos = (fn) => { retratos = fn; };
 const TINTA = "#151515";
 const FONTE = "'Baloo 2', 'Trebuchet MS', sans-serif";
 const EMOJI = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
@@ -141,7 +144,15 @@ function cenaLugar(c, fig, x, y, w, h) {
   c.font = `84px ${EMOJI}`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = "#000"; c.fillText(fig.icone ?? "📍", x + w / 2, y + h * 0.52);
 }
 
-const CENAS = { parceiros: cenaParceiro, amigos: cenaAmigo, versiculos: cenaVersiculo, lugares: cenaLugar };
+// pessoa de verdade: o boneco de bloco do jogo (retrato em cache de album-pessoas.js); sem ele ainda, reticências
+function cenaPessoa(c, fig, x, y, w, h) {
+  ceu(c, x, y, w, h, "#ffe9a8", "#ffd1e6"); chao(c, x, y + h - 26, w, 26, "#8fd35b");
+  c.fillStyle = "rgba(0,0,0,0.15)"; c.beginPath(); c.ellipse(x + w / 2, y + h - 22, 40, 7, 0, 0, 7); c.fill();
+  const r = retratos?.(fig.pessoa);
+  if (r) { const k = (h - 6) / r.height; c.drawImage(r, x + (w - r.width * k) / 2, y + h - 16 - r.height * k + 10, r.width * k, r.height * k); }
+  else texto(c, "…", x + w / 2, y + h / 2, w, 60, { cor: "#c9a9b8" });
+}
+const CENAS = { parceiros: cenaParceiro, amigos: (c, fig, ...r) => (fig.tipo === "pessoa" ? cenaPessoa(c, fig, ...r) : cenaAmigo(c, fig, ...r)), versiculos: cenaVersiculo, lugares: cenaLugar };
 
 // a figurinha inteira: moldura da raridade, a cena, o nome e o subtítulo (@ do parceiro, a referência do versículo...)
 export function desenharFigurinha(c, fig, { tem = true, w = TAMANHO.w, h = TAMANHO.h } = {}) {
