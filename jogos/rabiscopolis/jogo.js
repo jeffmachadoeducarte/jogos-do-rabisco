@@ -1262,6 +1262,7 @@ function quadro() {
   if (doisToque !== quadro.doisToque) { quadro.doisToque = doisToque; if (qualidade.perfil.toque) { mundo.alcance = doisToque ? 78 : 95; mundo.detalheAte = doisToque ? 28 : 35; cena.fog.far = mundo.alcance; } }
   for (let p = 0; p < passos; p++) passo(total / passos, p === passos - 1);
   if (j2?.ativo) j2.hud(cam, { veiculo: dentro, alturaRabisco: emCasa || emLugar ? 1.5 : 1.6 });
+  if (placaNome) placaNome.sprite.visible = placaNome.estado.visivel && !j2?.ativo; // a 2 o Rabisco usa o "🎮1" (jogador2.js): sem etiqueta dupla
   somDoMotor();
   estat.tj = (estat.tj ?? 0) + total; // tempo de jogo (o que os passos simularam), para os testes
   r3.render(cena, cam);
