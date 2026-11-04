@@ -83,8 +83,9 @@ export function iniciarSalaTV({ layout = "padrao", pausar = false, permitirNovos
   const sala = SALA_JOGOS ? criarSala({ retomar: salvo.codigo && salvo.token ? { codigo: salvo.codigo, token: salvo.token } : null }) : null;
   // nome no chip do celular: o que o jogador escreveu (src/motor/nomes.js) ou "Rabisco" / o primeiro nome do cadastro
   const nomeDaVaga = (v) => primeiroNome(nomeDoJogador(v.n, quemDaVaga(v), nomeJ2())) || (v.n === 1 ? "Rabisco" : "Jogador 2");
+  const layoutVaga = [null, null]; // layout só desta vaga (ex.: o Rabisco entrou no carro → "carro" no celular da vaga 1)
   function configurar(v) {
-    if (sala && v.tipo === "celular" && v.conectado) sala.enviar(v.cel, { layout, nome: nomeDaVaga(v), cor: CORES_TV[v.n - 1], pausar, vibrar: 80, msg: "" });
+    if (sala && v.tipo === "celular" && v.conectado) sala.enviar(v.cel, { layout: layoutVaga[v.n - 1] || layout, nome: nomeDaVaga(v), cor: CORES_TV[v.n - 1], pausar, vibrar: 80, msg: "" });
   }
   // escolhe a vaga de quem chega: livre (se pode entrar gente nova agora) → a de um celular que caiu → a de um controle que caiu
   function vagaPara(quem) {
@@ -197,7 +198,7 @@ export function iniciarSalaTV({ layout = "padrao", pausar = false, permitirNovos
   // celulares entram no controle comum (src/motor/controle.js) como mais um controle: menus, pausa e o jogador 1
   adicionarFonte(() => vagas.filter(fresco).map((v) => {
     const { x, y } = v.d, dir = direcoes(v.d);
-    const nivel = { ...dir, pulo: v.d.pulo, acao: v.d.acao, start: v.d.start };
+    const nivel = { ...dir, pulo: v.d.pulo, acao: v.d.acao, start: v.d.start, descer: Boolean(v.d.baixo) };
     // aperto que chegou entre dois quadros (pendente): conta uma vez. Se no quadro anterior o botão já estava "apertado",
     // solta neste quadro e aperta no próximo, para o controle comum ver um aperto novo (TV box lenta, toques seguidos)
     const segura = {}, pend = {};
@@ -246,6 +247,13 @@ export function iniciarSalaTV({ layout = "padrao", pausar = false, permitirNovos
     // durante a partida: o celular desta vaga não mexe no jogador 1 (só o ⏸ vale)
     reservar(n) { reservada = n ?? null; },
     definirLayout(l, { pausar: p = pausar } = {}) { layout = l; pausar = p; for (const v of vagas) configurar(v); },
+    // só uma vaga (null = volta ao layout do jogo); manda só o layout e uma vibradinha, sem mexer no nome/recado
+    layoutDaVaga(n, l = null) {
+      const v = vagas[n - 1];
+      if (!v || layoutVaga[n - 1] === l) return;
+      layoutVaga[n - 1] = l;
+      if (sala && v.tipo === "celular" && v.conectado) sala.enviar(v.cel, { layout: l || layout, vibrar: 30 });
+    },
     enviar(n, d) { const v = vagas[n - 1]; if (sala && v?.tipo === "celular" && v.conectado) sala.enviar(v.cel, d); },
     vibrar(n, ms = 60) { api.enviar(n, { vibrar: ms }); },
     // o nome da criança mudou (cadastro): atualiza o chip do celular da vaga 2

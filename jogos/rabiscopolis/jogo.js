@@ -97,7 +97,7 @@ const jogo = criarCasca({
   teclado: false,
   dica: {
     teclado: "WASD ou setas andam · F faz a ação · Tab abre o Rabifone · M mostra o mapa · Q/E giram a câmera · Espaço pula",
-    toque: "Arraste à esquerda para andar · à direita para olhar · ✋ faz a ação · 📱 abre o Rabifone · ⚙️ mostra o mapa",
+    toque: "Arraste à esquerda para andar · à direita para olhar · ⬆ pula · ✋ faz a ação · no carro: ◀ ▶ vira e ⬆ acelera · 📱 Rabifone · ⚙️ mapa",
     controle: "Alavanca anda · X faz a ação · Select abre o Rabifone · L3 mostra o mapa · A pula · Start pausa",
   },
   falas: { titulo: "rp-titulo", vitoria: null },
@@ -228,6 +228,8 @@ function lerControle({ segura, apertou, eixoX, eixoY }) {
   }
   let gx = 0;
   for (const p of navigator.getGamepads?.() ?? []) if (p && p.index !== J.padJ2 && Math.abs(p.axes[2] ?? 0) > 0.2) gx = p.axes[2];
+  // controle físico (ou celular da TV) mexendo: os botões de toque saem da frente; tocar a tela traz de volta
+  if (toque && (Math.abs(eixoX) > 0.3 || Math.abs(eixoY) > 0.3 || Object.values(segura).some(Boolean))) toque.controleEmUso();
   pad.x = eixoX || ((segura.dir ? 1 : 0) - (segura.esq ? 1 : 0));
   pad.y = -(eixoY || ((segura.baixo ? 1 : 0) - (segura.cima ? 1 : 0)));
   pad.gx = gx;
@@ -236,6 +238,7 @@ function lerControle({ segura, apertou, eixoX, eixoY }) {
   // helicóptero: A/RB sobem (pulo), LB/LT descem
   pad.descer = false;
   for (const p of navigator.getGamepads?.() ?? []) if (p && p.index !== J.padJ2 && (p.buttons[4]?.pressed || p.buttons[6]?.pressed)) pad.descer = true;
+  if (segura.descer) pad.descer = true; // celular-controle (TV): botão ▼ Descer do helicóptero
   if (apertou.acao) pad.acaoNova = true;
   if (apertou.select) fone?.abrir();
   if (apertou.mapa) mapaPedido();
@@ -947,6 +950,7 @@ function entrar(v) {
   sons.pisao();
   camera.st.manual = 0;
   toque?.modo(v.tipo === "heli" ? "heli" : "carro");
+  try { J?.layoutJ1?.(v.tipo === "heli" ? "heli" : "carro"); } catch { /* sem TV */ } // celular-controle da TV vira volante/pedais
   // rádio: carros, vans, caminhão e ônibus (não na bicicleta, patinete, barquinho nem helicóptero)
   if (!["heli", "bici", "patinete", "barco", "jetski", "lancha", "rocador"].includes(v.tipo)) { garantirRadio(); radioUI.entrarNoCarro(); } // dentro do gesto da criança (ação/toque)
   toque?.especial(ESPECIAL[v.g.userData.especial] ?? null);
@@ -954,14 +958,14 @@ function entrar(v) {
   if (v.tipo === "heli") {
     falar("rp-heli");
     const toqueTela = document.body.classList.contains("touch"), comControle = document.body.classList.contains("com-controle");
-    dizer("Rabiscolândia", toqueTela ? "Hélices girando! ▲ sobe, ▼ desce, ➤ voa para a frente. Para sair, pouse no chão." : comControle ? "Hélices girando! A sobe, LB desce, alavanca para a frente voa. Para sair, pouse no chão." : "Hélices girando! Espaço sobe, Shift desce, W voa para a frente. Para sair, pouse no chão.", 4600);
+    dizer("Rabiscolândia", toqueTela ? "Hélices girando! ⬆ Subir, ⬇ Descer, ➤ Voar para a frente, ◀ ▶ vira. Para sair, pouse no chão." : comControle ? "Hélices girando! A sobe, LB desce, alavanca para a frente voa. Para sair, pouse no chão." : "Hélices girando! Espaço sobe, Shift desce, W voa para a frente. Para sair, pouse no chão.", 4600);
     return;
   }
   if (v.tipo === "jetski" || v.tipo === "lancha") { // no mar não tem cinto: a dica é outra (e só uma vez)
     if (!entrar.falouMar) { entrar.falouMar = true; falar("rp-mar"); dizer(v.tipo === "jetski" ? "Jet ski" : "Lancha", "Partiu, Rabisco! Para a frente acelera, para trás freia. Encoste na areia, no píer ou na ilha para descer.", 4200); }
     return;
   }
-  if (!entrar.falou) { entrar.falou = true; falar(v.tipo === "onibus" ? "rp-onibus" : "rp-carro"); dizer("Rabiscolândia", "Cinto afivelado! Para a frente acelera, para trás freia. Aperte a ação de novo para sair.", 4200); }
+  if (!entrar.falou) { entrar.falou = true; falar(v.tipo === "onibus" ? "rp-onibus" : "rp-carro"); dizer("Rabiscolândia", document.body.classList.contains("touch") && !document.body.classList.contains("toque-oculto") ? "Cinto afivelado! Segure ⬆ Acelerar e use ◀ ▶ para virar. 🔁 Sozinho acelera por você. 🚪 Sair fica lá em cima." : "Cinto afivelado! Para a frente acelera, para trás freia. Aperte a ação de novo para sair.", 4200); }
 }
 function sair() {
   const v = dentro;
@@ -990,6 +994,7 @@ function sair() {
   v.g.userData.seta.visible = true;
   sons.pisao();
   toque?.modo("pe");
+  try { J?.layoutJ1?.(null); } catch { /* sem TV */ }
 }
 // ------------------------------------------------------------------ Roda-gigante (Ilha da Alegria)
 // O Rabisco senta na cabine que está embaixo (do tamanho de sempre) e dá uma volta inteira; a câmera mostra a cabine
@@ -1096,22 +1101,43 @@ function mudarHora(h) {
 function irPara(x, z) { const [lx, lz] = fis.livre(x, z, 0.6); j.pos.set(lx, 0.07, lz); j.vel.set(0, 0, 0); posicionarCamera(1, 0); }
 
 // ------------------------------------------------------------------ Laço
-function entrada() {
+// Assistência de direção (carro, ônibus, moto, bici, barco...): a virada sobe aos poucos (toque curto = ajuste pequeno),
+// volta rápido para o centro ao soltar e fica mais suave em velocidade alta, para o veículo não rodopiar.
+// Só mexe na ENTRADA (o que a criança aperta); a física do veículo (fisica.js) segue a mesma.
+let volanteSuave = 0;
+function direcaoAssistida(ix, v, dt) {
+  const aumenta = ix !== 0 && Math.sign(ix) === Math.sign(volanteSuave || ix) && Math.abs(ix) > Math.abs(volanteSuave);
+  const passo = (aumenta ? 3.2 : 10) * dt;
+  volanteSuave += Math.max(-passo, Math.min(passo, ix - volanteSuave));
+  const rapido = Math.max(0, Math.min(1, (Math.abs(v.vel) - 6) / Math.max(1, (v.vmax || 15) - 6)));
+  return volanteSuave * (1 - 0.42 * rapido);
+}
+// "Sair" apertado com o veículo andando: freia sozinho e sai quando para (antes não fazia nada e a criança achava que quebrou)
+let sairPedido = 0;
+function entrada(dt = 1 / 30) {
   let ix = (tem("dir") ? 1 : 0) - (tem("esq") ? 1 : 0);
   let iy = (tem("frente") ? 1 : 0) - (tem("tras") ? 1 : 0);
   ix += pad.x; iy += pad.y;
   if (toque) {
     if (dentro?.tipo === "heli") { ix += (toque.carro.dir ? 1 : 0) - (toque.carro.esq ? 1 : 0); iy += toque.carro.voar ? 1 : 0; }
-    else if (dentro) { ix += (toque.carro.dir ? 1 : 0) - (toque.carro.esq ? 1 : 0); iy += (toque.carro.frente ? 1 : 0) - (toque.carro.re ? 1 : 0); }
+    else if (dentro) {
+      ix += (toque.carro.dir ? 1 : 0) - (toque.carro.esq ? 1 : 0);
+      const re = toque.carro.re ? 1 : 0, frente = toque.carro.frente || (toque.auto && !re) ? 1 : 0;
+      iy += frente - re;
+    }
     else { ix += toque.x; iy += toque.y; }
   }
+  if (dentro && dentro.tipo !== "heli") {
+    ix = direcaoAssistida(Math.max(-1, Math.min(1, ix)), dentro, dt);
+    if (sairPedido > 0) { iy = -Math.sign(dentro.vel); if (Math.abs(dentro.vel) < 0.5) iy = 0; }
+  } else volanteSuave = 0;
   if (entradaTeste) { ix = entradaTeste.virar; iy = entradaTeste.acel; }
   const m = Math.hypot(ix, iy);
   if (m > 1) { ix /= m; iy /= m; }
   if (fone?.aberto || decoCasa?.ativo || sorveteUI?.aberto || meuRb?.aberto || atelieUI?.aberto || mapaUI?.aberto) ix = iy = 0;
   return { ix, iy, m };
 }
-function regras() {
+function regras(dt = 1 / 30) {
   // o que a ação faz agora
   contexto = null;
   if (trava) {
@@ -1165,7 +1191,11 @@ function regras() {
   j2?.regras((p) => (emCasa || emLugar ? null : missoes?.contexto(p) ?? null));
   const quer = pad.acaoNova || toque?.acaoNova || (dentro && toque?.sairNovo);
   pad.acaoNova = false; if (toque) { toque.acaoNova = false; toque.sairNovo = false; }
-  if (quer && contexto) contexto.fazer();
+  // no veículo andando, a ação/Sair freia primeiro e sai quando parar (até 3 s esperando)
+  if (!dentro) sairPedido = 0;
+  else if (quer && dentro.tipo !== "heli" && Math.abs(dentro.vel) > 3) sairPedido = 3;
+  else if (sairPedido > 0) { sairPedido -= dt; if (Math.abs(dentro.vel) <= 3) { sairPedido = 0; sair(); } }
+  if (quer && contexto && !(dentro && sairPedido > 0)) contexto.fazer();
   if (toque?.foneNovo) { toque.foneNovo = false; if (!decoCasa?.ativo) fone.abrir(); }
   if (emCasa || emLugar) return; // lá dentro não tem aviso de lugar da cidade
   // chegou num lugar novo: aviso com o nome
@@ -1235,7 +1265,7 @@ function quadro() {
 function passo(dt, ultimo) {
   const t = relogio.elapsedTime;
   if (!jogo.pausado) {
-    const ent = entrada();
+    const ent = entrada(dt);
     let andando = false;
     if (dentro?.tipo === "heli") {
       const subir = tem("pular") || pad.pulo || toque?.carro.subir || entradaTeste?.subir;
@@ -1337,7 +1367,7 @@ function passo(dt, ultimo) {
     if (emLugar) emLugar.atualizar(dt, t);
     if (emCasa) decoCasa?.passo(dt, t);
     saidaPelaPorta();
-    regras();
+    regras(dt);
     posicionarCamera(Math.min(1, dt * 6), dt, andando);
     atualizarGuia(t);
     tMapa -= dt;
