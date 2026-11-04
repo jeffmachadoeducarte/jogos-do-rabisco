@@ -313,23 +313,24 @@ export function criarMissoes(ctx) {
   async function falarSerie(passos) {
     const meu = ++serie;
     for (const p of passos) {
-      if (meu !== serie) return;
+      if (meu !== serie) return false;
       if (p.quando) { // propaganda: de volta para a cidade (não em sala, nem orando, nem ouvindo o pedido de outra missão)
         let resta = 40;
         while (meu === serie && !p.quando() && resta-- > 0) await dormir(1500);
-        if (meu !== serie || resta < 0) return;
+        if (meu !== serie || resta < 0) return false;
       }
       const cap = msFala(p.texto) * 2 + 4000; // só vale se o áudio nunca terminar (rede parada)
       dizer(p.nome, p.html, cap);
       await p.tocar();
-      if (meu !== serie) return;
+      if (meu !== serie) return false;
       const r = await Promise.race([ctx.aguardarFim ? ctx.aguardarFim() : false, dormir(cap).then(() => "cap")]);
-      if (meu !== serie) return;
+      if (meu !== serie) return false;
       if (r === false) await dormir(msFala(p.texto)); // sem áudio de verdade: segue pelo tempo estimado
-      if (meu !== serie) return;
+      if (meu !== serie) return false;
       dizer(p.nome, p.html, 2800); // a voz acabou: o balão fica mais um pouco e some
       await dormir(350);
     }
+    return meu === serie; // true: a fila acabou inteira (nenhuma fala cortada); false: foi cancelada
   }
   const atrasoPropaganda = (M) => (M.verso ? 5400 + msFala(`${M.verso.texto} ${M.verso.ref}`) : (M.agradece?.ms ?? 0) + msFala(textoFim(M)));
   function concluir() {
@@ -358,7 +359,7 @@ export function criarMissoes(ctx) {
     const parc = PARCEIROS.find((p) => p.id === M.parceiro), P = PROPAGANDA[M.parceiro];
     if (parc && P) passos.push({ nome: "Rabiscolândia", html: `${P.texto}<span class="prop-insta">📸 ${parc.nome} · @${parc.instagram}</span>`, texto: falaDaPropaganda(M.parceiro),
       quando: () => !ctx.ocupado?.() && !est.orando, tocar: () => falar(`rp-prop-${M.parceiro}`) });
-    falarSerie(passos);
+    api.fimDaSerie = falarSerie(passos); // o álbum espera por ela para falar "página completa" no fim
     ativa = null; etapa = 0;
     api.ultimaConcluida = M.id;
     ctx.aoConcluir?.(M);

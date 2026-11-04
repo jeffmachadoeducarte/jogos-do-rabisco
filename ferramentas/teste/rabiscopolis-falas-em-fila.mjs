@@ -2,6 +2,8 @@
 // fila, cada uma só depois de a anterior ACABAR, sem cortar nenhuma, com o balão sincronizado à voz.
 //  - mede início e fim reais de cada áudio (MP3 solto e sequência emendada com o nome da criança) e confere que não há sobreposição;
 //  - missões com parceiro (com e sem "agradece") e sem parceiro (com e sem versículo), com e sem nome cadastrado;
+//  - missão que COMPLETA uma página do álbum: a fala "página completa" toca por último (depois da propaganda), sem cortar nenhuma;
+//    a fala da "primeira figurinha" via missão continua calada;
 //  - aceitar outra missão no meio cancela a fila: fala velha não toca por cima.
 // Uso: python3 -m http.server 8746 &  node --experimental-websocket ferramentas/teste/rabiscopolis-falas-em-fila.mjs http://localhost:8746
 import { abrir, espera } from "./cdp.mjs";
@@ -86,6 +88,41 @@ async function medir(id, rotulo, esperado) {
   return f;
 }
 
+// missão que ganha figurinha: confere as falas da fila e se a fala do álbum (página completa / primeira) entrou ou não
+async function medirAlbum(id, rotulo, { completaPagina }) {
+  await ev(`teste.missoes.aceitar(${JSON.stringify(id)})`);
+  await espera(12000);
+  if (completaPagina) { // deixa só a figurinha do versículo desta missão faltando na página dos versículos
+    await ev(`(() => { const A = teste.album.album; for (const f of A.paginas().find((p) => p.id === "versiculos").figs) if (f.id !== "v:${id}") A.ganhar(f.id); })()`);
+  }
+  await ev("window.__ev.length = 0");
+  ok(await ev(`teste.missoes.concluirParaTeste(${JSON.stringify(id)})`), `${rotulo}: missão ${id} concluída`);
+  const M = await ev(`(() => { const m = teste.missoes.MISSOES.find((x) => x.id === ${JSON.stringify(id)}); return { verso: !!m.verso, parceiro: m.parceiro ?? null }; })()`);
+  const n = 1 + (M.verso ? 1 : 0) + (M.parceiro ? 1 : 0) + (completaPagina ? 1 : 0);
+  const fim = Date.now() + 120000;
+  let f = [];
+  while (Date.now() < fim) { await espera(500); f = falas(await ev("window.__ev")); if (f.length >= n && f.every((x) => x.fim != null) && f.at(-1).fim <= (await ev("performance.now()"))) break; }
+  await espera(6000); // sobra de tempo: uma fala indevida do álbum apareceria aqui
+  f = falas(await ev("window.__ev"));
+  const t0 = f[0]?.ini ?? 0;
+  console.log(`   ${rotulo} (${id}) falas:`); for (const x of f) console.log(`     ${(x.src ?? "(nome emendado)").padEnd(34)} início ${((x.ini - t0) / 1000).toFixed(2)}  fim ${x.fim == null ? "?" : ((x.fim - t0) / 1000).toFixed(2)}${x.cortada ? "  CORTADA" : ""}`);
+  const mp3 = f.filter((x) => x.k === "mp3").map((x) => x.src);
+  ok(f.every((x) => !x.cortada && x.fim != null), `${rotulo}: nenhuma fala foi cortada`);
+  let sobre = 0; for (let i = 1; i < f.length; i++) if (f[i].ini < f[i - 1].fim - 30) sobre++;
+  ok(sobre === 0, `${rotulo}: nenhuma fala começa antes de a anterior acabar`);
+  if (completaPagina) {
+    ok(f.length === n, `${rotulo}: ${n} falas (${f.length})`);
+    const ordem = mp3.map((s) => (s === `rp-m-${id}-verso.mp3` ? "verso" : s.startsWith("rp-prop-") ? "prop" : s === "rp-album-pagina-versiculos.mp3" ? "pagina" : "outra"));
+    const esperada = ["verso", ...(M.parceiro ? ["prop"] : []), "pagina"];
+    ok(JSON.stringify(ordem.filter((x) => x !== "outra")) === JSON.stringify(esperada), `${rotulo}: ordem versículo${M.parceiro ? ", propaganda" : ""}, página completa (${ordem.join(" > ")})`);
+    ok(mp3.at(-1) === "rp-album-pagina-versiculos.mp3", `${rotulo}: a página completa é a última fala`);
+  } else {
+    ok(!mp3.includes("rp-album-primeira.mp3"), `${rotulo}: a "primeira figurinha" via missão fica calada`);
+    ok(!mp3.some((s) => s.startsWith("rp-album-pagina")), `${rotulo}: sem página completa, nenhuma fala de página`);
+  }
+  return f;
+}
+
 try {
   await t.cmd("Page.navigate", { url: `${BASE}/jogos/rabiscopolis/?teste&jogar&fixo` });
   await ate("!!window.teste?.vivo && !!teste.mundo", 90000);
@@ -105,6 +142,10 @@ try {
     if (C2 ?? C) await medir(C2 ?? C, "sem parceiro sem nome", {});
     if (D) await medir(D, "sem parceiro nem versículo", {});
 
+    // ---- álbum: a "primeira figurinha" que vem da missão fica calada (estado limpo, sem figurinhas)
+    if (D ?? C2) await medirAlbum(D ?? C2, "primeira figurinha via missão", { completaPagina: false });
+    // ---- álbum: a página completa ganha na missão toca no fim da fila
+    if (B2 ?? B) { if (await carregar(null)) await medirAlbum(B2 ?? B, "missão completa página", { completaPagina: true }); }
     // ---- aceitar outra missão no meio: a fila velha é cancelada
     const id = B2 ?? B;
     if (id) {

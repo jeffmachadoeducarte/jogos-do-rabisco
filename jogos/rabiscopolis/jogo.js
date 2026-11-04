@@ -713,7 +713,7 @@ function tirarUniforme(guardar = true) { tirarProfissao(rabisco); ajustarUniform
 // Missão do dia: + EXTRA_DIA na primeira conclusão do dia (diario.js), com o "+15 ⭐" logo depois do ganho normal.
 function ganharMissao(M) {
   if (!M?.id) return;
-  albumUI?.missao(M.id); // figurinha do versículo e de quem pediu
+  albumUI?.missao(M.id, missoes?.fimDaSerie); // figurinha do versículo e de quem pediu
   const r = recompensa(motivoMissao(M.id), GANHO.missao);
   const extra = diario?.pagarExtra(M.id, candidatosDoDia(diario.hoje())) ?? 0;
   if (r.ganhou > 0) setTimeout(() => contadorMoedas?.ganhou(r.ganhou, { alvo: r.saldo }), 900);
