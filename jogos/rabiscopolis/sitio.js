@@ -478,7 +478,7 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
         else R.rot = virarPara(R.rot, 0, Math.min(1, dt * 2));
       }
     } else if (R.estado === "casa" && Math.hypot(pl[0] - R.x, pl[1] - R.z) < 9) R.rot = virarPara(R.rot, Math.atan2(pl[0] - R.x, pl[1] - R.z), Math.min(1, dt * 3));
-    regina.grupo.position.set(R.x, 0.07, R.z); regina.grupo.rotation.y = R.rot;
+    regina.grupo.position.set(R.x, 0, R.z); regina.grupo.rotation.y = R.rot;
     regina.atualizar(dt, { vel });
     const [wx, wz] = paraMundo(R.x, R.z); mundoR[0] = wx; mundoR[1] = wz;
   }
@@ -530,17 +530,17 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
       ny = -0.55 + Math.sin(t * 4) * 0.05; v = 2.6;
     } else if (K.modo === "sacudir") {
       K.sacode -= dt; if (K.sacode <= 0) { secar(); K.modo = "seguir"; const f = K.fim; K.fim = null; f?.(); }
-    } else if (K.modo === "seguir") { // atrás do Rabisco, trotando e abanando o rabo
+    } else if (K.modo === "seguir") { // atrás do Rabisco, trotando e abanando a cauda
       const ax = pl[0] - Math.sin(plRot) * 1.7, az = pl[1] - Math.cos(plRot) * 1.7, d = Math.hypot(ax - K.x, az - K.z);
       if (d > 22) { K.x = ax; K.z = az; }
       if (d > 0.4) { const vv = Math.min(9, 2 + d * 2.2); passo(K, ax, az, vv, dt); v = vv; }
       else K.rot = virarPara(K.rot, Math.atan2(pl[0] - K.x, pl[1] - K.z), Math.min(1, dt * 5));
-    } else if (K.modo === "entregue") { // do lado da Tia Regina, abanando o rabo
+    } else if (K.modo === "entregue") { // do lado da Tia Regina, abanando a cauda
       const ax = R.x + Math.cos(R.rot) * 1.1, az = R.z - Math.sin(R.rot) * 1.1;
       if (passo(K, ax, az, 3, dt) > 0.15) v = 3; else K.rot = virarPara(K.rot, R.rot, Math.min(1, dt * 4));
       K.t2 = (K.t2 ?? 0) + dt; if (K.t2 > 9) { K.modo = "brincar"; K.t2 = 0; }
     }
-    // pose: trote, rabo abanando, pulinho e a sacudida
+    // pose: trote, cauda abanando, pulinho e a sacudida
     if (K.pulo > 0) { K.pulo -= dt; ny += Math.sin((1 - K.pulo / 0.5) * Math.PI) * 0.6; }
     K.fase += dt * (v > 0.2 ? 6 + v * 1.6 : 0);
     const amp = v > 0.2 ? Math.min(0.75, 0.35 + v * 0.07) : 0;
@@ -664,6 +664,6 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
     // testes: onde estão as coisas para fotografar
     pontos: () => Object.fromEntries(Object.entries({ portao: [0, 1], casa: [(Q.casa.x0 + Q.casa.x1) / 2, Q.casa.z1], celeiro: [(Q.celeiro.x0 + Q.celeiro.x1) / 2, Q.celeiro.z1], varanda: [(Q.varanda.x0 + Q.varanda.x1) / 2, Q.varanda.frente], lago: [LG.x, LG.z], galinheiro: [(GL.x0 + GL.x1) / 2, (GL.z0 + GL.z1) / 2] }).map(([k, v]) => [k, paraMundo(...v)])),
   };
-  regina.grupo.position.set(R.x, 0.07, R.z); regina.grupo.rotation.y = R.rot;
+  regina.grupo.position.set(R.x, 0, R.z); regina.grupo.rotation.y = R.rot;
   return api;
 }

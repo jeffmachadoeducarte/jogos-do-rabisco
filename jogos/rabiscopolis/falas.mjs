@@ -35,7 +35,7 @@ export const FALAS_PT = {
   "rp-hosp-febre": "Trinta e seis graus e meio: tudo bem, sem febre!",
   "rp-hosp-coracao": "Tum-tum, tum-tum! Coração feliz.",
   "rp-vet-banho": "Banho de espuma! Ele ficou cheirosinho.",
-  "rp-vet-petisco": "Au-au! Ele abanou o rabinho de alegria.",
+  "rp-vet-petisco": "Au-au! Ele abanou a cauda de alegria.",
   "rp-escola-roda": "Hora da roda! Todos juntinhos.",
   "rp-escola-recreio": "Recreio! Todo mundo brincando junto.",
   "rp-escola-lousa": "Muito bem, turma! Vamos ler juntos.",

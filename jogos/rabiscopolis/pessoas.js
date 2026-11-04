@@ -251,7 +251,7 @@ export function criarPessoa(id = "sabrina", { escala: esc = null, nome = null, o
   // esqueleto (ombros mais largos para quem tem corpo maior)
   const ko = p.corpo?.ombros ?? 1;
   const mundoOsso = (i) => { const [n, , w] = OSSOS[i]; return new THREE.Vector3(/ombro|cotovelo|mao|objeto/.test(n) ? w[0] * ko : w[0], w[1], w[2]); };
-  const ossos = OSSOS.map(([n]) => { const b = new THREE.Bone(); b.name = n; return b; });
+  const ossos = OSSOS.map(([n]) => { const b = new THREE.Bone(); b.name = n; b.userData.dinamico = true; return b; }); // dinamico: a limpeza de grupos vazios (base3d.js) não pode soltar os ossos-ponta (joelhos, mãos), senão as pernas ficam travadas e o boneco "flutua"
   OSSOS.forEach(([, pai], i) => { const b = ossos[i]; if (pai >= 0) { ossos[pai].add(b); b.position.copy(mundoOsso(i)).sub(mundoOsso(pai)); } else b.position.copy(mundoOsso(i)); });
   raiz.add(ossos[0]);
   const mont = montar(p);

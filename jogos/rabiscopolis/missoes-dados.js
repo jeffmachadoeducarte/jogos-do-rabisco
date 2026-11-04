@@ -814,8 +814,8 @@ export const MISSOES = [
     etapas: [{ tipo: "cena", cena: "duck", ate: "regina", falas: [
       { texto: "Splash! O Duck saiu do lago e se sacudiu todinho. Agora leve o Duck até a Tia Regina.", voz: "rp-m-parceiro-sitio-floresca-duck-saiu" },
     ] }],
-    fim: "O Duck voltou para a Tia Regina, abanando o rabo! Quem ama os animais cuida bem deles.",
-    fimNome: "Muito bem, {nome}! O Duck voltou para a Tia Regina, abanando o rabo. Quem ama os animais cuida bem deles.",
+    fim: "O Duck voltou para a Tia Regina, abanando a cauda! Quem ama os animais cuida bem deles.",
+    fimNome: "Muito bem, {nome}! O Duck voltou para a Tia Regina, abanando a cauda. Quem ama os animais cuida bem deles.",
     verso: { texto: "Quem é justo cuida bem dos seus animais.", ref: "baseado em Provérbios 12.10" },
   },
 ];
