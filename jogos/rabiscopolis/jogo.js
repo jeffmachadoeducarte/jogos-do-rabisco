@@ -1350,6 +1350,7 @@ function passo(dt, ultimo) {
       if (pulou) sons.pulo();
       rabisco.grupo.position.copy(j.pos); rabisco.grupo.rotation.y = j.dir;
       rabisco.atualizar(dt, { modo: !j.noChao ? "pular" : v > 0.6 ? "andar" : "parado", vel: v, vmax: VEL });
+      rabisco.aoPosar?.(rabisco, dt); // ex.: a pata Ale no colo (sitio.js): os braços seguram, por cima da animação do andar
       andando = ent.m > 0.2 && ent.iy > -0.3;
       // carro da cidade encostando no Rabisco a pé: empurra devagar
       for (const k of transito) { const ex = j.pos.x - k.g.position.x, ez = j.pos.z - k.g.position.z, d = Math.hypot(ex, ez); if (d < 2.4 && d > 0.01 && j.pos.y < 2) { const px = j.pos.x + (ex / d) * dt * 4, pz = j.pos.z + (ez / d) * dt * 4; if (!fis.bate(px, pz, j.pos.y)) { j.pos.x = px; j.pos.z = pz; } } }

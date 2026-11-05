@@ -18,6 +18,9 @@ export const SITIO = {
   // onde a Tia Regina fica: na calçada da casa (portão fechado), logo depois do portão (missão da Ale) e na frente do
   // salão, no gramado, esperando (missões depois da Ale)
   regina: { casa: [-15.6, -16.5], portao: [3.2, -3.8], espera: [-9, -40] },
+  // o Tio Marlon (o da Marlon Máquinas, marido da Tia Regina): na calçada da casa e, com o portão aberto, no gramado perto
+  // dela; na missão da Ale corre atrás da pata do outro lado
+  marlon: { casa: [-15.4, -13.2], espera: [-6.6, -37.5] },
   estrada: { larg: 3.2, z1: -21 }, // do portão até a altura da porta da casa (e a trilha até a calçada)
   casa: { x0: -26, x1: -17, z0: -25, z1: -9, h: 3.0, cume: 2.5 },
   // o salão (varanda comprida de treliça, das aulas): o comprimento ao longo de z, a frente (treliça) olhando para +x
