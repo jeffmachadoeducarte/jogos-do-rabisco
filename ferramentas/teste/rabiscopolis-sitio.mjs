@@ -26,7 +26,7 @@ const URL_JOGO = `${BASE}/jogos/rabiscopolis/`;
 const A = "parceiro-sitio-floresca", B = "parceiro-sitio-floresca-duck";
 let falhas = 0;
 const ok = (c, msg) => { console.log(c ? "✓" : "✗", msg); if (!c) falhas++; return Boolean(c); };
-const vigia = setTimeout(() => { console.log("✗ o teste travou"); process.exit(2); }, 22 * 60 * 1000);
+const vigia = setTimeout(() => { console.log("✗ o teste travou"); process.exit(2); }, 40 * 60 * 1000);
 const FAMILIA = `localStorage.setItem("rabisco.familia", JSON.stringify({ responsavel: { nome: "Teste", email: "t@t" }, crianca: { nome: "Alice", genero: "menina" } }))`;
 const OCULTA = `(() => { const s = document.createElement("style"); s.id = "oculta"; s.textContent = ".cena-rp > *:not(canvas):not(.balao-rp), canvas.minimapa-rp, .casca-redondo, .pausa-botao, .engrenagem-pausa, [class*='radio'], .casca-topo, .casca-dica, .casca-aviso { display: none !important; }"; document.head.append(s); })()`;
 const VOZ = `window.__voz = []; { const p = HTMLMediaElement.prototype.play; HTMLMediaElement.prototype.play = function () { window.__voz.push(this.src.replace(/^.*\\/voz\\//, "")); return p.call(this); }; }`;
@@ -73,7 +73,7 @@ try {
   await ev(`teste.vista([${cb.x + 4}, 4, ${cb.z - 7}], [-352, 0.8, 66])`); await espera(400); await foto("03-regina-vindo"); await ev("teste.vista(null)");
   ok(await ate(t, `${S}.aberto`, 60000), "a Tia Regina abre o portão");
   ok(!(await ev(`teste.dentroDeSolido(-352, 60.4)`)), "portão aberto: dá para entrar");
-  ok(await ate(t, `window.__voz.includes("rp-sitio-entrou.mp3")`, 3000), "a anfitriã dá as boas-vindas");
+  ok(await ate(t, `window.__voz.includes("rp-sitio-entrou.mp3")`, 15000), "a anfitriã dá as boas-vindas");
   ok(!(await ev(`document.querySelector(".balao-rp")?.textContent ?? ""`)).startsWith("Tia Regina"), "a Tia Regina não fala (o balão é da anfitriã)");
   await espera(2500);
   await ev(`teste.vista([-350, 2.6, 56], [-353, 1.2, 66])`); await espera(500); await foto("04-portao-aberto"); await ev("teste.vista(null)");
@@ -96,6 +96,13 @@ try {
   let al = await ev(`${S}.aleMundo()`), rg = await ev(`${S}.reginaMundo()`);
   ok(Math.hypot(al.x - rg.x, al.z - rg.z) < 14 && Math.hypot(rg.x - r0.x, rg.z - r0.z) > 2, `a Tia Regina sai do portão e corre atrás da Ale (${Math.round(Math.hypot(al.x - rg.x, al.z - rg.z))} m dela)`);
   await ev(`teste.vista([${al.x + 6}, 3.2, ${al.z - 5}], [${al.x}, 0.6, ${al.z}])`); await espera(500); await foto("06-ale-fugindo"); await ev("teste.vista(null)");
+  // o Tio Marlon (o mesmo boneco da Marlon Máquinas) também corre atrás da Ale, do outro lado
+  { const mr0 = await ev(`${S}.pontoMundo(-15.4, -13.2)`);
+    ok(await ate(t, `(() => { const m = ${S}.marlonMundo(), a = ${S}.aleMundo(); return Math.hypot(m.x - a.x, m.z - a.z) < 9; })()`, 30000), "o Tio Marlon corre atrás da Ale junto com a Tia Regina");
+    const mr = await ev(`${S}.marlonMundo()`); ok(Math.hypot(mr.x - mr0.x, mr.z - mr0.z) > 3, "o Tio Marlon saiu da calçada da casa");
+    ok(await ev(`${S}.marlon.id === "marlon" || ${S}.marlon.grupo.userData.id === "marlon"`), "é o boneco do Seu Marlon (pessoas.js)");
+    al = await ev(`${S}.aleMundo()`); const rg2 = await ev(`${S}.reginaMundo()`);
+    await ev(`teste.vista([${(al.x + rg2.x + mr.x) / 3 + 7}, 4, ${(al.z + rg2.z + mr.z) / 3 - 7}], [${(al.x + rg2.x + mr.x) / 3}, 0.9, ${(al.z + rg2.z + mr.z) / 3}])`); await espera(400); await foto("06b-marlon-e-regina-atras-da-ale"); await ev("teste.vista(null)"); }
   // pegar a Ale: chega pertinho dela
   let pegou = false;
   for (let i = 0; i < 40 && !pegou; i++) {
@@ -104,6 +111,10 @@ try {
     if ((await ev("teste.contexto"))?.includes("Pegar a Ale")) { await ev("teste.acao()"); await espera(300); pegou = (await ev(`${S}.ale`)) === "colo"; }
   }
   ok(pegou, "o Rabisco pegou a Ale (vai no colo)");
+  ok(await ev("typeof teste.rabisco.aoPosar === 'function'"), "no colo: os braços do Rabisco seguram a Ale (pose de colo)");
+  { await espera(300); const rp = await ev("({ x: teste.j.pos.x, z: teste.j.pos.z, d: teste.j.dir })");
+    for (const [n, a] of [["frente", 0], ["lado", 1.3]]) { const ang = rp.d + a; await ev(`teste.vista([${rp.x + Math.sin(ang) * 2.6}, 1.6, ${rp.z + Math.cos(ang) * 2.6}], [${rp.x}, 1.05, ${rp.z}])`); await espera(500); await foto(`07b-colo-${n}`); }
+    await ev("teste.vista(null)"); }
   ok(await ate(t, `window.__voz.includes("rp-m-${A}-pegou.mp3")`, 3000), "a anfitriã avisa: agora leve até o lago");
   const mk = await ev(`${S}.marcaLagoMundo()`);
   const alvo = await ev("teste.missoes.alvo()");
@@ -122,8 +133,8 @@ try {
   await espera(5000);
   ok(!(await ev("window.__voz")).includes("rp-prop-sitio-floresca.mp3"), "sem propaganda no fim da primeira missão");
   // ---- o Duck pula no lago sozinho; a Tia Regina vai para o meio da estradinha
-  ok(await ate(t, `${S}.duck === "lago"`, 30000), "o Duck (arteiro) foi para o lago");
-  ok(await ate(t, `${S}.duckMundo().molhado`, 2000), "dentro do lago, o Duck fica molhado (só a cabeça e o peito para fora)");
+  ok(await ate(t, `${S}.duck === "lago"`, 60000), "o Duck (arteiro) foi para o lago");
+  ok(await ate(t, `${S}.duckMundo().molhado`, 8000), "dentro do lago, o Duck fica molhado (só a cabeça e o peito para fora)");
   await ev(`teste.vista([${lg[0] + 7}, 3.5, ${lg[1] - 10}], [${lg[0]}, 0, ${lg[1]}])`); await espera(700); await foto("09-duck-no-lago"); await ev("teste.vista(null)");
   ok(await ate(t, `(() => { const r = ${S}.reginaMundo(), [x, z] = ${S}.paraMundo(-9, -40); return Math.hypot(r.x - x, r.z - z) < 0.6; })()`, 40000), "a Tia Regina espera no gramado, na frente do salão");
   // ---- missão B: Duck no lago

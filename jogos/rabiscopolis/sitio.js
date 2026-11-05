@@ -509,6 +509,9 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
 
   // ---- Tia Regina
   const regina = criarPessoa("regina"); regina.grupo.userData.dinamico = true; raiz.add(regina.grupo);
+  // ---- o Tio Marlon (o mesmo boneco da Marlon Máquinas: pessoas.js "marlon"); não fala
+  const marlon = criarPessoa("marlon"); marlon.grupo.userData.dinamico = true; raiz.add(marlon.grupo);
+  const MR = { x: Q.marlon.casa[0], z: Q.marlon.casa[1], rot: Math.PI / 2 };
   const R = { x: Q.regina.casa[0], z: Q.regina.casa[1], rot: Math.PI / 2, estado: "casa", caminho: [] };
   const mundoR = paraMundo(R.x, R.z);
   const [gx, gz] = paraMundo(...Q.regina.portao);
@@ -581,7 +584,25 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
     } else if (R.estado === "casa" && Math.hypot(pl[0] - R.x, pl[1] - R.z) < 9) R.rot = virarPara(R.rot, Math.atan2(pl[0] - R.x, pl[1] - R.z), Math.min(1, dt * 3));
     regina.grupo.position.set(R.x, 0, R.z); regina.grupo.rotation.y = R.rot;
     regina.atualizar(dt, { vel });
+    atualizarMarlon(dt, pl);
     const [wx, wz] = paraMundo(R.x, R.z); mundoR[0] = wx; mundoR[1] = wz;
+  }
+
+  // ---- Tio Marlon: com a Ale fugida, corre atrás dela pelo outro lado (a Tia Regina vem de um, ele do outro, e a Ale foge
+  // para o lado do Rabisco); fora disso fica na calçada da casa (portão fechado) ou no gramado, perto da Tia Regina
+  function atualizarMarlon(dt, pl) {
+    let vel = 0;
+    if (ativa() === MISSAO_ALE && A.modo === "fugida") {
+      const dx = A.x - pl[0], dz = A.z - pl[1], d = Math.hypot(dx, dz) || 1, ox = -dz / d, oz = dx / d; // de lado, em relação ao Rabisco
+      const ax = dentroDe(A.x + (dx / d) * 1.8 + ox * 2.4, Q.fuga), az = Math.max(Q.fuga.z0, Math.min(Q.fuga.z1, A.z + (dz / d) * 1.8 + oz * 2.4));
+      if (passo(MR, ax, az, 3.6, dt) > 0.3) vel = 4.5;
+    } else {
+      const [ax, az] = aberto && R.estado !== "casa" ? Q.marlon.espera : Q.marlon.casa;
+      if (passo(MR, ax, az, 2.4, dt) > 0.15) vel = 2.4;
+      else if (Math.hypot(pl[0] - MR.x, pl[1] - MR.z) < 7) MR.rot = virarPara(MR.rot, Math.atan2(pl[0] - MR.x, pl[1] - MR.z), Math.min(1, dt * 4));
+    }
+    marlon.grupo.position.set(MR.x, 0, MR.z); marlon.grupo.rotation.y = MR.rot;
+    marlon.atualizar(dt, { vel });
   }
 
   // ---- Duck: brinca em volta do Rabisco, vai para o lago (missão), sai e se sacode, segue o Rabisco, senta com a Tia Regina
@@ -612,8 +633,10 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
         if (Math.sin(K.t * 0.6) > -0.3 && passo(K, K.alvo[0], K.alvo[1], 2.2, dt) > 0.2) v = 2.2;
       }
     } else if (K.modo === "indoLago") { // corre até o portãozinho e pula a cerca, direto na água (arteiro!)
-      if (passo(K, Q.marcaLago[0], Q.marcaLago[1], 6, dt) < 0.3) { K.modo = "pulandoLago"; K.voo = 0; K.de = [K.x, K.z]; }
-      else v = 6;
+      // longe (o lago agora vai até o fundo), corre mais: chega em poucos segundos de qualquer canto do sítio
+      const vl = Math.max(6, Math.hypot(Q.marcaLago[0] - K.x, Q.marcaLago[1] - K.z) * 0.6);
+      if (passo(K, Q.marcaLago[0], Q.marcaLago[1], vl, dt) < 0.3) { K.modo = "pulandoLago"; K.voo = 0; K.de = [K.x, K.z]; }
+      else v = Math.min(9, vl);
     } else if (K.modo === "pulandoLago" || K.modo === "saindo") {
       K.voo += dt / 0.9;
       const [x0, z0] = K.de, [x1, z1] = K.modo === "saindo" ? [Q.marcaLago[0] + 0.9, Q.marcaLago[1] + 1.6] : lagoAlvo, k = Math.min(1, K.voo);
@@ -687,6 +710,8 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
       let fx = 0, fz = 0;
       const dR = Math.hypot(A.x - pl[0], A.z - pl[1]), dT = Math.hypot(A.x - R.x, A.z - R.z);
       if (dR < 6) { fx += ((A.x - pl[0]) / (dR || 1)) * (6 - dR); fz += ((A.z - pl[1]) / (dR || 1)) * (6 - dR); }
+      const dM = Math.hypot(A.x - MR.x, A.z - MR.z);
+      if (dM < 4) { fx += ((A.x - MR.x) / (dM || 1)) * (4 - dM) * 0.8; fz += ((A.z - MR.z) / (dM || 1)) * (4 - dM) * 0.8; }
       if (dT < 4) { fx += ((A.x - R.x) / (dT || 1)) * (4 - dT) * 0.8; fz += ((A.z - R.z) / (dT || 1)) * (4 - dT) * 0.8; }
       if (!A.alvo || Math.random() < dt * 0.4) A.alvo = [Q.fuga.x0 + Math.random() * (Q.fuga.x1 - Q.fuga.x0), Q.fuga.z0 + Math.random() * (Q.fuga.z1 - Q.fuga.z0)];
       fx += (A.alvo[0] - A.x) * 0.08; fz += (A.alvo[1] - A.z) * 0.08;
@@ -847,6 +872,16 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
   }
   let comidaGal = 0, comidaPatos = 0;
   const PONTO_PATOS = [Q.dentroLago[0] + 0.3, Q.dentroLago[1]];
+  // os braços do Rabisco no colo, como um berço (jogo.js chama rabisco.aoPosar depois de animar o andar): os braços quase
+  // retos para baixo e um pouco para dentro, os cotovelos dobrados e os antebraços na altura da barriga, por baixo da Ale
+  // (as mãos nunca passam do peito); o balanço do andar some dos braços
+  let quemSegura = null;
+  function poseColo(rb) {
+    quemSegura = rb;
+    rb.bracoE.ombro.rotation.set(-0.25, 0, -0.3); rb.bracoD.ombro.rotation.set(-0.25, 0, 0.3);
+    rb.bracoE.cotovelo.rotation.set(-1.0, 0, 0); rb.bracoD.cotovelo.rotation.set(-1.0, 0, 0);
+  }
+  function soltarColo() { if (quemSegura?.aoPosar === poseColo) quemSegura.aoPosar = null; quemSegura = null; }
   const pulosPeixe = [];
   function animarPeixe(dt) {
     for (let i = pulosPeixe.length - 1; i >= 0; i--) {
@@ -958,19 +993,24 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
     pegarAle(rabisco) {
       if (A.modo !== "fugida") return false;
       A.modo = "colo"; A.rabisco = rabisco.grupo;
-      const sy = rabisco.grupo.scale.y || 1; rabisco.grupo.add(ale); ale.position.set(0, 0.6 / sy, 0.46 / sy); ale.rotation.set(0, 0, 0); ale.scale.setScalar(0.85 / sy); // no colo, abaixo do rosto
+      // no colo, como quem segura um bebê: aninhada na frente do peito, virada de lado, e os dois braços do Rabisco em volta
+      const sy = rabisco.grupo.scale.y || 1; rabisco.grupo.add(ale); ale.position.set(0.02 / sy, 0.77 / sy, 0.24 / sy); ale.rotation.set(0, Math.PI / 2, 0.12); ale.scale.setScalar(0.62 / sy);
+      rabisco.aoPosar = poseColo; quemSegura = rabisco;
       return true;
     },
     soltarAle(fim) {
       if (A.modo !== "colo") return false;
+      if (A.rabisco?.userData) soltarColo();
       raiz.add(ale); ale.scale.setScalar(1.15); A.rabisco = null;
       A.modo = "voltando"; A.voo = 0; A.de = [...Q.marcaLago]; A.para = [LG.x, LG.z + 4.5]; A.fim = fim; return true;
     },
-    cancelarAle() { if (A.modo === "colo") { raiz.add(ale); ale.scale.setScalar(1.15); A.rabisco = null; } A.modo = "lago"; A.fim = null; },
+    cancelarAle() { if (A.modo === "colo") { soltarColo(); raiz.add(ale); ale.scale.setScalar(1.15); A.rabisco = null; } A.modo = "lago"; A.fim = null; },
     duckNoLago() { if (K.modo === "lago" || K.modo === "pulandoLago" || K.modo === "indoLago") return; K.modo = "indoLago"; },
     chamarDuck(fim) { if (K.modo !== "lago") return false; K.modo = "chamado"; K.fim = fim; return true; },
     duckEntregar() { K.modo = "entregue"; K.t2 = 0; regina.comemorar(2.5); },
     cancelarDuck() { if (K.modo === "seguir" || K.modo === "sacudir" || K.modo === "chamado" || K.modo === "saindo") { secar(); K.modo = "brincar"; K.fim = null; } },
+    marlonMundo: () => { const [x, z] = paraMundo(MR.x, MR.z); return { x, z }; },
+    marlon,
     info: () => ({ portao, aberto, regina: R.estado, ale: A.modo, duck: K.modo, molhado: K.molhado, perto }),
     // testes: onde estão as coisas para fotografar
     pontos: () => Object.fromEntries(Object.entries({ portao: [0, 1], casa: [(Q.casa.x0 + Q.casa.x1) / 2, Q.casa.z1], salao: [Q.salao.frente, (Q.salao.z0 + Q.salao.z1) / 2], horta: [(Q.horta.x0 + Q.horta.x1) / 2, Q.horta.z[1]], lago: [LG.x, LG.z], galinheiro: [(GL.x0 + GL.x1) / 2, (GL.z0 + GL.z1) / 2], frutiferas: [Q.frutX, -60], container: [-17, Q.deck.z1 + 4] }).map(([k, v]) => [k, paraMundo(...v)])),
