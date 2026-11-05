@@ -459,13 +459,16 @@ function editarPerfil(p, tipo = p?.tipo || "crianca") {
   return new Promise((resolver) => {
     const adulto = tipo === "adulto";
     const novo = !p;
-    const dados = { nome: p?.nome || (adulto ? (Familia.responsavel()?.nome || "").split(" ")[0] : ""), nascimento: p?.nascimento || "", genero: p?.genero || "", foto: p?.foto || null };
+    // 1º adulto: já vem com o primeiro nome do responsável; os outros adultos (mãe, pai, avó…) começam em branco
+    const primeiroAdulto = adulto && novo && !Perfis.lista().some((x) => x.tipo === "adulto");
+    const dados = { nome: p?.nome || (primeiroAdulto ? (Familia.responsavel()?.nome || "").split(" ")[0] : ""), nascimento: p?.nascimento || "", genero: p?.genero || "", foto: p?.foto || null };
     const fNome = campo(adulto ? "Como a narradora te chama *" : "Primeiro nome *", { value: dados.nome, maxlength: 20, "data-campo": "perfil-nome" });
     const fNasc = adulto ? null : campo("Data de nascimento *", { type: "date", value: dados.nascimento, max: hoje(), min: "1990-01-01", "data-campo": "perfil-nasc" });
     const g = escolhaGenero(`perfil-g-${++seq}`, dados.genero, { adulto });
     const erro = h("p", { class: "erro", role: "alert" });
     const form = h("form", { novalidate: true, class: "familia-form" }, [
-      h("h2", { texto: novo ? (adulto ? "Eu também quero jogar" : "Novo jogador") : `Editar ${p.nome || "jogador"}` }),
+      h("h2", { texto: novo ? (adulto ? "Novo adulto" : "Novo jogador") : `Editar ${p.nome || "jogador"}` }),
+      adulto && novo ? h("p", { class: "intro", texto: "Pai, mãe, avó, tio… cada adulto tem o seu progresso. Só o primeiro nome fica guardado, neste aparelho." }) : null,
       h("div", { class: "familia-campos" }, [fNome.label, fNasc?.label,
         h("div", { class: "largo cad-genero" }, [h("span", { class: "rotulo", texto: adulto ? "A narradora vai dizer: *" : "Menina ou menino? *" }), g.caixa]),
         blocoFoto(dados.foto, (f) => { dados.foto = f; }),
@@ -520,7 +523,6 @@ function painelPais() {
 
     function desenhar() {
       const lista = Perfis.lista(), R = Familia.responsavel() || {};
-      const temAdulto = lista.some((p) => p.tipo === "adulto");
       const linhas = lista.map((p, i) => h("li", { class: "pais-jogador", "data-perfil": p.id }, [
         avatar(p, i, "perfil-avatar mini"),
         h("span", { class: "pais-nome" }, [h("b", { texto: p.nome || "Jogador sem nome" }), h("small", { texto: [idadeTexto(p), p.id === Perfis.idAtivo() ? "jogando agora" : ""].filter(Boolean).join(" · ") })]),
@@ -539,7 +541,7 @@ function painelPais() {
         h("ul", { class: "pais-lista" }, linhas),
         h("div", { class: "pais-botoes" }, [
           h("button", { type: "button", class: "pais-grande", "data-acao": "novo-filho", texto: "➕ Adicionar filho", onclick: acao(() => editarPerfil(null, "crianca")) }),
-          temAdulto ? null : h("button", { type: "button", class: "pais-grande", "data-acao": "novo-adulto", texto: "🙋 Eu também quero jogar", onclick: acao(() => editarPerfil(null, "adulto")) }),
+          h("button", { type: "button", class: "pais-grande", "data-acao": "novo-adulto", texto: "➕ Adicionar adulto", onclick: acao(() => editarPerfil(null, "adulto")) }),
           h("button", { type: "button", class: "pais-grande", "data-acao": "cadastro", texto: "👩 Editar cadastro e PIN", onclick: acao(() => abrirCadastroCompleto()) }),
         ]),
         h("div", { class: "pais-privacidade" }, [

@@ -284,6 +284,116 @@ console.log("\n== área dos pais: PIN, apagar perfil");
   await t.fechar();
 }
 
+// ================================================================== 4b) vários adultos: 2 adultos + 2 crianças, nada vaza
+console.log("\n== 2 adultos + 2 crianças: cada um com o seu progresso; adultos extras não vão para o servidor");
+{
+  const prep = `if (!sessionStorage.getItem("__prep")) { sessionStorage.setItem("__prep", "1"); localStorage.clear(); }`;
+  t = await nova({ mobile: true, largura: 844, altura: 390 }, `${BASE}/index.html`, prep);
+  await ate(t, `!!document.querySelector(".cadastro")`);
+  await preencher(t, '[data-campo="resp-nome"]', "Carla Teste Fictícia");
+  await preencher(t, '[data-campo="telefone"]', "41900000005");
+  await preencher(t, '[data-campo="email"]', "carla@exemplo.com");
+  await preencher(t, '[data-campo="pin"]', "6157");
+  await clicar(t, '[data-acao="continuar"]');
+  await preencher(t, '.cad-filho[data-filho="0"] [data-campo="filho-nome"]', "Lia");
+  await preencher(t, '.cad-filho[data-filho="0"] [data-campo="filho-nasc"]', "2017-04-04");
+  await clicar(t, '.cad-filho[data-filho="0"] input[value="menina"]');
+  await clicar(t, '[data-acao="mais-filho"]');
+  await preencher(t, '.cad-filho[data-filho="1"] [data-campo="filho-nome"]', "Rui");
+  await preencher(t, '.cad-filho[data-filho="1"] [data-campo="filho-nasc"]', "2020-08-08");
+  await clicar(t, '.cad-filho[data-filho="1"] input[value="menino"]');
+  await clicar(t, "#cad-adulto");
+  await t.ev(`document.querySelector("#cad-adulto").dispatchEvent(new Event("change"))`);
+  await clicar(t, '.cad-adulto-genero input[value="menina"]');
+  await clicar(t, "#cad-lgpd");
+  await clicar(t, '[data-acao="salvar"]');
+  await ate(t, `!!document.querySelector(".quem .quem-item")`);
+  ok((await reg(t)).perfis.map((p) => `${p.nome}:${p.tipo}`).join(",") === "Lia:crianca,Rui:crianca,Carla:adulto", "cadastro: Lia, Rui e a Carla (responsável) jogando");
+  // área dos pais → ➕ Adicionar adulto (a avó): só primeiro nome e pronta/pronto, sem nascimento
+  await clicar(t, '.quem [data-acao="pais"]');
+  await ate(t, `!!document.querySelector("#portao-resposta")`);
+  await preencher(t, "#portao-resposta", "6157");
+  await t.ev(`document.querySelector(".portao-form").requestSubmit()`);
+  ok(await ate(t, `!!document.querySelector('[data-acao="novo-adulto"]')`), "área dos pais tem \"➕ Adicionar adulto\" mesmo já havendo um adulto");
+  ok(await t.ev(`document.querySelector('[data-acao="novo-adulto"]').textContent.includes("Adicionar adulto") && !!document.querySelector('[data-acao="novo-filho"]')`), "ao lado de \"➕ Adicionar filho\"");
+  await clicar(t, '[data-acao="novo-adulto"]');
+  ok(await ate(t, `!!document.querySelector(".editar [data-campo='perfil-nome']")`), "abre o formulário do adulto");
+  ok(await t.ev(`!document.querySelector(".editar [data-campo='perfil-nasc']") && document.querySelector(".editar [data-campo='perfil-nome']").value === ""`), "adulto extra: sem data de nascimento e começa em branco");
+  await clicar(t, '[data-acao="salvar-perfil"]');
+  ok(/nome/.test(await erroVisivel(t)), "sem nome: pede o nome");
+  await preencher(t, ".editar [data-campo='perfil-nome']", "Vovó");
+  await clicar(t, '.editar input[value="menina"]');
+  const antesPost = posts().length;
+  await clicar(t, '[data-acao="salvar-perfil"]');
+  await espera(400);
+  r = await reg(t);
+  ok(r.perfis.filter((p) => p.tipo === "adulto").map((p) => p.nome).join(",") === "Carla,Vovó", "2 adultos: Carla e Vovó");
+  const ids4 = Object.fromEntries(r.perfis.map((p) => [p.nome, p.id]));
+  await foto(t, "area-dos-pais-2-adultos");
+  // editar a Vovó (pronto → pronta de novo não muda nada; troca o nome) e a lista continua com 4
+  await clicar(t, `.pais-jogador[data-perfil="${ids4["Vovó"]}"] [data-acao="editar"]`);
+  await ate(t, `!!document.querySelector(".editar [data-campo='perfil-nome']")`);
+  await preencher(t, ".editar [data-campo='perfil-nome']", "Vó Teca");
+  await clicar(t, '[data-acao="salvar-perfil"]');
+  await espera(400);
+  ok((await reg(t)).perfis.find((p) => p.id === ids4["Vovó"])?.nome === "Vó Teca", "editar o adulto extra funciona como nos filhos");
+  // POST: o corpo continua com responsável + crianças; os adultos extras não vão
+  await esperarPedido(antesPost + 1);
+  {
+    const ultimo = posts().at(-1);
+    ok(ultimo && J(ultimo.corpo.criancas.map((c) => c.nome)) === J(["Lia", "Rui"]) && !/Vovó|Vó Teca/.test(ultimo.bruto) && !("adultos" in ultimo.corpo), "POST /cadastro não leva os adultos (só responsável e crianças)");
+    ok(J(Object.keys(ultimo.corpo).sort()) === J(["app", "consentimento", "criancas", "id", "marketing", "origem", "responsavel", "segredo"]), "corpo do POST igual ao contrato de antes");
+  }
+  await clicar(t, '.pais [data-acao="fechar"]');
+  await espera(300);
+  // Quem vai jogar? com os 4 (2 adultos com emoji de adulto)
+  await clicar(t, "#familia");
+  await ate(t, `document.querySelectorAll(".quem .quem-item").length === 4`);
+  ok(await t.ev(`(() => { const e = (id) => document.querySelector('.quem-item[data-perfil="' + id + '"] .perfil-avatar').textContent; return e(${J(ids4.Carla)}) === "👩" && e(${J(ids4["Vovó"])}) === "👩" && e(${J(ids4.Lia)}) === "👧" && e(${J(ids4.Rui)}) === "👦"; })()`), "Quem vai jogar? mostra os 4, adultos com emoji de adulto");
+  await foto(t, "quem-vai-jogar-2-adultos");
+  await clicar(t, '.quem [data-acao="fechar"]');
+  // cada um com moedas e casa diferentes; troca entre todos e confere que nada vaza
+  const plano = [["Lia", 11, 1], ["Rui", 22, 2], ["Carla", 33, 3], ["Vovó", 44, 4]];
+  const trocarPara = async (id) => { if ((await t.ev(`Perfis.idAtivo()`)) === id) return; await marcar(t); await t.ev(`Perfis.trocar(${J(id)})`); await recarregou(t); await ate(t, `!!window.Perfis && !!window.Familia`); };
+  const casaDe = () => t.ev(`import("/jogos/rabiscopolis/salvar.js").then((m) => m.carregar().casa)`);
+  for (const [nome, moedas, casa] of plano) {
+    await trocarPara(ids4[nome]);
+    await t.ev(`import("/src/motor/rabiscoins.js").then((m) => m.ganhar(${moedas}, "teste"))`);
+    await t.ev(`import("/jogos/rabiscopolis/salvar.js").then((m) => { const d = m.carregar(); d.casa = ${casa}; m.salvar(d); })`);
+  }
+  let vazou = [];
+  for (const [nome, moedas, casa] of [...plano].reverse()) {
+    await trocarPara(ids4[nome]);
+    const s = await saldo(t), c = await casaDe();
+    if (s !== moedas || c !== casa) vazou.push(`${nome}: ${s} moedas, casa ${c}`);
+  }
+  ok(!vazou.length, `trocando entre os 4, cada um tem só as suas moedas e a sua casa (${vazou.join("; ") || "ok"})`);
+  // trocar também pelo chip (toque) para um adulto
+  await clicar(t, "#familia");
+  await ate(t, `!!document.querySelector(".quem .quem-item")`);
+  await marcar(t);
+  await tocar(t, `.quem-item[data-perfil="${ids4.Carla}"]`);
+  await recarregou(t); await ate(t, `!!window.Familia`);
+  ok((await t.ev(`Familia.crianca().nome`)) === "Carla" && (await t.ev(`Familia.crianca().tipo`)) === "adulto" && (await saldo(t)) === 33, "pelo chip: Carla (adulta) volta com as 33 dela");
+  // apagar a avó: só o progresso dela sai
+  await clicar(t, "#familia");
+  await ate(t, `!!document.querySelector(".quem")`);
+  await clicar(t, '.quem [data-acao="pais"]');
+  await ate(t, `!!document.querySelector("#portao-resposta")`);
+  await preencher(t, "#portao-resposta", "6157");
+  await t.ev(`document.querySelector(".portao-form").requestSubmit()`);
+  await ate(t, `!!document.querySelector(".pais-lista")`);
+  await clicar(t, `.pais-jogador[data-perfil="${ids4["Vovó"]}"] [data-acao="apagar"]`);
+  await ate(t, `!!document.querySelector(".confirmar")`);
+  await clicar(t, '.confirmar [data-acao="sim"]');
+  await espera(300);
+  ok((await reg(t)).perfis.length === 3 && (await t.ev(`!Object.keys(localStorage).some((k) => k.startsWith(${J(`rabisco.perfil.${ids4["Vovó"]}.`)}))`)), "apagar o adulto extra leva só o progresso dele");
+  ok((await saldo(t)) === 33, "e a Carla continua com as dela");
+  await clicar(t, '.pais [data-acao="fechar"]');
+  ok(!errosDe(t).length, `sem erros (${errosDe(t).join(" ; ")})`);
+  await t.fechar();
+}
+
 // ================================================================== 5) migração do progresso antigo (sem perfil)
 console.log("\n== migração: progresso antigo vai para o 1º perfil, sem perder nada");
 {
