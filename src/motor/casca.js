@@ -17,6 +17,7 @@
 
 import { sons, musica } from "./sons.js";
 import { falar, preCarregarFalas, saudar, parabenizar } from "./voz.js";
+import { armazem } from "./perfis.js"; // estrelas dos níveis: do jogador ativo
 import "./familia.js"; // window.Familia: nome e foto da criança para a voz e os companheiros
 import { criarPausa } from "./pausa.js";
 import { ligarControle, navegarComTeclado, moverFoco, focar } from "./controle.js";
@@ -55,7 +56,7 @@ export function criarCasca({
   document.title = titulo;
   preCarregarFalas(Object.values(falas).filter(Boolean));
   const chaveEstrelas = `rabisco-${id}-niveis`;
-  const lerFeitos = () => { try { return JSON.parse(localStorage.getItem(chaveEstrelas) || "{}"); } catch { return {}; } };
+  const lerFeitos = () => { try { return JSON.parse(armazem.getItem(chaveEstrelas) || "{}"); } catch { return {}; } };
 
   // ---------- DOM
   const palco = el("main", { id: "palco", class: "escondido" });
@@ -212,7 +213,7 @@ export function criarCasca({
     estado = "vitoria";
     musica.parar();
     const f = lerFeitos(); f[nivel] = true;
-    try { localStorage.setItem(chaveEstrelas, JSON.stringify(f)); } catch { /* sem armazenamento */ }
+    try { armazem.setItem(chaveEstrelas, JSON.stringify(f)); } catch { /* sem armazenamento */ }
     vitTitulo.textContent = t;
     vitEstrelas.innerHTML = estrelas == null ? "" : [1, 2, 3].map((k) => `<span class="${k <= estrelas ? "" : "apagada"}" style="animation-delay:${0.3 + k * 0.25}s">⭐</span>`).join("");
     vitTexto.textContent = texto;

@@ -100,11 +100,11 @@ export function mesclarPorMaterial(raiz, { juntas = null, sombra = ["pintura"] }
 // cabine, altura]; teto: [início, fim, altura]; porta-malas: altura da traseira (sedã)
 const R_RODA = 0.36, TRILHA = 0.835, CINTA = 0.98;
 export const MODELOS_JE = {
-  "hatch-g5": { nome: "Hatch rebaixado", zF: 2.3, zR: -2.28, larg: 1.97, eixos: [1.4, -1.5], cabine: [0.98, -2.1], teto: [0.22, -1.45, 1.68], assento: [0.42, 0.44, 0.04], aro: 0xcfd3d8, aerofolio: true },
-  seda: { nome: "Sedã rebaixado", sedan: true, zF: 2.42, zR: -2.5, larg: 1.98, eixos: [1.47, -1.55], cabine: [0.98, -1.7], teto: [0.1, -1.05, 1.68], assento: [0.42, 0.44, 0.04], aro: 0x2a2c31 },
-  celta: { nome: "Hatch pequeno", zF: 2.16, zR: -2.14, larg: 1.92, eixos: [1.3, -1.33], cabine: [0.9, -1.98], teto: [0.2, -1.35, 1.7], assento: [0.41, 0.43, 0], aro: 0xffcc1f },
-  quadrado: { nome: "Hatch quadradinho", zF: 2.06, zR: -2.06, larg: 1.9, eixos: [1.25, -1.3], cabine: [1.1, -2.0], teto: [0.62, -1.85, 1.76], assento: [0.41, 0.48, -0.1], aro: 0xdfe3e8 },
-  medio: { nome: "Hatch médio", zF: 2.38, zR: -2.3, larg: 2.0, eixos: [1.45, -1.5], cabine: [1.0, -2.05], teto: [0.2, -1.2, 1.66], assento: [0.42, 0.42, -0.12], aro: 0xe8413c, aerofolio: true },
+  "hatch-g5": { nome: "Hatch rebaixado", zF: 2.3, zR: -2.28, larg: 1.97, eixos: [1.4, -1.5], cabine: [0.98, -2.1], teto: [0.22, -1.45, 1.78], assento: [0.42, 0.44, 0.04], aro: 0xcfd3d8, aerofolio: true },
+  seda: { nome: "Sedã rebaixado", sedan: true, zF: 2.42, zR: -2.5, larg: 1.98, eixos: [1.47, -1.55], cabine: [0.98, -1.7], teto: [0.1, -1.05, 1.78], assento: [0.42, 0.44, 0.04], aro: 0x2a2c31 },
+  celta: { nome: "Hatch pequeno", zF: 2.16, zR: -2.14, larg: 1.92, eixos: [1.3, -1.33], cabine: [0.9, -1.98], teto: [0.2, -1.35, 1.8], assento: [0.41, 0.43, 0], aro: 0xffcc1f },
+  quadrado: { nome: "Hatch quadradinho", zF: 2.06, zR: -2.06, larg: 1.9, eixos: [1.25, -1.3], cabine: [1.1, -2.0], teto: [0.62, -1.85, 1.86], assento: [0.41, 0.48, -0.1], aro: 0xdfe3e8 },
+  medio: { nome: "Hatch médio", zF: 2.38, zR: -2.3, larg: 2.0, eixos: [1.45, -1.5], cabine: [1.0, -2.05], teto: [0.2, -1.2, 1.76], assento: [0.42, 0.42, -0.12], aro: 0xe8413c, aerofolio: true },
 };
 export const ID_JE = Object.keys(MODELOS_JE);
 const caixaJ = (w, h, d, x, y, z) => { const b = new THREE.BoxGeometry(w, h, d).toNonIndexed(); b.translate(x, y, z); return b; };

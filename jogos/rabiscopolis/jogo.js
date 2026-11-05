@@ -9,7 +9,7 @@
 // · jogador2.js (2 jogadores: com 1 jogador só o Rabisco; o jogador 2 escolhe a criança do cadastro ou um amigo do estojo).
 // ?teste expõe window.teste.
 
-import { THREE, MAT, mesclar, placa } from "./base3d.js";
+import { THREE, MAT, mesclar } from "./base3d.js";
 import { PARCEIROS } from "../../src/parceiros.js";
 import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
 import { criarCasca, el } from "../../src/motor/casca.js";
@@ -29,6 +29,7 @@ import { criarDesafios } from "./desafios.js";
 import { criarNatal } from "./natal-cidade.js";
 import { criarPatioJE, enfeitarCarro } from "./je-patio.js";
 import { criarJogador2 } from "./jogador2.js";
+import { criarPlacaNome } from "./placa-nome.js";
 import { CODIGOS_J2, TECLAS_J1_EXTRA } from "../../src/motor/jogadores.js";
 import { criarMorador, criarVovo } from "./personagens.js";
 import { criarRabifone } from "./rabifone.js";
@@ -287,29 +288,20 @@ const nomeDaPlaca = () => {
   const n = (nomeCrianca() || salvo.nomeRabisco || "").trim().replace(/\s+/g, " ");
   return (n.length > 12 ? n.split(" ")[0] : n).slice(0, 12);
 };
-let placaNome = null; // { sprite, nome }
+let placaNome = null; // etiqueta de nome (placa-nome.js): balãozinho ciano do jogador 1
 function criarPlaca() {
   placaNome = null;
   atualizarPlaca();
-  document.fonts?.ready.then(() => { if (placaNome) { placaNome.nome = null; atualizarPlaca(); } });
 }
 function atualizarPlaca() {
   if (!rabisco) return;
   const nome = nomeDaPlaca();
-  if (!nome) { if (placaNome) placaNome.sprite.visible = false; return; }
+  if (!nome) { placaNome?.esconder(); return; }
   if (!placaNome) {
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false }));
-    sprite.scale.set(0.76, 0.22, 1); sprite.position.y = 1.97; sprite.renderOrder = 7;
-    rabisco.grupo.add(sprite);
-    placaNome = { sprite, nome: null };
+    placaNome = criarPlacaNome({ estilo: "j1", altura: 1.97, veiculo: () => dentro, toque: Boolean(qualidade?.perfil?.toque) });
+    rabisco.grupo.add(placaNome.sprite);
   }
-  if (placaNome.nome !== nome) {
-    placaNome.sprite.material.map?.dispose();
-    placaNome.sprite.material.map = placa(nome, { cor: "#ec2e8c", w: 384, h: 112 });
-    placaNome.sprite.material.needsUpdate = true;
-    placaNome.nome = nome;
-  }
-  placaNome.sprite.visible = !dentro; // dentro de um veículo a plaquinha fica escondida (o teto e o vidro a cobririam)
+  placaNome.definir(nome); // dentro de um veículo ela sobe para cima do teto (placa-nome.js)
 }
 
 function iniciar() {
@@ -1270,12 +1262,47 @@ function quadro() {
   if (doisToque !== quadro.doisToque) { quadro.doisToque = doisToque; if (qualidade.perfil.toque) { mundo.alcance = doisToque ? 78 : 95; mundo.detalheAte = doisToque ? 28 : 35; cena.fog.far = mundo.alcance; } }
   for (let p = 0; p < passos; p++) passo(total / passos, p === passos - 1);
   if (j2?.ativo) j2.hud(cam, { veiculo: dentro, alturaRabisco: emCasa || emLugar ? 1.5 : 1.6 });
+  if (placaNome) placaNome.sprite.visible = placaNome.estado.visivel && !j2?.ativo; // a 2 o Rabisco usa o "🎮1" (jogador2.js): sem etiqueta dupla
   somDoMotor();
   estat.tj = (estat.tj ?? 0) + total; // tempo de jogo (o que os passos simularam), para os testes
   r3.render(cena, cam);
   estat.calls = r3.info.render.calls; estat.tris = r3.info.render.triangles;
   estat.n++;
   requestAnimationFrame(quadro);
+}
+// colisão entre veículos: caixa orientada de cada veículo próximo (estacionado, outro do jogador ou do trânsito).
+// Veículo no ar (helicóptero alto) não bate em ninguém e ninguém bate nele.
+const caixaVeiculo = (v) => ({ x: v.pos.x, z: v.pos.z, raio: v.comp, caixa: { ang: v.ang, hl: v.comp, hw: v.larg } });
+const caixaTransito = (k) => ({ x: k.g.position.x, z: k.g.position.z, raio: 2.4, ia: k, fantasma: (k.fantasma ?? 0) > 0, caixa: { ang: k.g.rotation.y, hl: 2.3, hw: 1.1 } });
+function veiculosPerto(v, alcance = 16) {
+  const lista = [];
+  for (const o of veiculos) if (o !== v && o.alt < 1.5 && Math.hypot(o.pos.x - v.pos.x, o.pos.z - v.pos.z) < alcance) lista.push(caixaVeiculo(o));
+  for (const k of transito) if (Math.hypot(k.g.position.x - v.pos.x, k.g.position.z - v.pos.z) < alcance) lista.push(caixaTransito(k));
+  // carro do trânsito NUNCA prende o jogador: se já está sobreposto a um (nasceu em cima, ou ele entrou na frente de um
+  // cruzamento), esse carro vira fantasma até separar; só impede de ENTRAR nele
+  for (const o of lista) if (o.ia && !o.fantasma && fis.veiculoPen(v, v.pos.x, v.pos.z, v.ang, [o]) > 0.3) o.fantasma = true; // (encostar rente, até 4 cm, não conta)
+  return lista;
+}
+// o trânsito cede: quem o jogador empurra de frente dá ré pela rota (e não trava ninguém); se não tem como ceder (ou
+// o jogador fica espremido), depois de 0,8 s o carro vira fantasma por 2,5 s e o jogador passa
+function transitoCede(dt, lista, iy = 0) {
+  for (const k of transito) { if (k.fantasma > 0) k.fantasma -= dt; k.ceder = 0; }
+  if (!dentro || (dentro.tipo === "heli" && dentro.alt > 1.5)) return;
+  let preso = null; // espremido: sem como andar nem para frente nem para trás (calculado só se algum carro está encostado)
+  for (const o of lista) {
+    if (!o.ia) continue;
+    const k = o.ia;
+    if (o.fantasma || fis.folgaAte(dentro, o) > 0.3) { k.pressT = 0; continue; }
+    // o jogador está na frente do carro (ele dá ré pela rota, se não tem ninguém atrás) ou atrás (segue o ritmo da IA)?
+    const fx = Math.sin(k.g.rotation.y), fz = Math.cos(k.g.rotation.y);
+    const rel = (q) => [(q.g.position.x - o.x) * fx + (q.g.position.z - o.z) * fz, Math.abs((q.g.position.x - o.x) * fz - (q.g.position.z - o.z) * fx)];
+    if ((dentro.pos.x - o.x) * fx + (dentro.pos.z - o.z) * fz > 0 && Math.abs(iy) > 0.15 && (o.x - dentro.pos.x) * Math.sin(dentro.ang) * Math.sign(iy) + (o.z - dentro.pos.z) * Math.cos(dentro.ang) * Math.sign(iy) > 0 && !transito.some((q) => { if (q === k) return false; const [a, l] = rel(q); return a < 0 && a > -6.5 && l < 1.8; })) k.ceder = -1;
+    // último recurso (nunca prender o jogador): se ele está de fato espremido, depois de 0,8 s o carro vira fantasma por 2,5 s
+    const dx = Math.sin(dentro.ang) * 0.7, dz = Math.cos(dentro.ang) * 0.7;
+    preso ??= fis.veiculoPen(dentro, dentro.pos.x + dx, dentro.pos.z + dz, dentro.ang, lista) > 0.04 && fis.veiculoPen(dentro, dentro.pos.x - dx, dentro.pos.z - dz, dentro.ang, lista) > 0.04;
+    k.pressT = preso ? (k.pressT ?? 0) + dt : 0;
+    if (k.pressT > 0.8) { k.fantasma = 2.5; k.pressT = 0; }
+  }
 }
 function passo(dt, ultimo) {
   const t = relogio.elapsedTime;
@@ -1285,7 +1312,9 @@ function passo(dt, ultimo) {
     if (dentro?.tipo === "heli") {
       const subir = tem("pular") || pad.pulo || toque?.carro.subir || entradaTeste?.subir;
       const descer = tem("descer") || pad.descer || toque?.carro.descer || entradaTeste?.descer;
-      fis.voar(dentro, { ix: ent.ix, iy: ent.iy, subir, descer }, dt);
+      const perto = dentro.alt < 2 ? veiculosPerto(dentro) : [];
+      fis.voar(dentro, { ix: ent.ix, iy: ent.iy, subir, descer }, dt, perto);
+      transitoCede(dt, perto, ent.iy);
       pad.puloNovo = false; if (toque) toque.puloNovo = false;
       j.pos.set(dentro.pos.x, dentro.alt + 0.07, dentro.pos.z); j.dir = dentro.ang;
       rabisco.atualizar(dt, { modo: "dirigir", virar: dentro.virar });
@@ -1296,9 +1325,10 @@ function passo(dt, ultimo) {
       if (vovo) gente.push({ x: vovo.grupo.position.x, z: vovo.grupo.position.z, raio: 0.5 });
       if (missoes) gente.push(...missoes.obstaculos());
       if (j2?.pos && !j2.sentado) gente.push({ x: j2.pos.x, z: j2.pos.z, raio: 0.6 });
-      // carro da IA NÃO entra aqui (nunca bloqueia o Rabisco): é ele que freia antes de encostar
-      const outros = veiculos.filter((v) => v !== dentro).map((v) => ({ x: v.pos.x, z: v.pos.z, raio: v.comp })).concat(gente);
+      // os outros veículos (parados, do jogador e do trânsito) são caixas de verdade; o trânsito cede e nunca prende (veja acima)
+      const outros = veiculosPerto(dentro).concat(gente);
       if (fis.dirigir(dentro, ent, dt, outros)) { sons.batida(); navigator.vibrate?.(30); }
+      transitoCede(dt, outros, ent.iy);
       const segurando = tem("pular") || pad.pulo || toque?.carro.especial || entradaTeste?.especial;
       if ((pad.puloNovo || toque?.puloNovo || toque?.especialNovo || entradaTeste?.especialNovo) && dentro.buzina <= 0) { acionarEspecial(dentro); dentro.buzina = dentro.g.userData.especial === "buzina" ? 0.8 : 1.5; if (entradaTeste) entradaTeste.especialNovo = false; }
       if (toque) toque.especialNovo = false;
@@ -1531,31 +1561,49 @@ function irParaLugar(it) {
   atualizarBussola();
 }
 function cancelarDestino() { alvoMapa = null; atualizarBussola(); }
-// seta 3D (2 malhas: a seta e o contorno) e o farol no destino (1 malha): só com destino marcado, 3 chamadas de desenho
+// seta 3D (2 malhas: a seta e o brilho em volta) e o farol no destino (1 malha): só com destino marcado, 3 chamadas de desenho.
+// Discreta: pequena, rosa meio transparente, flutuando acima e um pouco à frente da cabeça (acima da etiqueta do nome),
+// girando suave para o destino e pulsando de leve. No veículo fica acima do teto (helicóptero inclusive).
 function criarGuia() {
   const s = new THREE.Shape();
   s.moveTo(-0.36, -1.3); s.lineTo(0.36, -1.3); s.lineTo(0.36, 0.05); s.lineTo(0.95, 0.05); s.lineTo(0, 1.4); s.lineTo(-0.95, 0.05); s.lineTo(-0.36, 0.05); s.closePath();
   const geo = new THREE.ExtrudeGeometry(s, { depth: 0.3, bevelEnabled: false });
   geo.translate(0, 0, -0.15); geo.rotateX(Math.PI / 2); // deitada, com a ponta para +z
-  const seta = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xff2a6a }));
-  const borda = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x151515, side: THREE.BackSide })); borda.scale.setScalar(1.16);
+  const seta = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xff4f9a, transparent: true, opacity: 0.85, depthWrite: false, fog: false }));
+  const borda = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, side: THREE.BackSide, depthWrite: false, fog: false })); borda.scale.setScalar(1.12);
+  seta.renderOrder = borda.renderOrder = 6;
   const g = new THREE.Group(); g.add(borda, seta);
-  const farol = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 70, 18, 1, true), new THREE.MeshBasicMaterial({ color: 0xff2a6a, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+  const farol = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 70, 18, 1, true), new THREE.MeshBasicMaterial({ color: 0xff4f9a, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide, fog: false }));
   g.visible = farol.visible = false;
   cena.add(g, farol);
-  return { g, farol };
+  return { g, farol, rot: 0, t: 0, tam: 0 };
 }
+// altura do teto do veículo (a etiqueta do nome usa a mesma conta: placa-nome.js guarda em userData.topoPlaca)
+const topoVeiculo = (v) => v.g.userData.topoPlaca ?? (v.tipo === "heli" ? 3.8 : v.tipo === "onibus" ? 3.5 : 2.2);
+const TMP_G = { d: new THREE.Vector3(), n: new THREE.Vector3(), x: new THREE.Vector3(), m: new THREE.Matrix4() };
 function atualizarGuia(t) {
   if (!guia) return;
   const a = alvoMapa, mostra = Boolean(a) && !emCasa && !emLugar && !roda;
+  const apareceu = mostra && !guia.g.visible, dt = Math.min(0.1, Math.max(0, t - guia.t)); guia.t = t;
   guia.g.visible = guia.farol.visible = mostra;
   if (!mostra) return;
   const base = dentro ? dentro.pos : j.pos, heli = dentro?.tipo === "heli";
   const dx = a.x - base.x, dz = a.z - base.z, d = Math.hypot(dx, dz) || 1;
-  const k = Math.min(dentro ? (heli ? 7 : 5) : 2.4, d * 0.5);
-  guia.g.position.set(base.x + (dx / d) * k, base.y + (dentro ? (heli ? -0.6 : 2.7) : 0.95) + Math.sin(t * 4) * 0.15, base.z + (dz / d) * k);
-  guia.g.rotation.y = Math.atan2(dx, dz);
-  guia.g.scale.setScalar(dentro ? (heli ? 2 : 1.4) : 0.6);
+  const k = Math.min(dentro ? (heli ? 1.2 : 0.8) : 0.45, d * 0.5); // um pouco à frente, na direção do destino
+  const alto = dentro ? topoVeiculo(dentro) + 1.35 : 2.95; // acima da cabeça (e da etiqueta do nome)
+  guia.g.position.set(base.x + (dx / d) * k, base.y + alto + Math.sin(t * 2.6) * 0.08, base.z + (dz / d) * k);
+  const ang = Math.atan2(dx, dz);
+  guia.rot = apareceu ? ang : guia.rot + Math.atan2(Math.sin(ang - guia.rot), Math.cos(ang - guia.rot)) * Math.min(1, dt * 7);
+  // a câmera fica quase na altura da seta: deitada ela sumiria de lado. Ela fica numa "cartinha" virada para a câmera
+  // (um pouco inclinada para cima), apontando para onde o destino fica dentro desse plano: longe = para cima, ao lado = de lado
+  const d3 = TMP_G.d.set(Math.sin(guia.rot), 0, Math.cos(guia.rot));
+  const N = TMP_G.n.copy(cam.position).sub(guia.g.position).normalize().multiplyScalar(0.8); N.y += 0.5; N.normalize();
+  d3.addScaledVector(N, -d3.dot(N)).normalize();
+  TMP_G.x.crossVectors(N, d3);
+  guia.g.quaternion.setFromRotationMatrix(TMP_G.m.makeBasis(TMP_G.x, N, d3));
+  const tam = dentro ? (heli ? 0.55 : 0.4) : 0.27; // ~30-45% do que era (0,6 a pé, 1,4 no carro, 2 no helicóptero)
+  guia.tam = apareceu ? tam : guia.tam + (tam - guia.tam) * Math.min(1, dt * 5);
+  guia.g.scale.setScalar(guia.tam * (1 + Math.sin(t * 4.2) * 0.06));
   guia.farol.position.set(a.x, 35, a.z);
 }
 // por cima do fundo do mapa grande: casinhas dos lotes, veículos e o alvo da missão (R: tamanho do alfinete; esc: px por metro)
@@ -1646,7 +1694,7 @@ if (params.has("teste")) window.teste = {
   get mundo() { return mundo; }, get dentro() { return dentro; }, get contexto() { return contexto?.rotulo ?? null; },
   get salvo() { return carregar(); }, get fone() { return fone; }, get transito() { return transito; }, get moradores() { return moradores; },
   get ceu() { return ceu; }, get estat() { return { ...estat, fps: qualidade?.fps ?? 0, blocos: mundo.blocosVisiveis(), malhas: mundo.malhas }; },
-  get vivo() { return vivo; }, get mapaLigado() { return mapaLigado; }, mapaPedido, get mapaUI() { return mapaUI; }, get alvoMapa() { return alvoMapa; }, get guia() { return guia ? { visivel: guia.g.visible, x: guia.g.position.x, z: guia.g.position.z, rot: guia.g.rotation.y, farol: guia.farol.visible } : null; }, Engrenagem, get meuRb() { return meuRb; }, get pecas() { return rabisco?.rp ? { ...rabisco.rp.atual } : null; }, get placa() { return placaNome ? { visivel: placaNome.sprite.visible, nome: placaNome.nome, y: placaNome.sprite.position.y } : null; }, get tempo() { return estat.tj ?? 0; }, get fis() { return fis; },
+  get vivo() { return vivo; }, get mapaLigado() { return mapaLigado; }, mapaPedido, get mapaUI() { return mapaUI; }, get alvoMapa() { return alvoMapa; }, get guia() { return guia ? { visivel: guia.g.visible, x: guia.g.position.x, y: guia.g.position.y, z: guia.g.position.z, rot: guia.rot, tam: guia.tam, farol: guia.farol.visible } : null; }, Engrenagem, get meuRb() { return meuRb; }, get pecas() { return rabisco?.rp ? { ...rabisco.rp.atual } : null; }, get placa() { return placaNome ? { ...placaNome.estado, y: placaNome.sprite.position.y, escala: placaNome.sprite.material.sizeAttenuation === false } : null; }, get tempo() { return estat.tj ?? 0; }, get fis() { return fis; },
   get modo() { return emCasa ? "casa" : emLugar ? "lugar" : dentro ? "veiculo" : "rua"; },
   get emLugar() { return emLugar ? { id: emLugar.id, est: emLugar.est, interativos: emLugar.interativos.map((i) => ({ id: i.id, rotulo: i.rotulo, pos: i.pos })) } : null; },
   get sorveteUI() { return sorveteUI; },

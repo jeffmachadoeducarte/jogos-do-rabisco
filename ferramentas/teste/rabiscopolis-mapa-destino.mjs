@@ -97,6 +97,9 @@ for (const [nome, opcoes] of [["celular em pé", { mobile: true, largura: 390, a
     // a seta aponta para a Marlon (que fica em -106, 149,5)
     const g = await t.ev("(() => { const g = teste.guia, p = teste.j.pos; const ang = Math.atan2(-106 - p.x, 149.5 - p.z); return Math.abs(Math.atan2(Math.sin(g.rot - ang), Math.cos(g.rot - ang))); })()");
     ok(g < 0.05, `${nome}: a seta 3D aponta para a Marlon Máquinas (erro ${g.toFixed(3)} rad)`);
+    // discreta: pequena e flutuando acima da cabeça (e da etiqueta do nome), pouco à frente do Rabisco
+    const gs = await t.ev("(() => { const g = teste.guia, p = teste.j.pos; return { tam: g.tam, alto: g.y - p.y, longe: Math.hypot(g.x - p.x, g.z - p.z) }; })()");
+    ok(gs.tam <= 0.3 && gs.alto > 2.6 && gs.alto < 3.4 && gs.longe < 1.2, `${nome}: a seta é pequena (${gs.tam.toFixed(2)}), alta (${gs.alto.toFixed(2)} m) e perto da cabeça (${gs.longe.toFixed(2)} m)`);
     await t.foto(`${FOTOS}${arq}-6-seta-guiando.png`);
     if (nome === "TV") {
       // o ✕ da bússola cancela

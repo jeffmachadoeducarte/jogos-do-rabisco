@@ -20,6 +20,90 @@ const PX = 410;                         // pixels por unidade
 const CHAO_PX = 2667;                   // linha do chão na arte
 const CENTRO = { frente: 1076, costas: 1076, lado: 1075 };
 
+// ---- street dance (hip-hop infantil): só articulações, no tempo de uma música (b = batida, ~100-110 BPM)
+// Regras do traço: o braço que sobe acima da cabeça é o esquerdo (do lado direito fica a aba do boné); nenhum braço passa na
+// frente do peito (a logo fica sempre à vista) nem vai muito para trás (a mochila e as alças ficam como estão).
+//   rb.danca = { passo, b }  e  rb.atualizar(dt, { modo: "street" })   (passo: um de PASSOS_STREET; b: batidas desde o começo do passo)
+//   passoStreet(b) → { passo, b }: a coreografia padrão em laço (8 compassos, termina no freeze)
+export const PASSOS_STREET = ["groove", "pump", "step", "running", "wave", "quadril", "giro", "freeze"];
+export const COREO_STREET = [[0, "pump"], [8, "step"], [16, "running"], [24, "wave"], [26, "quadril"], [28, "giro"], [30, "freeze"]];
+export function passoStreet(b, coreo = COREO_STREET, laco = 32) {
+  const x = ((b % laco) + laco) % laco;
+  let at = coreo[0];
+  for (const c of coreo) if (x >= c[0]) at = c;
+  return { passo: at[1], b: x - at[0] };
+}
+const VOLTA = Math.PI * 2, PERNA = 2.0; // perna nativa: quadril (y 2,0) até a sola
+const lisoSt = (k) => { const q = Math.max(0, Math.min(1, k)); return q * q * (3 - 2 * q); };
+const misturaSt = (a, b, k) => a + (b - a) * k;
+const abreSt = (dx) => Math.asin(Math.max(-0.6, Math.min(0.6, dx / PERNA))); // ângulo da perna para o pé ir dx para o lado
+function joelhos(p, a, b = a) { p.qE = -a; p.jE = 2 * a; p.qD = -b; p.jD = 2 * b; p.corpoY = -PERNA * (1 - Math.cos(Math.min(a, b))); }
+function poseStreet(p, passo, b, z0) {
+  const u = ((b % 1) + 1) % 1;
+  const desce = Math.pow(0.5 + 0.5 * Math.cos(u * VOLTA), 1.6); // 1 na batida (joelhos dobrados), 0 no contratempo
+  p.tronX = 0.05 + 0.06 * desce; // a cabeça acompanha a batida
+  if (passo === "pump") { // bounce com os punhos subindo e descendo, um de cada vez
+    joelhos(p, 0.14 + 0.26 * desce);
+    const lado = Math.floor(b) % 2 ? -1 : 1, kE = lado > 0 ? desce : 0, kD = lado < 0 ? desce : 0;
+    p.oEx = -0.45 - 0.75 * kE; p.oDx = -0.45 - 0.75 * kD; p.oEz = z0 + 0.12; p.oDz = -z0 - 0.12;
+    p.cE = -1.5 + 0.25 * kE; p.cD = -1.5 + 0.25 * kD;
+    p.tronY = lado * 0.13 * desce; p.tronX += 0.04 * desce;
+  } else if (passo === "step") { // step-touch: um pé abre para o lado, o corpo vai junto e o outro pé vem encostar
+    const S = Math.sin((Math.PI * b) / 2), C = Math.cos((Math.PI * b) / 2), wE = Math.max(0, S), wD = Math.max(0, -S);
+    const c = 0.24 * S, fE = 0.36 * wE, fD = -0.36 * wD;
+    p.corpoX = c; p.qEz = abreSt(fE - c); p.qDz = abreSt(fD - c);
+    const a = 0.12 + 0.18 * desce, vel = Math.abs(C); // o pé que está indo levanta um pouco; o outro encosta a ponta na hora do passo
+    const sobeE = S > 0 ? 0.28 * vel : 0.2 * S ** 6, sobeD = S < 0 ? 0.28 * vel : 0.2 * S ** 6;
+    p.qE = -a - sobeE; p.jE = 2 * a + 2 * sobeE; p.qD = -a - sobeD; p.jD = 2 * a + 2 * sobeD;
+    p.corpoY = -PERNA * (1 - Math.cos(a)) - PERNA * (1 - Math.cos(Math.max(Math.abs(p.qEz), Math.abs(p.qDz)))) * 0.6;
+    // aponta para o lado do passo: o esquerdo sobe na diagonal, o direito fica na altura do ombro (longe da aba)
+    p.oEz = misturaSt(z0 + 0.2, 2.05, wE); p.oEx = misturaSt(-0.55, -0.15, wE); p.cE = misturaSt(-1.35, -0.08, wE);
+    p.oDz = misturaSt(-z0 - 0.2, -1.42, wD); p.oDx = misturaSt(-0.55, -0.15, wD); p.cD = misturaSt(-1.35, -0.08, wD);
+    p.tronZ = -0.07 * S; p.tronY = 0.12 * S;
+  } else if (passo === "running") { // running man simplificado: um joelho sobe, o outro pé desliza para trás
+    const i = Math.floor(b), sobeE = i % 2 === 0, s = Math.sin(Math.PI * u);
+    const qSobe = 0.38 * (1 - u) - 1.0 * s, jSobe = 0.3 * (1 - u) + 1.45 * s, qApoio = 0.38 * u, jApoio = 0.3 * u + 0.08;
+    if (sobeE) { p.qE = qSobe; p.jE = jSobe; p.qD = qApoio; p.jD = jApoio; } else { p.qD = qSobe; p.jD = jSobe; p.qE = qApoio; p.jE = jApoio; }
+    p.corpoY = -PERNA * (1 - Math.cos(qApoio)) - 0.06 * desce;
+    // braços de corrida: o do lado contrário ao joelho vem para a frente (para trás, pouco: a mochila está ali)
+    const fr = -0.25 - 0.85 * s, tr = -0.05 + 0.3 * s;
+    p.oEx = sobeE ? tr : fr; p.oDx = sobeE ? fr : tr; p.cE = p.cD = -1.45; p.oEz = z0 + 0.1; p.oDz = -z0 - 0.1;
+    p.tronX = 0.1 + 0.05 * desce; p.tronY = (sobeE ? -1 : 1) * 0.1 * s;
+  } else if (passo === "wave") { // onda nos braços abertos: vai da mão esquerda até a direita a cada 2 batidas
+    joelhos(p, 0.1 + 0.12 * desce);
+    const x = (((b % 2) + 2) % 2) / 2, bump = (c) => Math.exp(-((x - c) ** 2) / 0.012);
+    const mE = bump(0.12), oE = bump(0.36), oD = bump(0.62), mD = bump(0.86);
+    p.oEz = 1.42 + 0.38 * oE + 0.15 * mE; p.cEz = 0.85 * mE + 0.2 * oE; p.oEx = -0.15;
+    p.oDz = -1.42 - 0.38 * oD - 0.15 * mD; p.cDz = -0.85 * mD - 0.2 * oD; p.oDx = -0.15;
+    p.cE = p.cD = -0.08; p.tronZ = 0.06 * (oD - oE); p.tronX = 0.04;
+  } else if (passo === "quadril") { // giro de quadril: os pés ficam no chão, o quadril passeia e o tronco compensa
+    const hx = 0.17 * Math.sin(Math.PI * b), a = 0.16 + 0.08 * desce;
+    joelhos(p, a);
+    p.corpoX = hx; p.qEz = p.qDz = abreSt(-hx);
+    p.tronZ = 0.32 * hx; p.tronX = 0.05 + 0.07 * Math.cos(Math.PI * b);
+    // mão esquerda "levanta o teto" e a direita na cintura (cotovelo para fora)
+    p.oEz = 2.6; p.oEx = -0.2; p.cE = -0.35 - 0.45 * desce;
+    p.oDz = -0.9; p.oDx = -0.08; p.cDz = 1.42; p.cD = -0.1;
+  } else if (passo === "giro") { // um giro no lugar (2 batidas), cotovelos dobrados e pezinhos marcando
+    const k = Math.min(1, Math.max(0, b / 2));
+    p.giro = VOLTA * lisoSt(k);
+    const pe = Math.max(0, Math.sin(VOLTA * b)), pd = Math.max(0, -Math.sin(VOLTA * b));
+    p.qE = -0.2 - 0.3 * pe; p.jE = 0.4 + 0.6 * pe; p.qD = -0.2 - 0.3 * pd; p.jD = 0.4 + 0.6 * pd; p.corpoY = -PERNA * (1 - Math.cos(0.2));
+    p.oEx = p.oDx = -0.55; p.cE = p.cD = -1.7; p.oEz = z0 + 0.35; p.oDz = -z0 - 0.35; p.tronX = 0.06;
+  } else if (passo === "freeze") { // pose final: dedo esquerdo apontando para o alto, mão direita na cintura, pernas abertas
+    const hit = 1 - lisoSt(b / 0.35); // um "tum" ao chegar na pose
+    p.qEz = 0.22; p.qDz = -0.18; p.qE = -0.28; p.jE = 0.55; p.qD = 0.04; p.jD = 0.05;
+    p.corpoY = -PERNA * (1 - Math.cos(0.22)) - 0.06 - 0.08 * hit;
+    p.oEz = 2.5; p.oEx = -0.35; p.cE = -0.1;
+    p.oDz = -0.9; p.oDx = -0.08; p.cDz = 1.42; p.cD = -0.1;
+    p.tronZ = -0.07; p.tronY = 0.22; p.tronX = 0.03 + 0.06 * hit;
+  } else { // groove: o balanço de esperar a batida
+    joelhos(p, 0.08 + 0.15 * desce);
+    p.oEz = z0 + 0.1; p.oDz = -z0 - 0.1; p.oEx = p.oDx = -0.12 - 0.12 * desce; p.cE = p.cD = -0.45 - 0.3 * desce;
+    p.tronY = 0.07 * Math.sin(Math.PI * b);
+  }
+}
+
 const COR = { azul: 0x00bdff, rosa: 0xf14ba8, pele: 0xffe5cf, laranja: 0xff6400, branco: 0xffffff };
 
 const vert = /* glsl */ `
@@ -530,7 +614,7 @@ export class Rabisco3D {
     const t = this.tempo, f = this.fase;
     const ritmo = Math.min(1, Math.abs(vel) / vmax);
     const z0 = this.restoOmbroZ;
-    const p = { tronX: 0, tronZ: 0, tronY: 0, corpoY: 0, qE: 0, qD: 0, jE: 0, jD: 0, oEx: 0, oDx: 0, oEz: z0, oDz: -z0, cE: 0, cD: 0 };
+    const p = { tronX: 0, tronZ: 0, tronY: 0, corpoY: 0, qE: 0, qD: 0, jE: 0, jD: 0, oEx: 0, oDx: 0, oEz: z0, oDz: -z0, cE: 0, cD: 0, corpoX: 0, qEz: 0, qDz: 0, cEz: 0, cDz: 0, giro: 0 };
     if (modo === "parado") {
       const r = Math.sin(t * 2.2);
       p.oEx = r * 0.04; p.oDx = -r * 0.04;
@@ -562,6 +646,9 @@ export class Rabisco3D {
       p.corpoY = pulo * 0.5;
       p.oEz = 2.5 + Math.sin(t * 10) * 0.2; p.oDz = -2.5 - Math.sin(t * 10) * 0.2;
       p.qE = p.qD = -pulo * 0.25; p.jE = p.jD = pulo * 0.5;
+    } else if (modo === "street") {
+      const d = this.danca ?? passoStreet(t * 1.75); // sem música: a coreografia padrão a 105 BPM
+      poseStreet(p, d.passo, d.b, z0);
     } else if (modo === "dirigir" || modo === "comemorarSentado") {
       p.qE = p.qD = -1.45; p.jE = p.jD = 1.3;
       if (modo === "dirigir") {
@@ -582,9 +669,10 @@ export class Rabisco3D {
     this.tempo += dt;
     if (modo === "andar") this.fase += (Math.abs(vel) * dt * Math.PI) / (1.6 * this.escala);
     const alvo = this.pose(modo, { vel, virar, vmax });
-    const k = Math.min(1, dt * (modo === "andar" ? 20 : 12));
+    const k = Math.min(1, dt * (modo === "andar" ? 20 : modo === "street" ? 16 : 12));
     for (const c in alvo) this.atual[c] = (this.atual[c] ?? alvo[c]) + (alvo[c] - (this.atual[c] ?? alvo[c])) * k;
     const a = this.atual;
+    a.giro = alvo.giro; // o giro da dança vai direto (de uma volta inteira para zero não pode voltar girando ao contrário)
     this.tronco.rotation.set(a.tronX, a.tronY, a.tronZ);
     this.corpo.position.y = a.corpoY * this.escala;
     this.pernaE.quadril.rotation.x = a.qE; this.pernaD.quadril.rotation.x = a.qD;
@@ -592,6 +680,14 @@ export class Rabisco3D {
     this.bracoE.ombro.rotation.set(a.oEx, 0, a.oEz);
     this.bracoD.ombro.rotation.set(a.oDx, 0, a.oDz);
     this.bracoE.cotovelo.rotation.x = a.cE; this.bracoD.cotovelo.rotation.x = a.cD;
+    // juntas que só a dança usa (pé para o lado, quadril, cotovelo de lado, giro): fora dela não mexe em nada
+    if (modo === "street" || this.restoStreet) {
+      this.corpo.position.x = a.corpoX * this.escala; this.corpo.rotation.y = a.giro;
+      this.pernaE.quadril.rotation.z = a.qEz; this.pernaD.quadril.rotation.z = a.qDz;
+      this.bracoE.cotovelo.rotation.z = a.cEz; this.bracoD.cotovelo.rotation.z = a.cDz;
+      this.restoStreet = modo === "street" || Math.abs(a.corpoX) + Math.abs(a.qEz) + Math.abs(a.qDz) + Math.abs(a.cEz) + Math.abs(a.cDz) > 1e-3;
+      if (!this.restoStreet) { this.corpo.position.x = 0; this.pernaE.quadril.rotation.z = this.pernaD.quadril.rotation.z = 0; this.bracoE.cotovelo.rotation.z = this.bracoD.cotovelo.rotation.z = 0; }
+    }
   }
 }
 

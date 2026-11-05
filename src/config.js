@@ -32,3 +32,14 @@ function salaDeTeste() {
   const ok = (u) => (typeof u === "string" && /^wss?:\/\/[^\s]+$/i.test(u) ? u : "");
   try { return ok(new URLSearchParams(globalThis.location?.search ?? "").get("sala")) || ok(globalThis.localStorage?.getItem("rabisco.salaTeste")); } catch { return ""; }
 }
+
+// API_CADASTRO: endpoint da Educarte que guarda o cadastro da família (sem foto) para contato, suporte, novidades
+// (só com o aceite) e pedidos de opinião. POST JSON { id, segredo, responsavel, criancas, consentimento, marketing }
+// (cria ou atualiza pelo id); DELETE <API_CADASTRO>/<id> com o cabeçalho X-Segredo apaga ("Apagar todos os dados").
+// Vazio = nada sai do aparelho. Teste sem mexer aqui: localStorage "teste.apiCadastro" com http://localhost:… ou
+// http://127.0.0.1:… (só endereço local; não há troca pela URL da página, para ninguém desviar os dados por um link).
+export const API_CADASTRO = apiDeTeste() || "https://sala.educarte.qzz.io/cadastro";
+
+function apiDeTeste() {
+  try { const u = globalThis.localStorage?.getItem("teste.apiCadastro") || ""; return /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/\S*$/i.test(u) ? u : ""; } catch { return ""; }
+}

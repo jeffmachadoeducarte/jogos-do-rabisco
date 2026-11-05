@@ -1,4 +1,4 @@
-// Rabiscoins: a moedinha do portal. Uma carteira só para todos os jogos, guardada NESTE aparelho (localStorage
+// Rabiscoins: a moedinha do portal. Uma carteira por JOGADOR (perfil da família), para todos os jogos, guardada NESTE aparelho (localStorage
 // "rabisco.rabiscoins.v1"); nada vai para a rede, não tem dinheiro de verdade nem compra fora do jogo.
 // A criança ganha brincando (concluir missão na Rabiscolândia; repetir rende menos) e gasta no Ateliê (roupas e pinturas).
 // Sem DOM e sem som (dá para testar em node): o contador e a animação ficam em rabiscoins-ui.js.
@@ -9,6 +9,9 @@
 //
 // Formato guardado: { saldo, ganhos: { [motivo]: vezes }, comprados: [id], total (tudo o que já ganhou) }
 
+// Cada jogador da família tem a sua carteira: a chave é do perfil ativo (src/motor/perfis.js).
+import { armazem } from "./perfis.js";
+
 const CHAVE = "rabisco.rabiscoins.v1";
 export const MAXIMO = 99999; // ninguém precisa de mais que isso (e o contador cabe na tela)
 const VAZIA = () => ({ saldo: 0, ganhos: {}, comprados: [], total: 0 });
@@ -16,14 +19,14 @@ const ouvintes = new Set();
 
 function ler() {
   try {
-    const d = JSON.parse(localStorage.getItem(CHAVE));
+    const d = JSON.parse(armazem.getItem(CHAVE));
     if (!d || typeof d !== "object") return VAZIA();
     const saldo = Number.isFinite(d.saldo) ? Math.max(0, Math.min(MAXIMO, Math.floor(d.saldo))) : 0;
     return { ...VAZIA(), ...d, saldo, ganhos: d.ganhos && typeof d.ganhos === "object" ? d.ganhos : {}, comprados: Array.isArray(d.comprados) ? d.comprados.filter((x) => typeof x === "string") : [] };
   } catch { return VAZIA(); }
 }
 function gravar(d, motivo) {
-  try { localStorage.setItem(CHAVE, JSON.stringify(d)); } catch { /* sem armazenamento: vale só até fechar */ }
+  try { armazem.setItem(CHAVE, JSON.stringify(d)); } catch { /* sem armazenamento: vale só até fechar */ }
   for (const fn of ouvintes) { try { fn(d, motivo); } catch { /* quem ouve não derruba a carteira */ } }
   return d;
 }
@@ -65,5 +68,5 @@ export function aoMudar(fn) { ouvintes.add(fn); return () => ouvintes.delete(fn)
 if (typeof addEventListener === "function") addEventListener("storage", (e) => { if (e.key === CHAVE) { const d = ler(); for (const fn of ouvintes) { try { fn(d, { tipo: "outra-aba" }); } catch { /* idem */ } } } });
 
 // só para os testes e para "começar de novo" na família
-export function zerar() { try { localStorage.removeItem(CHAVE); } catch { /* idem */ } for (const fn of ouvintes) { try { fn(VAZIA(), { tipo: "zerou" }); } catch { /* idem */ } } }
+export function zerar() { try { armazem.removeItem(CHAVE); } catch { /* idem */ } for (const fn of ouvintes) { try { fn(VAZIA(), { tipo: "zerou" }); } catch { /* idem */ } } }
 export { CHAVE };

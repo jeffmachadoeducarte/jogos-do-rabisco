@@ -63,9 +63,39 @@ export function criarFisica(mundo) {
   // anti-deadlock aceitar o movimento que sai de dentro. Carro da IA nunca entra aqui (o jogador o atravessa
   // como fantasma; é a IA que freia): quem monta "outros" não passa o trânsito, e o que vier com fantasma é ignorado.
   const FOLGA = 0.04; // tolerância de encosto: raspar de lado (tangente) não conta como bater
+  // pontos de teste ao longo do comprimento do veículo (cada um é um círculo de raio larg + 0,05)
+  const passosDe = (v) => (v.comp > 3 ? [-v.comp + 1.4, -v.comp / 2, 0, v.comp / 2, v.comp - 1.4] : v.comp < 1.6 ? [-v.comp * 0.6, 0, v.comp * 0.6] : [-1.5, 0, 1.5]);
+  // outros veículos: caixa orientada { ang, hl, hw } (quem tem caixa bate de verdade, rente à lataria) ou, sem caixa,
+  // o círculo antigo (gente, obstáculos de missão). Devolve a profundidade da sobreposição (0 = livre).
+  // folga(): distância da lataria (negativa = dentro), usada pelo trânsito para saber se está encostando.
+  function folgaCaixa(o, px, pz, L) {
+    const c = o.caixa, s = Math.sin(c.ang), co = Math.cos(c.ang), dx = px - o.x, dz = pz - o.z;
+    const du = Math.abs(dx * s + dz * co) - c.hl, dw = Math.abs(dx * co - dz * s) - c.hw;
+    return (du > 0 || dw > 0 ? Math.hypot(Math.max(du, 0), Math.max(dw, 0)) : Math.max(du, dw)) - L;
+  }
+  function penOutros(v, x, z, ang, outros) {
+    const fx = Math.sin(ang), fz = Math.cos(ang), L = v.larg + 0.05;
+    let pen = 0, pts = null;
+    for (const o of outros) {
+      if (o === v || o.fantasma) continue;
+      if (o.caixa) {
+        if (Math.hypot(o.x - x, o.z - z) > v.comp + o.caixa.hl + L + 1) continue; // longe: nem testa
+        pts ??= passosDe(v);
+        for (const k of pts) { const d = -folgaCaixa(o, x + fx * k, z + fz * k, L); if (d > pen) pen = d; }
+      } else { const d = (o.raio ?? 2.4) + v.larg + 0.6 - Math.hypot(o.x - x, o.z - z); if (d > pen) pen = d; }
+    }
+    return pen;
+  }
+  // menor distância entre a lataria do veículo e a caixa de `o` (≤ 0: encostado ou dentro)
+  function folgaAte(v, o) {
+    const fx = Math.sin(v.ang), fz = Math.cos(v.ang), L = v.larg + 0.05;
+    let m = 99;
+    for (const k of passosDe(v)) m = Math.min(m, folgaCaixa(o, v.pos.x + fx * k, v.pos.z + fz * k, L));
+    return m;
+  }
   function veiculoPen(v, x, z, ang, outros = []) {
     const fx = Math.sin(ang), fz = Math.cos(ang), L = v.larg + 0.05;
-    const passos = v.comp > 3 ? [-v.comp + 1.4, -v.comp / 2, 0, v.comp / 2, v.comp - 1.4] : v.comp < 1.6 ? [-v.comp * 0.6, 0, v.comp * 0.6] : [-1.5, 0, 1.5];
+    const passos = passosDe(v);
     let pen = 0;
     for (const k of passos) {
       const px = x + fx * k, pz = z + fz * k;
@@ -78,11 +108,8 @@ export function criarFisica(mundo) {
       // o mar: carro não entra na água (a profundidade conta da costa, para o anti-preso saber para onde sair)
       if (pz + L > MAR.costa && pz < MAR.z1 && !naIlha(px, pz, -L) && !dentroPier(px, pz, -L)) { const d = pz + L - MAR.costa; if (d > pen) pen = d; }
     }
-    for (const o of outros) {
-      if (o === v || o.fantasma) continue;
-      const d = (o.raio ?? 2.4) + v.larg + 0.6 - Math.hypot(o.x - x, o.z - z);
-      if (d > pen) pen = d;
-    }
+    const po = outros.length ? penOutros(v, x, z, ang, outros) : 0;
+    if (po > pen) pen = po;
     const b = Math.max(Math.abs(x), Math.abs(z)) - (BORDA + 6);
     return b > pen ? b : pen;
   }
@@ -137,8 +164,10 @@ export function criarFisica(mundo) {
     const dx0 = v.pos.x, dz0 = v.pos.z;
     if ((pen1 <= FOLGA && !fora) || sai) { v.pos.x = nx; v.pos.z = nz; }
     else {
-      if (Math.abs(v.vel) > 4 && v.batida <= 0 && pen0 <= FOLGA) { forte = true; v.batida = 0.8; }
-      v.vel *= pen0 > FOLGA ? 0.5 : -0.25;
+      // batida só no trânsito (sem parede, árvore ou veículo parado): o carro encosta e para, sem quicar nem fazer barulho forte
+      const soIA = !barco && outros.some((o) => o.ia) && veiculoPen(v, nx, nz, v.ang, outros.filter((o) => !o.ia)) <= FOLGA;
+      if (!soIA && Math.abs(v.vel) > 4 && v.batida <= 0 && pen0 <= FOLGA) { forte = true; v.batida = 0.8; }
+      v.vel *= pen0 > FOLGA ? 0.5 : soIA ? 0 : -0.25;
     }
     // anti-deadlock 2: preso (sobreposto, acelerador apertado, quase sem sair do lugar) por 0,5 s: empurra suave
     // para o ponto livre mais próximo
@@ -166,7 +195,7 @@ export function criarFisica(mundo) {
   const heliBate = (x, z, alt) => solidos.some((s) => (s.topo ?? s.y1) > alt + 0.3 && x > s.x0 - R_HELI && x < s.x1 + R_HELI && z > s.z0 - R_HELI && z < s.z1 + R_HELI)
     || (alt < 1 && circulos.some((c) => Math.hypot(x - c.x, z - c.z) < c.r + R_HELI)) || Math.abs(x) > BORDA + 4 || Math.abs(z) > BORDA + 4;
   // ent = { ix, iy, subir, descer } · devolve { pousado }
-  function voar(v, ent, dt) {
+  function voar(v, ent, dt, outros = []) {
     v.rotor += (1 - v.rotor) * Math.min(1, dt * 1.5); // motor ligado enquanto o Rabisco pilota
     const chao = chaoHeli(v.pos.x, v.pos.z);
     const noAr = v.alt > chao + 0.08;
@@ -179,11 +208,16 @@ export function criarFisica(mundo) {
     v.virar += (ent.ix - v.virar) * Math.min(1, dt * 6);
     if (noAr || Math.abs(ent.ix) > 0.1) v.ang -= v.virar * 1.5 * dt * (noAr ? 1 : 0.4);
     const nx = v.pos.x + Math.sin(v.ang) * v.vel * dt, nz = v.pos.z + Math.cos(v.ang) * v.vel * dt;
-    if (heliBate(nx, nz, v.alt)) v.vel *= -0.2; else { v.pos.x = nx; v.pos.z = nz; }
+    // no chão (pousado ou rente ao solo) o helicóptero esbarra nos outros veículos; no ar passa por cima de tudo
+    const baixo = v.alt - chao < 0.5 && outros.length > 0;
+    const veic = baixo ? penOutros(v, nx, nz, v.ang, outros) : 0, veic0 = baixo ? penOutros(v, v.pos.x, v.pos.z, v.ang, outros) : 0;
+    if (heliBate(nx, nz, v.alt)) v.vel *= -0.2;
+    else if (baixo && veic > FOLGA && veic >= veic0 - 1e-4) v.vel = 0; // encosta e para (se já está dentro de um, deixa sair)
+    else { v.pos.x = nx; v.pos.z = nz; }
     v.pos.y = v.alt;
     return { pousado: v.alt - chaoHeli(v.pos.x, v.pos.z) < 0.15 };
   }
   // motor desligando quando ninguém pilota
   function pararHeli(v, dt) { v.rotor = Math.max(0, v.rotor - dt * 0.5); v.vel = 0; v.vs = 0; }
-  return { chaoEm, bate, livre, andar, dirigir, veiculoBate, veiculoPen, voar, pararHeli, chaoHeli, naAguaDoMar };
+  return { chaoEm, bate, livre, andar, dirigir, veiculoBate, veiculoPen, folgaAte, voar, pararHeli, chaoHeli, naAguaDoMar };
 }
