@@ -9,7 +9,7 @@
 .perfis-tela button { touch-action: manipulation; }
 .perfis-tela button:focus-visible, .perfis-tela a:focus-visible, .perfis-tela .pilula:focus-within { outline: 5px solid var(--f-amarelo); outline-offset: 2px; }
 
-/* ---------- avatares (foto do rosto ou emoji num círculo colorido) ---------- */
+/* ---------- avatares (foto de perfil antigo, se houver, ou emoji num círculo colorido) ---------- */
 .perfil-avatar {
   width: clamp(88px, 22vmin, 170px); aspect-ratio: 1; border-radius: 50%; border: 5px solid var(--f-tinta); overflow: hidden;
   display: grid; place-items: center; font-size: clamp(44px, 11vmin, 90px); line-height: 1; background: #e9f6fd; box-shadow: 0 6px 0 var(--f-tinta);

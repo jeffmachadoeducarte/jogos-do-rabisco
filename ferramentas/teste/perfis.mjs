@@ -82,6 +82,7 @@ await preencher(t, '[data-campo="pin"]', "2580");
 // Enter no último campo também avança
 await t.ev(`document.querySelector('[data-campo="pin"]').form.requestSubmit()`);
 ok(await ate(t, `!!document.querySelector(".cadastro [data-etapa='2']:not([hidden])")`), "Continuar (Enter) leva à tela 2: quem vai jogar");
+ok(await t.ev(`!document.querySelector(".cadastro .botao-foto, .cadastro .botao-tirar, .cadastro .familia-foto, .cadastro input[type=file]") && !/foto/i.test(document.querySelector(".cadastro").textContent)`), "cadastro: nenhum botão nem menção de foto");
 // 1ª criança + outro filho + eu também quero jogar
 await preencher(t, '.cad-filho[data-filho="0"] [data-campo="filho-nome"]', "Alice");
 await preencher(t, '.cad-filho[data-filho="0"] [data-campo="filho-nasc"]', "2018-03-10");
@@ -264,6 +265,7 @@ console.log("\n== área dos pais: PIN, apagar perfil");
   await clicar(t, '[data-acao="novo-adulto"]');
   ok(await ate(t, `!!document.querySelector(".editar [data-campo='perfil-nome']")`), "\"Eu também quero jogar\" abre o perfil do adulto");
   ok((await t.ev(`document.querySelector(".editar [data-campo='perfil-nome']").value`)) === "João", "já vem com o primeiro nome do responsável");
+  ok(await t.ev(`!document.querySelector(".editar .botao-foto, .editar .botao-tirar, .editar .familia-foto, .editar input[type=file]") && !/foto/i.test(document.querySelector(".editar").textContent)`), "editar/adicionar adulto: nenhum botão de foto");
   await clicar(t, '.editar input[value="menino"]');
   await clicar(t, '[data-acao="salvar-perfil"]');
   await espera(300);
@@ -319,6 +321,7 @@ console.log("\n== 2 adultos + 2 crianças: cada um com o seu progresso; adultos 
   await clicar(t, '[data-acao="novo-adulto"]');
   ok(await ate(t, `!!document.querySelector(".editar [data-campo='perfil-nome']")`), "abre o formulário do adulto");
   ok(await t.ev(`!document.querySelector(".editar [data-campo='perfil-nasc']") && document.querySelector(".editar [data-campo='perfil-nome']").value === ""`), "adulto extra: sem data de nascimento e começa em branco");
+  ok(await t.ev(`!document.querySelector(".editar .botao-foto, .editar .botao-tirar, .editar .familia-foto, .editar input[type=file]") && !/foto/i.test(document.querySelector(".editar").textContent)`), "adicionar jogador: nenhum botão de foto");
   await clicar(t, '[data-acao="salvar-perfil"]');
   ok(/nome/.test(await erroVisivel(t)), "sem nome: pede o nome");
   await preencher(t, ".editar [data-campo='perfil-nome']", "Vovó");
@@ -436,6 +439,7 @@ console.log("\n== migração: progresso antigo vai para o 1º perfil, sem perder
   await ate(t, `!document.querySelector(".cadastro")`);
   r = await reg(t);
   ok(r.perfis.length === 1 && r.perfis[0].id === lara.id && r.perfis[0].foto === FOTO, "confirmar não duplica nem perde a Lara (mesmo perfil, mesma foto)");
+  ok(await ate(t, `document.querySelector("#familia .roda img")?.getAttribute("src") === ${J(FOTO)}`), "a foto que já existia continua aparecendo no chip");
   ok((await saldo(t)) === 321, "e as moedas continuam");
   // uma página antiga (cache) grava a chave sem perfil de novo: entra no perfil ativo na próxima carga
   await t.ev(`localStorage.setItem("rabisco.rabiscoins.v1", JSON.stringify({ saldo: 400, ganhos: {}, comprados: [], total: 480 }))`);

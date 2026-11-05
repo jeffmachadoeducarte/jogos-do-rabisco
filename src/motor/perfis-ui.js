@@ -1,6 +1,7 @@
 // Telas da família e dos jogadores (carregado sob demanda por src/motor/familia.js e pelo portal):
 //   · primeiraEntrada()   → na 1ª vez no portal: questionário único e rápido (2 telas): responsável (nome completo,
-//                           telefone, e-mail, PIN) + jogadores (primeiro nome, nascimento, menina/menino, foto opcional),
+//                           telefone, e-mail, PIN) + jogadores (primeiro nome, nascimento, menina/menino). Não pede foto;
+//                           a foto que já existir num perfil antigo continua aparecendo (avatar e chip).
 //                           "adicionar outro filho", "eu também quero jogar" e o consentimento do responsável legal.
 //   · abrirQuemJoga()     → "Quem vai jogar?": avatares grandes; tocar troca o jogador (a página recarrega no perfil dele).
 //   · abrirAreaDosPais()  → atrás do portão dos pais (PIN): adicionar/editar/apagar jogador, editar o cadastro,
@@ -9,7 +10,7 @@
 // Funciona com toque, teclado e controle (o foco anda dentro da janela: src/motor/controle.js). Nome vindo do cadastro
 // só entra na tela por textContent (nunca innerHTML).
 
-import { Familia, h, garantirCss as cssFamilia, abrirEtapaFoto, mascaraWhats, emailOk, idadeDe, PINS_FACEIS, URL_PRIVACIDADE, enfileirar, linkWhatsApp } from "./familia.js";
+import { Familia, h, garantirCss as cssFamilia, mascaraWhats, emailOk, idadeDe, PINS_FACEIS, URL_PRIVACIDADE, enfileirar, linkWhatsApp } from "./familia.js";
 import { Perfis } from "./perfis.js";
 import { definirModal, focar, navegarComTeclado } from "./controle.js";
 import { pausaAtual } from "./pausa.js";
@@ -69,17 +70,6 @@ function fecharJanela(tela) {
 const janela = (rotulo, classe, filhos) => h("div", { class: `familia-tela perfis-tela ${classe}`, role: "dialog", "aria-modal": "true", "aria-label": rotulo }, [h("div", { class: `familia-cartao ${classe}-cartao` }, filhos)]);
 const focarDepois = (el) => setTimeout(() => { if (el?.isConnected) { try { el.focus({ preventScroll: true }); } catch { /* */ } if (el.matches?.("button, a")) focar(el); } }, 60);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-
-// a etapa da foto (familia.js) também vira a janela do topo enquanto estiver aberta
-async function etapaFoto() {
-  const pr = abrirEtapaFoto();
-  const t = [...document.querySelectorAll(".foto-tela")].at(-1);
-  const item = t ? { tela: t, aoVoltar: () => t.querySelector(".familia-acoes .botao.branco")?.click() } : null;
-  if (item) { pilha.push(item); definirModal(t, { aoVoltar: item.aoVoltar }); }
-  const r = await pr;
-  if (item) { const i = pilha.indexOf(item); if (i >= 0) pilha.splice(i, 1); restaurarTopo(); }
-  return r;
-}
 
 // ------------------------------------------------------------------ avatar
 const emoji = (p) => (p?.tipo === "adulto" ? (p.genero === "menino" ? "👨" : p.genero === "menina" ? "👩" : "🧑") : p?.genero === "menina" ? "👧" : p?.genero === "menino" ? "👦" : "🧒");
@@ -274,21 +264,6 @@ function avisoDoNome() {
   };
   return { p, conferir };
 }
-// roda com a foto + botões (a foto é opcional e fica só neste aparelho)
-function blocoFoto(inicial, aoMudar) {
-  let foto = inicial || null;
-  const roda = h("span", { class: "roda", "aria-hidden": "true" });
-  const btn = h("button", { type: "button", class: "botao-foto" });
-  const tirar = h("button", { type: "button", class: "botao-tirar", texto: "✕ Tirar foto", onclick: () => { foto = null; desenhar(); aoMudar(foto); } });
-  btn.addEventListener("click", async () => { const r = await etapaFoto(); if (r === undefined) return; foto = r; desenhar(); aoMudar(foto); });
-  function desenhar() {
-    roda.replaceChildren(foto ? h("img", { src: foto, alt: "" }) : document.createTextNode("🙂"));
-    btn.textContent = foto ? "📷 Trocar a foto" : "📷 Foto do rosto (opcional)";
-    tirar.hidden = !foto;
-  }
-  desenhar();
-  return h("div", { class: "familia-foto" }, [roda, h("div", { class: "botoes" }, [btn, tirar])]);
-}
 
 // ------------------------------------------------------------------ questionário (1ª entrada e "Editar cadastro")
 let cadastroAberto = null;
@@ -315,7 +290,7 @@ export function abrirCadastroCompleto({ primeira = false } = {}) {
     const erro1 = h("p", { class: "erro", role: "alert" });
     const etapa1 = h("div", { class: "cad-etapa", "data-etapa": "1" }, [
       h("fieldset", {}, [h("legend", { texto: "👩‍👧 Responsável" }), h("div", { class: "familia-campos" }, [fNome.label, fTel.label, fEmail.label, fPin.label])]),
-      h("p", { class: "nota-cpf", texto: "Não pedimos CPF nem RG. A foto e o progresso ficam só neste aparelho." }),
+      h("p", { class: "nota-cpf", texto: "Não pedimos CPF nem RG. O progresso dos jogos fica só neste aparelho." }),
       erro1,
       h("div", { class: "familia-acoes" }, [
         h("button", { type: "button", class: "botao branco", "data-acao": "depois", texto: primeira ? "Agora não" : "Cancelar", onclick: () => fechar(false, true) }),
@@ -340,7 +315,7 @@ export function abrirCadastroCompleto({ primeira = false } = {}) {
       caixaGAdulto,
       h("label", { class: "familia-check cad-lgpd" }, [chkLgpd, h("span", {}, [
         h("b", { texto: "Sou o pai, a mãe ou o responsável legal" }),
-        document.createTextNode(" e autorizo a Educarte a guardar estes dados (neste aparelho e no servidor da escola, sem a foto) para os jogos chamarem cada criança pelo nome, separarem o progresso e para contato e suporte. Li a "),
+        document.createTextNode(" e autorizo a Educarte a guardar estes dados (neste aparelho e no servidor da escola) para os jogos chamarem cada criança pelo nome, separarem o progresso e para contato e suporte. Li a "),
         linkPolitica, document.createTextNode(". *"),
       ])]),
       h("label", { class: "familia-check" }, [chkNovidades, h("span", {}, [h("b", { texto: "Aceito receber novidades e pedidos de opinião da Educarte" }), document.createTextNode(" pelo WhatsApp/e-mail (opcional; dá para cancelar quando quiser).")])]),
@@ -365,7 +340,6 @@ export function abrirCadastroCompleto({ primeira = false } = {}) {
           h("div", { class: "familia-campos" }, [nome.label, nasc.label,
             h("div", { class: "largo cad-genero" }, [h("span", { class: "rotulo", texto: "Menina ou menino? *" }), g.caixa]),
             aviso.p,
-            blocoFoto(f.foto, (foto) => { f.foto = foto; }),
           ]),
         ]);
       }));
@@ -471,7 +445,6 @@ function editarPerfil(p, tipo = p?.tipo || "crianca") {
       adulto && novo ? h("p", { class: "intro", texto: "Pai, mãe, avó, tio… cada adulto tem o seu progresso. Só o primeiro nome fica guardado, neste aparelho." }) : null,
       h("div", { class: "familia-campos" }, [fNome.label, fNasc?.label,
         h("div", { class: "largo cad-genero" }, [h("span", { class: "rotulo", texto: adulto ? "A narradora vai dizer: *" : "Menina ou menino? *" }), g.caixa]),
-        blocoFoto(dados.foto, (f) => { dados.foto = f; }),
       ]),
       erro,
       h("div", { class: "familia-acoes" }, [
@@ -545,11 +518,11 @@ function painelPais() {
           h("button", { type: "button", class: "pais-grande", "data-acao": "cadastro", texto: "👩 Editar cadastro e PIN", onclick: acao(() => abrirCadastroCompleto()) }),
         ]),
         h("div", { class: "pais-privacidade" }, [
-          h("p", { texto: "🔒 A foto e o progresso ficam só neste aparelho. O cadastro (sem foto) fica guardado na Educarte." }),
+          h("p", { texto: "🔒 O progresso dos jogos fica só neste aparelho. O cadastro fica guardado na Educarte." }),
           politica,
           h("a", { class: "pais-link", "data-acao": "whatsapp", href: linkWhatsApp(), target: "_blank", rel: "noopener", texto: "💬 Fale com a gente (WhatsApp)" }),
           h("button", { type: "button", class: "pais-grande perigo", "data-acao": "apagar-tudo", texto: "🗑️ Apagar todos os dados deste aparelho", onclick: acao(async () => {
-            const sim = await confirmar({ titulo: "Apagar tudo deste aparelho?", texto: "Apaga deste aparelho o cadastro, as fotos e o progresso de TODOS os jogadores (moedas, casas, álbuns, missões) e pede à Educarte para apagar o cadastro guardado lá. Não dá para desfazer.", sim: "Sim, apagar tudo", perigo: true });
+            const sim = await confirmar({ titulo: "Apagar tudo deste aparelho?", texto: "Apaga deste aparelho o cadastro e o progresso de TODOS os jogadores (moedas, casas, álbuns, missões) e pede à Educarte para apagar o cadastro guardado lá. Não dá para desfazer.", sim: "Sim, apagar tudo", perigo: true });
             if (!sim) return;
             // espera o pedido de exclusão ao servidor (até 3 s) antes de recarregar; sem internet, fica pendente
             await Promise.race([Familia.apagarTudo(), new Promise((r) => setTimeout(r, 3000))]);
