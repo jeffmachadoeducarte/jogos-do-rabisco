@@ -4,10 +4,11 @@
 // Casos: (1) jogador bate na traseira de um carro do trânsito parado; (2) de frente (o trânsito cede, dando ré);
 // (3) contra um veículo estacionado (precisa parar rente, sem quicar); (4) helicóptero rente ao chão contra um estacionado,
 // e no ar passando por cima (não bate); (5) jogador já nasce sobreposto ao carro do trânsito e consegue sair.
-// Uso: python3 -m http.server 8097 &  node --experimental-websocket ferramentas/teste/colisao-veiculos-rabiscolandia.mjs [http://localhost:8097]
+// Uso: python3 -m http.server 8097 &  node --experimental-websocket ferramentas/teste/colisao-veiculos-rabiscolandia.mjs [http://localhost:8097] (TIPO=fusca|f1 para os carros novos)
 import { abrir, espera } from "./cdp.mjs";
 
 const BASE = process.argv[2] || "http://localhost:8097";
+const TIPO = process.env.TIPO || "carro"; // TIPO=fusca ou TIPO=f1 testa os carros novos da Garagem
 const FAMILIA = `localStorage.setItem("rabisco.familia", JSON.stringify({ responsavel: { nome: "Teste", email: "t@t" }, crianca: { nome: "Alice", genero: "menina" } }))`;
 const vigia = setTimeout(() => { console.log("✗ o teste travou"); process.exit(2); }, 10 * 60 * 1000);
 let falhas = 0;
@@ -62,8 +63,8 @@ try {
 
   // ---- (1) traseira de um carro do trânsito parado
   {
-    const iv = await t.ev(`__col.criar("carro")`);
-    ok(iv >= 0, "carro do jogador criado");
+    const iv = await t.ev(`__col.criar(${JSON.stringify(TIPO)})`);
+    ok(iv >= 0, `${TIPO} do jogador criado`);
     const c = await t.ev(`JSON.stringify(__col.trecho())`).then((s) => JSON.parse(s));
     await t.ev(`(() => { const c = __col.trecho(); __col.parar(c); T = teste; T.entrar(${iv}); T.posVeiculo(${iv}, c.cx - c.dx * 20, c.cz - c.dz * 20, c.h); const v = T.veiculos[${iv}]; v.vel = 0; v.preso = 0; v.saida = null; })()`);
     const outro = `(() => { const k = teste.transito[0]; return { x: k.g.position.x, z: k.g.position.z, raio: 2.4, caixa: { ang: k.g.rotation.y, hl: 2.3, hw: 1.1 } }; })`;
