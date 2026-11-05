@@ -1280,7 +1280,14 @@ function veiculosPerto(v, alcance = 16) {
   for (const k of transito) if (Math.hypot(k.g.position.x - v.pos.x, k.g.position.z - v.pos.z) < alcance) lista.push(caixaTransito(k));
   // carro do trânsito NUNCA prende o jogador: se já está sobreposto a um (nasceu em cima, ou ele entrou na frente de um
   // cruzamento), esse carro vira fantasma até separar; só impede de ENTRAR nele
-  for (const o of lista) if (o.ia && !o.fantasma && fis.veiculoPen(v, v.pos.x, v.pos.z, v.ang, [o]) > 0.3) o.fantasma = true; // (encostar rente, até 4 cm, não conta)
+  // (encostar rente não conta). O fantasma dura até o jogador sair com folga de 0,8 m: se voltasse a valer assim que a
+  // sobreposição some, o veículo (bicicleta, moto) acabava parado rente à lataria, com a saída do outro lado bloqueada
+  for (const o of lista) {
+    if (!o.ia) continue;
+    const gap = fis.folgaAte(v, o);
+    if (gap < -0.25) o.ia.sobre = true; else if (gap > 0.8) o.ia.sobre = false;
+    if (o.ia.sobre) o.fantasma = true;
+  }
   return lista;
 }
 // o trânsito cede: quem o jogador empurra de frente dá ré pela rota (e não trava ninguém); se não tem como ceder (ou
@@ -1295,8 +1302,19 @@ function transitoCede(dt, lista, iy = 0) {
     if (o.fantasma || fis.folgaAte(dentro, o) > 0.3) { k.pressT = 0; continue; }
     // o jogador está na frente do carro (ele dá ré pela rota, se não tem ninguém atrás) ou atrás (segue o ritmo da IA)?
     const fx = Math.sin(k.g.rotation.y), fz = Math.cos(k.g.rotation.y);
-    const rel = (q) => [(q.g.position.x - o.x) * fx + (q.g.position.z - o.z) * fz, Math.abs((q.g.position.x - o.x) * fz - (q.g.position.z - o.z) * fx)];
-    if ((dentro.pos.x - o.x) * fx + (dentro.pos.z - o.z) * fz > 0 && Math.abs(iy) > 0.15 && (o.x - dentro.pos.x) * Math.sin(dentro.ang) * Math.sign(iy) + (o.z - dentro.pos.z) * Math.cos(dentro.ang) * Math.sign(iy) > 0 && !transito.some((q) => { if (q === k) return false; const [a, l] = rel(q); return a < 0 && a > -6.5 && l < 1.8; })) k.ceder = -1;
+    // o jogador está na frente do carro e empurrando na direção dele? Então o carro dá ré pela rota e leva junto a fila
+    // que está atrás dele (carros enfileirados atrás também recuam: senão o primeiro não teria para onde ir)
+    if ((dentro.pos.x - o.x) * fx + (dentro.pos.z - o.z) * fz > 0 && Math.abs(iy) > 0.15 && (o.x - dentro.pos.x) * Math.sin(dentro.ang) * Math.sign(iy) + (o.z - dentro.pos.z) * Math.cos(dentro.ang) * Math.sign(iy) > 0) {
+      const fila = [k]; k.ceder = -1;
+      for (let i = 0; i < fila.length; i++) {
+        const c = fila[i], cx = Math.sin(c.g.rotation.y), cz = Math.cos(c.g.rotation.y);
+        for (const q of transito) {
+          if (q.ceder) continue;
+          const dx = q.g.position.x - c.g.position.x, dz = q.g.position.z - c.g.position.z, a = dx * cx + dz * cz;
+          if (a < 0 && a > -7.5 && Math.abs(dx * cz - dz * cx) < 1.8) { q.ceder = -1; fila.push(q); }
+        }
+      }
+    }
     // último recurso (nunca prender o jogador): se ele está de fato espremido, depois de 0,8 s o carro vira fantasma por 2,5 s
     const dx = Math.sin(dentro.ang) * 0.7, dz = Math.cos(dentro.ang) * 0.7;
     preso ??= fis.veiculoPen(dentro, dentro.pos.x + dx, dentro.pos.z + dz, dentro.ang, lista) > 0.04 && fis.veiculoPen(dentro, dentro.pos.x - dx, dentro.pos.z - dz, dentro.ang, lista) > 0.04;
