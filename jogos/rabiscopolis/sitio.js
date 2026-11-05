@@ -872,13 +872,14 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
   }
   let comidaGal = 0, comidaPatos = 0;
   const PONTO_PATOS = [Q.dentroLago[0] + 0.3, Q.dentroLago[1]];
-  // os braços do Rabisco no colo (jogo.js chama rabisco.aoPosar depois de animar o andar): ombros para a frente e para
-  // dentro, cotovelos dobrados, as duas mãos embaixo da Ale; o balanço do andar some dos braços
+  // os braços do Rabisco no colo, como um berço (jogo.js chama rabisco.aoPosar depois de animar o andar): os braços quase
+  // retos para baixo e um pouco para dentro, os cotovelos dobrados e os antebraços na altura da barriga, por baixo da Ale
+  // (as mãos nunca passam do peito); o balanço do andar some dos braços
   let quemSegura = null;
   function poseColo(rb) {
     quemSegura = rb;
-    rb.bracoE.ombro.rotation.set(-0.95, 0, -0.55); rb.bracoD.ombro.rotation.set(-0.95, 0, 0.55);
-    rb.bracoE.cotovelo.rotation.set(-1.05, 0, 0); rb.bracoD.cotovelo.rotation.set(-1.05, 0, 0);
+    rb.bracoE.ombro.rotation.set(-0.25, 0, -0.3); rb.bracoD.ombro.rotation.set(-0.25, 0, 0.3);
+    rb.bracoE.cotovelo.rotation.set(-1.0, 0, 0); rb.bracoD.cotovelo.rotation.set(-1.0, 0, 0);
   }
   function soltarColo() { if (quemSegura?.aoPosar === poseColo) quemSegura.aoPosar = null; quemSegura = null; }
   const pulosPeixe = [];
@@ -993,7 +994,7 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
       if (A.modo !== "fugida") return false;
       A.modo = "colo"; A.rabisco = rabisco.grupo;
       // no colo, como quem segura um bebê: aninhada na frente do peito, virada de lado, e os dois braços do Rabisco em volta
-      const sy = rabisco.grupo.scale.y || 1; rabisco.grupo.add(ale); ale.position.set(0.04 / sy, 0.74 / sy, 0.36 / sy); ale.rotation.set(0, Math.PI / 2, 0.15); ale.scale.setScalar(0.62 / sy);
+      const sy = rabisco.grupo.scale.y || 1; rabisco.grupo.add(ale); ale.position.set(0.02 / sy, 0.77 / sy, 0.24 / sy); ale.rotation.set(0, Math.PI / 2, 0.12); ale.scale.setScalar(0.62 / sy);
       rabisco.aoPosar = poseColo; quemSegura = rabisco;
       return true;
     },
