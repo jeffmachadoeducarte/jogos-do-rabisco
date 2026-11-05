@@ -374,11 +374,12 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   ok(!(await mm()), "mapa: ao sair de casa o minimapa volta se estava pedido"); await t.ev("teste.mapaPedido()"); await espera(200);
   // nome em cima do Rabisco: o do cadastro da família ("Alice"); some dentro de veículo
   const pl = await t.ev("teste.placa");
-  ok(pl?.visivel && pl.nome === "Alice", `nome: a plaquinha mostra "${pl?.nome}" em cima do Rabisco`);
-  await t.ev("teste.entrar(0)"); await espera(400);
-  ok(!(await t.ev("teste.placa.visivel")), "nome: dentro do veículo a plaquinha fica escondida");
-  await t.ev("teste.sair()"); await espera(400);
-  ok(await t.ev("teste.placa.visivel"), "nome: ao descer a plaquinha volta");
+  ok(pl?.visivel && pl.nome === "Alice" && pl.escala, `nome: a etiqueta mostra "${pl?.nome}" em cima do Rabisco, do mesmo tamanho na tela`);
+  await t.ev("teste.entrar(0)"); await espera(1200);
+  const plv = await t.ev("({ ...teste.placa, topo: teste.dentro.g.position.y + (teste.dentro.g.userData.topoPlaca ?? 0) })");
+  ok(plv.visivel && plv.yMundo > plv.topo, `nome: no veículo a etiqueta fica acima do teto (${plv.yMundo?.toFixed(2)} > ${plv.topo?.toFixed(2)})`);
+  await t.ev("teste.sair()"); await espera(1200);
+  ok(await t.ev("teste.placa.visivel && !teste.placa.acima"), "nome: ao descer a etiqueta volta para a cabeça");
   await t.foto(`${FOTOS}largada.png`);
   await orcamento(t, 250, "TV/computador");
   // (f)

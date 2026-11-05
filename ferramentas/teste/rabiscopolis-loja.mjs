@@ -171,7 +171,7 @@ const CONTADOR = "Number(document.querySelector('.rbc-contador b')?.textContent)
   ok(JSON.stringify(await t.ev("[teste.pecas.camiseta, teste.pecas.chapeu]")) === '["rosa","cartola"]' && await t.ev(`${NA_FUSAO("teste.rabisco.tronco", 0xf14ba8)} > 100 && !teste.rabisco.pivoAba.visible`), "depois de recarregar o Rabisco continua de camiseta rosa e cartola");
   ok(await t.ev("teste.Rabiscoins.tem('rabiscolandia:pintura:heli-laranja') && teste.salvo.pinturas.heli === 'heli-laranja'"), "a pintura comprada continua");
   // peça paga que não foi comprada (salvo mexido à mão) não vale
-  await t.ev("(() => { const k = 'rabisco.rabiscopolis.v1', d = JSON.parse(localStorage.getItem(k)); d.meuRabisco.chapeu = 'coroa'; localStorage.setItem(k, JSON.stringify(d)); })()");
+  await t.ev("(() => { const k = Perfis.chave('rabisco.rabiscopolis.v1'), d = JSON.parse(localStorage.getItem(k)); d.meuRabisco.chapeu = 'coroa'; localStorage.setItem(k, JSON.stringify(d)); })()");
   await t.cmd("Page.reload"); await esperarJogo(t);
   ok((await t.ev("teste.pecas.chapeu")) === "original", "peça não comprada no salvo volta para o original");
   // custo de desenho vestido (camiseta + boné de cor): segue no orçamento

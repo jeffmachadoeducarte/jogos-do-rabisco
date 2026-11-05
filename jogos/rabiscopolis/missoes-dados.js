@@ -884,6 +884,24 @@ export const MISSOES = [
     fimNome: "Muito bem, {nome}! As crianças voltaram para a Kids II felizes, contando tudo para a Diretora Sabrina. Um dia no campo é um presente de Deus.",
     verso: { texto: "Este é o dia que o Senhor fez: vamos nos alegrar!", ref: "baseado em Salmos 118.24" },
   },
+  {
+    // o Junior (mora na casa-container, no fundo do sítio) chama para pescar: pegar a vara no deck, jogar a linha da ponta
+    // do píer, puxar o peixe quando a boia afundar, mostrar para o Junior e soltar o peixe de volta no lago (cena "pesca").
+    // Independente das outras (o Junior é quem pede); sem propaganda, para não cansar
+    id: "parceiro-sitio-floresca-pesca", titulo: "Pescaria com o Junior", icone: "🎣", tipo: "cidadania", parceiro: "sitio-floresca", semPropaganda: true,
+    figurinha: [{ nome: "Peixe do lago", tipo: "peixe" }, { nome: "Casa-container", tipo: "container" }],
+    npcs: { junior: { nome: "Junior", tipo: "pessoa", pessoa: "junior", fachada: "parceiro-sitio-floresca", daFachada: "junior" } },
+    pedido: "Rabisco, o Junior chamou para uma pescaria no lago do sítio! Pegue a vara de pescar no deck, vá até a ponta do píer e jogue a linha.",
+    etapas: [{ tipo: "cena", cena: "pesca", ate: "junior", falas: [
+      { texto: "O Rabisco pegou a vara de pescar! Agora vá até a ponta do píer e jogue a linha no lago.", voz: "rp-m-parceiro-sitio-floresca-pesca-vara" },
+      { texto: "A boia afundou! Um peixe beliscou a isca. Puxe agora!", voz: "rp-m-parceiro-sitio-floresca-pesca-belisca" },
+      { texto: "Que peixe bonito! Agora mostre o peixe para o Junior.", voz: "rp-m-parceiro-sitio-floresca-pesca-pegou" },
+      { texto: "O Junior adorou o peixe! Juntos, eles soltaram o peixe de volta no lago, para ele continuar nadando.", voz: "rp-m-parceiro-sitio-floresca-pesca-soltou" },
+    ] }],
+    fim: "Que pescaria divertida! Cuidar dos peixes e do lago também é cuidar da criação de Deus.",
+    fimNome: "Muito bem, {nome}! Que pescaria divertida! Cuidar dos peixes e do lago também é cuidar da criação de Deus.",
+    verso: { texto: "Jesus disse aos pescadores: venham comigo, e eu farei de vocês pescadores de gente.", ref: "baseado em Mateus 4.19" },
+  },
 ];
 // palavras que não podem aparecer em nada que a criança vê ou ouve (teste rabiscopolis-conteudo.mjs)
 export const PROIBIDAS = ["arma", "revólver", "pistola", "tiro", "matar", "morte", "morreu", "sangue", "prisão", "preso", "polícia prende", "ladrão", "roubo", "roubar", "briga", "brigar", "soco", "susto", "monstro", "fantasma", "zumbi", "namor", "beijo", "roblox", "brookhaven", "robux", "dinheiro", "comprar", "pagar"];

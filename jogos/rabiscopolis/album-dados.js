@@ -38,7 +38,8 @@ for (const M of MISSOES) {
     else { const nova = { id: `a:pessoa-${gente.pessoa}`, pagina: "amigos", nome: gente.nome, sub: M.titulo, tipo: "pessoa", pessoa: gente.pessoa, missoes: [M.id], dica: `Missão: ${M.titulo}` }; pessoasFig.set(gente.pessoa, nova); amigos.push(nova); }
   }
   // missão de pessoa de verdade com um bichinho que também ganha figurinha (a pata Ale e o Duck do Sítio Floresça)
-  if (M.figurinha) amigos.push({ id: `a:${M.id}`, pagina: "amigos", nome: M.figurinha.nome, sub: M.titulo, tipo: M.figurinha.tipo, cor: M.figurinha.cor ?? null, missao: M.id, dica: `Missão: ${M.titulo}` });
+  // (figurinha pode ser uma lista: a primeira é a:<missão>, as outras a:<missão>-2, -3...; a Pescaria com o Junior dá o peixe e a casa-container)
+  if (M.figurinha) [].concat(M.figurinha).forEach((f, i) => amigos.push({ id: i ? `a:${M.id}-${i + 1}` : `a:${M.id}`, pagina: "amigos", nome: f.nome, sub: M.titulo, tipo: f.tipo, cor: f.cor ?? null, missao: M.id, dica: `Missão: ${M.titulo}` }));
   else if (q && q.tipo !== "pessoa") amigos.push({ id: `a:${M.id}`, pagina: "amigos", nome: q.nome, sub: M.titulo, tipo: q.tipo, cor: q.cor ?? null, missao: M.id, dica: `Missão: ${M.titulo}` });
   if (M.verso) versiculos.push({ id: `v:${M.id}`, pagina: "versiculos", nome: M.titulo, sub: M.verso.ref, texto: M.verso.texto, icone: M.icone, missao: M.id, dica: `Missão: ${M.titulo}` });
 }

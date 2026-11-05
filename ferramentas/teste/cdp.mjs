@@ -31,7 +31,7 @@ export async function abrir(url, { mobile = false, largura = 1280, altura = 800,
     if (d.id && pend[d.id]) { pend[d.id](d); delete pend[d.id]; }
     if (d.method === "Runtime.exceptionThrown") erros.push("EXC " + (d.params.exceptionDetails.exception?.description || d.params.exceptionDetails.text).slice(0, 300));
     if (d.method === "Runtime.consoleAPICalled" && d.params.type === "error") erros.push("ERR " + d.params.args.map((a) => a.value ?? a.description).join(" ").slice(0, 300));
-    if (d.method === "Network.loadingFailed" && !d.params.canceled) erros.push("NET " + d.params.errorText);
+    if (d.method === "Network.loadingFailed" && !d.params.canceled && !d.params.blockedReason) erros.push("NET " + d.params.errorText);
     if (d.method === "Network.responseReceived" && d.params.response.status >= 400 && !d.params.response.url.endsWith("favicon.ico")) erros.push(`HTTP ${d.params.response.status} ${d.params.response.url}`);
   });
   const cmd = (method, params = {}) => new Promise((r) => { pend[++id] = r; ws.send(JSON.stringify({ id, method, params })); });
@@ -41,6 +41,8 @@ export async function abrir(url, { mobile = false, largura = 1280, altura = 800,
     return r.result?.result?.value;
   };
   await cmd("Runtime.enable"); await cmd("Page.enable"); await cmd("Network.enable");
+  // testes nunca mandam cadastro de mentira para o servidor real da Educarte (perfis.mjs usa um servidor falso local)
+  await cmd("Network.setBlockedURLs", { urls: ["*sala.educarte.qzz.io/cadastro*"] });
   await cmd("Emulation.setDeviceMetricsOverride", { width: largura, height: altura, deviceScaleFactor: mobile ? 2 : 1, mobile });
   if (mobile) await cmd("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
   if (agente) await cmd("Emulation.setUserAgentOverride", { userAgent: agente });

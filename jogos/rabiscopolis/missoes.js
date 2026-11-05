@@ -116,7 +116,8 @@ function posicionarNaCidade(ctx) {
   for (const M of MISSOES) {
     for (const d of Object.values(M.npcs)) {
       // quem já fica na porta da parceira (pessoas.js, montado em mundo.js): a missão usa esse mesmo boneco
-      if (d.fachada) { const q = ctx.lugares?.().find((l) => l.id === d.fachada)?.pessoaNaPorta; if (q) { d.x = q.x; d.z = q.z; } }
+      // (daFachada: outra pessoa do mesmo lugar, como o Junior da casa-container do Sítio Floresça)
+      if (d.fachada) { const L = ctx.lugares?.().find((l) => l.id === d.fachada), q = d.daFachada ? L?.outrasPessoas?.[d.daFachada] : L?.pessoaNaPorta; if (q) { d.x = q.x; d.z = q.z; } }
       if (d.casa != null) naCasa(d, d.lado ?? 1.6);
       const e = d.escola && escDe(d);
       if (e) { d.x = e.x + d.escola[0]; d.z = e.z + d.escola[1]; d.rot = e.rot; }
@@ -165,7 +166,7 @@ export function criarMissoes(ctx) {
     // "mesmo": é a mesma pessoa de outra missão (a Professora Lápis Turquesa da Hora da Aula recebe o presente)
     if (d.mesmo) { const [mid, nid] = d.mesmo.split(":"); return npcDe(MISSOES.find((x) => x.id === mid), nid); }
     const n = { dados: d, M, id, quem: id === M.quem, festa: 0 };
-    const naPorta = d.fachada && ctx.lugares?.().find((l) => l.id === d.fachada)?.pessoaNaPorta;
+    const Lf = d.fachada && ctx.lugares?.().find((l) => l.id === d.fachada), naPorta = Lf && (d.daFachada ? Lf.outrasPessoas?.[d.daFachada] : Lf.pessoaNaPorta);
     // (naPorta.mundo: quem anda pelo lugar, como a Tia Regina no sítio, mantém esse [x, z] sempre em dia)
     if (naPorta) Object.assign(n, { m: naPorta.m, g: naPorta.m.grupo, fixo: true, pessoa: true, fachada: true, mundo: naPorta.mundo ?? [naPorta.x, naPorta.z] });
     else if (d.tipo === "vovo") Object.assign(n, { m: vovo, g: vovo.grupo, fixo: true });

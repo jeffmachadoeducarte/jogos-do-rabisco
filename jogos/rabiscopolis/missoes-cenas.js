@@ -4,7 +4,8 @@
 //   "obra" · Speedy Soluções: andaime e poeira; sai a frente antiga, entram os perfis de alumínio e depois a pele de vidro da Kids II
 //   "ale" · Sítio Floresça: pegar a pata Ale que fugiu e soltar no lago · "duck" · tirar o Duck do lago e levar até a Tia Regina
 //   "comida" · milho para as galinhas e os patos · "horta" · regar, colher e entregar · "rocar" · o roçador na grama alta ·
-//   "kids" · as crianças da Kids II de ônibus até o sítio (frutas e balanço de pneu) e de volta para a escola
+//   "kids" · as crianças da Kids II de ônibus até o sítio (frutas e balanço de pneu) e de volta para a escola ·
+//   "pesca" · pescaria com o Junior no píer da casa-container (pega, mostra e solta o peixe)
 //   "presepio" · Natal: as 7 peças do presépio entram uma por vez na praça, com a história do nascimento de Jesus
 // Só anda enquanto é a etapa atual: fim() desfaz tudo que for da cena (também quando a criança larga a missão).
 //
@@ -482,7 +483,7 @@ function cenaKids(ctx) {
     if (noBalanco) descerDoBalanco();
     if (fase !== "balancoPronto") return;
     const k = kids[balancou % kids.length], b = balanco();
-    noBalanco = k; k.modo = "balanco"; s.sentar(b.i, k.m.grupo); s.empurrar(b.i, 4.2); tBal = 4.4; comemorar(); ctx.sons.pulo?.();
+    noBalanco = k; k.modo = "balanco"; s.sentar(b.i, k.m.grupo); s.empurrar(b.i, 3.2); tBal = 3.2; comemorar(); ctx.sons.pulo?.();
   }
   return {
     contexto(p) {
@@ -546,4 +547,38 @@ function cenaKids(ctx) {
   };
 }
 
-export function criarCena(nome, ctx) { return ({ pet: cenaPet, obra: cenaObra, presepio: cenaPresepio, ale: cenaAle, duck: cenaDuck, comida: cenaComida, horta: cenaHorta, rocar: cenaRocar, kids: cenaKids })[nome](ctx); }
+// "pesca": pegar a vara no deck → jogar a linha da ponta do píer → a boia afunda (o peixe beliscou) → puxar → mostrar o peixe
+// para o Junior → soltar o peixe de volta no lago. Se não puxar a tempo, o peixe belisca de novo (nunca trava, nunca perde)
+function cenaPesca(ctx) {
+  const s = sitioDe(ctx), Q = SITIO, fala = falaDe(ctx), Y = Q.alturaDeck + 0.02;
+  let fase = "vara", tEspera = 0, tBelisca = 0, tFim = 0;
+  s.mostrarMarca(true, [Q.vara[0], Q.vara[1] + 0.9], Y);
+  const ponto = (q) => s.pontoMundo(q[0], q[1]);
+  const marcaPesca = () => s.mostrarMarca(true, Q.pesca, Y);
+  return {
+    contexto(p) {
+      if (fase === "vara" && s.perto(p, ponto(Q.vara), 2.4)) return { rotulo: "🎣 Pegar a vara de pescar", fazer: () => { s.pegar("vara", ctx.rabisco); ctx.sons.moeda?.(); s.junior.acenar(2); fase = "jogar"; marcaPesca(); fala(0); } };
+      if (fase === "jogar" && s.perto(p, ponto(Q.pesca), 2.2)) return { rotulo: "🎣 Jogar a linha", fazer: () => { s.boia("boiando"); s.mostrarMarca(false); fase = "esperando"; tEspera = 2.2 + Math.random() * 1.2; } };
+      if (fase === "beliscando" && s.perto(p, ponto(Q.pesca), 3)) return { rotulo: "🐟 Puxar o peixe!", fazer: () => {
+        s.boia("fora"); fase = "voando"; ctx.sons.vitoria?.();
+        s.peixeVoa(ctx.rabisco, false, () => { fase = "mostrar"; fala(2, 3600); });
+      } };
+      if (fase === "mostrar" && s.perto(p, s.juniorMundo(), 3)) return { rotulo: "🐟 Mostrar o peixe para o Junior", fazer: () => {
+        s.junior.comemorar(2.5); fase = "soltando"; ctx.sons.moeda?.();
+        s.peixeVoa(ctx.rabisco, true, () => { fala(3, 5200); tFim = 3.2; });
+      } };
+      return null;
+    },
+    atualizar(dt) {
+      if (fase === "esperando") { tEspera -= dt; if (tEspera <= 0) { fase = "beliscando"; tBelisca = 6; s.boia("beliscando"); ctx.sons.bichinho?.("plim"); fala(1, 3000); } }
+      else if (fase === "beliscando") { tBelisca -= dt; if (tBelisca <= 0) { fase = "esperando"; tEspera = 1.5; s.boia("boiando"); } } // escapou: belisca de novo daqui a pouco
+      if (tFim > 0) { tFim -= dt; if (tFim <= 0) { fase = "fim"; s.largar("vara"); ctx.fim(); } }
+    },
+    alvo() { return fase === "vara" ? { ...ponto(Q.vara), emoji: "🎣" } : ["jogar", "esperando", "beliscando"].includes(fase) ? { ...ponto(Q.pesca), emoji: "🎣" } : fase === "mostrar" ? { ...s.juniorMundo(), emoji: "🐟" } : null; },
+    texto() { return { vara: "Pegue a vara de pescar, no deck da casa-container", jogar: "Vá até a ponta do píer e jogue a linha", esperando: "Espere o peixe beliscar…", beliscando: "A boia afundou: puxe o peixe!", voando: "Pegou!", mostrar: "Mostre o peixe para o Junior", soltando: "Soltando o peixe de volta no lago…", fim: "" }[fase] ?? ""; },
+    info() { return { fase, boia: s.estadoBoia, vara: s.naMao("vara"), peixe: s.naMao("peixe") }; },
+    fim() { s.boia("fora"); s.largar("vara"); s.largar("peixe"); s.mostrarMarca(false); },
+  };
+}
+
+export function criarCena(nome, ctx) { return ({ pet: cenaPet, obra: cenaObra, presepio: cenaPresepio, ale: cenaAle, duck: cenaDuck, comida: cenaComida, horta: cenaHorta, rocar: cenaRocar, kids: cenaKids, pesca: cenaPesca })[nome](ctx); }

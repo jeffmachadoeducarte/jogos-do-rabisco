@@ -7,7 +7,9 @@
 //    madeira no oitão, calçada lateral) → logo atrás, no mesmo eixo, o salão comprido de treliça em losango (onde
 //    acontecem as aulas), com telha laranja, duas mansardas e o coração vazado → o espaço verde com a hortinha → o
 //    galinheiro → o lago QUADRADO cercado (palanques e tela, com o portãozinho), com o pinheiro alto ao lado;
-//  - a estradinha de cascalho vai do portão até a porta da casa; uma trilha de terra acompanha a fila até o lago;
+//  - a estradinha de cascalho vai do portão até a porta da casa;
+//  - no fundo, a casa-container branca do Junior (nervuras, porta de vidro de correr aberta com cortina, capacho), com o
+//    deck de madeira: a escada sobe na ponta, o deck passa na frente da porta e vira um pequeno píer sobre o lago;
 //  - o lado DIREITO é todo gramado livre, com a fileira de árvores frutíferas na divisa (mangueira, laranjeira, goiabeira,
 //    pitangueira, com as frutinhas à mostra) e balanços de pneu em algumas; palmeiras e a mata no fundo. Não tem celeiro;
 //  - quem mora lá: a Tia Regina (pessoas.js; não fala), o Duck (golden bem arteiro) e a pata Ale, com os patos e as galinhas;
@@ -217,6 +219,60 @@ function frutifera(g, x, z, tipo, bal, sol) {
   sol(x - 0.3, x + 0.3, z - 0.3, z + 0.3, 6);
 }
 
+// a casa-container do Junior: container marítimo BRANCO (nervuras/ondulações nas paredes), em cima de calços de concreto,
+// com a porta de vidro de correr de 4 folhas (2 fixas nas pontas e 2 móveis, abertas, por trás delas), a cortina branca por
+// dentro, o capacho marrom na frente; o deck de madeira (escada na ponta da direita, passa na frente da porta) e o píer que
+// entra no lago. Tudo fixo (entra na mesclagem). sol(x0, x1, z0, z1, y1): colisão (o deck e os degraus são chão para pisar)
+function casaContainer(g, sol) {
+  const Q = SITIO, C = Q.container, DK = Q.deck, PI = Q.pier, f = { sombra: false };
+  const BR = 0xf4f4f0, NERV = 0xdcdcd6, cw = C.x1 - C.x0, cd = C.z1 - C.z0, cxm = (C.x0 + C.x1) / 2, czm = (C.z0 + C.z1) / 2, y0 = C.base, yh = y0 + C.h;
+  // calços e o corpo
+  for (const x of [C.x0 + 0.4, cxm, C.x1 - 0.4]) for (const z of [C.z0 + 0.3, C.z1 - 0.3]) pc(g, 0.5, y0, 0.5, 0x9aa1a7, x, y0 / 2, z, f);
+  // o corpo é oco na frente da porta (um "vão" de 0,9 m), para a cortina e o escurinho de dentro aparecerem
+  const [px, pw] = C.porta, ph = C.h - 0.35, FUNDO = 0.9;
+  pc(g, cw, C.h, cd - FUNDO, BR, cxm, y0 + C.h / 2, C.z0 + (cd - FUNDO) / 2);
+  for (const [a, b] of [[C.x0, px - pw / 2], [px + pw / 2, C.x1]]) pc(g, b - a, C.h, FUNDO, BR, (a + b) / 2, y0 + C.h / 2, C.z1 - FUNDO / 2);
+  pc(g, pw, C.h - ph, FUNDO, BR, px, y0 + ph + (C.h - ph) / 2, C.z1 - FUNDO / 2);
+  pc(g, cw + 0.06, 0.12, cd + 0.06, NERV, cxm, yh - 0.06, czm, f); pc(g, cw + 0.06, 0.12, cd + 0.06, NERV, cxm, y0 + 0.06, czm, f); // vigas de cima e de baixo
+  for (const x of [C.x0, C.x1]) for (const z of [C.z0, C.z1]) pc(g, 0.16, C.h + 0.04, 0.16, NERV, x, y0 + C.h / 2, z, f); // cantoneiras
+  // nervuras: costelas verticais em toda a volta (na frente, menos no vão da porta)
+  for (let x = C.x0 + 0.25; x < C.x1 - 0.1; x += 0.32) {
+    pc(g, 0.12, C.h - 0.28, 0.05, NERV, x, y0 + C.h / 2, C.z0 - 0.02, f);
+    if (Math.abs(x - px) > pw / 2 + 0.15) pc(g, 0.12, C.h - 0.28, 0.05, NERV, x, y0 + C.h / 2, C.z1 + 0.02, f);
+  }
+  for (const xe of [C.x0 - 0.02, C.x1 + 0.02]) for (let z = C.z0 + 0.25; z < C.z1 - 0.1; z += 0.32) pc(g, 0.05, C.h - 0.28, 0.12, NERV, xe, y0 + C.h / 2, z, f);
+  // o vão da porta: lá dentro escuro, a cortina branca franzida (puxada um pouco para os lados) e o chão de madeira
+  const pz = C.z1;
+  pc(g, pw, ph, 0.04, 0x3a3532, px, y0 + ph / 2 + 0.05, pz - FUNDO + 0.03, f);
+  for (let i = 0; i < 14; i++) { const x = px - pw / 2 + 0.17 + i * ((pw - 0.34) / 13); if (Math.abs(x - px) < 0.55) continue; pc(g, 0.2, ph - 0.1, 0.06 + (i % 2) * 0.05, i % 2 ? 0xf6f6f2 : 0xe9e9e3, x, y0 + ph / 2 + 0.1, pz - 0.45, f); }
+  pc(g, pw + 0.2, 0.08, 0.08, 0x9aa1a7, px, y0 + ph + 0.05, pz - 0.42, f); // o varão
+  pc(g, pw, 0.04, 0.8, 0xa8794c, px, y0 + 0.02, pz - 0.4, f);
+  // a porta de vidro de 4 folhas: as 2 fixas nas pontas e as 2 móveis corridas por trás delas (aberta no meio)
+  const fw = pw / 4, AL = 0x8f969c, VID = 0xbfe3f2;
+  for (const s of [-1, 1]) for (const [k, dz] of [[1.5, 0.06], [1.1, -0.04]]) { // fixa (bem na ponta) e móvel (por trás, quase em cima dela)
+    const x = px + s * fw * k;
+    pc(g, fw - 0.08, ph - 0.1, 0.03, VID, x, y0 + ph / 2, pz + dz, f);
+    for (const q of [-1, 1]) pc(g, 0.06, ph, 0.06, AL, x + q * (fw / 2 - 0.03), y0 + ph / 2, pz + dz, f);
+    for (const y of [y0 + 0.04, y0 + ph - 0.02]) pc(g, fw, 0.06, 0.06, AL, x, y, pz + dz, f);
+  }
+  for (const y of [y0 + 0.02, y0 + ph + 0.02]) pc(g, pw + 0.12, 0.06, 0.18, AL, px, y, pz, f); // trilhos
+  // o deck de madeira (tábuas em x), a escada na ponta da direita, o capacho e o guarda-corpo do lado de fora
+  const dy = DK.y, dw = DK.x1 - DK.x0, dd = DK.z1 - DK.z0, dxm = (DK.x0 + DK.x1) / 2, dzm = (DK.z0 + DK.z1) / 2;
+  for (const x of [DK.x0 + 0.2, DK.x0 + dw / 3, DK.x0 + (2 * dw) / 3, DK.x1 - 0.2]) for (const z of [DK.z0 + 0.15, DK.z1 - 0.15]) pc(g, 0.16, dy, 0.16, 0x6b4a2e, x, dy / 2, z, f);
+  for (let i = 0; i < Math.round(dd / 0.2); i++) pc(g, dw, 0.08, 0.18, i % 2 ? 0xa57c57 : 0x93704d, dxm, dy - 0.04, DK.z0 + 0.1 + i * 0.2);
+  for (const [x0, x1, h] of Q.escada) { pc(g, x1 - x0, h, dd, 0x8c6646, (x0 + x1) / 2, h / 2, dzm); pc(g, x1 - x0, 0.04, dd, 0xa57c57, (x0 + x1) / 2, h + 0.01, dzm, f); sol(x0, x1, DK.z0, DK.z1, h); }
+  pc(g, 1.2, 0.03, 0.6, 0x7a4a26, px, dy + 0.015, DK.z0 + 0.45, f); // o capacho marrom
+  for (let x = DK.x0 + 0.1; x < DK.x1; x += 1.4) { if (x > PI.x0 - 0.2 && x < PI.x1 + 0.2) continue; pc(g, 0.08, 0.85, 0.08, 0x7a5532, x, dy + 0.42, DK.z1 - 0.05, f); }
+  for (const [a, b] of [[DK.x0, PI.x0], [PI.x1, DK.x1 - 1.4]]) pc(g, b - a, 0.08, 0.08, 0x7a5532, (a + b) / 2, dy + 0.85, DK.z1 - 0.05, f);
+  sol(DK.x0, DK.x1, DK.z0, DK.z1, dy);
+  // o píer: do deck até dentro do lago, com os palanques na água
+  const pl = PI.z1 - DK.z1, pxm = (PI.x0 + PI.x1) / 2, pzm = (DK.z1 + PI.z1) / 2;
+  for (let i = 0; i < Math.round(pl / 0.2); i++) pc(g, PI.x1 - PI.x0, 0.08, 0.18, i % 2 ? 0xa57c57 : 0x93704d, pxm, dy - 0.04, DK.z1 + 0.1 + i * 0.2);
+  for (const z of [DK.z1 + 1.6, DK.z1 + 3.6, PI.z1 - 0.2]) for (const x of [PI.x0 + 0.1, PI.x1 - 0.1]) pc(g, 0.16, dy + 0.4, 0.16, 0x6b4a2e, x, (dy + 0.4) / 2 - 0.4, z, f);
+  sol(PI.x0, PI.x1, DK.z1 - 0.05, PI.z1, dy);
+  sol(C.x0 - 0.05, C.x1 + 0.05, C.z0 - 0.05, C.z1 + 0.02, 4);
+}
+
 // ------------------------------------------------------------------ a fachada: o sítio inteiro
 export function sitioFloresca() {
   const S = { grupo: new THREE.Group(), solidos: [] }, g = S.grupo, M = texturas(), Q = SITIO;
@@ -224,13 +280,12 @@ export function sitioFloresca() {
   const sol = (x0, x1, z0, z1, y1 = 3) => { const s = { x0, x1, z0, z1, y1 }; S.solidos.push(s); return s; };
   const MAD = 0x8a6440, MADE = 0x6b4a2e, METAL = 0xc9ced4;
 
-  // ---- chão: a estradinha de cascalho (de fora da cerca até a porta da casa), o caminho até a calçada, a trilha de terra
-  // ao longo da fila (até o portãozinho do lago) e umas manchas de terra no gramado
-  const E = Q.estrada, TR = Q.trilha, PORTA_CASA = Q.casa.z1 - 10.2;
+  // ---- chão: a estradinha de cascalho (de fora da cerca até a porta da casa), o caminho até a calçada e umas manchas de
+  // terra no gramado
+  const E = Q.estrada, PORTA_CASA = Q.casa.z1 - 10.2;
   pc(g, E.larg, 0.05, -E.z1 + 1.5, 0xb3a07c, 0, 0.035, (E.z1 + 1.5) / 2, F);
   for (let z = -2; z > E.z1 + 1; z -= 3.7) pc(g, 0.7 + ((z * 7) % 3 + 3) % 3 * 0.3, 0.02, 1.1, 0xc9b892, ((z * 13) % 2) * 0.6, 0.065, z, D_);
   { const xa = Q.casa.x1 + 1.6, xb = -E.larg / 2; pc(g, xb - xa, 0.045, 1.8, 0xb3a07c, (xa + xb) / 2, 0.033, PORTA_CASA, F); } // até a calçada da casa
-  pc(g, 1.5, 0.04, TR.z0 - TR.z1, 0xa8916a, TR.x, 0.03, (TR.z0 + TR.z1) / 2, F);
   for (const [x, z, w, d] of [[12, -30, 2.2, 1.4], [18, -76, 1.6, 1.2], [3, -48, 1.8, 1.0], [10, -112, 2.4, 1.2], [-2, -124, 1.4, 1.0], [6, -18, 1.2, 1.6]]) pc(g, w, 0.02, d, 0x8f7a58, x, 0.03, z, D_);
 
   // ---- cerca de tela com palanques em volta do terreno (o portão fica em x = ±2,2)
@@ -376,7 +431,8 @@ export function sitioFloresca() {
   pc(g, lw - 0.4, 0.03, ld - 0.4, 0x8a7a55, LG.x, 0.03, LG.z, F); // a beira de terra
   {
     const zg = LG.z, GW = 1.7; // o portãozinho: no lado +x, no meio
-    const lados = [[LG.x0, LG.z1, LG.x1, LG.z1], [LG.x1, LG.z1, LG.x1, zg + GW / 2], [LG.x1, zg - GW / 2, LG.x1, LG.z0], [LG.x1, LG.z0, LG.x0, LG.z0], [LG.x0, LG.z0, LG.x0, LG.z1]];
+    const PI = Q.pier; // o lado do fundo tem o vão do píer
+    const lados = [[LG.x0, LG.z1, LG.x1, LG.z1], [LG.x1, LG.z1, LG.x1, zg + GW / 2], [LG.x1, zg - GW / 2, LG.x1, LG.z0], [LG.x1, LG.z0, PI.x1 + 0.1, LG.z0], [PI.x0 - 0.1, LG.z0, LG.x0, LG.z0], [LG.x0, LG.z0, LG.x0, LG.z1]];
     for (const [x0, z0, x1, z1] of lados) {
       const L = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(L / 2.4)), ry = Math.atan2(-(z1 - z0), x1 - x0);
       for (let i = 0; i <= n; i++) palanque(g, x0 + ((x1 - x0) * i) / n, z0 + ((z1 - z0) * i) / n, 1.6, 0.13);
@@ -390,10 +446,14 @@ export function sitioFloresca() {
     let k = 0;
     for (const [x0, z0, x1, z1] of [[LG.x0 + 0.6, LG.z1 - 0.6, LG.x1 - 0.6, LG.z1 - 0.6], [LG.x1 - 0.6, LG.z1 - 0.6, LG.x1 - 0.6, LG.z0 + 0.6], [LG.x1 - 0.6, LG.z0 + 0.6, LG.x0 + 0.6, LG.z0 + 0.6], [LG.x0 + 0.6, LG.z0 + 0.6, LG.x0 + 0.6, LG.z1 - 0.6]]) {
       const L = Math.hypot(x1 - x0, z1 - z0), n = Math.round(L / 0.55);
-      for (let i = 0; i < n; i++, k++) { const f = (i + 0.5) / n, x = x0 + (x1 - x0) * f, z = z0 + (z1 - z0) * f; if (Math.abs(z - zg) < 1.4 && Math.abs(x - LG.x1) < 1) continue; pc(g, 0.1, 0.45 + (k % 3) * 0.2, 0.1, [0x5aa83a, 0x78bf46, 0x9ccf5a][k % 3], x + ((k * 7) % 5 - 2) * 0.06, 0.3, z + ((k * 3) % 5 - 2) * 0.06, { ...D_, rz: ((k % 3) - 1) * 0.2 }); }
+      for (let i = 0; i < n; i++, k++) { const f = (i + 0.5) / n, x = x0 + (x1 - x0) * f, z = z0 + (z1 - z0) * f; if (Math.abs(z - zg) < 1.4 && Math.abs(x - LG.x1) < 1) continue; if (x > PI.x0 - 0.4 && x < PI.x1 + 0.4 && z < PI.z1 + 0.5) continue; pc(g, 0.1, 0.45 + (k % 3) * 0.2, 0.1, [0x5aa83a, 0x78bf46, 0x9ccf5a][k % 3], x + ((k * 7) % 5 - 2) * 0.06, 0.3, z + ((k * 3) % 5 - 2) * 0.06, { ...D_, rz: ((k % 3) - 1) * 0.2 }); }
     }
   }
-  sol(LG.x0 - 0.15, LG.x1 + 0.15, LG.z0 - 0.15, LG.z1 + 0.15, 1.6);
+  // colisão do lago em três pedaços: fica o corredor do píer (que entra pelo lado do fundo)
+  { const PI = Q.pier; sol(LG.x0 - 0.15, PI.x0 - 0.1, LG.z0 - 0.15, LG.z1 + 0.15, 1.6); sol(PI.x1 + 0.1, LG.x1 + 0.15, LG.z0 - 0.15, LG.z1 + 0.15, 1.6); sol(PI.x0 - 0.1, PI.x1 + 0.1, PI.z1, LG.z1 + 0.15, 1.6); }
+
+  // ---- a casa-container do Junior (no fundo, depois do lago) e o deck que vira píer
+  casaContainer(g, sol);
 
   // ---- o pinheiro alto ao lado do lago, as palmeiras e a mata ao fundo
   { const [px, pz] = Q.pinheiro, pg = new THREE.Group(); pg.position.set(px, 0, pz); g.add(pg);
@@ -402,12 +462,12 @@ export function sitioFloresca() {
     copa.forEach(([w, h, y, dx, dz], i) => pc(pg, w, h, w * 0.85, i % 2 ? 0x2f5f33 : 0x3a7040, dx, y, dz, i < 3 ? {} : F));
     for (const [w, y, dx, rz] of [[1.6, 6.2, 0.9, -0.3], [1.4, 5.4, -0.8, 0.35]]) { pc(pg, w, 0.12, 0.12, 0x6b4a2e, dx, y, 0, { ...F, rz }); pc(pg, 1.2, 0.6, 1.0, 0x2f5f33, dx * 1.7, y + 0.2, 0, F); }
     sol(px - 0.35, px + 0.35, pz - 0.35, pz + 0.35, 10); }
-  for (const [x, z, a] of [[-24, -133, 7.5], [-6, -134, 8.5], [2, -131, 7], [12, -134, 8], [-25, -121, 7.2]]) { const c = coqueiro(a); c.position.set(x, 0.03, z); c.rotation.y = (x * 0.37) % 6; g.add(c); sol(x - 0.4, x + 0.4, z - 0.4, z + 0.4, 6); }
-  for (const [x, z, e, t] of [[-20, -136, 1.5, 0], [-14, -135.5, 1.3, 1], [-10, -136.4, 1.6, 3], [6, -136, 1.4, 0], [17, -135, 1.2, 1], [-15, -125, 1.3, 3], [-26.5, -70.5, 1.0, 1]]) {
+  for (const [x, z, a] of [[-27, -137, 7.5], [-6, -134, 8.5], [2, -131, 7], [12, -134, 8], [-4, -125, 7.2]]) { const c = coqueiro(a); c.position.set(x, 0.03, z); c.rotation.y = (x * 0.37) % 6; g.add(c); sol(x - 0.4, x + 0.4, z - 0.4, z + 0.4, 6); }
+  for (const [x, z, e, t] of [[-20, -136.8, 1.3, 0], [-9, -136.4, 1.6, 3], [6, -136, 1.4, 0], [17, -135, 1.2, 1], [-5, -108, 1.3, 3]]) {
     const a = arvoreReal(e, t); a.position.set(x, 0.03, z); a.rotation.y = x; g.add(a); sol(x - 0.5, x + 0.5, z - 0.5, z + 0.5, 6);
   }
   // moitas perto da casa e do salão
-  for (const [x, z] of [[-27, -8], [-16.2, -26.3], [-27.3, -57.5], [-16, -72.5]]) pc(g, 1.4, 0.9, 1.2, 0x4f9e3a, x, 0.45, z, D_);
+  for (const [x, z] of [[-27, -8], [-16.2, -26.3], [-27.3, -56.6]]) pc(g, 1.4, 0.9, 1.2, 0x4f9e3a, x, 0.45, z, D_);
 
   // ---- a fileira de árvores frutíferas na divisa da direita (mangueira, laranjeira, goiabeira e pitangueira, com as
   // frutinhas coloridas à mostra) e o galho grosso das que têm balanço de pneu (o balanço se mexe: criarVida)
@@ -453,6 +513,13 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
   const mundoR = paraMundo(R.x, R.z);
   const [gx, gz] = paraMundo(...Q.regina.portao);
   lugar.pessoaNaPorta = { m: regina, x: gx, z: gz, mundo: mundoR }; // as missões usam este boneco (e o [x, z] em dia)
+
+  // ---- o Junior (mora na casa-container): em pé no deck, perto da porta; não fala
+  const junior = criarPessoa("junior"); junior.grupo.userData.dinamico = true; raiz.add(junior.grupo);
+  const JR = { x: Q.junior[0], z: Q.junior[1], rot: 0 };
+  junior.grupo.position.set(JR.x, Q.alturaDeck + 0.02, JR.z); junior.grupo.rotation.y = JR.rot;
+  const mundoJ = paraMundo(JR.x, JR.z);
+  lugar.outrasPessoas = { junior: { m: junior, x: mundoJ[0], z: mundoJ[1], mundo: mundoJ } };
 
   // ---- o Duck
   const duck = cachorro(); duck.g.userData.dinamico = true; raiz.add(duck.g);
@@ -704,10 +771,13 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
     balde: objeto([[0.36, 0.34, 0.36, 0x9aa1a7, 0, 0.17, 0], [0.32, 0.05, 0.32, 0xf2c232, 0, 0.33, 0], [0.4, 0.04, 0.04, 0x55595e, 0, 0.52, 0], [0.03, 0.2, 0.03, 0x55595e, 0.19, 0.42, 0], [0.03, 0.2, 0.03, 0x55595e, -0.19, 0.42, 0], [0.38, 0.04, 0.38, 0x7f868f, 0, 0.02, 0]]),
     regador: objeto([[0.42, 0.3, 0.24, 0x2f9e57, 0, 0.15, 0], [0.07, 0.07, 0.48, 0x2f9e57, 0, 0.26, 0.3, -0.6], [0.14, 0.14, 0.05, 0x24804a, 0, 0.42, 0.5], [0.32, 0.05, 0.05, 0x24804a, -0.02, 0.4, -0.04], [0.05, 0.16, 0.05, 0x24804a, -0.16, 0.33, -0.04], [0.05, 0.16, 0.05, 0x24804a, 0.12, 0.33, -0.04]]),
     cestaHorta: objeto([[0.62, 0.24, 0.42, 0xc98a4b, 0, 0.12, 0], [0.66, 0.05, 0.46, 0xa86f38, 0, 0.25, 0], [0.24, 0.18, 0.24, 0x6cc04a, -0.16, 0.3, 0.05], [0.22, 0.16, 0.22, 0x8fd65a, 0.12, 0.29, -0.06], [0.08, 0.08, 0.3, 0xff8a1f, 0.05, 0.3, 0.1, 0, 0.5], [0.08, 0.08, 0.28, 0xff8a1f, 0.2, 0.3, 0.06, 0, -0.4], [0.05, 0.16, 0.05, 0x3f9a3a, 0.05, 0.4, 0.24]]),
+    // a vara de pescar (na mão: para a frente e para cima) e o peixe do lago (prateado, de dorso verde)
+    vara: objeto([[0.05, 0.05, 2.2, 0x6b4a2e, 0.18, 0.75, 0.75, -0.62], [0.08, 0.08, 0.3, 0x2f3440, 0.18, 0.3, 0.05, -0.62], [0.12, 0.12, 0.1, 0xc9ced4, 0.26, 0.33, 0.12], [0.012, 0.9, 0.012, 0xffffff, 0.18, 1.0, 1.66]]),
+    peixe: objeto([[0.18, 0.2, 0.52, 0xc9d3d6, 0, 0.12, 0], [0.12, 0.08, 0.5, 0x4f8a5a, 0, 0.24, 0], [0.04, 0.2, 0.16, 0x9fb0b4, 0, 0.12, -0.32], [0.05, 0.05, 0.03, 0x151515, 0.07, 0.16, 0.2], [0.05, 0.05, 0.03, 0x151515, -0.07, 0.16, 0.2], [0.08, 0.04, 0.18, 0xe2342b, 0, 0.06, 0.05]]),
     cestaFrutas: objeto([[0.62, 0.24, 0.42, 0xc98a4b, 0, 0.12, 0], [0.66, 0.05, 0.46, 0xa86f38, 0, 0.25, 0], [0.18, 0.18, 0.18, 0xff8a1f, -0.16, 0.3, 0.05], [0.2, 0.24, 0.18, 0xf2a33a, 0.08, 0.31, -0.05], [0.15, 0.15, 0.15, 0xd7e36a, 0.2, 0.3, 0.1], [0.12, 0.12, 0.12, 0xe0342b, -0.04, 0.3, 0.12], [0.12, 0.12, 0.12, 0xe0342b, -0.2, 0.31, -0.1]]),
   };
-  const CASA_OBJ = { balde: [Q.balde[0], Q.balde[1], -Math.PI / 2], regador: [Q.regador[0], Q.regador[1] + 0.2, Math.PI / 2] };
-  const guardar = (nome) => { const o = OBJ[nome], c = CASA_OBJ[nome]; raiz.add(o); o.scale.setScalar(1); o.rotation.set(0, c?.[2] ?? 0, 0); if (c) o.position.set(c[0], 0.04, c[1]); o.visible = Boolean(c); o.userData.naMao = false; };
+  const CASA_OBJ = { balde: [Q.balde[0], Q.balde[1], -Math.PI / 2], regador: [Q.regador[0], Q.regador[1] + 0.2, Math.PI / 2], vara: [Q.vara[0], Q.vara[1], Math.PI / 2, Q.alturaDeck] };
+  const guardar = (nome) => { const o = OBJ[nome], c = CASA_OBJ[nome]; raiz.add(o); o.scale.setScalar(1); o.rotation.set(0, c?.[2] ?? 0, 0); if (c) o.position.set(c[0], (c[3] ?? 0) + 0.04, c[1]); o.visible = Boolean(c); o.userData.naMao = false; };
   for (const n of Object.keys(OBJ)) guardar(n);
   // as plantas da hortinha: alfaces e cenouras (uma malha só); "cresce" vai de 0,5 (mudinhas) a 1 (prontas para colher)
   const HT = Q.horta, nPl = 6, plantas = [];
@@ -763,8 +833,29 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
       b.piv.rotation.x = Math.sin(t * 1.8 + b.fase) * b.amp;
     }
   }
+  // a boia da pescaria: vermelha e branca, boiando; quando o peixe belisca, afunda e sobe rápido (com respingos)
+  const boia = new THREE.Group(); boia.userData.dinamico = true; boia.visible = false; raiz.add(boia);
+  parte(boia, [[0.2, 0.14, 0.2, 0xffffff, 0, 0.05, 0], [0.2, 0.14, 0.2, 0xe2342b, 0, 0.19, 0], [0.04, 0.16, 0.04, 0xe2342b, 0, 0.33, 0]]);
+  const B = { estado: "fora", t: 0 }; // fora · boiando · beliscando
+  function animarBoia(dt, t) {
+    if (!boia.visible) return;
+    B.t += dt;
+    const [bx, bz] = Q.boia;
+    const afunda = B.estado === "beliscando" ? Math.max(0, Math.sin(t * 14)) * 0.22 : 0;
+    boia.position.set(bx, 0.02 + Math.sin(t * 2.2) * 0.03 - afunda, bz);
+    if (B.estado === "beliscando" && Math.random() < dt * 6) jogar([bx, 0.1, bz], [bx, bz], { n: 3, cores: [0x8fd6ff, 0xffffff], espalha: 0.5, fica: 0.1, alto: 0.35, py: 0.06, tam: 0.7 });
+  }
   let comidaGal = 0, comidaPatos = 0;
   const PONTO_PATOS = [Q.dentroLago[0] + 0.3, Q.dentroLago[1]];
+  const pulosPeixe = [];
+  function animarPeixe(dt) {
+    for (let i = pulosPeixe.length - 1; i >= 0; i--) {
+      const q = pulosPeixe[i]; q.t += dt / 0.8; const k = Math.min(1, q.t), o = OBJ.peixe;
+      o.position.set(q.de[0] + (q.para[0] - q.de[0]) * k, q.de[1] + (q.para[1] - q.de[1]) * k + Math.sin(k * Math.PI) * 1.6, q.de[2] + (q.para[2] - q.de[2]) * k);
+      o.rotation.set(k * 6, 0, Math.sin(k * 20) * 0.4);
+      if (k >= 1) { pulosPeixe.splice(i, 1); q.fim(); }
+    }
+  }
   const _mundo = (o) => { o.getWorldPosition(_v); return { x: _v.x, y: _v.y, z: _v.z }; };
 
   animarHorta(0);
@@ -797,7 +888,9 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
       atualizarDuck(dt, t, pl, plRot);
       atualizarAle(dt, t, pl);
       atualizarGalinhas(dt, t);
-      animarGotas(dt); animarVoo(dt); animarHorta(dt); animarCapim(dt); animarBalancos(dt, t);
+      animarGotas(dt); animarVoo(dt); animarHorta(dt); animarCapim(dt); animarBalancos(dt, t); animarBoia(dt, t); animarPeixe(dt);
+      junior.atualizar(dt, { vel: 0 });
+      if (Math.hypot(pl[0] - JR.x, pl[1] - JR.z) < 8) { JR.rot = virarPara(JR.rot, Math.atan2(pl[0] - JR.x, pl[1] - JR.z), Math.min(1, dt * 3)); junior.grupo.rotation.y = JR.rot; } // olha para o Rabisco
       comidaGal = Math.max(0, comidaGal - dt); comidaPatos = Math.max(0, comidaPatos - dt);
       if (marca.visible) marca.scale.setScalar(1 + Math.sin(t * 4) * 0.08);
     },
@@ -808,7 +901,7 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
     marcaLagoMundo: () => { const [x, z] = paraMundo(...Q.marcaLago); return { x, z }; },
     perto: (p, o, r) => Math.hypot(p.x - o.x, p.z - o.z) < r,
     // a marca amarela no chão: no portãozinho do lago (padrão) ou em [x, z] do terreno
-    mostrarMarca(sim, onde = Q.marcaLago) { marca.visible = Boolean(sim); marca.position.set(onde[0], 0.12, onde[1]); },
+    mostrarMarca(sim, onde = Q.marcaLago, y = 0.12) { marca.visible = Boolean(sim); marca.position.set(onde[0], y, onde[1]); },
     marcaMundo: () => { const [x, z] = paraMundo(marca.position.x, marca.position.z); return { x, z, visivel: marca.visible }; },
     pontoMundo: (x, z) => { const [wx, wz] = paraMundo(x, z); return { x: wx, z: wz }; },
     // retângulo do terreno, por dentro da cerca, no mundo (o roçador não sai daqui)
@@ -846,6 +939,20 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
     soltar(i) { const b = balancos[i]; if (!b?.sentado) return null; const o = b.sentado; b.sentado = null; o.removeFromParent(); return o; },
     frutiferasMundo: () => Q.frutiferas.map(([z, tipo, bal], i) => { const [x, wz] = paraMundo(Q.frutX - 2.8, z); const [tx, tz] = paraMundo(Q.frutX, z); return { x, z: wz, tx, tz, tipo, bal: Boolean(bal), i }; }),
     frutasDe: (i) => FRUTAS[Q.frutiferas[i][1]].fruta,
+    // ---- pescaria com o Junior: a boia na água (fora · boiando · beliscando), o peixe que pula de volta e o Junior
+    juniorMundo: () => ({ x: mundoJ[0], z: mundoJ[1] }),
+    junior,
+    boia(estado) { B.estado = estado; B.t = 0; boia.visible = estado !== "fora"; if (estado === "boiando") { const [bx, bz] = Q.boia; jogar([bx, 0.4, bz], [bx, bz], { n: 6, cores: [0x8fd6ff], espalha: 0.4, fica: 0.1, alto: 0.4, py: 0.06 }); ctx?.sons?.pulo?.(); } },
+    get estadoBoia() { return B.estado; },
+    // o peixe sai do lago (da boia para a mão do Rabisco) ou volta (da mão para a água), em arco, com respingos
+    peixeVoa(rabisco, paraAgua, fim) {
+      const o = OBJ.peixe, [bx, bz] = Q.boia;
+      const de = paraAgua ? (() => { o.getWorldPosition(_v); const [lx, lz] = paraLocal(_v.x, _v.z); return [lx, _v.y, lz]; })() : [bx, 0.1, bz];
+      const [ax, az] = paraAgua ? [bx + 0.6, bz + 1.2] : paraLocal(rabisco.grupo.position.x, rabisco.grupo.position.z);
+      const ay = paraAgua ? 0 : Q.alturaDeck + 1.1;
+      raiz.add(o); o.scale.setScalar(1.3); o.visible = true; o.userData.naMao = false;
+      pulosPeixe.push({ de, para: [ax, ay, az], t: 0, fim: () => { if (paraAgua) { o.visible = false; jogar([ax, 0.2, az], [ax, az], { n: 10, cores: [0x8fd6ff, 0xffffff], espalha: 0.6, fica: 0.1, alto: 0.6, py: 0.06 }); ctx?.sons?.estouro?.(); } else api.pegar("peixe", rabisco); fim?.(); } });
+    },
     get ale() { return A.modo; }, get duck() { return K.modo; },
     aleFugir() { if (A.modo === "colo") return; A.modo = "fugida"; A.x = 11; A.z = -17; A.alvo = null; ctx?.sons?.bichinho?.("quack"); },
     pegarAle(rabisco) {
@@ -866,7 +973,7 @@ function criarVida(S, { origem: [ox, oz, rot], solidos, lugar }) {
     cancelarDuck() { if (K.modo === "seguir" || K.modo === "sacudir" || K.modo === "chamado" || K.modo === "saindo") { secar(); K.modo = "brincar"; K.fim = null; } },
     info: () => ({ portao, aberto, regina: R.estado, ale: A.modo, duck: K.modo, molhado: K.molhado, perto }),
     // testes: onde estão as coisas para fotografar
-    pontos: () => Object.fromEntries(Object.entries({ portao: [0, 1], casa: [(Q.casa.x0 + Q.casa.x1) / 2, Q.casa.z1], salao: [Q.salao.frente, (Q.salao.z0 + Q.salao.z1) / 2], horta: [(Q.horta.x0 + Q.horta.x1) / 2, Q.horta.z[1]], lago: [LG.x, LG.z], galinheiro: [(GL.x0 + GL.x1) / 2, (GL.z0 + GL.z1) / 2], frutiferas: [Q.frutX, -60] }).map(([k, v]) => [k, paraMundo(...v)])),
+    pontos: () => Object.fromEntries(Object.entries({ portao: [0, 1], casa: [(Q.casa.x0 + Q.casa.x1) / 2, Q.casa.z1], salao: [Q.salao.frente, (Q.salao.z0 + Q.salao.z1) / 2], horta: [(Q.horta.x0 + Q.horta.x1) / 2, Q.horta.z[1]], lago: [LG.x, LG.z], galinheiro: [(GL.x0 + GL.x1) / 2, (GL.z0 + GL.z1) / 2], frutiferas: [Q.frutX, -60], container: [-17, Q.deck.z1 + 4] }).map(([k, v]) => [k, paraMundo(...v)])),
   };
   regina.grupo.position.set(R.x, 0, R.z); regina.grupo.rotation.y = R.rot;
   return api;

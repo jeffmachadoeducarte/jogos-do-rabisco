@@ -211,7 +211,7 @@ let mdDia0 = null;
 
   // ---- com casa: o baú aparece na porta da casa escolhida
   const casa = 3;
-  await t.ev(`(() => { const k = "rabisco.rabiscopolis.v1", d = JSON.parse(localStorage.getItem(k)); d.casa = ${casa}; localStorage.setItem(k, JSON.stringify(d)); })()`);
+  await t.ev(`(() => { const k = Perfis.chave("rabisco.rabiscopolis.v1"), d = JSON.parse(localStorage.getItem(k)); d.casa = ${casa}; localStorage.setItem(k, JSON.stringify(d)); })()`);
   await t.cmd("Page.navigate", { url: URL_DIA(DIA(35)) });
   await esperarJogo(t);
   const bc = await t.ev("teste.bau"), frente = await t.ev(`teste.casaFrente(${casa})`);
@@ -246,7 +246,7 @@ let mdDia0 = null;
   ok(await ate(t, "document.querySelector('.rp-acao')?.textContent.includes('Abrir o presente')", 3000), "celular: o botão ✋ mostra “Abrir o presente”");
   await t.foto(`${OUT}celular-bau.png`);
   const casa = 12;
-  await t.ev(`(() => { const k = "rabisco.rabiscopolis.v1", d = JSON.parse(localStorage.getItem(k)); d.casa = ${casa}; localStorage.setItem(k, JSON.stringify(d)); })()`);
+  await t.ev(`(() => { const k = Perfis.chave("rabisco.rabiscopolis.v1"), d = JSON.parse(localStorage.getItem(k)); d.casa = ${casa}; localStorage.setItem(k, JSON.stringify(d)); })()`);
   await t.cmd("Page.navigate", { url: URL_DIA(DIA(1)) });
   await esperarJogo(t);
   const bc = await t.ev("teste.bau"), lote = await t.ev(`teste.LOTES.find((l) => l.numero === ${casa}).dir`);

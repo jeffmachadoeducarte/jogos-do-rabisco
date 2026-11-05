@@ -1,4 +1,4 @@
-// Rabiscolândia: músicas das cenas das parceiras (a valsa do ensaio e a da apresentação da Ballet e Cia, a marchinha do desfile
+// Rabiscolândia: músicas das cenas das parceiras (a batida de street dance do ensaio e da apresentação da Ballet e Cia, a marchinha do desfile
 // da BT Models) e do Natal (a música da praça e a marchinha do desfile de Natal). Composições próprias, tocadas na hora com osciladores no estilo 8-bit. O relógio é o da página, e cada nota vira
 // nós de áudio só quando chega a hora dela (nada por quadro); elas saem por um volume próprio, ligado ao volume geral.
 //
@@ -39,7 +39,10 @@ export function criarSequencia({ bpm, trilhas, volume = 0.75 }) {
     g.gain.setValueAtTime(tr.vol, at); g.gain.setValueAtTime(tr.vol, Math.max(at, fim - 0.05)); g.gain.linearRampToValueAtTime(0.0001, fim);
     g.connect(saida);
     let o;
-    if (tr.onda === "chiado") { o = ac.createBufferSource(); o.buffer = bufferChiado(ac); const f = ac.createBiquadFilter(); f.type = "highpass"; f.frequency.value = midi; o.connect(f).connect(g); }
+    if (tr.onda === "bumbo") { // bumbo 8-bit: senoide que cai de tom bem depressa (midi = a nota onde termina)
+      o = ac.createOscillator(); o.type = "sine";
+      o.frequency.setValueAtTime(freq(midi) * 3.5, at); o.frequency.exponentialRampToValueAtTime(freq(midi), at + Math.min(durS, 0.11)); o.connect(g);
+    } else if (tr.onda === "chiado") { o = ac.createBufferSource(); o.buffer = bufferChiado(ac); const f = ac.createBiquadFilter(); f.type = "highpass"; f.frequency.value = midi; o.connect(f).connect(g); }
     else {
       o = ac.createOscillator();
       if (tr.onda === "tri") o.type = "triangle"; else if (tr.onda === "quadrada") o.type = "square"; else o.setPeriodicWave(ondaPulso(ac));
@@ -115,6 +118,35 @@ export const VALSA_SHOW = { bpm: 120, trilhas: [
   { onda: "tri", vol: 0.22, laco: 48, notas: baixoValsa(5) },
   { onda: "pulso", vol: 0.035, laco: 48, notas: dedilhado(5) },
   { onda: "pulso", vol: 0.028, laco: 48, notas: brilho(5), solto: 0.7 },
+] };
+
+// ---- street dance da Ballet e Cia: batida própria de hip-hop 8-bit, 104 BPM em 4 por 4 (composição daqui, nada de música conhecida).
+// Lá menor, 4 compassos: Am | Am | F | G. Bumbo, caixa e chimbal de chiado, baixo de triângulo e uma melodia curtinha de pulso.
+const COMP = (barras) => barras.flatMap((notas, c) => notas.flatMap(([b, d, m]) => [c * 4 + b, d, m]));
+const BAIXO_ST = COMP([45, 45, 41, 43].map((r) => [[0, 0.6, r], [0.75, 0.25, r], [1.5, 0.4, r + 12], [2.5, 0.4, r], [3, 0.45, r + 7], [3.5, 0.4, r + 12]]));
+const MEL_ST = COMP([
+  [[0, 0.25, 69], [0.5, 0.25, 72], [1.5, 0.5, 76], [2.5, 0.25, 74], [3, 0.5, 72]],
+  [[0, 0.25, 69], [0.5, 0.25, 72], [1.5, 0.25, 76], [2, 0.25, 79], [2.5, 0.75, 76]],
+  [[0, 0.25, 65], [0.5, 0.25, 69], [1.5, 0.5, 72], [2.5, 0.25, 74], [3, 0.5, 72]],
+  [[0, 0.25, 67], [0.5, 0.25, 71], [1, 0.5, 74], [2, 0.5, 71], [3, 0.25, 69], [3.5, 0.25, 67]],
+]);
+const BATERIA_ST = [
+  { onda: "bumbo", vol: 0.42, laco: 4, notas: [0, 0.3, 28, 1.5, 0.25, 28, 2.5, 0.3, 28], solto: 1 },
+  { onda: "chiado", vol: 0.085, laco: 2, notas: [1, 0.22, 1700], solto: 1 }, // caixa no 2 e no 4
+  { onda: "chiado", vol: 0.026, laco: 1, notas: [0, 0.08, 8200, 0.5, 0.08, 8200], solto: 1 }, // chimbal
+];
+export const STREET = { bpm: 104, trilhas: [
+  ...BATERIA_ST,
+  { onda: "tri", vol: 0.22, laco: 16, notas: BAIXO_ST },
+  { onda: "pulso", vol: 0.06, laco: 16, notas: MEL_ST, solto: 0.8 },
+] };
+// a apresentação: a mesma batida com a melodia na quadrada e um arpejo agudo por cima (no contratempo)
+const ARPEJO_ST = COMP([[69, 72, 76], [69, 72, 76], [65, 69, 72], [67, 71, 74]].map((a) => [0.5, 1.5, 2.5, 3.5].map((b, i) => [b, 0.2, a[i % 3] + 12])));
+export const STREET_SHOW = { bpm: 104, trilhas: [
+  ...BATERIA_ST,
+  { onda: "tri", vol: 0.24, laco: 16, notas: BAIXO_ST },
+  { onda: "quadrada", vol: 0.05, laco: 16, notas: MEL_ST, solto: 0.8 },
+  { onda: "pulso", vol: 0.024, laco: 16, notas: ARPEJO_ST, solto: 0.6 },
 ] };
 
 // a marchinha do desfile, em 4 por 4: cada 8 batidas tem uma chamada

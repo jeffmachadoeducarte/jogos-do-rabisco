@@ -136,6 +136,8 @@ export function criarTransito(cena) {
 // alvos = [{ x, z, raio }] (o Rabisco a pé, os veículos parados e o que ele dirige): o carro para antes
 export function atualizarTransito(carros, semaforos, alvos, dt, t) {
   for (const k of carros) {
+    // o jogador está empurrando este carro de frente: ele dá ré pela rota (jogo.js, transitoCede) em vez de travar
+    if (k.ceder) { k.s += k.ceder * 5 * dt; k.vAtual = 0; k.ceder = 0; }
     const p = pontoNaRota(k.rota, k.s);
     const { x: px, z: pz } = p;
     const dx = Math.sin(k.g.rotation.y), dz = Math.cos(k.g.rotation.y);
