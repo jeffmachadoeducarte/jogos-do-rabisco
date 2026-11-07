@@ -23,7 +23,7 @@ function retMundo(ox, oz, rot, s) {
 }
 
 export const RODA_VEL = (Math.PI * 2) / 30; // rad/s
-export function montarMundo(cena) {
+export function montarMundo(cena, { volume = true } = {}) { // volume: AO falso e tom por peça (base3d.mesclar)
   const solidos = [], circulos = [], lugares = [], casas = [], semaforos = [], anima = { patos: [], bichos: [], aguas: [], jatos: [], pessoas: [] };
   const blocos = [];
   for (let i = 0; i < NBLOCOS; i++) for (let j = 0; j < NBLOCOS; j++) { const g = new THREE.Group(); g.userData.bloco = [i, j]; cena.add(g); blocos.push(g); }
@@ -57,7 +57,7 @@ export function montarMundo(cena) {
     m.position.set(Math.cos(a) * d, 8, Math.sin(a) * d); m.rotation.y = a; if (Math.sin(a) * d < 300) morros.add(m);
   }
   cena.add(morros);
-  mesclar(morros);
+  mesclar(morros, { volume });
 
   // ---------- ruas: calçada, asfalto, faixa branca tracejada (fora dos cruzamentos)
   const ruas = new THREE.Group();
@@ -85,7 +85,7 @@ export function montarMundo(cena) {
     }
     fitas(rua, pedaco, false, i, regioes[reg]);
   });
-  for (const g of Object.values(regioes)) { cena.add(g); mesclar(g); g.userData.ret = new THREE.Box3().setFromObject(g); }
+  for (const g of Object.values(regioes)) { cena.add(g); mesclar(g, { volume }); g.userData.ret = new THREE.Box3().setFromObject(g); }
   // faixas de pedestre nos cruzamentos com semáforo
   const matFaixa = mat(0xffffff);
   for (const s of SEMAFOROS) {
@@ -106,11 +106,11 @@ export function montarMundo(cena) {
       solidos.push({ x0: p.position.x - 0.25, x1: p.position.x + 0.25, z0: p.position.z - 0.25, z1: p.position.z + 0.25, y1: 5 });
     }
     cena.add(gs);
-    mesclar(gs); // só as luzes ficam separadas
+    mesclar(gs, { volume }); // só as luzes ficam separadas
     semaforos.push({ ...s, postes, fase: (s.x + s.z) % 200 ? 0 : 6, grupo: gs });
   }
   cena.add(ruas);
-  mesclar(ruas);
+  mesclar(ruas, { volume });
 
   // ---------- lugares
   const fabrica = { igreja: P.igrejaReviver, hospital: P.hospital, bombeiros: P.bombeiros, biblioteca: P.biblioteca, mercado: P.mercado, padaria: P.padaria, sorveteria: P.sorveteria, kids1: P.educarteKids1, kids2: P.educarteKids2, veterinario: P.veterinario, lavarapido: P.lavaRapido, estudio: P.estudio, correios: P.correios, mirante: P.mirante };
@@ -303,8 +303,8 @@ export function montarMundo(cena) {
 
   // ---------- mescla cada bloco (o que é fixo vira poucas malhas)
   let malhas = 0;
-  for (const b of blocos) malhas += mesclar(b);
-  for (const c of casas) mesclar(c.grupo.userData.paredes); // cada casa com as paredes à parte (cor trocável)
+  for (const b of blocos) malhas += mesclar(b, { volume });
+  for (const c of casas) mesclar(c.grupo.userData.paredes, { volume }); // cada casa com as paredes à parte (cor trocável)
   for (const l of lugares) if (l.frente) for (const g of Object.values(l.frente)) mesclar(g); // cada frente da Kids II à parte (só uma aparece)
 
   // retângulo de cada bloco (para a distância até o jogador)

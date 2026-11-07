@@ -14,10 +14,10 @@ const PALETAS = [
   // cor do horizonte; ao meio-dia mais claro e um pouco mais saturado que antes; a tarde volta a dourar. A noite não muda.
   // a 9ª coluna (meio do céu) só existe de dia: um azul-claro vivo entre o horizonte e o topo, para o degradê não
   // passar pelo cinza-lilás. Sem ela, o meio é a média dos dois (o degradê de antes): a noite e o entardecer não mudam.
-  [7, 0x3b93f0, 0xffeacc, 0xf8e4c6, 0xffd48e, 0xfff2e0, 3.6, 1.35, 0x9ccbf6],
-  [9.5, 0x3a95f2, 0xf4ead4, 0xeee6d2, 0xffeac0, 0xfffaf2, 3.3, 1.45, 0x9acdf8],
+  [7, 0x3b93f0, 0xffeacc, 0xf8e4c6, 0xffd48e, 0xffffff, 3.6, 1.35, 0x9ccbf6],
+  [9.5, 0x3a95f2, 0xf4ead4, 0xeee6d2, 0xffeac0, 0xffffff, 3.3, 1.45, 0x9acdf8],
   [12, 0x3792f0, 0xd6ebfb, 0xd0e6f8, 0xfff4e0, 0xffffff, 3.2, 1.55, 0x8ec6f8],
-  [16.5, 0x3f92ea, 0xf8e6c8, 0xf0e0c8, 0xffdca4, 0xfff2e0, 3.1, 1.4, 0xa6cff2],
+  [16.5, 0x3f92ea, 0xf8e6c8, 0xf0e0c8, 0xffdca4, 0xffffff, 3.1, 1.4, 0xa6cff2],
   [18.5, 0x45509f, 0xffa878, 0xc096a6, 0xff9a5a, 0xffc0a0, 1.2, 1.1],
   [20, 0x142364, 0x35488e, 0x2c4080, 0xa6b8ff, 0x505f9a, 0.75, 1.15],
   [24, 0x0b1a52, 0x2b4490, 0x223a78, 0x9fb6ff, 0x4a5a94, 0.75, 1.15],
@@ -38,7 +38,8 @@ function misturar(h, i) {
 // Uma malha e uma chamada de desenho para o céu todo; a cor do material muda com a hora (coluna "nuvem" da paleta).
 function nuvens(cena) {
   const rnd = aleatorio(77), pos = [], cor = [], c = new THREE.Color();
-  const tom = (nx, ny, nz) => (ny > 0.5 ? [1, 1, 1] : ny < -0.5 ? [0.78, 0.78, 0.9] : nx > 0.5 || nz > 0.5 ? [0.95, 0.94, 0.95] : [0.86, 0.86, 0.92]);
+  // topo branco puro; lados quase brancos (o do sol mais claro); só a base com a sombra azul-lilás suave
+  const tom = (nx, ny, nz) => (ny > 0.5 ? [1, 1, 1] : ny < -0.5 ? [0.76, 0.8, 0.94] : nx > 0.5 || nz > 0.5 ? [0.98, 0.98, 1] : [0.9, 0.92, 0.98]);
   const caixa = (w, h, d, x, y, z) => {
     const b = new THREE.BoxGeometry(w, h, d).toNonIndexed(); b.translate(x, y, z);
     const P = b.attributes.position, N = b.attributes.normal;

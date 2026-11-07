@@ -9,7 +9,7 @@
 // · jogador2.js (2 jogadores: com 1 jogador só o Rabisco; o jogador 2 escolhe a criança do cadastro ou um amigo do estojo).
 // ?teste expõe window.teste.
 
-import { THREE, MAT, mesclar } from "./base3d.js";
+import { THREE, MAT, mesclar, estatMesclar } from "./base3d.js";
 import { PARCEIROS } from "../../src/parceiros.js";
 import { Rabisco3D } from "../../src/motor3d/rabisco3d.js";
 import { criarCasca, el } from "../../src/motor/casca.js";
@@ -337,7 +337,7 @@ function iniciar() {
   cam = new THREE.PerspectiveCamera(55, 16 / 9, 0.1, 900);
   ceu = criarCeu(cena, { sombra: qualidade.p.sombra, area: qualidade.p.area });
   qualidade.aoAplicar = () => aplicarQualidade();
-  mundo = montarMundo(cena);
+  mundo = montarMundo(cena, { volume: qualidade.tem("volume") }); // AO falso e tom por peça: fora no nível baixa
   fis = criarFisica(mundo);
   camera = criarCamera(cam, mundo.solidos);
   rabisco = new Rabisco3D({ raiz: "../..", altura: 1.8 });
@@ -1725,7 +1725,7 @@ if (params.has("teste")) window.teste = {
   get janelas() { return { janela: MAT.janela.emissiveIntensity, quente: MAT.janelaQuente.emissiveIntensity, lampada: MAT.lampada.emissiveIntensity }; },
   get mundo() { return mundo; }, get dentro() { return dentro; }, get contexto() { return contexto?.rotulo ?? null; },
   get salvo() { return carregar(); }, get fone() { return fone; }, get transito() { return transito; }, get moradores() { return moradores; },
-  get ceu() { return ceu; }, get estat() { return { ...estat, fps: qualidade?.fps ?? 0, blocos: mundo.blocosVisiveis(), malhas: mundo.malhas }; },
+  get ceu() { return ceu; }, get estat() { return { ...estat, fps: qualidade?.fps ?? 0, blocos: mundo.blocosVisiveis(), malhas: mundo.malhas, mesclarMs: Math.round(estatMesclar.ms), mesclarVolumeMs: Math.round(estatMesclar.msVolume) }; },
   get vivo() { return vivo; }, get mapaLigado() { return mapaLigado; }, mapaPedido, get mapaUI() { return mapaUI; }, get alvoMapa() { return alvoMapa; }, get guia() { return guia ? { visivel: guia.g.visible, x: guia.g.position.x, y: guia.g.position.y, z: guia.g.position.z, rot: guia.rot, tam: guia.tam, farol: guia.farol.visible } : null; }, Engrenagem, get meuRb() { return meuRb; }, get pecas() { return rabisco?.rp ? { ...rabisco.rp.atual } : null; }, get placa() { return placaNome ? { ...placaNome.estado, y: placaNome.sprite.position.y, escala: placaNome.sprite.material.sizeAttenuation === false } : null; }, get tempo() { return estat.tj ?? 0; }, get fis() { return fis; },
   get modo() { return emCasa ? "casa" : emLugar ? "lugar" : dentro ? "veiculo" : "rua"; },
   get emLugar() { return emLugar ? { id: emLugar.id, est: emLugar.est, interativos: emLugar.interativos.map((i) => ({ id: i.id, rotulo: i.rotulo, pos: i.pos })) } : null; },

@@ -319,7 +319,51 @@ function semIndice(g) {
   if (!n) { n = g.index ? g.toNonIndexed() : g; if (!n.attributes.normal) n.computeVertexNormals(); semIndices.set(g, n); }
   return n;
 }
-export function mesclar(raiz, { juntas = null } = {}) {
+// ---------- volume (Mundo Vivo, etapa 2): oclusão ambiente falsa e variação de tom, pré-calculadas na cor por vértice ao mesclar.
+// Grade de ocupação em células de 0,5 m com a caixa (no mundo) de cada peça do grupo; abaixo de y = 0 conta como chão. Em cada
+// vértice do balde de cor por vértice, das 18 células vizinhas do lado de fora da face, quantas estão ocupadas → escurece até
+// AO_FORCA (pé das paredes, cantos internos, encontros de peças). Custo só ao carregar; 0 chamadas de desenho.
+const CELULA = 0.5, TETO = 40, AO_FORCA = 0.42, TOM_VARIACAO = 0.06;
+function gradeOcupacao(aabbs) {
+  const min = new THREE.Vector3(Infinity, Infinity, Infinity), max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+  for (const b of aabbs) { min.min(b.min); max.max(b.max); }
+  if (!Number.isFinite(min.x)) return null;
+  max.y = Math.min(max.y, min.y + TETO);
+  const nx = Math.ceil((max.x - min.x) / CELULA) + 2, ny = Math.ceil((max.y - min.y) / CELULA) + 2, nz = Math.ceil((max.z - min.z) / CELULA) + 2;
+  if (nx * ny * nz > 8e6) return null; // grupo enorme (não é um bloco da cidade): sem AO
+  const oc = new Uint8Array(nx * ny * nz);
+  const ix = (v, o) => Math.floor((v - o) / CELULA) + 1;
+  for (const b of aabbs) {
+    const x0 = Math.max(0, ix(b.min.x + 0.03, min.x)), x1 = Math.min(nx - 1, ix(b.max.x - 0.03, min.x)), y0 = Math.max(0, ix(b.min.y + 0.03, min.y)), y1 = Math.min(ny - 1, ix(b.max.y - 0.03, min.y)), z0 = Math.max(0, ix(b.min.z + 0.03, min.z)), z1 = Math.min(nz - 1, ix(b.max.z - 0.03, min.z));
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++) oc[(x * ny + y) * nz + z] = 1;
+  }
+  return { oc, nx, ny, nz, min, chao: ix(0, min.y), ix };
+}
+function oclusao(G, px, py, pz, nx, ny, nz) {
+  const cx = G.ix(px + nx * 0.35, G.min.x), cy = G.ix(py + ny * 0.35, G.min.y), cz = G.ix(pz + nz * 0.35, G.min.z);
+  const ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz);
+  const dx = ax >= ay && ax >= az ? Math.sign(nx) : 0, dy = dx === 0 && ay >= az ? Math.sign(ny) : 0, dz = dx === 0 && dy === 0 ? Math.sign(nz) || 1 : 0;
+  // 10 células: as 9 da camada rente à face (fora da peça) e a de frente; a camada atrás da face é a própria peça
+  let n = 0;
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (let k = -1; k <= 1; k++) {
+    const fora = i * dx + j * dy + k * dz;
+    if (fora !== 0 && !(fora > 0 && i === dx && j === dy && k === dz)) continue;
+    const x = cx + i, y = cy + j, z = cz + k;
+    if (y < G.chao) { n++; continue; }
+    if (x < 0 || z < 0 || y >= G.ny || x >= G.nx || z >= G.nz) continue;
+    n += G.oc[(x * G.ny + y) * G.nz + z];
+  }
+  return Math.min(1, n / 6);
+}
+// tom por peça (±3 %), sorteado pela posição no mundo: os blocos deixam de ser todos da mesma cor exata
+const tomDaPeca = (o) => { const e = o.matrixWorld.elements, s = Math.sin(e[12] * 12.9898 + e[13] * 78.233 + e[14] * 37.719) * 43758.5453; return 1 + (s - Math.floor(s) - 0.5) * TOM_VARIACAO; };
+const bbTmp = new THREE.Box3(), nmW = new THREE.Matrix3();
+
+// tempo gasto mesclando (ms), com e sem volume: os testes de carga leem
+export const estatMesclar = { ms: 0, msVolume: 0 };
+// volume: AO falso e variação de tom nas peças de cor lisa (só a cidade liga; veículos, personagens e interiores não)
+export function mesclar(raiz, { juntas = null, volume = false } = {}) {
+  const t0 = performance.now();
   raiz.updateMatrixWorld(true);
   const baldes = new Map();
   const remover = [];
@@ -327,6 +371,20 @@ export function mesclar(raiz, { juntas = null } = {}) {
   const invs = new Map();
   const alvoDe = (o) => { for (let p = o.parent; p; p = p.parent) { if (p === raiz || juntas?.has(p)) return p; } return raiz; };
   const dinamico = (o) => { for (let p = o; p && p !== raiz; p = p.parent) if (p.userData.dinamico) return true; return false; };
+  let G = null;
+  if (volume) {
+    const aabbs = [];
+    raiz.traverse((o) => {
+      if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || o.userData.mesclada || dinamico(o)) return;
+      let v = true; for (let q = o; q && q !== raiz; q = q.parent) if (!q.visible) v = false;
+      if (!v) return;
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      bbTmp.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld);
+      if (bbTmp.max.x - bbTmp.min.x < 0.3 && bbTmp.max.y - bbTmp.min.y < 0.3 && bbTmp.max.z - bbTmp.min.z < 0.3) return; // miudeza não oclui
+      aabbs.push(bbTmp.clone());
+    });
+    G = gradeOcupacao(aabbs);
+  }
   // detalhe: peça pequena que some de longe (flores, cercas, moitas, bancos); vira malha à parte
   const detalhe = (o) => { for (let p = o; p && p !== raiz; p = p.parent) if (p.userData.detalhe) return true; return false; };
   const c = new THREE.Color();
@@ -358,6 +416,10 @@ export function mesclar(raiz, { juntas = null } = {}) {
       if (tipo === "vc") c.copy(material.color);
       if (tipo === "proj") c.copy(material.uniforms.corBase.value);
       const peso = tipo === "proj" ? material.uniforms.pesoLado?.value ?? 1 : 0;
+      // volume: a cor por vértice sai já com o tom da peça e a oclusão (posição e normal no mundo)
+      const vol = G && tipo === "vc", tom = vol ? tomDaPeca(o) : 1, eW = o.matrixWorld.elements;
+      if (vol) nmW.getNormalMatrix(o.matrixWorld);
+      const eNW = nmW.elements;
       for (let t = ini; t < ini + qtd; t += 3) for (let k = 0; k < 3; k++) {
         const i = t + (espelhado && k ? 3 - k : k), x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], u = N[i * 3], v = N[i * 3 + 1], w = N[i * 3 + 2];
         b.pos.push(ePos[0] * x + ePos[4] * y + ePos[8] * z + ePos[12], ePos[1] * x + ePos[5] * y + ePos[9] * z + ePos[13], ePos[2] * x + ePos[6] * y + ePos[10] * z + ePos[14]);
@@ -365,7 +427,14 @@ export function mesclar(raiz, { juntas = null } = {}) {
         b.nrm.push(nx / l, ny / l, nz / l);
         if (tipo === "proj") { b.pr.push(A.posRef.getX(i), A.posRef.getY(i), A.posRef.getZ(i)); b.nr.push(A.nrmRef.getX(i), A.nrmRef.getY(i), A.nrmRef.getZ(i)); b.cb.push(c.r, c.g, c.b); b.pl.push(peso); }
         else if (U) b.uv.push(U[i * 2], U[i * 2 + 1]); else b.uv.push(0, 0);
-        if (tipo === "vc") b.cor.push(c.r, c.g, c.b);
+        if (tipo === "vc") {
+          if (vol) {
+            const wx = eW[0] * x + eW[4] * y + eW[8] * z + eW[12], wy = eW[1] * x + eW[5] * y + eW[9] * z + eW[13], wz = eW[2] * x + eW[6] * y + eW[10] * z + eW[14];
+            const mx = eNW[0] * u + eNW[3] * v + eNW[6] * w, my = eNW[1] * u + eNW[4] * v + eNW[7] * w, mz = eNW[2] * u + eNW[5] * v + eNW[8] * w, ml = Math.hypot(mx, my, mz) || 1;
+            const f = tom * (1 - AO_FORCA * oclusao(G, wx, wy, wz, mx / ml, my / ml, mz / ml));
+            b.cor.push(c.r * f, c.g * f, c.b * f);
+          } else b.cor.push(c.r, c.g, c.b);
+        }
       }
     }
     remover.push(o);
@@ -391,6 +460,7 @@ export function mesclar(raiz, { juntas = null } = {}) {
     m.userData.detalhe = b.det;
     b.alvo.add(m);
   }
+  const dt = performance.now() - t0; estatMesclar.ms += dt; if (volume) estatMesclar.msVolume += dt;
   return baldes.size;
 }
 

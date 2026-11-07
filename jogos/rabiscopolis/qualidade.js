@@ -4,7 +4,7 @@
 //
 // alta  = o visual de hoje (sem regressão): TV/computador dpr até 1,25 (≤ ~1080p), celular até 1,3; sombra 1024 em ±44 m.
 // media = dpr até 1,0; sombra 1024 só em ±30 m e só nos blocos perto (menos chamadas no passe de sombra); neblina mais perto.
-// baixa = dpr ×0,7; sem sombra; neblina e detalhe bem mais perto; sem adereços de detalhe nem animação de fundo.
+// baixa = dpr ×0,7; sem sombra; neblina e detalhe bem mais perto; sem adereços de detalhe, animação de fundo nem volume (AO).
 //
 // Escolha no início: ?qualidade=alta|media|baixa manda; senão, o nível lembrado (se o jogo já baixou neste aparelho, nos
 // últimos 7 dias); senão, pela memória/CPU que o navegador informa. Durante o jogo: fica lento (FPS médio < LENTO) por
@@ -19,12 +19,12 @@ const TABELA = {
   alta: {
     tv: { dprMax: 1.25, limite1080: true, sombra: 1024, area: 44, sombraAte: Infinity, alcance: 140, detalheAte: 36, semaforoAte: null, neblinaDe: 60 },
     toque: { dprMax: 1.3, limite1080: false, sombra: 1024, area: 44, sombraAte: Infinity, alcance: 95, detalheAte: 35, semaforoAte: 55, neblinaDe: 40 },
-    tem: ["sombra", "sombraLonge", "adereços", "adereçosLonge", "fundoAnimado", "detalhe"],
+    tem: ["sombra", "sombraLonge", "adereços", "adereçosLonge", "fundoAnimado", "detalhe", "volume"],
   },
   media: {
     tv: { dprMax: 1.0, limite1080: true, sombra: 1024, area: 30, sombraAte: 24, alcance: 120, detalheAte: 32, semaforoAte: 90, neblinaDe: 50 },
     toque: { dprMax: 1.0, limite1080: false, sombra: 1024, area: 30, sombraAte: 24, alcance: 85, detalheAte: 30, semaforoAte: 50, neblinaDe: 35 },
-    tem: ["sombra", "adereços", "fundoAnimado", "detalhe"],
+    tem: ["sombra", "adereços", "fundoAnimado", "detalhe", "volume"],
   },
   baixa: {
     tv: { dprMax: 0.875, limite1080: true, sombra: 0, area: 30, sombraAte: 0, alcance: 95, detalheAte: 26, semaforoAte: 60, neblinaDe: 40 },
