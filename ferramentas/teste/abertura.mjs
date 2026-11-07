@@ -6,10 +6,9 @@ let falhas = 0;
 const ok = (c, m) => { console.log(c ? "✓" : "✗", m); if (!c) falhas++; };
 const ate = async (t, e, ms = 15000) => { const f = Date.now() + ms; while (Date.now() < f) { if (await t.ev(e).catch(() => false)) return true; await espera(250); } return false; };
 for (const jeito of ["clique", "enter", "controle"]) {
-  const t = await abrir(`${B}/index.html`, { largura: 1280, altura: 720 });
+  const t = await abrir(`${B}/index.html?semcadastro`, { largura: 1280, altura: 720 });
   await ate(t, "document.readyState === 'complete'");
   await espera(1200);
-  await t.ev(`[...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Agora não")?.click(); true`);
   await espera(400);
   // segura a ida para o jogo e guarda o destino (o jogo pesado travaria o navegador de teste)
   await t.ev(`window.__destino = ""; navigation.addEventListener("navigate", (e) => { if (!e.destination.url.includes("#")) { window.__destino = e.destination.url; e.preventDefault(); } }); true`);

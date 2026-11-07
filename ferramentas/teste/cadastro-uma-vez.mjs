@@ -1,5 +1,5 @@
-// Cadastro uma vez só: na 1ª entrada no PORTAL abre o questionário único (responsável + filhos); "Agora não" fecha e não
-// pergunta de novo nesta visita; tocar num jogo nunca abre cadastro (o link segue). Depois de cadastrado, o portal não
+// Cadastro uma vez só: na 1ª entrada no PORTAL abre o questionário único (responsável + filhos), OBRIGATÓRIO (sem "Agora não",
+// Esc não fecha); preenchido e salvo, recarregar não abre de novo; tocar num jogo nunca abre cadastro (o link segue). Depois de cadastrado, o portal não
 // pergunta mais e o chip do topo abre "Quem vai jogar?" (troca de perfil). /tv, ?tv=1 e jogos abertos direto nunca
 // abrem o cadastro; abrirCadastro({ obrigatorio: true }) resolve true na hora, sem tela. O fluxo completo dos perfis
 // está em ferramentas/teste/perfis.mjs.
@@ -36,20 +36,15 @@ async function cadastrar(t) {
 
 for (const [nome, opts] of [["celular", { mobile: true, largura: 390, altura: 844 }], ["tablet", { mobile: true, largura: 820, altura: 1180 }], ["computador", { largura: 1280, altura: 800 }]]) {
   console.log(`\n== ${nome}`);
-  // 1) 1ª entrada: o cadastro abre uma vez; "Agora não" fecha; os jogos seguem
+  // 1) 1ª entrada: o cadastro é obrigatório (sem "Agora não", Esc não fecha)
   let t = await nova(opts, `${BASE}/index.html`);
   ok(await ate(t, CADASTRO), "1ª entrada no portal: abre o cadastro único");
   ok(!(await t.transborda()), "cadastro cabe na tela");
-  await t.ev(`document.querySelector('[data-acao="depois"]').click()`);
+  ok(await t.ev(`!document.querySelector('[data-acao="depois"]') && !/Agora não/.test(document.querySelector(".cadastro").textContent)`), "1ª entrada: não tem botão \"Agora não\"");
+  await t.ev(`document.querySelector(".cadastro").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`);
   await espera(300);
-  ok(!(await t.ev(ALGUM)), "Agora não fecha");
-  for (let i = 0; i < 3; i++) { ok((await t.ev(clicaJogo)) === "segue", `toque ${i + 1} num jogo: segue`); await espera(200); }
-  ok(!(await t.ev(ALGUM)), "tocar nos jogos não abre cadastro");
-  await t.ev(`location.reload()`); await espera(1500);
-  ok(!(await t.ev(CADASTRO)), "nesta visita não pergunta de novo");
+  ok(await t.ev(CADASTRO), "Esc não fecha o cadastro da 1ª entrada");
   ok(await t.ev(`!localStorage.getItem("rabisco.familia")`), "nada do responsável foi salvo");
-  const r = await t.ev(`(async () => { const F = (await import("/src/motor/familia.js")).Familia; const r = await Promise.race([F.abrirCadastro({ obrigatorio: true }), new Promise((x) => setTimeout(() => x("travou"), 1500))]); return r + "|" + !!document.querySelector(".familia-tela"); })()`);
-  ok(r === "true|false", `abrirCadastro obrigatório resolve true sem abrir (${r})`);
   await t.fechar();
 
   // 2) preenche e salva; depois o portal não pergunta mais e o chip abre "Quem vai jogar?"
@@ -59,6 +54,10 @@ for (const [nome, opts] of [["celular", { mobile: true, largura: 390, altura: 84
   ok(await ate(t, `!document.querySelector(".cadastro")`), "salvou");
   ok(await t.ev(`JSON.parse(localStorage.getItem("rabisco.perfis")).perfis[0].nome === "Alice" && !!JSON.parse(localStorage.getItem("rabisco.familia")).consentimento.responsavelLegal`), "cadastro salvo (perfil Alice + consentimento)");
   ok((await t.ev(clicaJogo)) === "segue", "depois de salvar, o jogo segue");
+  for (let i = 0; i < 3; i++) { ok((await t.ev(clicaJogo)) === "segue", `toque ${i + 1} num jogo: segue`); await espera(200); }
+  ok(!(await t.ev(ALGUM)), "tocar nos jogos não abre cadastro");
+  await t.ev(`location.reload()`); await espera(1500);
+  ok(!(await t.ev(CADASTRO)), "recarregar depois de salvar NÃO abre o cadastro de novo");
   await t.ev(`sessionStorage.clear(); location.reload()`); await espera(1500);
   ok(!(await t.ev(ALGUM)), "nova visita: não abre cadastro");
   ok(await ate(t, `/Alice/.test(document.getElementById("familia")?.textContent || "")`, 15000), `chip mostra Alice (${await t.ev(`document.getElementById("familia")?.textContent`)})`);
@@ -72,7 +71,6 @@ console.log("\n== localStorage bloqueado (modo privado): o jogo também segue");
 {
   const bloqueia = `for (const k of ["localStorage"]) Object.defineProperty(window, k, { get() { throw new DOMException("bloqueado", "SecurityError"); } });`;
   const t = await nova({ mobile: true, largura: 390, altura: 844 }, `${BASE}/index.html`, bloqueia);
-  await t.ev(`document.querySelector('[data-acao="depois"]')?.click()`);
   ok((await t.ev(clicaJogo)) === "segue", "bloqueado: o toque segue para o jogo");
   ok(!t.erros.length, `bloqueado: sem erros (${t.erros.join(" ; ")})`);
   await t.fechar();

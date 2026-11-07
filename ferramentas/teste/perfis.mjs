@@ -476,12 +476,11 @@ console.log("\n== migração: progresso antigo vai para o 1º perfil, sem perder
   ok(sobrou.length === 0, `nada da família ficou no aparelho (sobrou: ${sobrou.join(", ") || "nada"})`);
   ok((await reg(t)).perfis.length === 1 && !(await reg(t)).perfis[0].nome && (await saldo(t)) === 0, "começa do zero, com um perfil vazio");
   ok(await ate(t, `!!document.querySelector(".cadastro")`), "e o cadastro da 1ª entrada aparece de novo");
-  await clicar(t, '[data-acao="depois"]');
+  ok(!(await t.ev(`!!document.querySelector('[data-acao="depois"]')`)) && !/Agora não/.test(await t.ev(`document.querySelector(".cadastro").textContent`)), "1ª entrada obrigatória: não tem \"Agora não\"");
+  await t.ev(`document.querySelector(".cadastro").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`);
   await espera(300);
-  ok(!(await t.ev(`!!document.querySelector(".cadastro")`)), "\"Agora não\" fecha");
+  ok(await t.ev(`!!document.querySelector(".cadastro")`), "Esc não fecha o cadastro da 1ª entrada");
   ok(await t.ev(`(() => { const a = document.querySelector("a.jogo.pronto"); if (!a) return false; let seguiu = false; a.addEventListener("click", (e) => { seguiu = !e.defaultPrevented; e.preventDefault(); }, { once: true }); a.click(); return seguiu; })()`), "tocar num jogo segue direto (nenhum cadastro barra)");
-  await marcar(t); await t.ev(`location.reload()`); await recarregou(t); await espera(800);
-  ok(!(await t.ev(`!!document.querySelector(".cadastro")`)), "\"Agora não\": não pergunta de novo nesta visita");
   await t.fechar();
 }
 

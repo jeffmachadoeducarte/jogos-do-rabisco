@@ -18,7 +18,6 @@ import { Engrenagem } from "./engrenagem.js";
 import { audioDoNome } from "./voz.js";
 
 const RAIZ = new URL("../..", import.meta.url).href.replace(/\/$/, "");
-const CHAVE_DEPOIS = "rabisco.cadastro.depois"; // "Agora não" na 1ª entrada: não pergunta de novo nesta visita (sessionStorage)
 
 let cssPronto = false;
 function garantirCss() {
@@ -111,7 +110,7 @@ export function ligarNaEngrenagem() {
 // ------------------------------------------------------------------ 1ª entrada no portal
 export function primeiraEntrada() {
   if (Familia.completo()) return Promise.resolve(false);
-  try { if (sessionStorage.getItem(CHAVE_DEPOIS) || sessionStorage.getItem("rabisco.tv")) return Promise.resolve(false); } catch { /* sem armazenamento: pergunta */ }
+  try { if (sessionStorage.getItem("rabisco.tv")) return Promise.resolve(false); } catch { /* sem armazenamento: pergunta */ }
   return abrirCadastroCompleto({ primeira: true });
 }
 
@@ -293,7 +292,7 @@ export function abrirCadastroCompleto({ primeira = false } = {}) {
       h("p", { class: "nota-cpf", texto: "Não pedimos CPF nem RG. O progresso dos jogos fica só neste aparelho." }),
       erro1,
       h("div", { class: "familia-acoes" }, [
-        h("button", { type: "button", class: "botao branco", "data-acao": "depois", texto: primeira ? "Agora não" : "Cancelar", onclick: () => fechar(false, true) }),
+        primeira ? null : h("button", { type: "button", class: "botao branco", "data-acao": "depois", texto: "Cancelar", onclick: () => fechar(false) }), // 1ª entrada: obrigatório, sem "Agora não"
         h("button", { type: "button", class: "botao", "data-acao": "continuar", texto: "Continuar ▶", onclick: () => irPara2() }),
       ]),
     ]);
@@ -415,14 +414,13 @@ export function abrirCadastroCompleto({ primeira = false } = {}) {
       fechar(true);
       if (!editando && Perfis.lista().length > 1) setTimeout(() => abrirQuemJoga(), 80);
     }
-    function fechar(salvou, depois = false) {
-      if (depois && primeira) { try { sessionStorage.setItem(CHAVE_DEPOIS, "1"); } catch { /* */ } }
+    function fechar(salvou) {
       fecharJanela(tela);
       cadastroAberto = null;
       resolver(salvou);
     }
     mostrar(1);
-    abrirJanela(tela, () => (etapa === 2 ? irPara1() : fechar(false, true)));
+    abrirJanela(tela, () => (etapa === 2 ? irPara1() : primeira ? null : fechar(false)));
     focarDepois(fNome.input);
   });
   return cadastroAberto;
