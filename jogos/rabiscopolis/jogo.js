@@ -309,6 +309,7 @@ function atualizarPlaca() {
 function aplicarQualidade() {
   const q = qualidade.p, dois = Boolean(quadro.doisToque) && qualidade.perfil.toque;
   ceu.sombra(q.sombra, q.area);
+  ceu.fundo(qualidade.tem("fundoAnimado")); // nuvens só fora do nível baixa
   mundo.alcance = dois ? Math.round(q.alcance * 0.82) : q.alcance;
   mundo.detalheAte = dois ? Math.round(q.detalheAte * 0.8) : q.detalheAte;
   mundo.semaforoAte = q.semaforoAte;
