@@ -87,7 +87,8 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   // longe: ninguém das missões montado nem visível na largada (orçamento)
   await ev("teste.ir(0, 33); teste.olhar(Math.PI)"); await espera(1200);
   const custo = await ev("(() => { const a = teste.medir().semSombra.calls; teste.missoes.grupo.visible = false; const b = teste.medir().semSombra.calls; teste.missoes.grupo.visible = true; return { com: a, sem: b, montados: teste.missoes.montados() }; })()");
-  ok(custo.com - custo.sem <= 0, `na praça as missões não custam chamadas de desenho (${custo.sem} → ${custo.com}; montados perto: ${custo.montados.join(", ") || "nenhum"})`);
+  // o anel dourado de quem tem missão (etapa 8) é 1 malha instanciada para todos: no máximo 1 chamada
+  ok(custo.com - custo.sem <= 1, `na praça as missões custam no máximo 1 chamada de desenho (o anel) (${custo.sem} → ${custo.com}; montados perto: ${custo.montados.join(", ") || "nenhum"})`);
   const perto = async (x, z, dx = 1.6, dz = 1.2) => { await ev(`teste.ir(${x + dx}, ${z + dz})`); await esperaJogo(t, 0.5); }; // em tempo de jogo: com a máquina carregada os quadros demoram
   const acao = async () => { await ev("teste.acao()"); await esperaJogo(t, 0.3); };
   const posNpc = (mid, id) => ev(`teste.missoes.npc('${mid}', '${id}')`);
@@ -763,7 +764,7 @@ async function testarMissoes(t, { ok, espera, FOTOS, fotos = true }) {
   // (vai primeiro para a praça e espera uns quadros: quem estava à vista no heliponto some de longe)
   await t.ev("teste.ir(0, 33); teste.olhar(Math.PI)"); await espera(800);
   const custoM = await t.ev("(() => { teste.ir(0, 33); teste.olhar(Math.PI); const a = teste.medir().semSombra.calls; teste.missoes.grupo.visible = false; const b = teste.medir().semSombra.calls; teste.missoes.grupo.visible = true; return [b, a]; })()");
-  ok(custoM[1] - custoM[0] <= 0, `celular: na praça as missões não custam chamadas de desenho (${custoM[0]} → ${custoM[1]})`);
+  ok(custoM[1] - custoM[0] <= 1, `celular: na praça as missões custam no máximo 1 chamada de desenho (o anel) (${custoM[0]} → ${custoM[1]})`);
   await t.ev("(() => { const n = teste.missoes.npc('ovelha', 'pastor'); teste.ir(n.x + 1.4, n.z + 1.2); })()"); await espera(900);
   const rot = await t.ev("document.querySelector('.rp-acao').textContent");
   await t.toque(".rp-acao"); await espera(500);

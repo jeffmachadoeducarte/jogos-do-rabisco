@@ -131,6 +131,10 @@ export function criarMissoes(ctx) {
   const { cena, falar, dizer, sons, salvo, salvar, pos, rabisco, vovo, veiculoAtual, raio } = ctx;
   posicionarNaCidade(ctx);
   const grupo = new THREE.Group(); grupo.name = "missoes"; cena.add(grupo);
+  // anel dourado pulsando no chão de quem tem missão (Mundo Vivo, etapa 8): UMA malha instanciada para todos (1 chamada)
+  const anel = new THREE.InstancedMesh(new THREE.RingGeometry(0.7, 1.05, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd54a, transparent: true, opacity: 0.85, depthWrite: false, fog: false }), 64); // só a face de cima (transparente + DoubleSide custaria 2 passes)
+  anel.frustumCulled = false; anel.count = 0; anel.renderOrder = 3; grupo.add(anel);
+  const _am = new THREE.Matrix4(); let anelN = 0;
   const npcs = new Map(); // `${missao}:${id}` → { m (morador) | bicho, g, extras, marca, dados, M, quem }
   const itens = []; // { missao, id, sprite, x, z, pego }
   const plantas = []; // { missao, x, z, sprite, broto, feito }
@@ -232,7 +236,8 @@ export function criarMissoes(ctx) {
     }
     if (n.quem) {
       n.marca = new THREE.Sprite(new THREE.SpriteMaterial({ map: marcaTex(), depthTest: false }));
-      n.marca.scale.setScalar(0.95); n.marca.renderOrder = 6; grupo.add(n.marca);
+      n.marca.scale.setScalar(1.3); n.marca.renderOrder = 6; grupo.add(n.marca); // "!" maior (etapa 8)
+      if (anelN < 64) { n.anel = anelN++; anel.count = anelN; }
     }
     n.casa = d.tipo === "vovo" ? [vovo.grupo.position.x, vovo.grupo.position.z] : [d.x, d.z];
     npcs.set(k, n);
@@ -483,7 +488,8 @@ export function criarMissoes(ctx) {
       if (!n.fixo) n.g.visible = vis;
       if (n.extras) n.extras.visible = Math.hypot(p.x - n.casa[0], p.z - n.casa[1]) < R && (n.casaExtras ? ativa === n.M : daMissao);
       // Missão do dia (diario.js): ctx.marcaDoDia(id) dá a estrela no lugar do "!" (aparece também se já foi feita)
-      if (n.marca) { const dia = ctx.marcaDoDia?.(n.M.id) ?? null, tx = dia ?? marcaTex(); if (n.marca.material.map !== tx) { n.marca.material.map = tx; n.marca.material.needsUpdate = true; } const pede = (!feitas.has(n.M.id) || Boolean(dia)) && !ativa && liberada(n.M); n.marca.visible = pede && (n.fixo && !n.fachada ? n.g.visible : vis); n.marca.position.set(x, n.g.position.y + (n.bicho ? 1.6 : n.m?.altura ?? 1.4) + 0.75 + Math.sin(t * 4) * 0.12, z); }
+      if (n.marca) { const dia = ctx.marcaDoDia?.(n.M.id) ?? null, tx = dia ?? marcaTex(); if (n.marca.material.map !== tx) { n.marca.material.map = tx; n.marca.material.needsUpdate = true; } const pede = (!feitas.has(n.M.id) || Boolean(dia)) && !ativa && liberada(n.M); n.marca.visible = pede && (n.fixo && !n.fachada ? n.g.visible : vis); n.marca.position.set(x, n.g.position.y + (n.bicho ? 1.6 : n.m?.altura ?? 1.4) + 0.75 + Math.sin(t * 4) * 0.12, z);
+        if (n.anel != null) { const sc = n.marca.visible ? 1 + Math.sin(t * 3) * 0.12 : 0; anel.setMatrixAt(n.anel, _am.makeScale(sc, 1, sc).setPosition(x, n.g.position.y + 0.12, z)); anel.instanceMatrix.needsUpdate = true; anel.material.opacity = 0.7 + Math.sin(t * 3) * 0.2; } }
       if (!vis && !n.fixo) continue;
       if (n.m && !n.fixo) {
         // parado: vira para o Rabisco quando ele chega perto
