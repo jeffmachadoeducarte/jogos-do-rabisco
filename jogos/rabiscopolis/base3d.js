@@ -120,6 +120,7 @@ export function letreiro(texto, largura = 8, opcoes = {}) {
   const prop = (opcoes.w ?? 512) / (opcoes.h ?? 128), alt = largura / prop;
   const g = new THREE.Group();
   const corHex = new THREE.Color(opcoes.cor ?? "#00b5f0").getHex();
+  cx(g, largura + 0.5, alt + 0.5, 0.16, 0x2b2b30, 0, 0, -0.1, { sombra: false }); // moldura escura (Mundo Vivo, etapa 6)
   cx(g, largura + 0.24, alt + 0.24, 0.2, corHex, 0, 0, -0.04, { sombra: false });
   const m = new THREE.Mesh(new THREE.PlaneGeometry(largura, alt), matNovo({ map: placa(texto, { fundo: "#ffffff", ...opcoes, cor: opcoes.fundo ?? "#ffffff" }), emissive: 0xffffff, emissiveIntensity: 0.14 }));
   m.material.emissiveMap = m.material.map;

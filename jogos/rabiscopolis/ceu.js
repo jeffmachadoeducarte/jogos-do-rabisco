@@ -146,7 +146,8 @@ export function criarCeu(cena, { sombra = 1024, area = 44 } = {}) {
       amb.color.setHex(noite > 0.5 ? 0x9db2f0 : 0xdde8ff); amb.groundColor.setHex(noite > 0.5 ? 0x34466e : 0xd4b48e);
       // janelas, lampiões e postes acendem
       const acesa = Math.max(0, Math.min(1, noite * 1.3));
-      MAT.janela.emissiveIntensity = acesa * 1.05; MAT.janelaQuente.emissiveIntensity = acesa * 1.25;
+      // vitrines e janelas com um brilho suave de dia (Mundo Vivo, etapa 6) e acesas de verdade à noite
+      MAT.janela.emissiveIntensity = 0.12 + acesa * 1.05; MAT.janelaQuente.emissiveIntensity = 0.22 + acesa * 1.25;
       MAT.lampada.emissiveIntensity = 0.15 + acesa * 2.2;
       MAT.janela.color.setHex(acesa > 0.3 ? 0x6a78a0 : 0x8fd0f7);
       MAT.pocaLuz.visible = acesa > 0.05; MAT.pocaLuz.opacity = acesa;

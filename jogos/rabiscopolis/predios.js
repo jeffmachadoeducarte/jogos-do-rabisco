@@ -880,7 +880,7 @@ function lojinha(l, { cor, beiral, rodape, texto, corTexto, h = 6, vitrine = MAT
   const S = novo(), g = S.grupo; const [W, D] = l.pegada;
   corpo(g, W, h, D, cor, { beiral, rodape });
   const v = caixaRedonda(W - 7, 2.3, 0.2, vitrine); v.position.set(-2, 1.9, 0.06); g.add(v);
-  if (toldoCores) { const t = toldo(W - 1, ...toldoCores); t.position.set(0, 3.9, 0.1); g.add(t); }
+  { const t = toldo(W - 1, ...(toldoCores ?? [beiral, 0xffffff])); t.position.set(0, 3.9, 0.1); g.add(t); } // toldo listrado em toda lojinha (etapa 6: sem cores próprias, beiral + branco)
   porta(g, { x: W / 2 - 2.6, z: 0.2, w: 2.4, h: 3, cor: beiral, vidro: false });
   nome(g, texto, { y: h - 1, largura: Math.min(W - 2, 9), cor: corTexto });
   if (enfeite) { enfeite.position.y += h + 0.5; enfeite.position.z += -D / 2; g.add(enfeite); }
