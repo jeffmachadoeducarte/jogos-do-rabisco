@@ -86,15 +86,18 @@ export function montarMundo(cena, { volume = true } = {}) { // volume: AO falso 
     fitas(rua, pedaco, false, i, regioes[reg]);
   });
   for (const g of Object.values(regioes)) { cena.add(g); mesclar(g, { volume }); g.userData.ret = new THREE.Box3().setFromObject(g); }
-  // faixas de pedestre nos cruzamentos com semáforo
-  const matFaixa = mat(0xffffff);
-  for (const s of SEMAFOROS) {
-    for (const lado of [-1, 1]) {
-      const zc = s.z + lado * (s.wX / 2 + 1.8);
-      for (let x = -s.wZ / 2 + 0.8; x <= s.wZ / 2 - 0.6; x += 1.35) { const l = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 3), matFaixa); l.rotation.x = -Math.PI / 2; l.position.set(s.x + x, 0.1, zc); ruas.add(l); }
-      const xc = s.x + lado * (s.wZ / 2 + 1.8);
-      for (let z = -s.wX / 2 + 0.8; z <= s.wX / 2 - 0.6; z += 1.35) { const l = new THREE.Mesh(new THREE.PlaneGeometry(3, 0.8), matFaixa); l.rotation.x = -Math.PI / 2; l.position.set(xc, 0.1, s.z + z); ruas.add(l); }
+  // faixas de pedestre (zebra): só visual, no grupo "ruas" mesclado (0 chamadas); não entram em solidos nem nas rotas
+  const matFaixa = matNovo({ color: 0xffffff }); // material próprio (o mat(0xffffff) é compartilhado por cor)
+  matFaixa.color.setRGB(1.2, 1.2, 1.2); // branco nítido: compensa o escurecimento de contato do shader (0,85 rente ao chão); vira cor por vértice na mesclagem
+  // zebra atravessando uma rua de largura w no ponto (xc, zc); aoLongoDeX = a rua corre ao longo de x (as listras ficam deitadas em x)
+  const faixa = (xc, zc, aoLongoDeX, w) => {
+    for (let d = -w / 2 + 0.8; d <= w / 2 - 0.6; d += 1.35) {
+      const l = new THREE.Mesh(new THREE.PlaneGeometry(aoLongoDeX ? 3 : 0.8, aoLongoDeX ? 0.8 : 3), matFaixa);
+      l.rotation.x = -Math.PI / 2; l.position.set(aoLongoDeX ? xc : xc + d, 0.1, aoLongoDeX ? zc + d : zc); ruas.add(l);
     }
+  };
+  for (const s of SEMAFOROS) {
+    for (const lado of [-1, 1]) { faixa(s.x, s.z + lado * (s.wX / 2 + 1.8), false, s.wZ); faixa(s.x + lado * (s.wZ / 2 + 1.8), s.z, true, s.wX); }
     const postes = [];
     const gs = new THREE.Group();
     for (const [sx, sz, rot] of [[1, 1, Math.PI], [-1, -1, 0], [1, -1, -Math.PI / 2], [-1, 1, Math.PI / 2]]) {
@@ -109,6 +112,15 @@ export function montarMundo(cena, { volume = true } = {}) { // volume: AO falso 
     mesclar(gs, { volume }); // só as luzes ficam separadas
     semaforos.push({ ...s, postes, fase: (s.x + s.z) % 200 ? 0 : 6, grupo: gs });
   }
+  // cruzamentos principais sem semáforo (os T das ruas de antes), a frente da praça/biblioteca nas avenidas e as escolas
+  for (const [x, z, aoLongoDeX, w] of [
+    [0, 50, true, 12], [0, -50, true, 12], // praça ↔ av. da Alegria (sul) e ↔ biblioteca (av. da Esperança, norte)
+    [-50, 6.3, false, 11], [-50, -6.3, false, 11], [-57.3, 0, true, 9], // Rua das Casas × Rua do Sol
+    [50, 6.8, false, 11], [50, -6.8, false, 11], [57.3, 0, true, 10], // Rua do Comércio × Rua da Lua
+    [-50, -88.7, false, 11], [-50, -101.3, false, 11], [-57.3, -95, true, 9], // Rua das Flores × Rua do Sol
+    [-6.8, -140, true, 12], [6.8, -140, true, 12], [0, -147.8, false, 10], // Rua do Mirante × Av. do Contorno
+    [-195, 0, true, 9], [195, 0, true, 10], // Educarte Kids I e Kids II
+  ]) faixa(x, z, aoLongoDeX, w);
   cena.add(ruas);
   mesclar(ruas, { volume });
 

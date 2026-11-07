@@ -57,20 +57,32 @@ export const TEX = {
       c.strokeStyle = lado; c.lineWidth = 2; c.strokeRect(x0 + 1, y0 + 1, 126, 126);
     }
   }, { repetir: true }),
+  // asfalto (tile = 6 m): cinza-azulado escuro com granulado leve (pontinhos mais claros e mais escuros); emenda invisível
   asfalto: texturaCanvas(256, 256, (c, w, h) => {
-    c.fillStyle = "#565a64"; c.fillRect(0, 0, w, h);
-    c.fillStyle = "#5b5f6a"; c.fillRect(8, 8, w - 16, h - 16);
-    c.strokeStyle = "#4c5059"; c.lineWidth = 3; c.strokeRect(0, 0, w, h);
+    c.fillStyle = "#4f535c"; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 2600; i++) { c.fillStyle = i % 3 ? "#565a64" : "#474b53"; c.fillRect(Math.floor(rt() * (w - 2)), Math.floor(rt() * (h - 2)), 2, 2); }
+    for (let i = 0; i < 140; i++) { c.fillStyle = "rgba(90,94,104,0.5)"; c.fillRect(Math.floor(rt() * (w - 6)), Math.floor(rt() * (h - 6)), 3 + Math.floor(rt() * 4), 2); }
   }, { repetir: true }),
-  // calçada: u = 0 na beira da rua (meio-fio claro com sombrinha) e placas com pinos no resto
-  calcada: texturaCanvas(256, 256, (c, w, h) => {
-    c.fillStyle = "#dfe2e8"; c.fillRect(0, 0, w, h);
-    for (let i = 0; i < 6; i++) for (let k = 0; k < 6; k++) pino(c, 50 + i * 35, 21 + k * 43, 7, "#e5e8ee", "#cfd3db");
-    c.fillStyle = "#f8f9fc"; c.fillRect(0, 0, 26, h);
-    c.fillStyle = "#9aa3b4"; c.fillRect(26, 0, 5, h);
-    c.strokeStyle = "#c3c8d2"; c.lineWidth = 3; c.strokeRect(31, 0, w - 31, h);
+  // calçada (tile = 3 m de largura × 3 m de comprimento): u = 0 na beira da rua (meio-fio claro com a quina escura) e o
+  // resto em pedras (paver) em fiadas desencontradas, tons quentes de bege, rosa-cinza e cinza, com as juntas visíveis
+  calcada: texturaCanvas(512, 512, (c, w, h) => {
+    const MEIO = 44, LINHA = 64, LARG = 96, tons = ["#d8c6ae", "#cdbba3", "#d2c0b4", "#c4b5ad", "#bfb7ae", "#e0d2bd", "#cbb9a6", "#d6c7b9"];
+    c.fillStyle = "#9b9288"; c.fillRect(0, 0, w, h); // juntas
+    for (let r = 0; r < h / LINHA; r++) {
+      const desl = r % 2 ? LARG / 2 : 0;
+      for (let x = MEIO - LARG; x < w + LARG; x += LARG) {
+        const x0 = Math.max(MEIO, x + desl), x1 = Math.min(w, x + desl + LARG), y0 = r * LINHA;
+        if (x1 - x0 < 6) continue;
+        c.fillStyle = tons[Math.floor(rt() * tons.length)]; c.fillRect(x0 + 2, y0 + 2, x1 - x0 - 4, LINHA - 4);
+        c.fillStyle = "rgba(255,255,255,0.22)"; c.fillRect(x0 + 2, y0 + 2, x1 - x0 - 4, 3); c.fillRect(x0 + 2, y0 + 2, 3, LINHA - 4); // quina clara
+        c.fillStyle = "rgba(70,60,50,0.16)"; c.fillRect(x0 + 2, y0 + LINHA - 5, x1 - x0 - 4, 3); // sombrinha embaixo
+      }
+    }
+    c.fillStyle = "#efe8dc"; c.fillRect(0, 0, MEIO - 8, h); // meio-fio
+    c.fillStyle = "#f7f2ea"; c.fillRect(0, 0, 10, h);
+    c.fillStyle = "#8d847a"; c.fillRect(MEIO - 8, 0, 8, h); // quina do meio-fio
   }, { repetir: true }),
-  linha: texturaCanvas(32, 256, (c, w, h) => { c.clearRect(0, 0, w, h); c.fillStyle = "#f6f7fb"; for (let y = 0; y < h; y += 64) c.fillRect(0, y, w, 34); }, { repetir: true }),
+  linha: texturaCanvas(32, 256, (c, w, h) => { c.clearRect(0, 0, w, h); c.fillStyle = "#ffffff"; for (let y = 0; y < h; y += 64) c.fillRect(0, y, w, 34); }, { repetir: true }),
   // água: tracinhos claros em fileiras, como ondas de blocos (mundo.js escorrega a textura devagar)
   agua: texturaCanvas(256, 256, (c, w, h) => {
     c.fillStyle = "#3f9fd2"; c.fillRect(0, 0, w, h);
