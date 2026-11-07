@@ -124,10 +124,11 @@ export function canteiro(w, d) {
   const terra = caixa(w - 0.4, 0.1, d - 0.4, mat(0x7a5232)); terra.position.y = 0.46; g.add(terra);
   const cores = [0xff5fa2, 0xffcc1f, 0xffffff, 0xff7a3d, 0xb08cff, 0x4fb6ff];
   const n = Math.floor((w * d) / 0.7);
+  // flores em cubinhos (Mundo Vivo, etapa 5): 12 triângulos cada em vez dos 20 do icosaedro; mesmos sorteios (nada muda de lugar)
   for (let i = 0; i < n; i++) {
-    const f = malha(new THREE.IcosahedronGeometry(0.16, 0), mat(cores[i % cores.length]), { sombra: false });
+    const f = caixa(0.2, 0.2, 0.2, mat(cores[i % cores.length]), { sombra: false });
     f.position.set((rnd() - 0.5) * (w - 0.7), 0.62 + rnd() * 0.15, (rnd() - 0.5) * (d - 0.7)); flores.add(f);
-    if (i % 2) { const fo = malha(new THREE.IcosahedronGeometry(0.2, 0), mat(0x4cb83f), { sombra: false }); fo.position.set(f.position.x + 0.15, 0.55, f.position.z); flores.add(fo); }
+    if (i % 2) { const fo = caixa(0.26, 0.18, 0.26, mat(0x4cb83f), { sombra: false }); fo.position.set(f.position.x + 0.15, 0.55, f.position.z); flores.add(fo); }
   }
   return g;
 }

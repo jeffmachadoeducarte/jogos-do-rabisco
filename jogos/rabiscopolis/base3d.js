@@ -186,8 +186,11 @@ export function fita(pts, fechada, a, b, y, material, repV, pular = null) {
 
 // ---------- árvores de blocos. escala 1 ≈ 5,5 m. Quatro tipos: copa de cubos, pinheiro de camadas, ipê florido e
 // copa alta. Tudo caixa: entra na mesclagem e custa bem menos que as bolas de antes.
-const VERDES = [0x42c92d, 0x35b83a, 0x58d63a, 0x2fae45];
+// (Mundo Vivo, etapa 5) seis verdes na paleta, copas com um bloco de tom a mais e a cerejeira: árvore de flor rosa de copa larga em
+// 3 tons, misturada às verdes (tipo % 7 === 3). As posições e as colisões não mudam: só o desenho de cada tipo.
+const VERDES = [0x42c92d, 0x35b83a, 0x58d63a, 0x2fae45, 0x4fd15a, 0x3bbd33];
 const IPES = [0xff6fb0, 0xffd21f];
+const ROSA = [0xff8ac4, 0xffa6d4, 0xffc6e4]; // cerejeira: base, meio e topo
 export function arvoreReal(escala = 1, tipo = 0) {
   const g = new THREE.Group();
   const verde = VERDES[tipo % VERDES.length], o = { sombra: true }, f = { sombra: false };
@@ -196,15 +199,21 @@ export function arvoreReal(escala = 1, tipo = 0) {
     cx(g, 0.56, 3, 0.56, 0x7f5128, 0, 1.5, 0, f);
     cx(g, 3.5, 1.15, 3.5, flor, 0, 3.4, 0, o); cx(g, 2.5, 0.9, 2.5, claro(flor, 0.18), 0.2, 4.4, -0.1, o); cx(g, 1.4, 0.7, 1.4, claro(flor, 0.34), -0.2, 5.1, 0.2, f);
     cx(g, 1.0, 0.7, 1.0, escuro(flor, 0.9), 1.5, 2.8, 0.8, f);
+  } else if (tipo % 7 === 3) { // cerejeira: copa larga e redonda de flor rosa em 3 tons
+    cx(g, 0.6, 2.6, 0.6, 0x6e4a2a, 0, 1.3, 0, f);
+    cx(g, 3.6, 1.3, 3.6, ROSA[0], 0, 3.1, 0, o); cx(g, 2.9, 1.2, 2.9, ROSA[1], 0.1, 4.2, -0.1, o); cx(g, 1.8, 1.0, 1.8, ROSA[2], -0.2, 5.2, 0.2, f);
+    cx(g, 1.3, 0.9, 1.3, ROSA[1], 1.6, 3.9, 0.9, f); cx(g, 1.1, 0.8, 1.1, ROSA[2], -1.7, 3.7, -0.8, f); cx(g, 0.9, 0.7, 0.9, escuro(ROSA[0], 0.9), 0.9, 2.5, -1.4, f);
   } else if (tipo % 3 === 2) { // pinheiro de camadas
     cx(g, 0.62, 2.2, 0.62, 0x7f5128, 0, 1.1, 0, f);
     [[3.3, 1.0, 2.4], [2.6, 1.0, 3.3], [1.9, 1.0, 4.2], [1.1, 0.9, 5.1], [0.5, 0.6, 5.8]].forEach(([w, h, y], i) => cx(g, w, h, w, i % 2 ? claro(verde, 0.09) : escuro(verde, 0.92), 0, y, 0, i < 2 ? o : f));
   } else if (tipo % 4 === 1) { // copa alta de cubos deslocados
     cx(g, 0.62, 3.2, 0.62, 0x8a5426, 0, 1.6, 0, f);
     cx(g, 2.5, 2.2, 2.5, verde, 0, 4.0, 0, o); cx(g, 1.7, 1.4, 1.7, claro(verde, 0.12), -0.5, 5.5, 0.3, f); cx(g, 1.3, 1.1, 1.3, claro(verde, 0.05), 1.3, 3.5, -0.7, f); cx(g, 1.2, 1.0, 1.2, escuro(verde, 0.88), -1.2, 3.3, 0.9, f);
+    cx(g, 1.0, 0.9, 1.0, escuro(verde, 0.78), 0.4, 2.9, 1.2, f);
   } else { // copa de cubos
     cx(g, 0.72, 2.7, 0.72, 0x8a5426, 0, 1.35, 0, f);
     cx(g, 3.3, 2.4, 3.3, verde, 0, 3.8, 0, o); cx(g, 2.1, 1.4, 2.1, claro(verde, 0.12), 0.3, 5.5, -0.2, f); cx(g, 1.3, 1.2, 1.3, claro(verde, 0.2), 1.9, 3.1, 0.7, f); cx(g, 1.2, 1.0, 1.2, escuro(verde, 0.86), -1.9, 3.4, -0.6, f);
+    cx(g, 1.1, 0.9, 1.1, escuro(verde, 0.76), 0.2, 2.6, 1.8, f); cx(g, 0.9, 0.8, 0.9, claro(verde, 0.28), -1.3, 5.0, 1.1, f);
   }
   g.scale.setScalar(escala);
   return g;

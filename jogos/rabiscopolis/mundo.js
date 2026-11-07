@@ -299,8 +299,10 @@ export function montarMundo(cena, { volume = true, aderecos = true, aderecosLong
       const a = arvoreReal(0.9 + rnd() * 0.6, n); a.position.set(x, 0.03, z); a.rotation.y = rnd() * 6; blocoEm(x, z).add(a);
       solidos.push({ x0: x - 0.5, x1: x + 0.5, z0: z - 0.5, z1: z + 0.5, y1: 6 });
     } else {
-      const m = malha(new THREE.IcosahedronGeometry(0.9, 1), mat(0x5cc443), { sombra: false }); m.scale.set(1.3, 0.8, 1.1); m.position.set(x, 0.5, z); m.userData.detalhe = true; blocoEm(x, z).add(m);
-      for (let k = 0; k < 4; k++) { const f = malha(new THREE.IcosahedronGeometry(0.13, 0), mat([0xff5fa2, 0xffcc1f, 0xffffff][k % 3]), { sombra: false }); f.userData.detalhe = true; f.position.set(x + (rnd() - 0.5) * 2, 0.95 + rnd() * 0.2, z + (rnd() - 0.5) * 1.6); blocoEm(x, z).add(f); }
+      // moita em blocos (Mundo Vivo, etapa 5): 2 caixas em vez do icosaedro de 80 triângulos; as flores em cubinhos
+      const m = new THREE.Group(); m.position.set(x, 0, z); m.userData.detalhe = true; blocoEm(x, z).add(m);
+      { const a1 = caixa(2.2, 0.9, 1.9, mat(0x5cc443), { sombra: false }); a1.position.y = 0.45; m.add(a1); const a2 = caixa(1.4, 0.6, 1.2, mat(0x6fd455), { sombra: false }); a2.position.set(0.2, 1.0, -0.1); m.add(a2); }
+      for (let k = 0; k < 4; k++) { const f = caixa(0.22, 0.22, 0.22, mat([0xff5fa2, 0xffcc1f, 0xffffff][k % 3]), { sombra: false }); f.userData.detalhe = true; f.position.set(x + (rnd() - 0.5) * 2, 0.95 + rnd() * 0.2, z + (rnd() - 0.5) * 1.6); blocoEm(x, z).add(f); }
     }
   }
 
@@ -361,7 +363,9 @@ export function montarMundo(cena, { volume = true, aderecos = true, aderecosLong
       const a = arvoreReal(0.9 + rnd2() * 0.6, n); a.position.set(x, 0.03, z); a.rotation.y = rnd2() * 6; blocoEm(x, z).add(a);
       solidos.push({ x0: x - 0.5, x1: x + 0.5, z0: z - 0.5, z1: z + 0.5, y1: 6 });
     } else {
-      const m = malha(new THREE.IcosahedronGeometry(0.9, 1), mat(0x5cc443), { sombra: false }); m.scale.set(1.3, 0.8, 1.1); m.position.set(x, 0.5, z); m.userData.detalhe = true; blocoEm(x, z).add(m);
+      // moita em blocos (Mundo Vivo, etapa 5): 2 caixas em vez do icosaedro de 80 triângulos; as flores em cubinhos
+      const m = new THREE.Group(); m.position.set(x, 0, z); m.userData.detalhe = true; blocoEm(x, z).add(m);
+      { const a1 = caixa(2.2, 0.9, 1.9, mat(0x5cc443), { sombra: false }); a1.position.y = 0.45; m.add(a1); const a2 = caixa(1.4, 0.6, 1.2, mat(0x6fd455), { sombra: false }); a2.position.set(0.2, 1.0, -0.1); m.add(a2); }
     }
   }
   void naMar; void ILHA;
