@@ -64,7 +64,7 @@ function nuvens(cena) {
   return m;
 }
 
-export function criarCeu(cena, { sombra = 1024 } = {}) {
+export function criarCeu(cena, { sombra = 1024, area = 44 } = {}) {
   const uni = { topo: { value: new THREE.Color() }, horizonte: { value: new THREE.Color() }, dirSol: { value: new THREE.Vector3(0.5, 0.55, 0.65).normalize() }, noite: { value: 0 } };
   const esfera = new THREE.Mesh(new THREE.SphereGeometry(600, 32, 16), new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false, uniforms: uni,
@@ -88,7 +88,7 @@ export function criarCeu(cena, { sombra = 1024 } = {}) {
   const sol = new THREE.DirectionalLight(0xfff2dc, 2.6);
   sol.castShadow = sombra > 0;
   sol.shadow.mapSize.set(sombra || 512, sombra || 512);
-  const META = 44; // meia largura da área com sombra
+  let META = area; // meia largura da área com sombra (o nível de qualidade pode encolher: qualidade.js)
   Object.assign(sol.shadow.camera, { left: -META, right: META, top: META, bottom: -META, near: 1, far: 190 });
   // sombra limpa: sem "pelo" nas paredes retas (viés e deslocamento na normal maiores) e borda macia
   sol.shadow.bias = -0.0012; sol.shadow.normalBias = 0.12; sol.shadow.radius = 1.6;
@@ -102,6 +102,16 @@ export function criarCeu(cena, { sombra = 1024 } = {}) {
     sol, amb, esfera, estrelas, nuvens: ceuNuvens,
     get horaAtual() { return horaAtual; },
     get noite() { return uni.noite.value; },
+    get areaSombra() { return META; },
+    // nível de qualidade: tamanho do mapa de sombra (0 = sem sombra) e meia largura da área com sombra
+    sombra(tam, meia = META) {
+      const liga = tam > 0;
+      if (liga && sol.shadow.mapSize.x !== tam) { sol.shadow.mapSize.set(tam, tam); sol.shadow.map?.dispose(); sol.shadow.map = null; }
+      META = meia;
+      Object.assign(sol.shadow.camera, { left: -META, right: META, top: META, bottom: -META });
+      sol.shadow.camera.updateProjectionMatrix();
+      sol.castShadow = liga;
+    },
     hora(h) {
       horaAtual = ((h % 24) + 24) % 24;
       const H = horaAtual;

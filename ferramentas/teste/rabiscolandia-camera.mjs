@@ -60,7 +60,9 @@ if (quer("dois")) {
   const cl = await t.ev("teste.camDist"), zl = await t.ev("teste.j2.zoom"), dl = await t.ev(dist12);
   ok((await t.ev("teste.naTela")).every(Boolean) && cl.alt > cp.alt + 2 && zl > 3, `longe (${dl.toFixed(1)} m): a câmera afastou e subiu (alt ${cp.alt.toFixed(1)} → ${cl.alt.toFixed(1)} m, zoom ${zl.toFixed(1)}) e os dois cabem`);
   const m = await t.ev("teste.medir()");
-  ok(m.total.calls <= 250, `orçamento TV com os dois longe: ${m.total.calls} chamadas com sombra (${m.semSombra.calls} sem), ${Math.round(m.total.tris / 1000)} mil triângulos`);
+  // teste.medir agora conta de verdade (com o passe de sombra). Com os dois longe a câmera sobe e abre, e o jogador 2 custa
+  // ~20 chamadas + sombra: o passe principal continua ≤ 250 (a garantia de antes) e o total real mede ~284 (≤ 300)
+  ok(m.semSombra.calls <= 250 && m.total.calls <= 300, `orçamento TV com os dois longe: ${m.total.calls} chamadas com sombra (≤ 300; ${m.semSombra.calls} sem, ≤ 250), ${Math.round(m.total.tris / 1000)} mil triângulos`);
   await foto(t, "jogo2-longe.png");
   // coleira: o jogador 2 continua indo para longe e para em ~17 m
   await t.ev("__eixo(1, 1, 0)"); await espera(3500); await t.ev("__eixo(1, 0, 0)");

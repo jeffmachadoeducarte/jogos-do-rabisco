@@ -316,6 +316,7 @@ export function montarMundo(cena) {
     alcance: 140, // neblina: além disso não se vê nada
     detalheAte: 36, // flores, cercas, moitas e bancos só nos blocos perto
     semaforoAte: null, // até onde os semáforos aparecem (null = até a neblina)
+    sombraAte: Infinity, // até que distância (do retângulo do bloco) as malhas mescladas fazem sombra (qualidade "media": só perto)
     // mostra só o bloco do jogador e os vizinhos que estão dentro da neblina; detalhe só perto
     visibilidade(x, z) {
       const [bi, bj] = blocoDe(x, z);
@@ -331,6 +332,11 @@ export function montarMundo(cena) {
         if (g.userData.det !== det) {
           g.userData.det = det;
           for (const m of g.children) if (m.userData.mesclada && m.userData.detalhe) m.visible = det;
+        }
+        const somb = d < api.sombraAte;
+        if (g.userData.somb !== somb) {
+          g.userData.somb = somb;
+          for (const m of g.children) if (m.userData.mesclada && m.userData.sombra) m.castShadow = somb;
         }
       }
     },

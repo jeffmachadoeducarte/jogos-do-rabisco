@@ -304,6 +304,19 @@ function atualizarPlaca() {
   placaNome.definir(nome); // dentro de um veículo ela sobe para cima do teto (placa-nome.js)
 }
 
+// aplica o nível de qualidade (qualidade.js) no céu, no mundo e na neblina. Com 2 jogadores no toque a criança/amigo custa
+// ~20 chamadas de desenho: a neblina chega um pouco mais perto (alta no celular: 95 → 78 m; detalhe 35 → 28 m)
+function aplicarQualidade() {
+  const q = qualidade.p, dois = Boolean(quadro.doisToque) && qualidade.perfil.toque;
+  ceu.sombra(q.sombra, q.area);
+  mundo.alcance = dois ? Math.round(q.alcance * 0.82) : q.alcance;
+  mundo.detalheAte = dois ? Math.round(q.detalheAte * 0.8) : q.detalheAte;
+  mundo.semaforoAte = q.semaforoAte;
+  mundo.sombraAte = q.sombraAte;
+  cena.fog.near = q.neblinaDe; cena.fog.far = mundo.alcance;
+  if (vivo) mundo.visibilidade(j.pos.x, j.pos.z);
+}
+
 function iniciar() {
   parar();
   salvo = carregar();
@@ -317,12 +330,12 @@ function iniciar() {
   r3.shadowMap.type = THREE.PCFShadowMap; // borda macia e limpa (sem o granulado do Soft em paredes retas)
   caixa.append(r3.domElement);
   const ajustar = () => { const w = caixa.clientWidth || innerWidth, h = caixa.clientHeight || innerHeight; r3.setPixelRatio(qualidade.calcular(w, h)); r3.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); };
-  qualidade = criarQualidade(r3, () => ajustar());
+  qualidade = criarQualidade(r3, () => ajustar(), { forcado: params.get("qualidade") });
   cena = new THREE.Scene();
   guia = criarGuia();
   cam = new THREE.PerspectiveCamera(55, 16 / 9, 0.1, 900);
-  ceu = criarCeu(cena, { sombra: qualidade.perfil.sombra });
-  qualidade.aoSemSombra = () => { ceu.sol.castShadow = false; };
+  ceu = criarCeu(cena, { sombra: qualidade.p.sombra, area: qualidade.p.area });
+  qualidade.aoAplicar = () => aplicarQualidade();
   mundo = montarMundo(cena);
   fis = criarFisica(mundo);
   camera = criarCamera(cam, mundo.solidos);
@@ -333,8 +346,8 @@ function iniciar() {
   vestirPecas(rabisco, escolhaSalva(salvo, possui), { juntar: true }); // depois do 1º mesclar: a mochila original só se esconde
   criarPlaca();
   if (salvo.roupas?.[0] && PROFISSOES[salvo.roupas[0]]) setTimeout(() => vestir(salvo.roupas[0]), 0);
-  // celular: neblina mais perto, menos blocos e carros desenhados
-  if (qualidade.perfil.toque) { mundo.alcance = 95; mundo.detalheAte = 35; mundo.semaforoAte = 55; cena.fog.far = 95; cena.fog.near = 40; }
+  // nível de qualidade (qualidade.js): neblina, alcance dos blocos, detalhe, semáforos e sombra (celular: tudo mais perto)
+  aplicarQualidade();
   j.pos.set(LARGADA.x, 0.07, LARGADA.z); j.vel.set(0, 0, 0); j.dir = LARGADA.dir; camera.st.yaw = LARGADA.dir;
   for (const v of VAGAS) { const q = criarVeiculo(v.tipo, v.cor); q.pos.set(v.x, 0.03, v.z); q.ang = v.ang; cena.add(q.g, q.parado); animarVeiculo(q, 0, 0); veiculos.push(q); }
   // o roçador do Sítio Floresça: estacionado no gramado do sítio e preso ao terreno (não sai pelo portão)
@@ -1259,7 +1272,7 @@ function quadro() {
   if (!jogo.pausado) j2?.quadro();
   // celular com 2 jogadores: a criança/amigo custa ~20 chamadas de desenho; a neblina chega um pouco mais perto
   const doisToque = Boolean(j2?.ativo) && qualidade.perfil.toque;
-  if (doisToque !== quadro.doisToque) { quadro.doisToque = doisToque; if (qualidade.perfil.toque) { mundo.alcance = doisToque ? 78 : 95; mundo.detalheAte = doisToque ? 28 : 35; cena.fog.far = mundo.alcance; } }
+  if (doisToque !== quadro.doisToque) { quadro.doisToque = doisToque; aplicarQualidade(); }
   for (let p = 0; p < passos; p++) passo(total / passos, p === passos - 1);
   if (j2?.ativo) j2.hud(cam, { veiculo: dentro, alturaRabisco: emCasa || emLugar ? 1.5 : 1.6 });
   if (placaNome) placaNome.sprite.visible = placaNome.estado.visivel && !j2?.ativo; // a 2 o Rabisco usa o "🎮1" (jogador2.js): sem etiqueta dupla
@@ -1751,12 +1764,27 @@ if (params.has("teste")) window.teste = {
   get naTela() { const ps = [rabisco.grupo, j2?.modelo?.grupo].filter(Boolean); return ps.map((g) => { const v = new THREE.Vector3(); g.getWorldPosition(v); v.y += 1; v.project(cam); return Math.abs(v.x) < 1 && Math.abs(v.y) < 1 && v.z < 1; }); },
   luzPedestreVerde: (s, eixo) => luzDe(s, eixo, relogio.elapsedTime) === "vermelho",
   get r3() { return r3; }, get cena() { return cena; }, get cam() { return cam; }, get rabisco() { return rabisco; }, get vovo() { return vovo; },
-  // desenha um quadro agora e devolve o custo (com e sem o passe de sombra)
-  medir() { r3.render(cena, cam); const a = { calls: r3.info.render.calls, tris: r3.info.render.triangles }; const s = ceu.sol.castShadow; ceu.sol.castShadow = false; r3.shadowMap.needsUpdate = true; r3.render(cena, cam); const b = { calls: r3.info.render.calls, tris: r3.info.render.triangles }; ceu.sol.castShadow = s; return { total: a, semSombra: b }; },
+  // desenha um quadro agora e devolve o custo DE VERDADE: conta as chamadas gl.draw* (o renderer.info do Three não conta o
+  // passe de sombra). total = com sombra; semSombra = só o passe principal; passeSombra = a diferença; info = o que o Three conta
+  medir() {
+    const gl = r3.getContext(), fs = ["drawElements", "drawArrays", "drawElementsInstanced", "drawArraysInstanced"], orig = {};
+    let n = 0;
+    for (const f of fs) { orig[f] = gl[f]; gl[f] = function () { n++; return orig[f].apply(gl, arguments); }; }
+    const conta = () => { n = 0; r3.render(cena, cam); return { calls: n, tris: r3.info.render.triangles, info: r3.info.render.calls }; };
+    try {
+      const s = ceu.sol.castShadow;
+      const a = conta();
+      ceu.sol.castShadow = false; r3.shadowMap.needsUpdate = true;
+      const b = conta();
+      ceu.sol.castShadow = s;
+      return { total: a, semSombra: b, passeSombra: a.calls - b.calls, sombraLigada: s, nivel: qualidade.nivel };
+    } finally { for (const f of fs) gl[f] = orig[f]; }
+  },
+  get qualidade() { return qualidade; },
   ir(x, z) { if (dentro) sair(); j.pos.set(x, 0.07, z); j.vel.set(0, 0, 0); posicionarCamera(1, 0); },
   get camYaw() { return camera.st.yaw; }, // o "para a frente" do andar (fisica.andar); os testes de andar de verdade leem
   olhar(yaw) { camera.st.yaw = yaw; camera.st.manual = 5; posicionarCamera(1, 0); },
-  vista(pos, alvo, neblina = true) { camera.st.vista = pos ? { pos, alvo } : null; const longe = pos && !neblina; mundo.alcance = longe ? 2000 : qualidade.perfil.toque ? (quadro.doisToque ? 78 : 95) : 140; cena.fog.far = longe ? 2000 : mundo.alcance; cena.fog.near = longe ? 1500 : 60; if (pos) mundo.visibilidade(alvo[0], alvo[2]); if (pos && !neblina) mundo.blocos.forEach((b) => (b.visible = true)); posicionarCamera(1, 0); },
+  vista(pos, alvo, neblina = true) { camera.st.vista = pos ? { pos, alvo } : null; const longe = pos && !neblina; if (longe) { mundo.alcance = 2000; cena.fog.far = 2000; cena.fog.near = 1500; } else aplicarQualidade(); if (pos) mundo.visibilidade(alvo[0], alvo[2]); if (pos && !neblina) mundo.blocos.forEach((b) => (b.visible = true)); posicionarCamera(1, 0); },
   acao() { pad.acaoNova = true; },
   entrar(i = 0) { const v = veiculos[i]; if (dentro) sair(); j.pos.set(v.pos.x + 2, 0.07, v.pos.z); entrar(v); },
   sair() { if (dentro) dentro.vel = 0; sair(); },

@@ -20,7 +20,7 @@ const esperaJogo = async (t, seg) => { const t0 = await t.ev("teste.tempo"); whi
 const errosDeVerdade = (t) => t.erros.filter((e) => !/assets\/voz\/(rp-|nomes\/)/.test(e));
 const PEDIDO = /conecte um controle|ligue (o|um) controle|leia o qr|aperte um bot[aã]o|em breve: o jogador 2|jogador 2 \(|desconectou|conectou numa tv/i;
 const FAMILIA = `localStorage.setItem("rabisco.familia", JSON.stringify({ responsavel: { nome: "Teste", email: "t@t" }, crianca: { nome: "Alice", genero: "menina" } }))`;
-// orçamento de desenho (passe principal; renderer.info): TV/computador ≤ 250 chamadas, celular ≤ 180, ≤ 350 mil triângulos
+// orçamento de desenho DE VERDADE (chamadas gl.draw*, com o passe de sombra; teste.medir): TV/computador ≤ 250, celular ≤ 180, ≤ 350 mil triângulos
 const PONTOS = [["praça", "teste.ir(0, 33); teste.olhar(Math.PI)"], ["Bairro das Casas", "teste.ir(-96, 2); teste.olhar(Math.PI * 0.82)"], ["portão do pátio da J.E", "teste.ir(147, -82.5); teste.olhar(-Math.PI / 2)"], ["chegada à Crescente Contabilidade", "teste.ir(-150, -47); teste.olhar(-0.6)"]];
 async function orcamento(t, maxCalls, rotulo) {
   for (const [nome, cmd] of PONTOS) {

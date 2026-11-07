@@ -387,6 +387,7 @@ export function mesclar(raiz, { juntas = null } = {}) {
     const m = new THREE.Mesh(geo, b.material);
     m.castShadow = b.sombra; m.receiveShadow = true;
     m.userData.mesclada = true;
+    m.userData.sombra = b.sombra; // o que faz sombra de origem (mundo.visibilidade pode desligar nos blocos longe: qualidade "media")
     m.userData.detalhe = b.det;
     b.alvo.add(m);
   }
