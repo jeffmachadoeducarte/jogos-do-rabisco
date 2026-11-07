@@ -4,12 +4,14 @@
 // Devolve as colisões (retângulos e círculos), os lugares, as casas, os semáforos e o que anima (água, patos, bichos).
 
 import { THREE, mat, matNovo, malha, caixa, TEX, fita, densificar, normais, arvoreReal, semaforo, mesclar, r as rnd } from "./base3d.js";
-import { RUAS, CALCADA, distRua, LUGARES, LOTES, LOTE, PREDIOS, PREDIOS_NOVOS, PRACAS_NOVAS, BORDA_ANTIGA, MAR, ORLA, ILHA, PIERS, RODA, naMar, SEMAFOROS, PARQUE, LAGO, PLAYGROUND, PRACA, FAZENDA, CAMPO, ESPORTES, QUADRA, HORTA, PARQUINHO_BEBE, PATIO_KIDS2, HELIPONTO, PRAIA, LAGO2, NBLOCOS, GRADE0, VAGAS, LARGADA, PEGADAS_FIXAS, BORDA, BLOCO, blocoDe, pegadaDe } from "./mapa.js";
+import { RUAS, CALCADA, distRua, LUGARES, LOTES, LOTE, PREDIOS, PREDIOS_NOVOS, PRACAS_NOVAS, BORDA_ANTIGA, MAR, ORLA, ILHA, PIERS, RODA, naMar, SEMAFOROS, PONTOS_PARCEIROS, PARQUE, LAGO, PLAYGROUND, PRACA, FAZENDA, CAMPO, ESPORTES, QUADRA, HORTA, PARQUINHO_BEBE, PATIO_KIDS2, HELIPONTO, PRAIA, LAGO2, NBLOCOS, GRADE0, VAGAS, LARGADA, PEGADAS_FIXAS, BORDA, BLOCO, blocoDe, pegadaDe } from "./mapa.js";
 import * as P from "./predios.js";
 import { FACHADAS } from "./predios-parceiros.js";
 import { criarPessoa } from "./pessoas.js";
 import { casa } from "./casas.js";
 import { degraus } from "./blocos.js";
+import { MISSOES, PESSOAS_PORTA } from "./missoes-dados.js";
+import { DESAFIOS, AREAS_DESAFIOS, HELI, BARCO } from "./desafios-dados.js";
 import { marEAreia, pier, postoSalvaVidas, quiosqueCoco, rodaGigante, enfeitesOrla } from "./orla.js";
 import { aleatorio } from "../../src/motor3d/toon.js";
 import { atelie } from "./atelie-predio.js";
@@ -23,7 +25,9 @@ function retMundo(ox, oz, rot, s) {
 }
 
 export const RODA_VEL = (Math.PI * 2) / 30; // rad/s
-export function montarMundo(cena, { volume = true } = {}) { // volume: AO falso e tom por peça (base3d.mesclar)
+// volume: AO falso e tom por peça (base3d.mesclar); aderecos: lixeiras, hidrantes, floreiras, bancos e cercas nas calçadas;
+// aderecosLonge: esses adereços aparecem até a neblina (senão só perto, como detalhe)
+export function montarMundo(cena, { volume = true, aderecos = true, aderecosLonge = true } = {}) {
   const solidos = [], circulos = [], lugares = [], casas = [], semaforos = [], anima = { patos: [], bichos: [], aguas: [], jatos: [], pessoas: [] };
   const blocos = [];
   for (let i = 0; i < NBLOCOS; i++) for (let j = 0; j < NBLOCOS; j++) { const g = new THREE.Group(); g.userData.bloco = [i, j]; cena.add(g); blocos.push(g); }
@@ -237,6 +241,55 @@ export function montarMundo(cena, { volume = true } = {}) { // volume: AO falso 
       }
     });
   }
+  // ---------- adereços de calçada (Mundo Vivo, etapa 4): lixeira, hidrante, banco, floreira e cercadinho, no meio do caminho
+  // entre um poste e uma árvore, na MESMA linha deles (a 2,4 m do meio-fio: sobra 2,1 m de passagem; os moradores andam a
+  // 1,4 m). Tudo entra na mesclagem do bloco (0 chamadas). Sólidos (menos a cerca) entram em solidos. Nunca em cima de:
+  // faixa de rodagem de qualquer rua, vaga, largada, porta/portão (lugares e casas), ponto de missão ou de pessoa,
+  // bandeira/área de desafio, ponto das parceiras, semáforo.
+  const estatAd = { colocados: 0 }; // quantos adereços entraram e por que os outros não (os testes leem)
+  if (aderecos) {
+    const pontos = [];
+    const junta = (o, prof = 0) => { if (!o || typeof o !== "object" || prof > 6) return; if (typeof o.x === "number" && typeof o.z === "number") pontos.push([o.x, o.z]); for (const v of Object.values(o)) if (v && typeof v === "object") junta(v, prof + 1); };
+    junta(MISSOES); junta(PESSOAS_PORTA); junta(DESAFIOS); junta(HELI); junta(BARCO);
+    for (const [x, z] of PONTOS_PARCEIROS) pontos.push([x, z]);
+    for (const v of VAGAS) pontos.push([v.x, v.z]);
+    for (const l of lugares) if (l.porta) pontos.push(l.porta);
+    for (const c of casas) pontos.push(c.porta);
+    const nega = (motivo) => { estatAd[motivo] = (estatAd[motivo] ?? 0) + 1; return false; };
+    const livre = (ax, az, rua) => {
+      // nunca na pista (distRua = distância até a beira da rua mais perto; < 0 é dentro) nem perto de outra rua (cruzamento)
+      if (distRua(ax, az).d < 0.3 || distRua(ax, az, rua).d < 3 || Math.abs(ax) > BORDA_ANTIGA - 4 || Math.abs(az) > BORDA_ANTIGA - 4) return nega("pista");
+      if (ocupado(ax, az, 1.2)) return nega("ocupado");
+      if (SEMAFOROS.some((q) => Math.hypot(q.x - ax, q.z - az) < 12)) return nega("semaforo");
+      if (LUGARES.some((l) => Math.hypot(l.x - ax, l.z - az) < 5) || LOTES.some((l) => Math.abs(l.x - ax) < 2.5 && Math.abs(l.z - az) < 3.5)) return nega("lugar");
+      if (Math.hypot(ax - LARGADA.x, az - LARGADA.z) < 6) return nega("largada");
+      if (pontos.some(([x, z]) => Math.hypot(x - ax, z - az) < 4)) return nega("ponto");
+      if (AREAS_DESAFIOS.some((r) => ax > r.x0 - 2 && ax < r.x1 + 2 && az > r.z0 - 2 && az < r.z1 + 2)) return nega("desafio");
+      estatAd.colocados++;
+      return true;
+    };
+    const TIPOS = ["lixeira", "banco", "hidrante", "floreira", "cerca", "banco", "lixeira", "floreira"];
+    let k = 0;
+    for (const rua of RUAS.filter((r) => !r.nova)) {
+      const pts = densificar(rua.pts, rua.fechada, 11), ns = normais(pts, rua.fechada), total = rua.fechada ? pts.length : pts.length - 1;
+      for (let i = 0; i < total; i++) {
+        const j = (i + 1) % pts.length, mx = (pts[i][0] + pts[j][0]) / 2, mz = (pts[i][1] + pts[j][1]) / 2;
+        const tx = pts[j][0] - pts[i][0], tz = pts[j][1] - pts[i][1], tl = Math.hypot(tx, tz) || 1, nx = (ns[i][0] + ns[j][0]) / 2, nz = (ns[i][1] + ns[j][1]) / 2, nl = Math.hypot(nx, nz) || 1;
+        for (const s of [1, -1]) {
+          const tipo = TIPOS[k++ % TIPOS.length];
+          const off = rua.w / 2 + CALCADA - 0.6, ax = mx + (nx / nl) * s * off, az = mz + (nz / nl) * s * off;
+          if (!livre(ax, az, rua)) continue;
+          const g = tipo === "lixeira" ? P.lixeira() : tipo === "hidrante" ? P.hidrante() : tipo === "floreira" ? P.floreira() : tipo === "cerca" ? P.cerca(3) : P.banco();
+          g.position.set(ax, 0.07, az);
+          // vira para a rua: o eixo x da peça fica ao longo da calçada e a frente (−z local) olha para o meio-fio
+          g.rotation.y = Math.atan2(tx / tl, tz / tl) + (s > 0 ? Math.PI / 2 : -Math.PI / 2) + (tipo === "banco" ? Math.PI : 0);
+          if (tipo !== "cerca" && !aderecosLonge) g.userData.detalhe = true; else if (tipo === "banco" && aderecosLonge) g.userData.detalhe = false;
+          blocoEm(ax, az).add(g);
+          if (tipo !== "cerca") { const r = tipo === "banco" || tipo === "floreira" ? (tipo === "banco" ? 1.35 : 0.65) : 0.3, rz = tipo === "banco" || tipo === "floreira" ? 0.35 : 0.3; const ao = Math.abs(tx / tl) > 0.5; solidos.push({ x0: ax - (ao ? r : rz), x1: ax + (ao ? r : rz), z0: az - (ao ? rz : r), z1: az + (ao ? rz : r), y1: 1.2 }); }
+        }
+      }
+    }
+  }
   // árvores e moitas nos terrenos vazios (enchem a cidade sem pesar)
   for (let n = 0; n < 560; n++) {
     const x = (rnd() - 0.5) * 2 * (BORDA_ANTIGA - 6), z = (rnd() - 0.5) * 2 * (BORDA_ANTIGA - 6);
@@ -322,7 +375,7 @@ export function montarMundo(cena, { volume = true } = {}) { // volume: AO falso 
   // retângulo de cada bloco (para a distância até o jogador)
   for (const g of blocos) { const [i, j] = g.userData.bloco; g.userData.ret = { x0: GRADE0 + i * BLOCO, x1: GRADE0 + (i + 1) * BLOCO, z0: GRADE0 + j * BLOCO, z1: GRADE0 + (j + 1) * BLOCO }; }
   const api = {
-    solidos, circulos, lugares, casas, semaforos, anima, blocos, malhas,
+    solidos, circulos, lugares, casas, semaforos, anima, blocos, malhas, aderecos: estatAd,
     // frente da Educarte Kids II: 0 = a antiga · 1 = só a parede (obra) · 2 = perfis de alumínio · 3 = pele de vidro inteira
     frenteKids2(fase) { const f = lugares.find((l) => l.id === "kids2")?.frente; if (!f) return; f.antiga.visible = fase === 0; f.perfis.visible = fase >= 2; f.vidro.visible = fase >= 3; },
     alcance: 140, // neblina: além disso não se vê nada

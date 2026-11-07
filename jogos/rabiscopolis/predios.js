@@ -63,12 +63,49 @@ export function corpo(g, w, h, d, cor, { beiral = 0xffffff, rodape = null } = {}
 // placa com o nome em cima da porta
 function nome(g, texto, { y, largura = 9, cor = "#00b5f0", z = 0.15 }) { const l = letreiro(texto, largura, { cor }); l.position.set(0, y, z); g.add(l); }
 
-// ---------- poste de luz (lâmpada acende de noite)
+// ---------- poste de luz: lanterna clássica (base e coluna escuras, colar, lanterna com o vidro que acende de noite,
+// tampa e remate). A luz noturna é o MAT.lampada + a poça de luz no chão, como antes
 export function posteLuz() {
-  const g = new THREE.Group(), azul = 0x2f3d5c, f = { sombra: false };
-  pc(g, 0.5, 0.42, 0.5, 0x3d4d70, 0, 0.21, 0, f); pc(g, 0.22, 4.5, 0.22, azul, 0, 2.5, 0, f);
-  pc(g, 0.72, 0.18, 0.72, azul, 0, 5.1, 0, f); pc(g, 0.46, 0.3, 0.46, 0, 0, 4.9, 0, { ...f, material: MAT.lampada });
+  const g = new THREE.Group(), ferro = 0x23262e, f = { sombra: false };
+  pc(g, 0.52, 0.3, 0.52, ferro, 0, 0.15, 0, f); pc(g, 0.3, 0.16, 0.3, 0x3a3e48, 0, 0.38, 0, f); // base
+  pc(g, 0.16, 3.3, 0.16, ferro, 0, 2.05, 0, f); pc(g, 0.3, 0.12, 0.3, ferro, 0, 3.72, 0, f); // coluna e colar
+  pc(g, 0.5, 0.08, 0.5, ferro, 0, 3.82, 0, f); // prato da lanterna
+  pc(g, 0.44, 0.56, 0.44, 0, 0, 4.14, 0, { ...f, material: MAT.lampada }); // vidro (acende)
+  pc(g, 0.62, 0.12, 0.62, ferro, 0, 4.48, 0, f); pc(g, 0.34, 0.14, 0.34, ferro, 0, 4.61, 0, f); pc(g, 0.1, 0.2, 0.1, ferro, 0, 4.78, 0, f); // tampa e remate
   const poca = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), MAT.pocaLuz); poca.rotation.x = -Math.PI / 2; poca.position.y = 0.05; g.add(poca);
+  return g;
+}
+// ---------- adereços de calçada (Mundo Vivo, etapa 4): tudo caixa de cor lisa, entra na mesclagem do bloco (0 chamadas)
+// lixeira azul com a faixa amarela do lápis do Rabisco
+export function lixeira() {
+  const g = new THREE.Group(), f = { sombra: false };
+  pc(g, 0.5, 0.78, 0.5, 0x2f6fd8, 0, 0.42, 0, f); pc(g, 0.52, 0.12, 0.52, 0xffd23f, 0, 0.5, 0, f);
+  pc(g, 0.56, 0.1, 0.56, 0x1f4fa8, 0, 0.86, 0, f); pc(g, 0.3, 0.06, 0.3, 0x1f4fa8, 0, 0.94, 0, f);
+  return g;
+}
+// hidrante vermelho com as duas bocas
+export function hidrante() {
+  const g = new THREE.Group(), v = 0xe03a2f, f = { sombra: false };
+  pc(g, 0.36, 0.1, 0.36, 0x9c2a22, 0, 0.05, 0, f); pc(g, 0.3, 0.66, 0.3, v, 0, 0.42, 0, f);
+  pc(g, 0.6, 0.14, 0.16, v, 0, 0.5, 0, f); pc(g, 0.38, 0.1, 0.38, 0x9c2a22, 0, 0.8, 0, f); pc(g, 0.2, 0.16, 0.2, v, 0, 0.92, 0, f);
+  return g;
+}
+// floreira de madeira com flores em cubinhos (as flores são detalhe: só de perto)
+export function floreira() {
+  const g = new THREE.Group(), f = { sombra: false };
+  pc(g, 1.2, 0.5, 0.5, 0xcfa37a, 0, 0.25, 0, f); pc(g, 1.26, 0.06, 0.56, 0xb88a60, 0, 0.5, 0, f); pc(g, 1.0, 0.08, 0.32, 0x7a5232, 0, 0.54, 0, f);
+  const flores = new THREE.Group(); flores.userData.detalhe = true; g.add(flores);
+  const cores = [0xff5fa2, 0xffcc1f, 0xffffff, 0xff7a3d, 0xb08cff];
+  for (let i = 0; i < 5; i++) { pc(flores, 0.16, 0.16, 0.16, cores[i], -0.4 + i * 0.2, 0.66 + (i % 2) * 0.06, (i % 2 ? 0.07 : -0.07), f); pc(flores, 0.12, 0.12, 0.12, 0x4cb83f, -0.3 + i * 0.2, 0.58, (i % 2 ? -0.1 : 0.1), f); }
+  return g;
+}
+// cercadinho de madeira baixo (comprimento len): só visual, sem colisão; é detalhe (some de longe)
+export function cerca(len = 3) {
+  const g = new THREE.Group(), m = 0xd9a066, f = { sombra: false };
+  g.userData.detalhe = true;
+  const n = Math.max(2, Math.round(len / 1.0) + 1);
+  for (let i = 0; i < n; i++) pc(g, 0.1, 0.62, 0.1, m, -len / 2 + (len / (n - 1)) * i, 0.31, 0, f);
+  pc(g, len, 0.07, 0.05, m, 0, 0.5, 0.05, f); pc(g, len, 0.07, 0.05, m, 0, 0.26, 0.05, f);
   return g;
 }
 export function banco() {
@@ -494,6 +531,9 @@ export function praca(raio) {
     const c = canteiro(3.6, 2.2); c.position.set(cx, 0.1, cz); c.rotation.y = a; g.add(c);
     sol(S, cx - 1.9, cx + 1.9, cz - 1.9, cz + 1.9, 0.6);
     const b = banco(); b.position.set(Math.sin(a + Math.PI / 4) * 7.2, 0.14, Math.cos(a + Math.PI / 4) * 7.2); b.rotation.y = a + Math.PI / 4 + Math.PI; g.add(b);
+    // lixeira ao lado de cada banco (Mundo Vivo, etapa 4)
+    const lx = lixeira(); lx.position.set(Math.sin(a + Math.PI / 4 + 0.3) * 7.2, 0.1, Math.cos(a + Math.PI / 4 + 0.3) * 7.2); lx.userData.detalhe = true; g.add(lx);
+    sol(S, lx.position.x - 0.3, lx.position.x + 0.3, lx.position.z - 0.3, lx.position.z + 0.3, 1);
     const p = posteLuz(); p.position.set(Math.sin(a + 0.38) * 13.5, 0.06, Math.cos(a + 0.38) * 13.5); g.add(p);
     sol(S, p.position.x - 0.25, p.position.x + 0.25, p.position.z - 0.25, p.position.z + 0.25, 5);
     const t = arvoreReal(1.15, i); t.position.set(Math.sin(a) * 13.8, 0.06, Math.cos(a) * 13.8); g.add(t);

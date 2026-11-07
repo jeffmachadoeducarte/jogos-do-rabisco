@@ -29,7 +29,7 @@ const TABELA = {
   baixa: {
     tv: { dprMax: 0.875, limite1080: true, sombra: 0, area: 30, sombraAte: 0, alcance: 95, detalheAte: 26, semaforoAte: 60, neblinaDe: 40 },
     toque: { dprMax: 0.91, limite1080: false, sombra: 0, area: 30, sombraAte: 0, alcance: 70, detalheAte: 24, semaforoAte: 40, neblinaDe: 30 },
-    tem: ["adereços"],
+    tem: [],
   },
 };
 

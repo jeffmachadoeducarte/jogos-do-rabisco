@@ -337,7 +337,7 @@ function iniciar() {
   cam = new THREE.PerspectiveCamera(55, 16 / 9, 0.1, 900);
   ceu = criarCeu(cena, { sombra: qualidade.p.sombra, area: qualidade.p.area });
   qualidade.aoAplicar = () => aplicarQualidade();
-  mundo = montarMundo(cena, { volume: qualidade.tem("volume") }); // AO falso e tom por peça: fora no nível baixa
+  mundo = montarMundo(cena, { volume: qualidade.tem("volume"), aderecos: qualidade.tem("adereços"), aderecosLonge: qualidade.tem("adereçosLonge") }); // AO, tom por peça e adereços de calçada: conforme o nível
   fis = criarFisica(mundo);
   camera = criarCamera(cam, mundo.solidos);
   rabisco = new Rabisco3D({ raiz: "../..", altura: 1.8 });

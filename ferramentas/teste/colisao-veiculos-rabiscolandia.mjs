@@ -106,7 +106,7 @@ try {
   }
   // ---- (3) estacionado: usa o primeiro veículo parado do mundo, levado para um lugar livre
   {
-    const livre = await t.ev(`(() => { const T = teste; for (let x = -160; x <= 160; x += 8) for (let z = -160; z <= 160; z += 8) { let ok = true; for (let a = 0; a < 6.3 && ok; a += 0.4) for (const r of [4, 8, 14, 22]) if (T.fis.bate(x + Math.cos(a) * r, z + Math.sin(a) * r, 0.1, 1.5)) ok = false; if (ok && T.veiculos.every((v) => Math.hypot(v.pos.x - x, v.pos.z - z) > 30)) return [x, z]; } return null; })()`);
+    const livre = await t.ev(`(() => { const T = teste; for (let x = -160; x <= 160; x += 8) for (let z = -160; z <= 160; z += 8) { let ok = true; for (let a = 0; a < 6.3 && ok; a += 0.25) for (const r of [2, 4, 6, 8, 10, 12, 14, 17, 20, 23]) if (T.fis.bate(x + Math.cos(a) * r, z + Math.sin(a) * r, 0.1, 1.5)) ok = false; if (ok && T.veiculos.every((v) => Math.hypot(v.pos.x - x, v.pos.z - z) > 30)) return [x, z]; } return null; })()`);
     ok(Boolean(livre), `lugar livre para o teste: ${livre}`);
     const [lx, lz] = livre;
     const iv = await t.ev(`teste.veiculos.length - 1`);
