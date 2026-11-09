@@ -165,6 +165,10 @@ export const LUGARES = [
   L("heliponto", "Heliponto", 9.5, -190, -1, 0, { raio: 12, recuo: 0, bairro: "Norte" }),
   L("praia", "Praia do Lago", 0, 149.5, 0, -1, { raio: 20, recuo: 0, bairro: "Sul" }),
   L("fazendinha", "Fazendinha", -95, 59.5, 0, -1, { raio: 18, recuo: 3, pegada: [44, 30], bairro: "Fazendinha" }),
+  // Monte da Oração (Mundo Vivo, etapa 7): o morro do canto noroeste, entre a Avenida do Horizonte, a Rua dos Ipês e a
+  // Rua do Arco-Íris; a entrada da trilha dá para o Arco-Íris. raio 0: a figurinha e a fala vêm só ao chegar no TOPO (jogo.js).
+  // A pegada (46 × 46) é "nova": os prédios de enchimento que o sorteio põe em cima saem depois, e o resto não muda de lugar.
+  L("monte", "Monte da Oração", -347, -324, 0, 1, { raio: 0, recuo: 0, pegada: [46, 46], bairro: "Vila dos Ipês", novo: true }),
 ];
 
 // lojas das empresas parceiras (src/parceiros.js), na ordem da lista. A J.E Multimarcas (a 1ª, loja de carros) fica
@@ -339,7 +343,7 @@ function semente(s) {
 }
 const sobrepoe = (a, b, folga = 0) => a.x0 < b.x1 + folga && a.x1 > b.x0 - folga && a.z0 < b.z1 + folga && a.z1 > b.z0 - folga;
 export const PEGADAS_FIXAS = [
-  ...LUGARES.filter((l) => l.pegada).map((l) => ({ id: l.id, nova: l.parceiroNovo || l.loja, ...pegadaDe(l.x, l.z, l.dir, l.pegada[0], l.pegada[1], l.recuo) })),
+  ...LUGARES.filter((l) => l.pegada).map((l) => ({ id: l.id, nova: l.parceiroNovo || l.loja || l.id === "monte", ...pegadaDe(l.x, l.z, l.dir, l.pegada[0], l.pegada[1], l.recuo) })),
   { id: "atelie-frente", nova: true, ...FRENTE_ATELIE },
   { id: "construrenova-frente", nova: true, ...FRENTE_CONSTRURENOVA },
   { id: "sitio-frente", nova: true, ...FRENTE_SITIO },

@@ -61,6 +61,8 @@ export const FALAS_PT = {
   "rp-mar": "Partiu, Rabisco! Para a frente acelera, para trás freia. Encoste na areia, no píer ou na ilha para descer.",
   "rp-roda": "Segure firme, Rabisco! Lá de cima dá para ver a cidade inteira.",
   "rp-roda-fim": "Que passeio lindo! Deus fez um mundo muito bonito.",
+  // Monte da Oração (Mundo Vivo, etapa 7): ao chegar no topo, perto da cruz (Salmo 121, em paráfrase para crianças)
+  "rp-monte-topo": "Você chegou ao Monte da Oração! Olho para os montes e pergunto: de onde vem a minha ajuda? A minha ajuda vem do Senhor, que fez o céu e a terra. Salmo cento e vinte e um.",
   // narradora com o NOME DA CRIANÇA (parabéns e oração): pre + nome gravado + pos; a sem nome é a reserva (nunca "Rabisco")
   "rp-rise-ok": "Parabéns! Você foi forte e corajoso! Corpo saudável, coração alegre!",
   "rp-rise-ok-pre": "Parabéns,",

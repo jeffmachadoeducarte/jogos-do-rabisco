@@ -73,6 +73,72 @@ function nuvens(cena) {
   return m;
 }
 
+// ---------- horizonte (Mundo Vivo, etapa 7): montanhas de blocos em volta, FORA da neblina (fog: false), numa malha só
+// que acompanha o jogador como o céu (de qualquer canto da cidade elas ficam no horizonte, a ~540 m). Cores por vértice
+// (topo claro, lado do sol mais claro, lado da sombra mais escuro) × a cor do material, que muda com a hora: um azul
+// enevoado puxado para a cor do horizonte (de dia) e azul-escuro de noite. Sem montanhas ao sul: lá é o Mar Azul.
+function montanhas(cena) {
+  const rnd = aleatorio(913), pos = [], cor = [], c = new THREE.Color();
+  const tom = (nx, ny) => (ny > 0.5 ? 1.0 : nx > 0.5 ? 0.9 : nx < -0.5 ? 0.72 : 0.8);
+  const caixa = (w, h, d, x, y, z, rot, verde) => {
+    const b = new THREE.BoxGeometry(w, h, d).toNonIndexed(); b.rotateY(rot); b.translate(x, y, z);
+    const P = b.attributes.position, N = b.attributes.normal;
+    for (let i = 0; i < P.count; i++) {
+      pos.push(P.getX(i), P.getY(i), P.getZ(i));
+      const t = tom(N.getX(i), N.getY(i));
+      c.setRGB(t * (1 - verde * 0.25), t, t * (1 - verde * 0.08)); cor.push(c.r, c.g, c.b); // mais verde embaixo, azulado em cima
+    }
+  };
+  for (let n = 0; n < 34; n++) {
+    const a = (n / 34) * Math.PI * 2 + (rnd() - 0.5) * 0.1;
+    if (Math.sin(a) > 0.3) continue; // sul = mar
+    const dist = 520 + rnd() * 30, cx = Math.cos(a) * dist, cz = Math.sin(a) * dist;
+    const W = 110 + rnd() * 90, H = 55 + rnd() * 70, degraus = 4 + Math.floor(rnd() * 3), rot = a + Math.PI / 2 + (rnd() - 0.5) * 0.5;
+    for (let k = 0; k < degraus; k++) {
+      const f = 1 - k / degraus, w = W * f * (0.8 + rnd() * 0.25), d = W * 0.55 * f, h = H / degraus;
+      caixa(w, h * 1.08, d, cx + (rnd() - 0.5) * W * 0.12 * k, -6 + h * (k + 0.5), cz + (rnd() - 0.5) * 8, rot, Math.max(0, 1 - k / (degraus - 1) * 1.3));
+    }
+    // um pico menor ao lado (a serra não fica em fila de pirâmides iguais)
+    if (rnd() < 0.6) { const w2 = W * 0.45, h2 = H * (0.35 + rnd() * 0.3); caixa(w2, h2, w2 * 0.6, cx + Math.cos(rot) * W * 0.55, -6 + h2 / 2, cz - Math.sin(rot) * W * 0.55, rot, 0.8); }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute("color", new THREE.Float32BufferAttribute(cor, 3));
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }));
+  m.frustumCulled = false; m.renderOrder = -8;
+  cena.add(m);
+  return m;
+}
+// balão de ar quente colorido (etapa 7): gomos nas cores do Rabisco, cesto de madeira e cordinhas; uma malha, fog: false
+// (de longe é um pontinho colorido no céu). Voa devagar numa volta grande sobre a cidade, subindo e descendo de leve.
+const BALAO = { cx: 0, cz: -40, r: 150, alt: 64, volta: 300 }; // uma volta a cada 5 min
+function balaoDeArQuente(cena) {
+  const pos = [], cor = [], c = new THREE.Color();
+  const tom = (nx, ny, nz) => (ny > 0.5 ? 1.0 : ny < -0.5 ? 0.7 : nx > 0.5 || nz > 0.5 ? 0.95 : 0.82);
+  const caixa = (w, h, d, x, y, z, hex) => {
+    const b = new THREE.BoxGeometry(w, h, d).toNonIndexed(); b.translate(x, y, z);
+    const P = b.attributes.position, N = b.attributes.normal;
+    for (let i = 0; i < P.count; i++) { pos.push(P.getX(i), P.getY(i), P.getZ(i)); const t = tom(N.getX(i), N.getY(i), N.getZ(i)); c.setHex(hex).multiplyScalar(t); cor.push(c.r, c.g, c.b); }
+  };
+  const CORES = [0xe8413c, 0xffcc1f, 0x00b5f0, 0xffffff];
+  const larguras = [3.2, 5.6, 7.4, 8.6, 9.2, 9.2, 8.6, 7.2, 5.2];
+  larguras.forEach((L, i) => {
+    const y = 5.2 + i * 1.25, m = L / 2;
+    // 4 gomos (quadrantes) por camada, em cores alternadas: listras verticais
+    for (const [sx, sz, k] of [[1, 1, 0], [-1, 1, 1], [-1, -1, 2], [1, -1, 3]]) caixa(m, 1.25, m, sx * m / 2, y, sz * m / 2, CORES[k]);
+  });
+  caixa(2.0, 1.0, 2.0, 0, 4.4, 0, 0xffcc1f); // boca
+  for (const [sx, sz] of [[1, 1], [-1, 1], [-1, -1], [1, -1]]) caixa(0.14, 2.6, 0.14, sx * 0.95, 2.7, sz * 0.95, 0x6b4a2a); // cordas
+  caixa(2.4, 1.5, 2.4, 0, 0.75, 0, 0x9a6232); caixa(2.6, 0.3, 2.6, 0, 1.55, 0, 0x7a4c22); // cesto
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute("color", new THREE.Float32BufferAttribute(cor, 3));
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, fog: false }));
+  m.frustumCulled = false; // vai longe: nunca some por engano
+  cena.add(m);
+  return m;
+}
+
 export function criarCeu(cena, { sombra = 1024, area = 44 } = {}) {
   const uni = { topo: { value: new THREE.Color() }, meio: { value: new THREE.Color() }, horizonte: { value: new THREE.Color() }, dirSol: { value: new THREE.Vector3(0.5, 0.55, 0.65).normalize() }, noite: { value: 0 } };
   const esfera = new THREE.Mesh(new THREE.SphereGeometry(600, 32, 16), new THREE.ShaderMaterial({
@@ -89,6 +155,8 @@ export function criarCeu(cena, { sombra = 1024, area = 44 } = {}) {
   esfera.renderOrder = -10;
   cena.add(esfera);
   const ceuNuvens = nuvens(cena);
+  const serra = montanhas(cena), balao = balaoDeArQuente(cena); // horizonte e balão (etapa 7): 1 chamada cada
+  const corSerra = new THREE.Color(0x5b84a8);
   // estrelas (um Points só)
   const n = 500, pos = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, y = 0.12 + Math.random() * 0.88, r = Math.sqrt(1 - y * y); pos.set([Math.cos(a) * r * 560, y * 560, Math.sin(a) * r * 560], i * 3); }
@@ -110,12 +178,12 @@ export function criarCeu(cena, { sombra = 1024, area = 44 } = {}) {
   let horaAtual = 7;
   const dirSol = new THREE.Vector3(), alvo = new THREE.Vector3(), dirX = new THREE.Vector3(), dirY = new THREE.Vector3();
   const api = {
-    sol, amb, esfera, estrelas, nuvens: ceuNuvens,
+    sol, amb, esfera, estrelas, nuvens: ceuNuvens, serra, balao, BALAO,
     get horaAtual() { return horaAtual; },
     get noite() { return uni.noite.value; },
     get areaSombra() { return META; },
-    // nível de qualidade "baixa": sem as nuvens (fundo animado desligado; 1 chamada e ~20 mil triângulos a menos)
-    fundo(ativo) { ceuNuvens.visible = Boolean(ativo); },
+    // nível de qualidade "baixa": sem as nuvens, as montanhas do horizonte e o balão (fundo animado desligado: 3 chamadas a menos)
+    fundo(ativo) { ceuNuvens.visible = serra.visible = balao.visible = Boolean(ativo); },
     // nível de qualidade: tamanho do mapa de sombra (0 = sem sombra) e meia largura da área com sombra
     sombra(tam, meia = META) {
       const liga = tam > 0;
@@ -131,6 +199,8 @@ export function criarCeu(cena, { sombra = 1024, area = 44 } = {}) {
       uni.topo.value.copy(misturar(H, 1)); uni.horizonte.value.copy(misturar(H, 2)); uni.meio.value.copy(misturar(H, 8));
       cena.fog.color.copy(misturar(H, 3));
       sol.color.copy(misturar(H, 4)); ceuNuvens.material.color.copy(misturar(H, 5));
+      // o balão só perde luz de noite (a serra do horizonte é pintada mais abaixo, depois de saber quanto é noite)
+      balao.material.color.setScalar(H >= 6.5 && H <= 18.5 ? 1 : H < 5.5 || H > 19.5 ? 0.42 : 0.7);
       sol.intensity = misturar(H, 6); amb.intensity = misturar(H, 7);
       const dia = H >= 6 && H <= 18.5;
       // de noite a "luz" vem da lua: mesma direção alta, azulada
@@ -142,6 +212,8 @@ export function criarCeu(cena, { sombra = 1024, area = 44 } = {}) {
       const noite = H < 5.5 || H > 19.5 ? 1 : H < 7 ? 1 - (H - 5.5) / 1.5 : H > 18 ? (H - 18) / 1.5 : 0;
       uni.noite.value = noite;
       estrelas.material.opacity = noite * 0.9;
+      // montanhas do horizonte: azul enevoado misturado com a cor do horizonte; de noite ficam bem mais escuras que o céu
+      serra.material.color.copy(misturar(H, 2)).lerp(corSerra, 0.55).multiplyScalar(1 - noite * 0.6);
       // de dia: céu azulado e chão quente na luz ambiente (contraste da hora dourada); de noite, azul
       amb.color.setHex(noite > 0.5 ? 0x9db2f0 : 0xdde8ff); amb.groundColor.setHex(noite > 0.5 ? 0x34466e : 0xd4b48e);
       // janelas, lampiões e postes acendem
@@ -163,6 +235,11 @@ export function criarCeu(cena, { sombra = 1024, area = 44 } = {}) {
       sol.target.position.copy(alvo);
       esfera.position.set(x, 0, z); estrelas.position.set(x, 0, z);
       ceuNuvens.position.set(x, 0, z); ceuNuvens.rotation.y = performance.now() * 0.000004; // viajam bem devagar
+      serra.position.set(x, 0, z); // as montanhas ficam sempre no horizonte, como o céu
+      // o balão dá uma volta grande sobre a cidade (BALAO), subindo e descendo de leve, virado para onde vai
+      const tb = performance.now() * 0.001, a = (tb / BALAO.volta) * Math.PI * 2;
+      balao.position.set(BALAO.cx + Math.cos(a) * BALAO.r, BALAO.alt + Math.sin(tb * 0.25) * 2.5, BALAO.cz + Math.sin(a) * BALAO.r);
+      balao.rotation.y = -a;
     },
   };
   api.hora(7); // o jogo abre às 7 h da manhã, na luz dourada

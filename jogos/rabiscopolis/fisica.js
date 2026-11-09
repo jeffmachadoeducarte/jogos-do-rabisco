@@ -9,16 +9,19 @@ export const AQUATICOS = ["barco", "jetski", "lancha"];
 const naAguaDoMar = (x, z, m) => z - m > MAR.costa && z + m < MAR.z1 - 20 && x - m > MAR.x0 + 20 && x + m < MAR.x1 - 20 && !naIlha(x, z, m) && !dentroPier(x, z, m);
 
 export const VEL = 6.5, PULO = 9.6, GRAV = 25, LARG = 0.35;
+// degrau: um sólido cujo topo fica até DEGRAU acima dos pés não é parede, é chão (o Rabisco sobe andando as escadinhas do
+// Mirante e do Monte da Oração; o que é mais alto que isso continua barrando)
+export const DEGRAU = 0.42;
 
 export function criarFisica(mundo) {
   const { solidos, circulos } = mundo;
   const chaoEm = (x, z, y) => {
     let h = 0.03;
-    for (const s of solidos) if (s.y1 <= y + 0.4 && x > s.x0 - LARG && x < s.x1 + LARG && z > s.z0 - LARG && z < s.z1 + LARG && s.y1 > h) h = s.y1;
+    for (const s of solidos) if (s.y1 <= y + DEGRAU && x > s.x0 - LARG && x < s.x1 + LARG && z > s.z0 - LARG && z < s.z1 + LARG && s.y1 > h) h = s.y1;
     return h;
   };
   // o mar também é parede para quem está a pé (ninguém entra na água nadando: vai de jet ski ou de lancha)
-  const bate = (x, z, y, larg = LARG) => (y < 0.5 && naMar(x, z)) || solidos.some((s) => y < s.y1 - 0.05 && x > s.x0 - larg && x < s.x1 + larg && z > s.z0 - larg && z < s.z1 + larg)
+  const bate = (x, z, y, larg = LARG) => (y < 0.5 && naMar(x, z)) || solidos.some((s) => y < s.y1 - 0.05 && s.y1 > y + DEGRAU && x > s.x0 - larg && x < s.x1 + larg && z > s.z0 - larg && z < s.z1 + larg)
     || circulos.some((c) => Math.hypot(x - c.x, z - c.z) < c.r + larg);
   // ponto livre perto do pedido (para nascer/sair do carro sem ficar dentro de nada)
   const livre = (x, z, folga = 0.9) => {

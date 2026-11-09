@@ -23,7 +23,7 @@ export const RARIDADES = {
 const ICONE_LUGAR = {
   praca: "⛲", igreja: "⛪", hospital: "🏥", biblioteca: "📚", bombeiros: "🚒", mercado: "🛒", padaria: "🥖", sorveteria: "🍦",
   parque: "🌳", campo: "⚽", quadra: "🏀", horta: "🥕", kids1: "🧸", kids2: "🎒", veterinario: "🐾", lavarapido: "🫧",
-  estudio: "🎵", correios: "✉️", mirante: "🔭", heliponto: "🚁", praia: "🏖️", fazendinha: "🐮", atelie: "🎨",
+  estudio: "🎵", correios: "✉️", mirante: "🔭", heliponto: "🚁", praia: "🏖️", fazendinha: "🐮", atelie: "🎨", monte: "⛰️",
 };
 
 const parceiros = PARCEIROS.map((p) => ({ id: `p:${p.id}`, pagina: "parceiros", nome: p.nome, sub: `@${p.instagram}`, tipo: p.tipo, parceiro: p.id, dica: "Visite a loja" }));

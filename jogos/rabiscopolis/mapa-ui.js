@@ -28,7 +28,7 @@ const EMOJI = {
   parque: "🌳", campo: "⚽", quadra: "🏀", horta: "🥕", kids1: "🏫", kids2: "🏫", veterinario: "🐾", lavarapido: "🧽",
   estudio: "🎵", correios: "✉️", mirante: "🏔️", heliponto: "🚁", praia: "🏖️", fazendinha: "🐄", pracaIpes: "⛲",
   floricultura: "🌷", pizzaria: "🍕", pracaPalmeiras: "⛲", farmacia: "💊", brinquedos: "🧸", pracaEstrelas: "⛲",
-  museu: "🦖", observatorio: "🔭", orla: "🌊", salvavidas: "🛟", pier: "⚓", quiosque: "🥥", ilha: "🏝️", roda: "🎡", atelie: "🎨",
+  museu: "🦖", observatorio: "🔭", orla: "🌊", salvavidas: "🛟", pier: "⚓", quiosque: "🥥", ilha: "🏝️", roda: "🎡", atelie: "🎨", monte: "⛰️",
 };
 const EMOJI_TIPO = { carros: "🚗", academia: "🏋️", moda: "💄", contabilidade: "📊", presentes: "🎁", joias: "💍", confeccao: "👗", reciclagem: "⚙️", livraria: "📖", ballet: "🩰", agencia: "📸", vidracaria: "🪟", locacao: "🏗️", sitio: "🦆" };
 // nome curto no mapa (na lista e no cartão vai o nome inteiro)

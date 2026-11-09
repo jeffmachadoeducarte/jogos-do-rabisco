@@ -267,7 +267,7 @@ const veiculos = []; let garagem = null; // veículo chamado pelo Rabisfone (só
 let transito = [], moradores = [], vovo = null, missoes = null, profissoes = null, j2 = null, patioJE = null;
 let desafios = null; // Desafios de obstáculos (desafios.js): Pula-telhados, Argolas do helicóptero e Corrida de barco
 let natal = null; // Natal na cidade (natal.js: de 1º/12 a 6/1, ou ?natal=1): luzes, árvore, presépio e música da praça
-let dentro = null, contexto = null, salvo = carregar(), alvoMapa = null;
+let dentro = null, contexto = null, salvo = carregar(), alvoMapa = null, monteLugar = null;
 let mapaLigado = false; // minimapa do canto: escondido ao começar; M, L3 e a ⚙️ mostram e escondem
 let emCasa = null, casaM = null, decoCasa = null, fade = null; // a casa da criança por dentro (casa-3d.js) e o modo Decorar
 let emLugar = null, sorveteUI = null; const salas = {}; // lugares por dentro (Fatia 3), montados na primeira visita
@@ -556,7 +556,7 @@ function parar() {
   desafios?.destruir(); desafios = null;
   jogo.palco.querySelector('.escolha-j2-rp')?.remove(); j2 = null;
   mapaUI?.fechar();
-  dentro = null; contexto = null; alvoMapa = null; oracao = null; trava = null;
+  dentro = null; contexto = null; alvoMapa = null; oracao = null; trava = null; monteLugar = null; regras.monte = false;
   motor.desligar();
   teclas.clear();
 }
@@ -1220,6 +1220,12 @@ function regras(dt = 1 / 30) {
     const d = Math.hypot(l.x - j.pos.x, l.z - j.pos.z);
     if (d < l.raio * 0.7 && regras.ultimo !== l.id) { regras.ultimo = l.id; albumUI?.visitou(l.id); dizer(l.bairro || "Rabiscolândia", `${l.nome}`, 2200); }
   }
+  // Monte da Oração (Mundo Vivo, etapa 7): no topo, perto da cruz, a anfitriã fala o versículo e a criança ganha a
+  // figurinha do lugar (o álbum nunca repete). A fala vem uma vez por partida (regras.monte)
+  if (!dentro && !regras.monte) {
+    const mt = monteLugar ??= mundo.lugares.find((l) => l.id === "monte") ?? null;
+    if (mt?.topo && j.pos.y > mt.alturaTopo - 0.6 && Math.hypot(mt.topo[0] - j.pos.x, mt.topo[1] - j.pos.z) < 5) { regras.monte = true; chegouNoMonte(); }
+  }
   if (alvoMapa) {
     // destino do mapa: de carro ou helicóptero conta mais longe (a rua e o pouso ficam a alguns metros da porta)
     const a = alvoMapa, r = (a.raio ?? 5) + (a.doMapa && dentro ? (dentro.tipo === "heli" ? 10 : 6) : 0);
@@ -1593,6 +1599,16 @@ function irParaLugar(it) {
   atualizarBussola();
 }
 function cancelarDestino() { alvoMapa = null; atualizarBussola(); }
+// Monte da Oração (etapa 7): chegou no topo, perto da cruz. Versículo pela anfitriã (Salmo 121), confete, a figurinha do
+// lugar (uma vez só: o álbum não repete) e a marca no save (a etapa 10 dá XP por ela)
+function chegouNoMonte() {
+  radio?.pausarPorFala(true); falar("rp-monte-topo");
+  dizer("Monte da Oração", "«Olho para os montes… A minha ajuda vem do Senhor, que fez o céu e a terra.» Salmo 121", 8000);
+  jogo.confete?.(); sons.vitoria?.();
+  if (!salvo.monte) { salvo.monte = true; salvar(salvo); }
+  setTimeout(() => albumUI?.visitou("monte"), 1200);
+  setTimeout(() => radio?.pausarPorFala(false), 9500);
+}
 // seta 3D (2 malhas: a seta e o brilho em volta) e o farol no destino (1 malha): só com destino marcado, 3 chamadas de desenho.
 // Discreta: pequena, rosa meio transparente, flutuando acima e um pouco à frente da cabeça (acima da etiqueta do nome),
 // girando suave para o destino e pulsando de leve. No veículo fica acima do teto (helicóptero inclusive).

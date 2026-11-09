@@ -15,6 +15,16 @@ import { DESAFIOS, AREAS_DESAFIOS, HELI, BARCO } from "./desafios-dados.js";
 import { marEAreia, pier, postoSalvaVidas, quiosqueCoco, rodaGigante, enfeitesOrla } from "./orla.js";
 import { aleatorio } from "../../src/motor3d/toon.js";
 import { atelie } from "./atelie-predio.js";
+import { monteOracao, MONTE } from "./monte.js";
+
+// Monte da Oração (Mundo Vivo, etapa 7): lugar novo no canto noroeste. Fica FORA dos sorteios de postes, árvores e
+// bosques (LUGARES_SORTEIO): os sorteios continuam tirando os mesmos números e nada do resto muda de lugar; o que
+// cairia em cima do morro só não é montado (dentroDoMonte).
+const LUGARES_SORTEIO = LUGARES.filter((l) => l.id !== "monte");
+const MONTE_L = LUGARES.find((l) => l.id === "monte");
+const dentroDoMonte = (x, z, folga = 2) => Boolean(MONTE_L) && Math.abs(x - MONTE_L.x) < MONTE.meia + folga && z > MONTE_L.z + MONTE.centroZ - MONTE.meia - folga && z < MONTE_L.z + 1.2 + folga;
+// o lago da cachoeira fica a leste do morro (x de +22 a +30 do centro, z de −11 a −3)
+const dentroDoMonteOuLago = (x, z) => dentroDoMonte(x, z) || (Boolean(MONTE_L) && x > MONTE_L.x + 20 && x < MONTE_L.x + 32 && z > MONTE_L.z + MONTE.centroZ - 13 && z < MONTE_L.z + MONTE.centroZ - 1);
 
 // local (lx, lz) de um grupo girado em rot (múltiplos de 90°) → mundo (igual a cidade.js · mundoDe)
 export const mundoDe = (ox, oz, rot, lx, lz) => [ox + lx * Math.cos(rot) + lz * Math.sin(rot), oz - lx * Math.sin(rot) + lz * Math.cos(rot)];
@@ -53,15 +63,11 @@ export function montarMundo(cena, { volume = true, aderecos = true, aderecosLong
   const chao = new THREE.Mesh(new THREE.PlaneGeometry(1400, chaoZ1 + 700), mat(0xffffff, { map: TEX.grama }));
   chao.rotation.x = -Math.PI / 2; chao.position.set(0, -0.02, (chaoZ1 - 700) / 2); chao.receiveShadow = true;
   cena.add(chao);
-  const morros = new THREE.Group();
-  for (let n = 0; n < 22; n++) {
-    const a = (n / 22) * Math.PI * 2, d = 490 + rnd() * 40; // depois do Horizonte (e não no mar, ao sul); de longe, menos polígonos
-    const lado = 90 + rnd() * 50; // morrinho em degraus, de longe (poucas caixas)
-    const m = malha(degraus(lado, lado * 0.8, 30, 5, { fim: 0.3 }), mat([0x5fb44f, 0x54a947, 0x69bf58][n % 3]), { sombra: false });
-    m.position.set(Math.cos(a) * d, 8, Math.sin(a) * d); m.rotation.y = a; if (Math.sin(a) * d < 300) morros.add(m);
-  }
-  cena.add(morros);
-  mesclar(morros, { volume });
+  // os morrinhos verdes de antes (anel a 490 m, dentro da neblina) saíram na etapa 7: nos cantos do mapa (|x| = |z| ≈ 350) eles
+  // entravam na cidade, em cima do Monte da Oração. O horizonte agora é a serra de ceu.js (fora da neblina, 1 malha).
+  // Os sorteios continuam tirando os mesmos números (o anel usava 2 por morrinho): nada do resto muda de lugar.
+  for (let n = 0; n < 22; n++) { rnd(); rnd(); }
+  void degraus;
 
   // ---------- ruas: calçada, asfalto, faixa branca tracejada (fora dos cruzamentos)
   const ruas = new THREE.Group();
@@ -325,7 +331,7 @@ export function montarMundo(cena, { volume = true, aderecos = true, aderecosLong
   for (const pi of PIERS) por(pier(pi), 0, 0, 0, blocoEm((pi.x0 + pi.x1) / 2, (pi.z0 + pi.z1) / 2));
   const roda = por(rodaGigante(), RODA.x, RODA.z, 0);
   anima.roda = roda;
-  const livreOrla = (x, z, f) => !ocupado(x, z, f) && !LUGARES.some((l) => l.novo && Math.hypot(l.x - x, l.z - z) < f + 4) && !PIERS.some((pi) => x > pi.x0 - f && x < pi.x1 + f && z > pi.z0 - f && z < pi.z1 + f);
+  const livreOrla = (x, z, f) => !ocupado(x, z, f) && !LUGARES_SORTEIO.some((l) => l.novo && Math.hypot(l.x - x, l.z - z) < f + 4) && !PIERS.some((pi) => x > pi.x0 - f && x < pi.x1 + f && z > pi.z0 - f && z < pi.z1 + f);
   for (const it of enfeitesOrla(livreOrla)) { it.S.grupo.rotation.y += it.rot; por(it.S, it.x, it.z, it.S.grupo.rotation.y); }
   // placas das praças novas e da orla, como as do parque
   for (const [id, cor] of [["pracaIpes", "#c2477a"], ["pracaPalmeiras", "#1f8a7a"], ["pracaEstrelas", "#7a52c9"], ["orla", "#00b5f0"], ["ilha", "#ff7a00"]]) {
@@ -343,12 +349,15 @@ export function montarMundo(cena, { volume = true, aderecos = true, aderecosLong
         const off = rua.w / 2 + CALCADA - 0.6, ax = x + ns[i][0] * s * off, az = z + ns[i][1] * s * off;
         if (Math.max(Math.abs(ax), Math.abs(az)) < BORDA_ANTIGA || Math.abs(ax) > BORDA - 4 || az < -BORDA + 4 || az > ORLA.z0 - 1) continue;
         if (distRua(ax, az, rua).d < 3 || ocupado(ax, az, 1.2)) continue;
-        if (LUGARES.some((l) => Math.hypot(l.x - ax, l.z - az) < 5) || LOTES.some((l) => Math.abs(l.x - ax) < 3 && Math.abs(l.z - az) < 3)) continue;
+        if (LUGARES_SORTEIO.some((l) => Math.hypot(l.x - ax, l.z - az) < 5) || LOTES.some((l) => Math.abs(l.x - ax) < 3 && Math.abs(l.z - az) < 3)) continue;
         if ((i + (s > 0 ? 0 : 1)) % 2 === 0) {
+          if (dentroDoMonteOuLago(ax, az)) continue; // a entrada do Monte da Oração fica livre
           const p = P.posteLuz(); p.position.set(ax, 0.07, az); blocoEm(ax, az).add(p);
           solidos.push({ x0: ax - 0.25, x1: ax + 0.25, z0: az - 0.25, z1: az + 0.25, y1: 5 });
         } else {
-          const a = arvoreReal(0.8 + rnd2() * 0.25, i); a.position.set(ax, 0.07, az); blocoEm(ax, az).add(a);
+          const esc = 0.8 + rnd2() * 0.25; // sorteia antes de decidir: o Monte não muda a sequência das outras árvores
+          if (dentroDoMonteOuLago(ax, az)) continue;
+          const a = arvoreReal(esc, i); a.position.set(ax, 0.07, az); blocoEm(ax, az).add(a);
           solidos.push({ x0: ax - 0.45, x1: ax + 0.45, z0: az - 0.45, z1: az + 0.45, y1: 6 });
         }
       }
@@ -358,15 +367,26 @@ export function montarMundo(cena, { volume = true, aderecos = true, aderecosLong
   for (let n = 0; n < 620; n++) {
     const x = (rnd2() - 0.5) * 2 * (BORDA - 8), z = -BORDA + 8 + rnd2() * (ORLA.z0 - 4 + BORDA - 8);
     if (Math.max(Math.abs(x), Math.abs(z)) < BORDA_ANTIGA + 1 || distRua(x, z).d < CALCADA + 2 || ocupado(x, z, 3)) continue;
-    if (LUGARES.some((l) => l.novo && Math.hypot(l.x - x, l.z - z) < 8)) continue;
+    if (LUGARES_SORTEIO.some((l) => l.novo && Math.hypot(l.x - x, l.z - z) < 8)) continue;
+    const noMonte = dentroDoMonteOuLago(x, z); // sorteia igual, só não monta (o Monte da Oração é montado depois)
     if (rnd2() < 0.75) {
-      const a = arvoreReal(0.9 + rnd2() * 0.6, n); a.position.set(x, 0.03, z); a.rotation.y = rnd2() * 6; blocoEm(x, z).add(a);
+      const esc = 0.9 + rnd2() * 0.6, rot = rnd2() * 6;
+      if (noMonte) continue;
+      const a = arvoreReal(esc, n); a.position.set(x, 0.03, z); a.rotation.y = rot; blocoEm(x, z).add(a);
       solidos.push({ x0: x - 0.5, x1: x + 0.5, z0: z - 0.5, z1: z + 0.5, y1: 6 });
     } else {
+      if (noMonte) continue;
       // moita em blocos (Mundo Vivo, etapa 5): 2 caixas em vez do icosaedro de 80 triângulos; as flores em cubinhos
       const m = new THREE.Group(); m.position.set(x, 0, z); m.userData.detalhe = true; blocoEm(x, z).add(m);
       { const a1 = caixa(2.2, 0.9, 1.9, mat(0x5cc443), { sombra: false }); a1.position.y = 0.45; m.add(a1); const a2 = caixa(1.4, 0.6, 1.2, mat(0x6fd455), { sombra: false }); a2.position.set(0.2, 1.0, -0.1); m.add(a2); }
     }
+  }
+  // ---------- Monte da Oração (Mundo Vivo, etapa 7): montado por último, depois de todos os sorteios (nada muda de lugar)
+  if (MONTE_L) {
+    const ox = MONTE_L.x - MONTE_L.dir[0] * MONTE_L.recuo, oz = MONTE_L.z - MONTE_L.dir[1] * MONTE_L.recuo;
+    const S = por(monteOracao(MONTE_L), ox, oz, MONTE_L.rot);
+    const [tx, tz] = mundoDe(ox, oz, MONTE_L.rot, ...S.topo);
+    Object.assign(lugares.find((q) => q.id === "monte"), { topo: [tx, tz], alturaTopo: S.alturaTopo, entrada: mundoDe(ox, oz, MONTE_L.rot, ...S.entrada) });
   }
   void naMar; void ILHA;
 
