@@ -38,6 +38,7 @@ import { criarAlbumUI } from "./album-ui.js";
 import { criarMeuRabisco } from "./meu-rabisco-ui.js";
 import { prepararRoupa, vestirPecas, escolhaSalva, ajustarUniforme } from "./meu-rabisco.js";
 import { criarToque } from "./toque.js";
+import { criarHud } from "./hud.js";
 import { carregar, salvar } from "./salvar.js";
 import { criarQualidade } from "./qualidade.js";
 import { PLANTAS, verificar } from "./interiores.js";
@@ -261,7 +262,7 @@ function garantirRadio() {
 
 // ------------------------------------------------------------------ Estado
 let r3, cena, cam, ceu, mundo, fis, camera, rabisco, relogio, qualidade, vivo = false;
-let hud, minimapa, mapaGrande, mapaUI = null, guia = null, balao, bussola, caixa;
+let hud, hudNovo = null, minimapa, mapaGrande, mapaUI = null, guia = null, balao, bussola, caixa;
 const j = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), noChao: true, coyote: 0, buffer: 0, dir: 0 };
 const veiculos = []; let garagem = null; // veículo chamado pelo Rabisfone (só um por vez)
 let transito = [], moradores = [], vovo = null, missoes = null, profissoes = null, j2 = null, patioJE = null;
@@ -514,6 +515,16 @@ function iniciar() {
   caixa.addEventListener("pointerdown", (ev) => { if (ev.target === r3?.domElement && bichinho?.tocou(ev.clientX, ev.clientY, cam, r3.domElement)) bichinho.truque(); });
   atualizarHud();
   contadorMoedas = criarContador(hud.querySelector(".chip-rp").parentElement, { camada: caixa });
+  // interface nova (hud.js, Mundo Vivo etapa 9): painel do jogador, "+" da loja, fileira de atalhos e botão do Mapa.
+  // Cada atalho abre o que já existe no Rabisfone; "Móveis" entra no modo decorar com o catálogo (dentro da casa) ou mostra o app Casa
+  hudNovo = criarHud(caixa, hud, {
+    perfil: () => { let c = null; try { c = window.Familia?.crianca?.() || null; } catch { c = null; } return c?.nome ? { nome: c.nome, emoji: c.genero === "menina" ? "👧" : c.genero === "menino" ? "👦" : "🧒" } : { nome: salvo.nomeRabisco || "Rabisco", emoji: "✏️" }; },
+    abrirApp: (id) => { if (decoCasa?.ativo || trava || oracao) return; fone.abrir(id); },
+    abrirMapa: () => { if (decoCasa?.ativo || trava || oracao) return; alternarMapa(true); },
+    moveis: () => { if (emCasa && decoCasa) { decoCasa.entrar([j.pos.x, j.pos.z]); decoCasa.catalogo.abrir(); } else fone.abrir("casa"); },
+    meuRabisco: () => { if (decoCasa?.ativo || trava || oracao) return; meuRb.abrir(); },
+    aoAbrir: () => { teclas.clear(); toque?.zerar(); },
+  });
   desafios = criarDesafios(cena, {
     caixa, mundo, jogador: j, salvo: () => salvo, salvar: () => salvar(salvo), sons, falar: (k) => { radio?.pausarPorFala(true); falar(k); }, dizer: (...a) => dizer(...a),
     veiculo: () => dentro, ocupado: () => Boolean(emCasa || emLugar || oracao || trava || roda), vezes: (m) => Rabiscoins.vezes(m),
@@ -545,7 +556,7 @@ function parar() {
   bauDia = null; diario = null;
   if (meuRb?.aberto) meuRb.fechar();
   if (atelieUI?.aberto) atelieUI.fechar();
-  contadorMoedas?.destruir(); contadorMoedas = null;
+  contadorMoedas?.destruir(); contadorMoedas = null; hudNovo?.destruir(); hudNovo = null;
   emCasa = null; casaM = null; decoCasa?.raiz.remove(); decoCasa?.catalogo.raiz.remove(); decoCasa = null;
   emLugar = null; solidosDentro = []; for (const k of Object.keys(salas)) delete salas[k];
   radioUI?.sairDoCarro();
@@ -1455,7 +1466,9 @@ function passo(dt, ultimo) {
     posicionarCamera(Math.min(1, dt * 6), dt, andando);
     atualizarGuia(t);
     tMapa -= dt;
-    if (ultimo && tMapa <= 0) { tMapa = 0.15; if (!minimapa.hidden) desenharMapa(minimapa.getContext("2d"), 200); atualizarBussola(); atualizarBotaoAcao(); atualizarMissaoHud(); atualizarAcaoJ2(); mapaUI?.atualizar(); }
+    if (ultimo && tMapa <= 0) { tMapa = 0.15; if (!minimapa.hidden) desenharMapa(minimapa.getContext("2d"), 200); atualizarBussola(); atualizarBotaoAcao(); atualizarMissaoHud(); atualizarAcaoJ2(); mapaUI?.atualizar();
+      // a fileira de atalhos e o Mapa somem com uma tela por cima (Rabisfone, mapa grande, Ateliê, Meu Rabisco, decorar, sorvete, oração, cena, roda)
+      hudNovo?.ocultar(Boolean(fone?.aberto || mapaUI?.aberto || atelieUI?.aberto || meuRb?.aberto || decoCasa?.ativo || sorveteUI?.aberto || oracao || trava || roda)); }
     if (ultimo && !params.has("fixo")) qualidade.medir(t);
   }
 }
@@ -1750,7 +1763,7 @@ if (params.has("teste")) window.teste = {
   adiantarBau(seg = 5) { for (let k = 0; k < seg / 0.05 && bauDia?.estado === "abrindo"; k++) bauDia.atualizar(0.05, relogio.elapsedTime, j.pos, 99); }, // pula a animação de abrir
   get hoje() { return diario?.hoje() ?? null; }, set hoje(d) { hojeTeste = diaValido(d) ? d : null; tDia = 0; verificarDia(0); },
   get missaoDoDia() { return missaoDoDiaAgora(); }, candidatosDoDia: () => candidatosDoDia(diario.hoje()), get texMarcaDoDia() { return texMarcaDoDia(); },
-  get album() { return albumUI; }, get bichinho() { return bichinho; }, get atelie() { return atelieUI; }, abrirAtelie: (c) => abrirAtelie(c), get contadorMoedas() { return contadorMoedas; }, ganharMissao: (id) => ganharMissao({ id }), Rabiscoins,
+  get hud() { return hudNovo; }, get album() { return albumUI; }, get bichinho() { return bichinho; }, get atelie() { return atelieUI; }, abrirAtelie: (c) => abrirAtelie(c), get contadorMoedas() { return contadorMoedas; }, ganharMissao: (id) => ganharMissao({ id }), Rabiscoins,
   get garagemAtual() { return garagem; },
   entrarLugar(id) { if (dentro) sair(); if (emCasa) sairCasa(true); entrarLugar(id, true); },
   sairLugar() { sairLugar(true); },

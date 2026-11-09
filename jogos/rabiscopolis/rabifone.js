@@ -100,6 +100,7 @@ const APPS = [
   { id: "album", icone: "📒", nome: "Álbum", titulo: "Álbum de figurinhas", cor: "#58c43a" },
   { id: "trabalhar", icone: "💼", nome: "Trabalhar", cor: "#2e9e57" },
   { id: "desafios", icone: "🏁", nome: "Desafios", cor: "#ff7a00" },
+  { id: "inventario", icone: "🎒", nome: "Mochila", titulo: "Inventário", cor: "#c2410c" }, // o que o Rabisco carrega (inventario.js, etapa 10)
 ];
 const VEICULOS = [
   { tipo: "carro", cor: 0xec2e8c, nome: "Carro rosa", emoji: "🚗" },
@@ -177,6 +178,9 @@ export function criarRabifone(onde, cb) {
         mostrarPresente(lista);
       } else if (id === "album") {
         cb.montarAlbum?.(tela, lista, { botao }); // Álbum de figurinhas (album-ui.js)
+      } else if (id === "inventario") {
+        // Inventário (inventario.js, etapa 10); sem ele, a mochila vazia
+        if (!cb.montarInventario?.(tela, lista, { botao })) { const p = document.createElement("p"); p.textContent = "Sua mochila ainda está vazia. O que você pegar nas missões fica guardado aqui!"; tela.insertBefore(p, lista); }
       } else if (id === "trabalhar") {
         mostrarTrabalho(lista);
       } else if (id === "meurabisco") {

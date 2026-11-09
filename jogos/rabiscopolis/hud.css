@@ -1,0 +1,88 @@
+/* Rabiscolândia (Mundo Vivo, etapa 9): a interface nova (hud.js).
+   Em cima à esquerda: o painel do jogador (retrato, nome, nível e barra de XP) e o contador de moedas com o "+" da loja;
+   em cima à direita: a fileira de botões grandes (Missões, Minha Casa, Inventário, Loja, Conquistas), com menus
+   embaixo; embaixo à esquerda: o botão do Mapa. Tudo grande para criança, no celular deitado, em pé e na TV, sem cobrir
+   os controles de toque (toque.js): no celular, dentro do veículo (SAIR em cima à direita, pedais), a fileira e o Mapa somem.
+   Carregado depois de estilo.css: as posições da bússola, do minimapa e do aviso da rádio mudam aqui para dar lugar à fileira. */
+
+.hud-rp { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; max-width: min(54vw, 560px); z-index: 9; } /* acima da camada da alavanca (toque): o painel e o "+" recebem o toque */
+.hud-rp .missao-rp { flex-basis: 100%; margin-top: 0; }
+.hud-rp .rbc-contador { margin-left: 0; }
+.hud-rp .chip-rp.hud-jog { display: inline-flex; align-items: center; gap: 8px; padding: 3px 14px 3px 4px; pointer-events: auto; cursor: pointer; }
+.hud-avatar { width: 42px; height: 42px; border-radius: 50%; background: #ffe6f2; border: 3px solid var(--tinta); display: grid; place-items: center; font-size: 24px; line-height: 1; flex: none; }
+.hud-txt { display: flex; flex-direction: column; line-height: 1.05; }
+.hud-nome { font-size: 17px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hud-niv { font-size: 12px; color: #8e6cff; font-weight: 800; white-space: nowrap; }
+.hud-xp { display: block; width: 128px; height: 9px; margin-top: 3px; border-radius: 999px; background: #e6e2f5; border: 2px solid var(--tinta); overflow: hidden; box-sizing: content-box; }
+.hud-xp i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #8e6cff, #ec2e8c); border-radius: 999px; transition: width 0.4s ease; }
+.hud-mais { pointer-events: auto; width: 34px; height: 34px; border-radius: 50%; border: 4px solid var(--tinta); background: #ffcc1f; box-shadow: 0 4px 0 var(--tinta); font: 800 24px/1 var(--texto); color: var(--tinta); cursor: pointer; padding: 0 0 2px; margin-left: -2px; }
+
+.hud-botoes { position: absolute; z-index: 9; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 74px); display: flex; gap: 8px; font-family: var(--texto); }
+.hud-btn { width: 66px; height: 66px; border-radius: 18px; border: 4px solid var(--tinta); background: rgba(255,255,255,0.94); box-shadow: 0 4px 0 var(--tinta); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 0; color: var(--tinta); }
+.hud-btn .ic { font-size: 28px; line-height: 1; }
+.hud-btn small { font: 800 11px var(--texto); letter-spacing: 0.1px; white-space: nowrap; }
+.hud-btn:active, .hud-mapa:active, .hud-mais:active, .hud-menu-item:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--tinta); }
+.hud-btn[aria-expanded="true"] { background: #fff3c4; }
+.hud-btn .hud-bolinha { position: absolute; top: -8px; right: -8px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 999px; background: #ec2e8c; color: #fff; border: 3px solid var(--tinta); font: 800 13px/16px var(--texto); display: none; }
+.hud-btn { position: relative; }
+.hud-btn .hud-bolinha.ativa { display: block; }
+.hud-menu { position: absolute; z-index: 9; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 150px); display: flex; flex-direction: column; gap: 6px; padding: 8px; background: #fff; border: 4px solid var(--tinta); border-radius: 18px; box-shadow: 0 5px 0 var(--tinta); font-family: var(--texto); min-width: 210px; animation: hud-menu 0.18s ease-out; }
+.hud-menu[hidden] { display: none; }
+@keyframes hud-menu { from { transform: translateY(-8px); opacity: 0; } }
+.hud-menu-item { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 14px; border: 3px solid var(--tinta); background: #fff8e1; box-shadow: 0 3px 0 var(--tinta); font: 800 19px var(--texto); color: var(--tinta); cursor: pointer; text-align: left; }
+.hud-menu-item .ic { font-size: 24px; line-height: 1; }
+.hud-menu-item small { font-size: 13px; color: #6b6b6b; margin-left: auto; }
+
+.hud-mapa { position: absolute; z-index: 9; left: 12px; bottom: 86px; width: 66px; height: 66px; border-radius: 50%; border: 4px solid var(--tinta); background: rgba(255,255,255,0.94); box-shadow: 0 4px 0 var(--tinta); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0; color: var(--tinta); font-family: var(--texto); }
+.hud-mapa .ic { font-size: 28px; line-height: 1; }
+.hud-mapa small { font: 800 11px var(--texto); }
+.cena-rp.dois-rp .hud-mapa { bottom: 130px; }
+/* toque: o Rabisfone de baixo some e o Mapa sobe, espelhando o 📱 da direita (fora do polegar da alavanca) */
+body.touch .hud-mapa { left: calc(env(safe-area-inset-left, 0px) + 36px); bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); width: 70px; height: 70px; }
+/* uma tela por cima (Rabisfone, mapa grande, Ateliê, Meu Rabisco, decorar, oração, cena): a fileira, o menu e o Mapa somem */
+.cena-rp.hud-oculto .hud-botoes, .cena-rp.hud-oculto .hud-menu, .cena-rp.hud-oculto .hud-mapa { display: none; }
+/* no celular, dentro do veículo: SAIR fica em cima à direita e os pedais embaixo; a fileira e o Mapa saem do caminho (📱 continua) */
+body.touch .cena-rp.rp-no-carro .hud-botoes, body.touch .cena-rp.rp-no-heli .hud-botoes, body.touch .cena-rp.rp-no-carro .hud-menu, body.touch .cena-rp.rp-no-heli .hud-menu, body.touch .cena-rp.rp-no-carro .hud-mapa, body.touch .cena-rp.rp-no-heli .hud-mapa { display: none; }
+
+/* a bússola e o minimapa descem para a 2ª linha, embaixo da fileira */
+.bussola-rp { top: calc(env(safe-area-inset-top, 0px) + 150px); }
+.minimapa-rp { top: calc(env(safe-area-inset-top, 0px) + 150px); }
+
+/* celular deitado: tudo mais baixinho; a fileira só com ícones; bússola e minimapa na 2ª linha */
+@media (max-height: 520px) and (orientation: landscape) {
+  .hud-botoes { top: 58px; gap: 5px; }
+  .hud-btn { width: 44px; height: 44px; border-radius: 14px; border-width: 3px; box-shadow: 0 3px 0 var(--tinta); }
+  .hud-btn .ic { font-size: 23px; } .hud-btn small { display: none; }
+  .hud-btn .hud-bolinha { min-width: 18px; height: 18px; font-size: 11px; line-height: 12px; top: -7px; right: -7px; }
+  .hud-menu { top: 108px; padding: 6px; min-width: 180px; } .hud-menu-item { font-size: 16px; padding: 5px 12px; }
+  .hud-rp .chip-rp.hud-jog { padding: 2px 10px 2px 3px; gap: 6px; }
+  .hud-avatar { width: 30px; height: 30px; font-size: 17px; border-width: 2px; }
+  .hud-nome { font-size: 13px; max-width: 110px; } .hud-niv { font-size: 10px; }
+  .hud-xp { width: 84px; height: 7px; margin-top: 2px; }
+  .hud-mais { width: 26px; height: 26px; border-width: 3px; font-size: 18px; }
+  .hud-rp .missao-rp { max-width: 28vw; }
+  .minimapa-rp { top: 108px; }
+  .bussola-rp { top: 104px; } .bussola-rp .rotulo { max-width: 30vw; }
+  .rp-radio-aviso { top: 150px; }
+  .hud-mapa { width: 56px; height: 56px; } .hud-mapa small { display: none; } .hud-mapa .ic { font-size: 26px; }
+  body.touch .hud-mapa { width: 62px; height: 62px; }
+}
+/* celular em pé: a fileira vai para baixo do painel, alinhada à direita */
+@media (orientation: portrait) {
+  .hud-rp { max-width: calc(100vw - 24px); }
+  .hud-rp .missao-rp { max-width: calc(100vw - 24px); }
+  .hud-botoes { left: 12px; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 200px); justify-content: flex-end; gap: 6px; }
+  .hud-btn { width: 56px; height: 56px; } .hud-btn small { display: none; } .hud-btn .ic { font-size: 26px; }
+  .hud-menu { top: calc(env(safe-area-inset-top, 0px) + 266px); }
+  .bussola-rp { top: calc(env(safe-area-inset-top, 0px) + 266px); }
+  .rp-radio-aviso { top: calc(env(safe-area-inset-top, 0px) + 316px); }
+  .minimapa-rp { top: calc(env(safe-area-inset-top, 0px) + 366px); }
+}
+/* TV: maior e legível de longe */
+html.modo-tv .hud-btn { width: 86px; height: 86px; border-radius: 22px; }
+html.modo-tv .hud-btn .ic { font-size: 38px; } html.modo-tv .hud-btn small { font-size: 14px; }
+html.modo-tv .hud-menu { top: calc(env(safe-area-inset-top, 0px) + 172px); min-width: 260px; } html.modo-tv .hud-menu-item { font-size: 24px; } html.modo-tv .hud-menu-item .ic { font-size: 30px; }
+html.modo-tv .hud-mapa { width: 86px; height: 86px; } html.modo-tv .hud-mapa .ic { font-size: 38px; } html.modo-tv .hud-mapa small { font-size: 14px; }
+html.modo-tv .hud-avatar { width: 56px; height: 56px; font-size: 30px; } html.modo-tv .hud-nome { font-size: 22px; max-width: 220px; } html.modo-tv .hud-niv { font-size: 15px; } html.modo-tv .hud-xp { width: 170px; height: 12px; }
+html.modo-tv .hud-mais { width: 42px; height: 42px; font-size: 30px; }
+html.modo-tv .minimapa-rp, html.modo-tv .bussola-rp { top: calc(env(safe-area-inset-top, 0px) + 172px); }
