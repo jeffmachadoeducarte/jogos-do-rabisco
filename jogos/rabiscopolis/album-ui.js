@@ -69,9 +69,9 @@ html.modo-tv .alb-voa canvas { width: 170px; height: 238px; }
   document.head.append(s);
 }
 
-export function criarAlbumUI({ caixa, salvo, salvar, ganhar, falar, aguardarFim, contador, confete, hoje = () => "" }) {
+export function criarAlbumUI({ caixa, salvo, salvar, ganhar, falar, aguardarFim, contador, confete, hoje = () => "", aoNova = null }) {
   estilo();
-  const album = criarAlbum({ salvo, salvar, ganhar });
+  const album = criarAlbum({ salvo, salvar, ganhar, aoNova });
   usarRetratos(retrato);
   const retratosPara = (figs) => prepararRetratos([...new Set(figs.filter((f) => f.tipo === "pessoa").map((f) => f.pessoa))]);
   const fila = []; let rodando = false;

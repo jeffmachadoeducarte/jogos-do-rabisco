@@ -8,7 +8,7 @@
 //   A.visitou(lugarId) · A.missao(missaoId) → lista de resultados de ganhar()      A.recuperar() → figurinhas de missões já concluídas
 import { PAGINAS, FIGURINHAS, figurinha, paginaDe, idDoLugar, BONUS_PAGINA, MOTIVO_PAGINA } from "./album-dados.js";
 
-export function criarAlbum({ salvo, salvar, ganhar }) {
+export function criarAlbum({ salvo, salvar, ganhar, aoNova = null }) {
   const dados = () => {
     const s = salvo();
     if (!s.album || typeof s.album !== "object" || Array.isArray(s.album)) s.album = {};
@@ -34,6 +34,7 @@ export function criarAlbum({ salvo, salvar, ganhar }) {
     }
     if (primeira) A.fala = true;
     guardar();
+    aoNova?.(fig, pagina); // XP da figurinha (nivel.js, etapa 10)
     return { nova: true, fig, primeira, pagina };
   }
   // o baú do dia: uma figurinha que ainda falta, escolhida pela semente (a data), sem repetir

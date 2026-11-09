@@ -280,6 +280,7 @@ export function criarDesafios(cena, ctx) {
     if (med) {
       primeira = !r.medalhas[med] && ctx.vezes(motivoMedalha(id, med)) === 0;
       r.medalhas[med] = true;
+      ctx.xp?.(id, med); // XP da medalha (nivel.js, etapa 10; a mesma medalha nunca conta duas vezes)
       if (primeira) ganhou = ctx.pagar(PREMIO_MEDALHA[med], motivoMedalha(id, med), `${ICONE_MEDALHA[med]} Medalha`) ?? PREMIO_MEDALHA[med];
     }
     ctx.salvar?.();

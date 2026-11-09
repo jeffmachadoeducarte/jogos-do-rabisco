@@ -548,3 +548,8 @@ html.modo-tv .atl-cartao { transform: scale(1.1); }
 }
 /* Rabisfone aberto: os botões da casca (sair, pausa, engrenagem) não ficam por cima da tela do celular */
 body:has(.rabifone:not([hidden])) :is(.casca-topo, .pausa-botao, .engrenagem-pausa) { visibility: hidden; }
+/* Mochila e Conquistas no Rabisfone (etapa 10): descrição do item tocado e selos por fazer apagados */
+.rf-inv-info { background: #fff8e1; border: 3px solid var(--tinta); border-radius: 14px; padding: 6px 12px; font-size: 15px; line-height: 1.25; }
+.rf-inv-info[hidden] { display: none; }
+.rf-item-falta { opacity: 0.6; } .rf-item-falta .rf-emoji { filter: grayscale(1); }
+.rf-selo-conq { background: #fff0b0; border-radius: 50%; }

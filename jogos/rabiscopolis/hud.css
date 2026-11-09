@@ -44,6 +44,36 @@ body.touch .hud-mapa { left: calc(env(safe-area-inset-left, 0px) + 36px); bottom
 /* no celular, dentro do veículo: SAIR fica em cima à direita e os pedais embaixo; a fileira e o Mapa saem do caminho (📱 continua) */
 body.touch .cena-rp.rp-no-carro .hud-botoes, body.touch .cena-rp.rp-no-heli .hud-botoes, body.touch .cena-rp.rp-no-carro .hud-menu, body.touch .cena-rp.rp-no-heli .hud-menu, body.touch .cena-rp.rp-no-carro .hud-mapa, body.touch .cena-rp.rp-no-heli .hud-mapa { display: none; }
 
+/* barra de itens (etapa 10): 6 espaços embaixo, no meio; o balão da anfitriã sobe para não cobrir */
+.hud-barra { position: absolute; z-index: 9; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; background: rgba(255,255,255,0.72); border: 4px solid var(--tinta); border-radius: 20px; box-shadow: 0 4px 0 var(--tinta); font-family: var(--texto); }
+.hud-slot { width: 52px; height: 52px; border-radius: 14px; border: 3px solid rgba(21,21,21,0.35); background: rgba(255,255,255,0.9); display: grid; place-items: center; font-size: 28px; line-height: 1; padding: 0; color: var(--tinta); cursor: default; position: relative; }
+.hud-slot[data-item] { border-color: var(--tinta); cursor: pointer; box-shadow: 0 3px 0 var(--tinta); }
+.hud-slot[data-item]:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--tinta); }
+.hud-slot.carregando { background: #fff3c4; }
+.hud-slot.mais { font: 800 18px var(--texto); }
+.hud-slot .hud-qtd { position: absolute; right: -6px; bottom: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; background: #ec2e8c; color: #fff; border: 2px solid var(--tinta); font: 800 11px/14px var(--texto); }
+.hud-slot.novo::after { content: "✦"; position: absolute; top: -9px; left: -7px; color: #ffcc1f; font-size: 16px; text-shadow: 0 0 2px var(--tinta); animation: hud-novo 0.9s ease-in-out infinite alternate; }
+@keyframes hud-novo { to { transform: scale(1.35) rotate(20deg); } }
+.hud-item-info { position: absolute; z-index: 9; left: 50%; bottom: 92px; transform: translateX(-50%); max-width: min(520px, 70vw); padding: 8px 16px 10px; background: #fff; border: 4px solid var(--tinta); border-radius: 18px; box-shadow: 0 4px 0 var(--tinta); font: 700 16px/1.3 var(--texto); color: var(--tinta); animation: hud-menu 0.18s ease-out; }
+.hud-item-info[hidden] { display: none; }
+.hud-item-info b { display: block; color: var(--rosa); font-size: 18px; }
+.cena-rp.com-barra .balao-rp { bottom: 92px; }
+.cena-rp.com-barra .acao-rp { bottom: 30px; }
+.cena-rp.hud-oculto .hud-barra, .cena-rp.hud-oculto .hud-item-info { display: none; }
+body.touch .cena-rp.rp-no-carro .hud-barra, body.touch .cena-rp.rp-no-heli .hud-barra, body.touch .cena-rp.rp-no-carro .hud-item-info, body.touch .cena-rp.rp-no-heli .hud-item-info { display: none; }
+/* "+XP" voando do painel e o painel comemorando ao subir de nível */
+.hud-xp-mais { position: absolute; z-index: 10; pointer-events: none; font: 800 18px var(--texto); color: #8e6cff; text-shadow: 0 2px 0 #fff, 0 0 4px #fff; animation: hud-xp-mais 1.4s ease-out forwards; }
+@keyframes hud-xp-mais { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-46px); opacity: 0; } }
+.hud-jog.sobe { animation: hud-sobe 1.2s cubic-bezier(0.34, 1.56, 0.64, 1); background: #fff3c4; }
+@keyframes hud-sobe { 0% { transform: scale(1); } 30% { transform: scale(1.14) rotate(-2deg); } 60% { transform: scale(1.06) rotate(2deg); } 100% { transform: scale(1); } }
+@media (max-height: 520px) and (orientation: landscape) {
+  .hud-barra { bottom: 6px; gap: 4px; padding: 4px; border-width: 3px; border-radius: 16px; }
+  .hud-slot { width: 42px; height: 42px; font-size: 22px; border-radius: 11px; }
+  .hud-item-info { bottom: 66px; font-size: 14px; padding: 6px 12px 8px; } .hud-item-info b { font-size: 16px; }
+  .cena-rp.com-barra .balao-rp { bottom: 66px; }
+}
+html.modo-tv .hud-slot { width: 68px; height: 68px; font-size: 36px; } html.modo-tv .hud-item-info { font-size: 22px; bottom: 112px; } html.modo-tv .hud-item-info b { font-size: 26px; } html.modo-tv .cena-rp.com-barra .balao-rp { bottom: 112px; }
+
 /* a bússola e o minimapa descem para a 2ª linha, embaixo da fileira */
 .bussola-rp { top: calc(env(safe-area-inset-top, 0px) + 150px); }
 .minimapa-rp { top: calc(env(safe-area-inset-top, 0px) + 150px); }

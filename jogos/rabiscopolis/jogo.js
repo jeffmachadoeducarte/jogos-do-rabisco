@@ -39,6 +39,9 @@ import { criarMeuRabisco } from "./meu-rabisco-ui.js";
 import { prepararRoupa, vestirPecas, escolhaSalva, ajustarUniforme } from "./meu-rabisco.js";
 import { criarToque } from "./toque.js";
 import { criarHud } from "./hud.js";
+import { criarNivel, XP } from "./nivel.js";
+import { criarInventario, ITENS } from "./inventario.js";
+import { criarConquistas } from "./conquistas.js";
 import { carregar, salvar } from "./salvar.js";
 import { criarQualidade } from "./qualidade.js";
 import { PLANTAS, verificar } from "./interiores.js";
@@ -269,6 +272,9 @@ let transito = [], moradores = [], vovo = null, missoes = null, profissoes = nul
 let desafios = null; // Desafios de obstáculos (desafios.js): Pula-telhados, Argolas do helicóptero e Corrida de barco
 let natal = null; // Natal na cidade (natal.js: de 1º/12 a 6/1, ou ?natal=1): luzes, árvore, presépio e música da praça
 let dentro = null, contexto = null, salvo = carregar(), alvoMapa = null, monteLugar = null;
+// nível e XP, mochila (inventário) e conquistas (Mundo Vivo, etapa 10); falasDitas: as falas de nível/conquista/item desta partida (testes)
+let nivel = null, inventario = null, conquistas = null;
+const falasDitas = [];
 let mapaLigado = false; // minimapa do canto: escondido ao começar; M, L3 e a ⚙️ mostram e escondem
 let emCasa = null, casaM = null, decoCasa = null, fade = null; // a casa da criança por dentro (casa-3d.js) e o modo Decorar
 let emLugar = null, sorveteUI = null; const salas = {}; // lugares por dentro (Fatia 3), montados na primeira visita
@@ -378,6 +384,8 @@ function iniciar() {
     // Sítio Floresça: o ônibus da escola (Kids II) e o roçador; descer do veículo (o ônibus estacionou na frente do sítio)
     chamarVeiculo: (tipo, cor) => chamarVeiculo(tipo, cor), veiculos: () => veiculos, sairVeiculo: () => { if (dentro) { dentro.vel = 0; sair(); } },
     aoConcluir: (M) => { alvoMapa = null; ganharMissao(M); },
+    // mochila (etapa 10): o que a missão manda pegar entra na hora e sai ao entregar/largar
+    aoItem: (acao, it) => { if (acao === "pegou") inventario?.carregar(it); else inventario?.soltar(it?.id ?? null); },
     // Missão do dia: a estrela no lugar do "!" até o extra do dia sair
     marcaDoDia: (id) => (id === missaoDoDiaAgora() && !diario?.extraPagoHoje() ? texMarcaDoDia() : null),
     pos2: () => (j2?.aPe ? j2.pos : null),
@@ -445,9 +453,18 @@ function iniciar() {
   painelOracao = el("div", { class: "oracao-rp", hidden: "", "aria-live": "polite" }); caixa.append(painelOracao);
   sorveteUI = criarSorveteUI(caixa);
   // Álbum de figurinhas (album-ui.js): lugar/loja visitada, missão concluída e baú do dia dão figurinha
-  albumUI = criarAlbumUI({ caixa, salvo: () => salvo, salvar: () => salvar(salvo), ganhar: (q, m) => Rabiscoins.ganhar(q, m), falar: (k) => { radio?.pausarPorFala(true); falar(k); }, aguardarFim, contador: () => contadorMoedas, confete: () => jogo.confete?.(), hoje: () => diario.hoje() });
+  // nível e XP, mochila e conquistas (etapa 10). O XP de cada coisa vale uma vez (nivel.js); a mochila mostra na barra do HUD
+  nivel = criarNivel({ salvo: () => salvo, salvar: () => salvar(salvo),
+    aoMudar: (info, g) => { hudNovo?.nivel(info); hudNovo?.xpGanho(g.pontos); conquistas?.verificar(); },
+    aoSubir: (info) => subiuDeNivel(info) });
+  inventario = criarInventario({ salvo: () => salvo, salvar: () => salvar(salvo), aoMudar: (lista) => hudNovo?.barra(lista), versiculos: () => versiculosAprendidos() });
+  conquistas = criarConquistas({ salvo: () => salvo, salvar: () => salvar(salvo), estado: () => estadoDasConquistas(), aoNova: (c) => ganhouConquista(c) });
+  albumUI = criarAlbumUI({ caixa, salvo: () => salvo, salvar: () => salvar(salvo), ganhar: (q, m) => Rabiscoins.ganhar(q, m), falar: (k) => { radio?.pausarPorFala(true); falar(k); }, aguardarFim, contador: () => contadorMoedas, confete: () => jogo.confete?.(), hoje: () => diario.hoje(),
+    aoNova: (fig) => nivel?.creditar(`fig:${fig.id}`, XP.figurinha) }); // cada figurinha nova vale XP
   fone = criarRabifone(caixa, {
     montarAlbum: (tela, lista, o) => albumUI.montar(tela, lista, o),
+    montarInventario: (tela, lista, o) => inventario.montar(tela, lista, o),
+    montarConquistas: (tela, lista, o) => conquistas.montar(tela, lista, o),
     hora: () => ceu.horaAtual,
     aoAbrir: () => { teclas.clear(); toque.zerar(); },
     aoGaragem: (tipo, cor) => chamarVeiculo(tipo, cor),
@@ -524,13 +541,20 @@ function iniciar() {
     moveis: () => { if (emCasa && decoCasa) { decoCasa.entrar([j.pos.x, j.pos.z]); decoCasa.catalogo.abrir(); } else fone.abrir("casa"); },
     meuRabisco: () => { if (decoCasa?.ativo || trava || oracao) return; meuRb.abrir(); },
     aoAbrir: () => { teclas.clear(); toque?.zerar(); },
+    // etapa 10: o menu Conquistas ganha a lista de selos; a barra de itens pede a descrição de cada item à mochila
+    menuExtra: (id) => (id === "conquistas" ? [{ ic: "🏅", nome: "Conquistas", sub: "selos", app: "conquistas" }] : []),
+    descreverItem: (id) => inventario?.descrever(id) ?? null,
   });
+  hudNovo.nivel(nivel.info()); hudNovo.barra(inventario.lista());
   desafios = criarDesafios(cena, {
     caixa, mundo, jogador: j, salvo: () => salvo, salvar: () => salvar(salvo), sons, falar: (k) => { radio?.pausarPorFala(true); falar(k); }, dizer: (...a) => dizer(...a),
     veiculo: () => dentro, ocupado: () => Boolean(emCasa || emLugar || oracao || trava || roda), vezes: (m) => Rabiscoins.vezes(m),
     pagar: (qtd, motivo, rotulo) => { const r = Rabiscoins.ganhar(qtd, motivo); setTimeout(() => contadorMoedas?.ganhou(r.ganhou, { rotulo, alvo: r.saldo }), 900); return r.ganhou; },
     alvo: (a) => { alvoMapa = a; },
+    xp: (id, med) => nivel?.creditar(`desafio:${id}:${med}`, XP.desafio[med] ?? 20), // medalha nova vale XP (etapa 10)
   });
+  // o que já foi feito antes (save antigo ou partida nova): XP, presentes da mochila e conquistas, sem festinha
+  migrarProgresso();
 
   new ResizeObserver(ajustar).observe(caixa);
   ajustar();
@@ -557,6 +581,7 @@ function parar() {
   if (meuRb?.aberto) meuRb.fechar();
   if (atelieUI?.aberto) atelieUI.fechar();
   contadorMoedas?.destruir(); contadorMoedas = null; hudNovo?.destruir(); hudNovo = null;
+  nivel = null; inventario = null; conquistas = null; falasDitas.length = 0;
   emCasa = null; casaM = null; decoCasa?.raiz.remove(); decoCasa?.catalogo.raiz.remove(); decoCasa = null;
   emLugar = null; solidosDentro = []; for (const k of Object.keys(salas)) delete salas[k];
   radioUI?.sairDoCarro();
@@ -780,6 +805,65 @@ function ganharMissao(M) {
   const extra = diario?.pagarExtra(M.id, candidatosDoDia(diario.hoje())) ?? 0;
   if (r.ganhou > 0) setTimeout(() => contadorMoedas?.ganhou(r.ganhou, { alvo: r.saldo }), 900);
   if (extra > 0) setTimeout(() => contadorMoedas?.ganhou(extra, { rotulo: "⭐ Missão do dia", alvo: r.saldo + extra }), 2500);
+  // etapa 10: XP da missão (a 1ª vez) e os presentes dela na mochila (sementes, Bíblia, vara de pescar...)
+  nivel?.creditar(`missao:${M.id}`, XP.missao);
+  const novos = inventario?.receber(M.id) ?? [];
+  if (novos.length) {
+    falasDitas.push("rp-item");
+    setTimeout(() => { for (const id of novos) hudNovo?.novo(id); dizer("Mochila", `Item novo: ${novos.map((id) => `${ITENS[id].emoji} ${ITENS[id].nome}`).join(" e ")}!`, 4200); radio?.pausarPorFala(true); aguardarFim().then(() => { falar("rp-item"); setTimeout(() => radio?.pausarPorFala(false), 3000); }); }, 3800);
+  }
+}
+// ------------------------------------------------------------------ nível, conquistas e mochila (etapa 10)
+// subiu de nível: festinha 8 bits, confete, o painel do HUD comemora e a anfitriã fala "Você subiu para o nível N!"
+function subiuDeNivel(info) {
+  const k = info.nivel <= 10 ? `rp-nivel-${info.nivel}` : "rp-nivel";
+  falasDitas.push(k);
+  sons.nivel?.(); jogo.confete?.();
+  hudNovo?.nivel(info); hudNovo?.subiu();
+  dizer(`Nível ${info.nivel}!`, `Você subiu para o nível ${info.nivel}! Continue ajudando a cidade.`, 4800);
+  radio?.pausarPorFala(true);
+  aguardarFim().then(() => { falar(k); setTimeout(() => radio?.pausarPorFala(false), 3500); });
+}
+function ganhouConquista(c) {
+  falasDitas.push("rp-conquista");
+  nivel?.creditar(`conquista:${c.id}`, XP.conquista);
+  setTimeout(() => { sons.checkpoint?.(); dizer("Conquista!", `${c.emoji} ${c.nome}: ${c.desc}`, 4600); radio?.pausarPorFala(true); aguardarFim().then(() => { falar("rp-conquista"); setTimeout(() => radio?.pausarPorFala(false), 3000); }); }, 1500);
+}
+// o estado que as conquistas olham (missões pelo livro de XP: é o que já foi concluído de verdade)
+function estadoDasConquistas() {
+  const chaves = Object.keys(nivel?.ganhos() ?? {});
+  const feitas = chaves.filter((k) => k.startsWith("missao:")).map((k) => k.slice(7));
+  const biblicas = new Set((missoes?.MISSOES ?? []).filter((m) => m.tipo === "biblica").map((m) => m.id));
+  const D = salvo.desafios ?? {};
+  const medalhas = Object.values(D).flatMap((r) => Object.entries(r?.medalhas ?? {}).filter(([, v]) => v).map(([m]) => m));
+  return {
+    missoes: feitas.length, biblicas: feitas.filter((id) => biblicas.has(id)).length, nivel: nivel?.info().nivel ?? 1,
+    figurinhas: albumUI?.album.total() ?? 0, paginas: albumUI?.album.completas().length ?? 0,
+    parceirasVisitadas: PARCEIROS.filter((p) => albumUI?.album.tem(`p:${p.id}`)).length,
+    monte: Boolean(salvo.monte), casa: salvo.casa != null, medalhas: medalhas.length, ouro: medalhas.filter((m) => m === "ouro").length,
+    presenteSeq: salvo.diario?.seq ?? 0, itens: inventario?.lista().length ?? 0,
+  };
+}
+// os versículos das histórias da Bíblia já concluídas (a Bíblia da mochila mostra um deles)
+function versiculosAprendidos() {
+  const f = new Set([...(missoes?.feitas ?? []), ...Object.keys(nivel?.ganhos() ?? {}).filter((k) => k.startsWith("missao:")).map((k) => k.slice(7))]);
+  return (missoes?.MISSOES ?? []).filter((m) => m.verso && f.has(m.id)).map((m) => ({ ref: m.verso.ref, texto: m.verso.texto }));
+}
+// o que já foi feito (save antigo ou esta partida) entra no XP, na mochila e nas conquistas pelas mesmas chaves, sem festinha
+function migrarProgresso() {
+  if (!nivel || !inventario || !conquistas) return;
+  const q = { quieto: true };
+  for (const id of missoes?.feitas ?? []) nivel.creditar(`missao:${id}`, XP.missao, q);
+  for (const id of salvo.album?.figs ?? []) nivel.creditar(`fig:${id}`, XP.figurinha, q);
+  for (const [id, r] of Object.entries(salvo.desafios ?? {})) for (const [med, v] of Object.entries(r?.medalhas ?? {})) if (v) nivel.creditar(`desafio:${id}:${med}`, XP.desafio[med] ?? 20, q);
+  if (salvo.diario?.bau) nivel.creditar(`presente:${salvo.diario.bau}`, XP.presente, q);
+  if (salvo.monte) nivel.creditar("monte", XP.monte, q);
+  inventario.migrar(missoes?.feitas ?? []);
+  conquistas.verificar({ quieto: true });
+  for (const id of conquistas.feitas()) nivel.creditar(`conquista:${id}`, XP.conquista, q);
+  conquistas.verificar({ quieto: true }); // o XP das conquistas pode ter subido o nível (conquista de nível)
+  for (const id of conquistas.feitas()) nivel.creditar(`conquista:${id}`, XP.conquista, q);
+  hudNovo?.nivel(nivel.info()); hudNovo?.barra(inventario.lista());
 }
 // ------------------------------------------------------------------ Presente do dia e Missão do dia (diario.js)
 // missões que a criança consegue fazer agora: da época do ano (temporada), liberadas (disponivel) e com quem pede na cidade
@@ -834,6 +918,7 @@ function abrirPresente() {
   const antes = saldoRabiscoins();
   const r = diario.abrir();
   if (!r) { bauDia.mostrar(false, mundo.solidos); return null; }
+  nivel?.creditar(`presente:${diario.hoje()}`, XP.presente); // o presente do dia vale XP (etapa 10)
   j.dir = Math.atan2(bauDia.pos.x - j.pos.x, bauDia.pos.z - j.pos.z); // o Rabisco olha para o baú
   if (alvoMapa?.emoji === "🎁") alvoMapa = null;
   bauDia.abrir(() => {
@@ -1619,6 +1704,7 @@ function chegouNoMonte() {
   dizer("Monte da Oração", "«Olho para os montes… A minha ajuda vem do Senhor, que fez o céu e a terra.» Salmo 121", 8000);
   jogo.confete?.(); sons.vitoria?.();
   if (!salvo.monte) { salvo.monte = true; salvar(salvo); }
+  nivel?.creditar("monte", XP.monte); // etapa 10: o Monte vale XP (uma vez)
   setTimeout(() => albumUI?.visitou("monte"), 1200);
   setTimeout(() => radio?.pausarPorFala(false), 9500);
 }
@@ -1763,7 +1849,8 @@ if (params.has("teste")) window.teste = {
   adiantarBau(seg = 5) { for (let k = 0; k < seg / 0.05 && bauDia?.estado === "abrindo"; k++) bauDia.atualizar(0.05, relogio.elapsedTime, j.pos, 99); }, // pula a animação de abrir
   get hoje() { return diario?.hoje() ?? null; }, set hoje(d) { hojeTeste = diaValido(d) ? d : null; tDia = 0; verificarDia(0); },
   get missaoDoDia() { return missaoDoDiaAgora(); }, candidatosDoDia: () => candidatosDoDia(diario.hoje()), get texMarcaDoDia() { return texMarcaDoDia(); },
-  get hud() { return hudNovo; }, get album() { return albumUI; }, get bichinho() { return bichinho; }, get atelie() { return atelieUI; }, abrirAtelie: (c) => abrirAtelie(c), get contadorMoedas() { return contadorMoedas; }, ganharMissao: (id) => ganharMissao({ id }), Rabiscoins,
+  get hud() { return hudNovo; }, get nivel() { return nivel; }, get inventario() { return inventario; }, get conquistas() { return conquistas; }, get falasDitas() { return [...falasDitas]; }, gravarSalvo: (d) => salvar(d),
+  get album() { return albumUI; }, get bichinho() { return bichinho; }, get atelie() { return atelieUI; }, abrirAtelie: (c) => abrirAtelie(c), get contadorMoedas() { return contadorMoedas; }, ganharMissao: (id) => ganharMissao({ id }), Rabiscoins,
   get garagemAtual() { return garagem; },
   entrarLugar(id) { if (dentro) sair(); if (emCasa) sairCasa(true); entrarLugar(id, true); },
   sairLugar() { sairLugar(true); },

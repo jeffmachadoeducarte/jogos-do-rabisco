@@ -63,6 +63,11 @@ export const FALAS_PT = {
   "rp-roda-fim": "Que passeio lindo! Deus fez um mundo muito bonito.",
   // Monte da Oração (Mundo Vivo, etapa 7): ao chegar no topo, perto da cruz (Salmo 121, em paráfrase para crianças)
   "rp-monte-topo": "Você chegou ao Monte da Oração! Olho para os montes e pergunto: de onde vem a minha ajuda? A minha ajuda vem do Senhor, que fez o céu e a terra. Salmo cento e vinte e um.",
+  // Nível e XP (etapa 10): subir de nível (2 a 10 com o número; depois a fala geral), conquista nova e item novo na mochila
+  ...Object.fromEntries(["dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez"].map((n, i) => [`rp-nivel-${i + 2}`, `Parabéns! Você subiu para o nível ${n}!`])),
+  "rp-nivel": "Parabéns! Você subiu de nível!",
+  "rp-conquista": "Uau! Você ganhou uma conquista nova!",
+  "rp-item": "Olha só: um item novo na sua mochila!",
   // narradora com o NOME DA CRIANÇA (parabéns e oração): pre + nome gravado + pos; a sem nome é a reserva (nunca "Rabisco")
   "rp-rise-ok": "Parabéns! Você foi forte e corajoso! Corpo saudável, coração alegre!",
   "rp-rise-ok-pre": "Parabéns,",

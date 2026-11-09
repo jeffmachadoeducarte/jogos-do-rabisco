@@ -69,10 +69,41 @@ export function criarHud(caixa, hudRp, cb) {
   const mapa = el("button", "hud-mapa", `<span class="ic">🗺️</span><small>Mapa</small>`);
   mapa.setAttribute("aria-label", "Abrir o mapa");
   mapa.addEventListener("click", (e) => { e.stopPropagation(); fecharMenu(); cb.abrirMapa?.(); });
-  caixa.append(fileira, menu, mapa);
-  // tocar fora fecha o menu; Esc também
-  caixa.addEventListener("pointerdown", (e) => { if (menuDe && !menu.contains(e.target) && !fileira.contains(e.target)) fecharMenu(); }, true);
-  addEventListener("keydown", (e) => { if (e.key === "Escape" && menuDe) { fecharMenu(); e.stopPropagation(); } }, true);
+  // ---- barra de itens (etapa 10): ESPACOS espaços; com mais itens, o último vira "+n" e abre a Mochila
+  const ESPACOS = 6;
+  const barra = el("div", "hud-barra"); barra.setAttribute("role", "toolbar"); barra.setAttribute("aria-label", "Mochila"); barra.hidden = true;
+  const infoItem = el("div", "hud-item-info"); infoItem.hidden = true; infoItem.setAttribute("aria-live", "polite");
+  let itensBarra = [], itemAberto = null, novos = new Set();
+  function barraDe(itens) {
+    itensBarra = itens ?? [];
+    barra.replaceChildren();
+    barra.hidden = !itensBarra.length; caixa.classList.toggle("com-barra", itensBarra.length > 0);
+    if (!itensBarra.length) { infoItem.hidden = true; itemAberto = null; return; }
+    const mostra = itensBarra.length > ESPACOS ? itensBarra.slice(0, ESPACOS - 1) : itensBarra;
+    for (const it of mostra) {
+      const s = el("button", `hud-slot${it.carregando ? " carregando" : ""}${novos.has(it.id) ? " novo" : ""}`, `${it.emoji}${it.qtd > 1 ? `<i class="hud-qtd">${it.qtd}</i>` : ""}`);
+      s.dataset.item = it.id; s.setAttribute("aria-label", it.nome);
+      s.addEventListener("click", (e) => { e.stopPropagation(); fecharMenu(); novos.delete(it.id); s.classList.remove("novo"); mostrarItem(it.id); });
+      barra.append(s);
+    }
+    if (itensBarra.length > ESPACOS) { const m = el("button", "hud-slot mais", `+${itensBarra.length - (ESPACOS - 1)}`); m.setAttribute("aria-label", "Ver a mochila inteira"); m.addEventListener("click", (e) => { e.stopPropagation(); cb.abrirApp?.("inventario"); }); barra.append(m); }
+    for (let k = itensBarra.length; k < ESPACOS; k++) { const v = el("span", "hud-slot"); v.setAttribute("aria-hidden", "true"); barra.append(v); }
+    if (itemAberto && !itensBarra.some((q) => q.id === itemAberto)) { infoItem.hidden = true; itemAberto = null; }
+  }
+  // tocar num item: nome e o que faz (a Bíblia mostra um versículo); tocar de novo fecha
+  function mostrarItem(id) {
+    if (itemAberto === id) { infoItem.hidden = true; itemAberto = null; return; }
+    const d = cb.descreverItem?.(id) ?? itensBarra.find((q) => q.id === id);
+    if (!d) return;
+    itemAberto = id;
+    infoItem.innerHTML = `<b>${d.emoji} ${d.nome}</b>${d.desc ?? ""}`;
+    infoItem.hidden = false;
+    clearTimeout(mostrarItem.t); mostrarItem.t = setTimeout(() => { if (itemAberto === id) { infoItem.hidden = true; itemAberto = null; } }, 9000);
+  }
+  caixa.append(fileira, menu, mapa, barra, infoItem);
+  // tocar fora fecha o menu e a informação do item; Esc também
+  caixa.addEventListener("pointerdown", (e) => { if (menuDe && !menu.contains(e.target) && !fileira.contains(e.target)) fecharMenu(); if (itemAberto && !barra.contains(e.target) && !infoItem.contains(e.target)) { infoItem.hidden = true; itemAberto = null; } }, true);
+  addEventListener("keydown", (e) => { if (e.key === "Escape" && (menuDe || itemAberto)) { fecharMenu(); infoItem.hidden = true; itemAberto = null; e.stopPropagation(); } }, true);
 
   const api = {
     fileira, menu, mapa, painel: chip, botoes,
@@ -93,9 +124,15 @@ export function criarHud(caixa, hudRp, cb) {
     },
     // bolinha com um número num botão (ex.: itens novos no inventário); 0 esconde
     marcar(id, n) { const b = botoes[id]?.querySelector(".hud-bolinha"); if (!b) return; b.textContent = String(n); b.classList.toggle("ativa", n > 0); },
-    // uma tela por cima (Rabisfone, mapa grande, Ateliê...): a fileira, o menu e o Mapa somem
-    ocultar(sim) { caixa.classList.toggle("hud-oculto", Boolean(sim)); if (sim) fecharMenu(); },
-    destruir() { fileira.remove(); menu.remove(); mapa.remove(); mais.remove(); },
+    // barra de itens (etapa 10): a lista da mochila (inventario.lista()); novo(id) marca o item com uma estrelinha até ser tocado
+    barra: barraDe, mostrarItem, get itemAberto() { return itemAberto; },
+    novo(id) { novos.add(id); barraDe(itensBarra); api.marcar("inventario", novos.size); },
+    // "+n XP" voando do painel e, ao subir de nível, o painel comemora
+    xpGanho(n) { if (!(n > 0)) return; const r = chip.getBoundingClientRect(), c = caixa.getBoundingClientRect(); const f = el("div", "hud-xp-mais", `+${n} XP`); f.style.left = `${r.right - c.left - 10}px`; f.style.top = `${r.top - c.top + 4}px`; caixa.append(f); setTimeout(() => f.remove(), 1500); },
+    subiu() { chip.classList.remove("sobe"); void chip.offsetWidth; chip.classList.add("sobe"); setTimeout(() => chip.classList.remove("sobe"), 1300); },
+    // uma tela por cima (Rabisfone, mapa grande, Ateliê...): a fileira, o menu, o Mapa e a barra somem
+    ocultar(sim) { caixa.classList.toggle("hud-oculto", Boolean(sim)); if (sim) { fecharMenu(); if (itemAberto) { infoItem.hidden = true; itemAberto = null; } } },
+    destruir() { fileira.remove(); menu.remove(); mapa.remove(); mais.remove(); barra.remove(); infoItem.remove(); caixa.classList.remove("com-barra"); },
   };
   api.atualizar(); api.nivel();
   return api;

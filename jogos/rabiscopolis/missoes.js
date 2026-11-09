@@ -367,7 +367,7 @@ export function criarMissoes(ctx) {
     feitas.add(M.id);
     salvo.missoesFeitas = [...feitas]; salvo.selos = [...new Set([...(salvo.selos ?? []), M.id])]; salvar(salvo);
     for (const s of sobreCabeca.children.slice()) { sobreCabeca.remove(s); s.material.dispose(); }
-    soltarMao();
+    soltarMao(); ctx.aoItem?.("soltou", { id: null }); // o que era carregado foi entregue: sai da mochila
     for (let i = itens.length - 1; i >= 0; i--) if (itens[i].missao === M.id) { grupo.remove(itens[i].sprite); itens[i].sprite.material.dispose(); itens.splice(i, 1); }
     for (const pl of plantas) if (pl.missao === M.id && pl.sprite.parent) grupo.remove(pl.sprite); // os brotos ficam crescendo na horta
     levando = []; carona = null;
@@ -420,6 +420,7 @@ export function criarMissoes(ctx) {
     if (it.de) npcDe(ativa, it.de).m?.acenar?.(2); // quem entrega (o seu Albino, na Construrenova) acena
     const s = spriteEmoji(it.emoji, 0.6, it.cor, it.desenho); s.position.set(((levando.length % 3) - 1) * 0.5, Math.floor(levando.length / 3) * 0.5, 0); s.userData.item = it.id; sobreCabeca.add(s);
     levando.push(it.id); sons.moeda?.();
+    ctx.aoItem?.("pegou", { id: it.id, nome: it.nome, emoji: it.emoji, missao: ativa.id }); // inventário (etapa 10)
     if (itens.every((x) => x.missao !== ativa.id || x.pego)) avancar();
   }
   function plantar(pl) {
@@ -593,6 +594,7 @@ export function criarMissoes(ctx) {
     limparItens(M.id);
     for (const nid of Object.keys(M.npcs)) { const n = npcs.get(`${M.id}:${nid}`); if (n) voltarAoLugar(n); }
     ativa = null; etapa = 0; levando = []; carona = null;
+    ctx.aoItem?.("soltou", { id: null }); // largou: o que carregava sai da mochila
   }
   // ================================================================== etapas que vieram da Rabiscópolis
   const temp = (o) => { grupo.add(o); (est.objs ??= []).push(o); return o; };
@@ -649,7 +651,7 @@ export function criarMissoes(ctx) {
     else { dizer(n.dados.nome, E.fala ?? "Oba! Vou com você.", 2600); if (E.voz) falar(E.voz); }
   }
   // tira da cabeça do Rabisco uma das coisas que ele leva (garrafa que foi para a esteira)
-  function tirarDaCabeca(id) { const s = sobreCabeca.children.find((q) => q.userData.item === id); if (s) { sobreCabeca.remove(s); s.material.dispose(); } levando = levando.filter((x) => x !== id); }
+  function tirarDaCabeca(id) { const s = sobreCabeca.children.find((q) => q.userData.item === id); if (s) { sobreCabeca.remove(s); s.material.dispose(); } levando = levando.filter((x) => x !== id); ctx.aoItem?.("soltou", { id }); }
   function contextoNovo(E, p) {
     const perto = (x, z, r) => Math.hypot(p.x - x, p.z - z) < r;
     if (E.tipo === "cena") return est.cena?.contexto(p) ?? null;
@@ -684,6 +686,7 @@ export function criarMissoes(ctx) {
       const n = npcDe(ativa, E.de); n.m?.acenar(3); n.m?.pular();
       dizer(quemFala(ativa, n.dados.nome), E.fala, 4200); if (E.voz) falar(E.voz);
       const s = spriteEmoji("🔑", 0.6); s.userData.item = "chave"; sobreCabeca.add(s); levando.push("chave");
+      ctx.aoItem?.("pegou", { id: "chave", nome: "chave do carro", emoji: "🔑", missao: ativa?.id ?? null });
       avancar();
     }, 1900);
   }
@@ -691,6 +694,7 @@ export function criarMissoes(ctx) {
     est.feitas.add(en.item);
     const s = sobreCabeca.children.find((q) => q.userData.item === en.item); if (s) { sobreCabeca.remove(s); s.material.dispose(); }
     levando = levando.filter((x) => x !== en.item);
+    ctx.aoItem?.("soltou", { id: en.item });
     reagir(n);
     if (est.feitas.size === E.entregas.length) { ultimoReceptor = n.dados.nome; avancar(); return; }
     dizer(n.dados.nome, E.fala ?? "Obrigado!", 2600); if (E.voz) falar(E.voz);
@@ -903,6 +907,7 @@ export function criarMissoes(ctx) {
         // na mão (objeto 3D, ex.: o alvará) ou na cabeça (figurinha)
         if (!(E.item.objeto && segurar(E.item.objeto))) { const s = spriteEmoji(E.item.emoji, 0.6); s.position.set(0, 0, 0); s.userData.item = E.item.id; sobreCabeca.add(s); }
         levando.push(E.item.id);
+        ctx.aoItem?.("pegou", { id: E.item.id, nome: E.item.nome ?? E.item.id, emoji: E.item.emoji ?? "📦", missao: ativa.id });
       }
       est.dados = dados; sons.moeda?.(); avancar(); return true;
     },

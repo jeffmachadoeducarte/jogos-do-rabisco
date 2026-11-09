@@ -133,6 +133,15 @@ export const sons = {
     ["G4", "C5", "E5", "G5", "C6"].forEach((n, i) => nota(N(n), i * 0.08, 0.14, { onda: 0.25, vol: 0.09 }));
     nota(N("E6"), 0.42, 0.5, { onda: 0.25, vol: 0.07, solta: 0.45 });
   },
+  // festinha de subir de nível (Rabiscolândia): arpejo subindo em dois pulsos e um acorde final (composição própria, 8 bits)
+  nivel() {
+    const sobe = [["C5", 0.09], ["E5", 0.09], ["G5", 0.09], ["C6", 0.14], ["G5", 0.07], ["C6", 0.09], ["E6", 0.09], ["G6", 0.16]];
+    let t = 0;
+    for (const [n, d] of sobe) { nota(N(n), t, d, { onda: 0.25, vol: 0.08, solta: 0.03 }); t += d; }
+    for (const n of ["C5", "E5", "G5", "C6"]) nota(N(n), t + 0.05, 0.7, { onda: 0.5, vol: 0.05, solta: 0.5 });
+    nota(N("C3"), 0, 0.5, { onda: "tri", vol: 0.3, solta: 0.3 }); nota(N("G3"), t + 0.05, 0.7, { onda: "tri", vol: 0.3, solta: 0.5 });
+    ruido(t + 0.05, 0.12, { vol: 0.06, freq: 4000 });
+  },
   vitoria() {
     // fanfarra de fim de fase (composição própria)
     const lead = [["G4", 0.1], ["C5", 0.1], ["E5", 0.1], ["G5", 0.1], ["C6", 0.1], ["E6", 0.1], ["G6", 0.35], ["E6", 0.35],
