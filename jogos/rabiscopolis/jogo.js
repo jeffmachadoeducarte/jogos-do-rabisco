@@ -1533,7 +1533,7 @@ function passo(dt, ultimo) {
       v.g.userData.seta.visible = v !== dentro && d < 9;
     }
     j2?.passo(dt, t);
-    bichinho?.atualizar(dt, t, { dentro, emCasa: Boolean(emCasa), emLugar: Boolean(emLugar), roda: Boolean(roda), j2ativo: Boolean(j2?.ativo) });
+    bichinho?.atualizar(dt, t, { dentro, emCasa: Boolean(emCasa), emLugar: Boolean(emLugar), roda: Boolean(roda), j2ativo: Boolean(j2?.ativo), rabisco: rabisco?.grupo });
     atualizarMoradores(dt);
     missoes?.atualizar(dt, t);
     profissoes?.atualizar(dt, t);

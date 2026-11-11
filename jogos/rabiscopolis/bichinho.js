@@ -6,12 +6,12 @@
 //    (aproxima, pula de alegria e solta um coração);
 //  · Rabisco pula: ele pula junto; de vez em quando dá um pulinho sozinho;
 //  · toque nele ou a ação perto dele faz um truque (giro, cambalhota ou festinha) com um som 8-bit;
-//  · veículo: vai sentado no banco do carona (moto: na garupa); onde não tem lugar (bicicleta, patinete) some e reaparece
-//    pulando quando o Rabisco desce;
+//  · veículo: vai sentado no banco do carona, virado para a frente (moto: na garupa; jet ski: no banco, atrás do Rabisco);
+//    onde não tem lugar (bicicleta, patinete, Fórmula) some e reaparece pulando quando o Rabisco desce;
 //  · plaquinha com o nome, menor que a do Rabisco (uma única chamada de desenho a mais; o bichinho todo custa 2 no máximo).
 //
 //   const b = criarBichinho(cena, { j, fis, sons, salvo: () => salvo });
-//   b.definir(id|null, nome); b.atualizar(dt, t, { dentro, emCasa, emLugar, roda, j2ativo, noChao }); b.truque(); b.perto(raio)
+//   b.definir(id|null, nome); b.atualizar(dt, t, { dentro, emCasa, emLugar, roda, j2ativo, rabisco }); b.truque(); b.perto(raio)
 
 import { THREE } from "./base3d.js";
 import { criarModeloBichinho, bichinhoPorId } from "./bichinho-modelo.js";
@@ -184,29 +184,58 @@ export function criarBichinho(cena, { j, fis, sons, cam }) {
     g.visible = true;
   }
 
-  // ---- veículo: sentado no banco do carona (ou na garupa da moto); onde não há lugar, some e volta pulando
+  // ---- veículo: sentado no banco do carona, virado para a frente (moto: na garupa; jet ski: no banco, atrás do Rabisco);
+  //      onde não há lugar (bicicleta, patinete, Fórmula, trator...) some e volta pulando quando o Rabisco desce
+  const _ray = new THREE.Raycaster(), _o = new THREE.Vector3(), _d = new THREE.Vector3(), _q = new THREE.Quaternion();
+  // o lugar do bichinho no veículo (coordenadas do veículo): o ponto do banco do carona, com a altura do ASSENTO de verdade
+  // (um raio de cima para baixo acha o estofado: senão ele ficava enterrado ou boiando, cada carro tem um banco diferente)
+  function lugarNo(v, rabiscoG) {
+    const ud = v.g.userData;
+    if (ud.lugarPet !== undefined) return ud.lugarPet;
+    const m = ud.motorista;
+    let a = ud.carona ? ud.carona.clone() : v.tipo === "moto" && m ? new THREE.Vector3(0, m.y + 0.19, m.z - 0.72) : null;
+    if (a) {
+      v.g.updateMatrixWorld(true);
+      _o.set(a.x, a.y + 0.4, a.z); v.g.localToWorld(_o);
+      _d.set(0, -1, 0).applyQuaternion(v.g.getWorldQuaternion(_q));
+      _ray.set(_o, _d); _ray.far = 1.0;
+      // só as malhas do próprio veículo (sem o Rabisco, o bichinho, a seta nem o teto que some ao dirigir)
+      const malhas = [];
+      const juntar = (o) => { if (o === raiz || o === rabiscoG || o === ud.seta || o === ud.cima || o.userData?.cima === true) return; if (o.isMesh) malhas.push(o); for (const f of o.children) juntar(f); };
+      juntar(v.g);
+      // o 1º estofado (face virada para cima) perto da altura do banco; sem estofado (fusca: o banco é só o encosto),
+      // fica na altura em que o Rabisco senta
+      const hit = _ray.intersectObjects(malhas, false).find((h) => (!h.face || h.face.normal.y > 0.3) && Math.abs(v.g.worldToLocal(h.point.clone()).y - a.y + 0.05) <= 0.2);
+      if (hit) a.y = v.g.worldToLocal(hit.point.clone()).y;
+      a.z += 0.03; // o bumbum no fundo do assento, as patinhas da frente na beira
+    }
+    ud.lugarPet = a;
+    return a;
+  }
   function carona(dt, ctx) {
-    const v = ctx.dentro, a = v.g.userData.carona ?? (v.tipo === "moto" ? { x: 0, y: (v.g.userData.motorista?.y ?? 1.2) - 0.05, z: (v.g.userData.motorista?.z ?? 0) - 0.62 } : null);
-    if (!a || ctx.j2ativo || v.tipo === "heli" && false) {
+    const v = ctx.dentro, a = lugarNo(v, ctx.rabisco);
+    if (!a || ctx.j2ativo) {
+      // sem lugar (ou o jogador 2 está no banco do carona): fica escondido e reaparece ao lado quando o Rabisco desce
+      if (naCarona && naCarona !== "oculto") { naCarona.g.remove(raiz); cena.add(raiz); raiz.scale.setScalar(1); }
       naCarona = "oculto"; raiz.visible = false;
       e.x = v.pos.x; e.z = v.pos.z; e.y = 0.03; e.vel = 0;
       return;
     }
     if (naCarona !== v) {
-      naCarona = v; v.g.add(raiz); raiz.scale.setScalar(0.85);
-      e.sentado = 0; carinho = null; truque = null;
+      if (naCarona && naCarona !== "oculto") naCarona.g.remove(raiz);
+      naCarona = v; v.g.add(raiz); raiz.scale.setScalar(v.tipo === "moto" || v.tipo === "jetski" ? 0.8 : 1);
+      e.sentado = 1; e.yoff = 0; e.vy = 0; carinho = null; truque = null;
     }
     raiz.visible = true;
-    e.sentado += (1 - e.sentado) * Math.min(1, dt * 6);
-    // carro: entre os bancos, acima do encosto (senão o banco esconde ele); moto: na garupa, em cima do banco de trás
-    if (v.tipo === "moto") raiz.position.set(a.x, a.y + 0.24, a.z - 0.1);
-    else raiz.position.set(v.g.userData.carona ? 0 : a.x, a.y + 0.45, a.z - 0.15);
+    e.sentado = 1;
+    // preso ao veículo (filho dele): anda, vira e inclina junto, sem ficar para trás nem tremer
+    raiz.position.copy(a);
     raiz.rotation.set(0, 0, 0);
     e.x = v.pos.x; e.z = v.pos.z;
-    // olha para a frente; abana o rabinho quando o veículo anda
-    e.fase += dt * Math.abs(v.vel) * 0.3;
+    // olha para a frente (dá umas olhadinhas para os lados); abana o rabinho quando o veículo anda
     e.abanar += ((Math.abs(v.vel) > 2 ? 1 : 0.3) - e.abanar) * Math.min(1, dt * 4);
-    mod.posar({ fase: 0, vel: 0, sentado: e.sentado, olhar: Math.sin(t0 * 0.7) * 0.25, abanar: e.abanar, coracao: 0, t: t0 });
+    mod.grupo.rotation.set(0, 0, 0);
+    mod.posar({ fase: 0, vel: 0, sentado: 1, olhar: Math.sin(t0 * 0.7) * 0.3, abanar: e.abanar, coracao: 0, t: t0 });
     olharPlaca(0.82);
   }
   function descer() {
