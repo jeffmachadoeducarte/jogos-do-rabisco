@@ -42,7 +42,7 @@ export async function abrir(url, { mobile = false, largura = 1280, altura = 800,
   };
   await cmd("Runtime.enable"); await cmd("Page.enable"); await cmd("Network.enable");
   // testes nunca mandam cadastro de mentira para o servidor real da Educarte (perfis.mjs usa um servidor falso local)
-  await cmd("Network.setBlockedURLs", { urls: ["*sala.educarte.qzz.io/cadastro*"] });
+  await cmd("Network.setBlockedURLs", { urls: ["*sala.eceducarte.com.br/cadastro*"] });
   await cmd("Emulation.setDeviceMetricsOverride", { width: largura, height: altura, deviceScaleFactor: mobile ? 2 : 1, mobile });
   if (mobile) await cmd("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
   if (agente) await cmd("Emulation.setUserAgentOverride", { userAgent: agente });

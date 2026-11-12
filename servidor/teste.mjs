@@ -312,7 +312,7 @@ test('nome do controle (texto que aparece na TV) é higienizado: só letras, 14 
 });
 
 // ---------- Cadastro das famílias ----------
-const ORIGEM = 'https://jogos.educarte.qzz.io';
+const ORIGEM = 'https://jogos.eceducarte.com.br';
 const base = () => `http://127.0.0.1:${srv.porta}`;
 const novoId = () => crypto.randomUUID();
 const novoSegredo = () => crypto.randomBytes(24).toString('hex');

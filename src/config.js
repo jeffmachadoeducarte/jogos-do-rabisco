@@ -9,11 +9,11 @@ export const VERSAO_APP = "2026.10.11";
 
 // SALA_JOGOS: endereço do servidor de salas (relay WebSocket, ver .claude/tmp/spec-multiplayer-tv.md) para o
 // jogador 2 entrar pelo celular lendo um QR code. Vazio = ainda não existe: a tela do QR mostra "em breve" e
-// o jogador 2 usa um controle (Bluetooth/USB) ou, no computador, o teclado dividido. Ex.: "wss://sala.educarte.qzz.io".
+// o jogador 2 usa um controle (Bluetooth/USB) ou, no computador, o teclado dividido. Ex.: "wss://sala.eceducarte.com.br".
 // Teste sem mexer neste arquivo: abrir o jogo com `?sala=ws://localhost:8090` na URL (vale só para aquela página;
 // o QR leva o mesmo endereço para o celular) ou gravar no aparelho `localStorage.setItem("rabisco.salaTeste", "ws://...")`
 // (apagar com `localStorage.removeItem("rabisco.salaTeste")`). Só aceita endereços ws:// ou wss://, e só quando o site está em localhost, 127.0.0.1, 192.168.x.x ou 10.x.x.x.
-export const SALA_JOGOS = salaDeTeste() || "wss://sala.educarte.qzz.io";
+export const SALA_JOGOS = salaDeTeste() || "wss://sala.eceducarte.com.br";
 
 // DETECTOR_ROSTO: módulo opcional (caminho a partir da raiz do site, ex.: "vendor/pico/rosto.mjs") que exporta
 // `detectar(canvas) → Promise<[{ x, y, width, height }]>`, para achar o rosto na foto da criança 100% no aparelho
@@ -38,7 +38,7 @@ function salaDeTeste() {
 // (cria ou atualiza pelo id); DELETE <API_CADASTRO>/<id> com o cabeçalho X-Segredo apaga ("Apagar todos os dados").
 // Vazio = nada sai do aparelho. Teste sem mexer aqui: localStorage "teste.apiCadastro" com http://localhost:… ou
 // http://127.0.0.1:… (só endereço local; não há troca pela URL da página, para ninguém desviar os dados por um link).
-export const API_CADASTRO = apiDeTeste() || "https://sala.educarte.qzz.io/cadastro";
+export const API_CADASTRO = apiDeTeste() || "https://sala.eceducarte.com.br/cadastro";
 
 function apiDeTeste() {
   try { const u = globalThis.localStorage?.getItem("teste.apiCadastro") || ""; return /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/\S*$/i.test(u) ? u : ""; } catch { return ""; }

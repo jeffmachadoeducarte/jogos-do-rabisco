@@ -3,7 +3,7 @@
 // Fatos conferidos (nov/2026): iPhone espelha por AirPlay (Roku/Apple TV/Samsung/LG recentes); Android espelha por
 // Miracast/Google Cast (Android TV/Google TV nativo, Roku e várias Smart TVs); alguns Android (ex.: Pixel) não espelham para Roku.
 
-export const SITE = "jogos.educarte.qzz.io";
+export const SITE = "jogos.eceducarte.com.br";
 
 export const APARELHOS = [
   { id: "ios", ic: "🍎", nome: "iPhone / iPad" },

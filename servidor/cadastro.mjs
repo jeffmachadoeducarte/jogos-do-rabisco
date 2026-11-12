@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
 
-export const ORIGENS_CADASTRO = ['https://jogos.educarte.qzz.io'];
+export const ORIGENS_CADASTRO = ['https://jogos.eceducarte.com.br'];
 const LOCAL = /^http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?$/;
 const MAX_CORPO = 8 * 1024;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
