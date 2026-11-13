@@ -156,11 +156,12 @@ export function montarSala(id, { idade = null } = {}) {
   // armário de uniforme (canto do fundo à esquerda); as lojas parceiras não têm
   if (def.profissao) { add(armario(def.acento), -W / 2 + 1.1, -D / 2 + 0.6); solido(-W / 2 + 1.1, -D / 2 + 0.6, 1.7, 0.8, 2.3); }
   const prof = PROFISSOES[def.profissao];
-  if (def.profissao) I("armario", "👔 Uniforme", -W / 2 + 1.1, -D / 2 + 1.6, (api) => {
-    if (api.profissao() === def.profissao) { api.tirar(); api.dizer(def.nome, "Uniforme guardado no armário!"); est.uniforme = false; return; }
+  const igreja = id === "igreja"; // na igreja o armário guarda a beca do coral (não é "uniforme de trabalho")
+  if (def.profissao) I("armario", igreja ? "🎶 Beca do coral" : "👔 Uniforme", -W / 2 + 1.1, -D / 2 + 1.6, (api) => {
+    if (api.profissao() === def.profissao) { api.tirar(); api.dizer(def.nome, igreja ? "Beca guardada no armário!" : "Uniforme guardado no armário!"); est.uniforme = false; return; }
     api.vestir(def.profissao); est.uniforme = true;
     api.falar(`rp-prof-${def.profissao}`);
-    api.dizer(def.nome, `Uniforme de ${prof.nome.toLowerCase()} vestido! Vamos brincar de trabalhar.`);
+    api.dizer(def.nome, igreja ? "Beca do coral vestida! Vamos cantar para Deus. 🎶" : `Uniforme de ${prof.nome.toLowerCase()} vestido! Vamos brincar de trabalhar.`);
   });
 
   // decoração comum: plantas nos cantos da frente, tapete redondo com a cor do lugar e um quadrinho na parede
@@ -230,20 +231,20 @@ export function montarSala(id, { idade = null } = {}) {
     montarAulas({ id, g, ox, oz, inter, npcs, est, solido, escrever, idade });
   }
   if (id === "igreja") {
-    // púlpito, cruz e o coral (três amigos de beca) no fundo; banquinhos do culto infantil na frente
+    // púlpito, cruz e o coral (três crianças de beca) no fundo; banquinhos do culto infantil na frente
     const cruzV = caixaRedonda(0.3, 2.2, 0.15, mat(0xffd36b)); cruzV.position.set(0, 1.9, -D / 2 + 0.25); g.add(cruzV);
     const cruzH = caixaRedonda(1.2, 0.3, 0.15, mat(0xffd36b)); cruzH.position.set(0, 2.4, -D / 2 + 0.25); g.add(cruzH);
     placa.position.x = 4.4; // a cruz fica no meio
     const palco = caixaRedonda(7, 0.3, 2.6, mat(0xc98a4b)); palco.position.set(2, 0.15, -3); g.add(palco);
     const coral = [];
-    [0xffcc1f, 0xec2e8c, 0x58c43a].forEach((cor, i) => { const c = npc(["lapis", "giz", "pincel"][i], cor, 7 + i, 0.75); c.grupo.position.set(ox + 0.6 + i * 1.4, 0.3, oz - 3.2); npcs.push(c); coral.push(c);
-      const beca = malha(new THREE.CylinderGeometry(0.42, 0.5, 0.9, 16, 1, true), mat(0x2f6fc0, { side: THREE.DoubleSide })); beca.position.y = 0.75; c.grupo.children[0].add(beca); });
+    [0xffcc1f, 0xec2e8c, 0x58c43a].forEach((cor, i) => { const c = criarMorador("lapis", { cor, semente: 7 + i, escala: 0.75, roupa: "coral" }); c.grupo.position.set(ox + 0.6 + i * 1.4, 0.3, oz - 3.2); npcs.push(c); coral.push(c); });
     solido(2, -3, 7, 2.6, 0.35);
     for (let i = 0; i < 3; i++) { const b = caixaRedonda(2.4, 0.4, 0.6, mat([0xff9cc0, 0x9fd8ff, 0xfff0a8][i])); b.position.set(-3.5, 0.2, -1.2 + i * 1.2); g.add(b); }
     const prof = npc("caderno", 0xffcc1f, 11, 0.8); prof.grupo.position.set(ox - 3.5, 0.03, oz - 2.6); npcs.push(prof);
     let hist = 0;
     I("coral", "🎵 Cantar no coral", 2, -1.2, (api) => {
       est.coral = (est.coral ?? 0) + 1;
+      if (api.profissao() !== "coral") { api.vestir("coral"); est.uniforme = true; } // a beca é do coral: veste para cantar
       const h = HINOS["jesus-me-ama"];
       api.falar("rp-igreja-coral");
       setTimeout(() => { const dur = tocarNotas(h.mel, h.bpm, { onda: "triangle", vol: 0.13, ate: 32 }); est.cantando = dur; }, 2200);
@@ -255,7 +256,8 @@ export function montarSala(id, { idade = null } = {}) {
       api.sentar?.(); api.falar(hs.fala); api.dizer(hs.titulo, hs.texto, 14000); prof.acenar(3);
     });
     // orar o Pai Nosso de frente para a cruz (a mesma oração da missão, sem precisar de missão)
-    I("orar", "🙏 Orar o Pai Nosso", -0.6, -0.9, (api) => { est.orou = (est.orou ?? 0) + 1; api.orar?.(); });
+    // para orar não precisa de beca: se estiver com a roupa do coral, guarda antes
+    I("orar", "🙏 Orar o Pai Nosso", -0.6, -0.9, (api) => { est.orou = (est.orou ?? 0) + 1; if (api.profissao() === "coral") { api.tirar(); est.uniforme = false; } api.orar?.(); });
     est.coralNpcs = coral;
   }
   if (id === "sorveteria") {

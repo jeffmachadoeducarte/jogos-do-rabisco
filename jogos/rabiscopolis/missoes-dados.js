@@ -903,8 +903,9 @@ export const MISSOES = [
     verso: { texto: "Jesus disse aos pescadores: venham comigo, e eu farei de vocês pescadores de gente.", ref: "baseado em Mateus 4.19" },
   },
 ];
-// palavras que não podem aparecer em nada que a criança vê ou ouve (teste rabiscopolis-conteudo.mjs)
-export const PROIBIDAS = ["arma", "revólver", "pistola", "tiro", "matar", "morte", "morreu", "sangue", "prisão", "preso", "polícia prende", "ladrão", "roubo", "roubar", "briga", "brigar", "soco", "susto", "monstro", "fantasma", "zumbi", "namor", "beijo", "roblox", "brookhaven", "robux", "dinheiro", "comprar", "pagar"];
+// palavras que não podem aparecer em nada que a criança vê ou ouve (teste rabiscopolis-conteudo.mjs).
+// "quietinho", "shhh" e parecidas: nunca mandar a criança ficar quieta (pedido da escola, 2026-11-12)
+export const PROIBIDAS = ["arma", "revólver", "pistola", "tiro", "matar", "morte", "morreu", "sangue", "prisão", "preso", "polícia prende", "ladrão", "roubo", "roubar", "briga", "brigar", "soco", "susto", "monstro", "fantasma", "zumbi", "namor", "beijo", "roblox", "brookhaven", "robux", "dinheiro", "comprar", "pagar", "quietinho", "quietinha", "quieto", "quieta", "shh", "shhh", "cale"];
 
 // pessoas de verdade (bonecos de pessoas.js) paradas na porta de um lugar, sem missão ainda: acenam quando o Rabisco
 // chega e a anfitriã apresenta uma vez (elas não falam). escola: [dx, dz] a partir da porta da unidade.

@@ -29,7 +29,7 @@ export const FALAS_PT = {
   "rp-prof-padeiro": "Agora você é o padeiro! Hora de fazer pão quentinho.",
   "rp-prof-sorveteiro": "Agora você é o sorveteiro! Quem quer sorvete?",
   "rp-prof-caixa": "Agora você é o caixa do mercado!",
-  "rp-prof-bibliotecario": "Agora você cuida da biblioteca! Shhh, hora de ler.",
+  "rp-prof-bibliotecario": "Agora você cuida da biblioteca! Que gostoso, hora de ler!",
   "rp-prof-coral": "Beca vestida! Vamos cantar no coral.",
   "rp-hosp-curativo": "Pronto! Um curativo e um abraço: ele já está melhor.",
   "rp-hosp-febre": "Trinta e seis graus e meio: tudo bem, sem febre!",
@@ -75,7 +75,7 @@ export const FALAS_PT = {
   "rp-aula-fim": "Parabéns! Você aprendeu muito hoje! O sábio ouve e aprende ainda mais. Baseado em Provérbios um, versículo cinco.",
   "rp-aula-fim-pre": "Parabéns,",
   "rp-aula-fim-pos": "Você aprendeu muito hoje! O sábio ouve e aprende ainda mais. Baseado em Provérbios um, versículo cinco.",
-  "rp-pai-intro-pos": "vamos orar juntos. Fique quietinho e repita comigo.",
+  "rp-pai-intro-pos": "vamos orar juntos. Eu falo e você repete comigo.",
   // teatro da Ballet e Cia e salão da BT Models (parceiras-palcos.js)
   "rp-ballet-entrar": "Bem-vindo à Ballet e Cia! Chegue na estrela, em frente ao palco, e suba para dançar com a turma.",
   "rp-ballet-passos": "Olhe as estrelinhas! Quando a estrelinha chegar no círculo, aperte o botão e dance no tempo da música, igual às alunas.",

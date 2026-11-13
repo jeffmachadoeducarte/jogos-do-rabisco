@@ -206,7 +206,7 @@ export function criarMissoes(ctx) {
       }
       if (d.acessorio === "barba") {
         const b = malha(new THREE.SphereGeometry(0.22, 12, 8), mat(0xf4f4f4), { sombra: false }); b.scale.set(1.1, 1, 0.55);
-        b.position.set(0, (m.altura / 0.78) * 0.47, 0.34); m.grupo.children[0].add(b);
+        b.position.set(0, m.rostoY - 0.26, m.rostoZ + 0.02); m.grupo.children[0].add(b);
       }
     }
     // caixinha de correio da cor da carta, do lado de quem recebe

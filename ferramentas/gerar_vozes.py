@@ -158,7 +158,7 @@ for a in range(2, 11):
 falas.update({
     "mem-titulo": "Memória da Turma! Vamos achar os pares?",
     "mem-nivel-1": "Olhe bem as cartas! Elas vão se esconder.",
-    "mem-nivel-2": "Agora são seis pares. Preste atenção!",
+    "mem-nivel-2": "Agora são seis pares. Vamos lá!",
     "mem-nivel-3": "Oito pares! Você consegue!",
     "mem-par": "Achou o par!",
     "mem-vitoria": "Parabéns! Você achou todos os pares!",
@@ -482,7 +482,7 @@ falas.update({
     "cid-igreja-ok": "Que alegria! Alegrei-me quando me disseram: vamos à casa do Senhor! Baseado no Salmo cento e vinte e dois, versículo um.",
     # Pai Nosso (Igreja Reviver)
     "cid-painosso": "Oi, Rabisco! Vamos orar juntos o Pai Nosso? Venha para o tapete azul na porta da igreja. Eu falo uma frase e você repete comigo, bem devagarinho.",
-    "cid-pai-intro": "Vamos orar juntos. Fique quietinho e repita comigo.",
+    "cid-pai-intro": "Vamos orar juntos. Eu falo e você repete comigo.",
 })
 # Pai Nosso (Mateus 6:9-13, texto tradicional): uma fala por frase, mais devagar (RITMO_FALA)
 PAI_NOSSO = ["Pai nosso, que estás no céu,", "santificado seja o teu nome.", "Venha o teu reino,", "seja feita a tua vontade,", "assim na terra como no céu.",

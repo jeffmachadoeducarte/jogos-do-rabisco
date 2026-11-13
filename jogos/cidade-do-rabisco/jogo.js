@@ -1856,7 +1856,7 @@ function comecarOracao(PN, t) {
   }
   oracao = { i: -1, inicio: t, dur: 2.8, luz: sol.intensity, exp: r3.toneMappingExposure };
   painelOracao.hidden = false;
-  painelOracao.innerHTML = `<p class="frase">🙏 Vamos orar juntos.</p><p class="dica">Fique quietinho e repita comigo.</p>`;
+  painelOracao.innerHTML = `<p class="frase">🙏 Vamos orar juntos.</p><p class="dica">Eu falo e você repete comigo.</p>`;
   falar("cid-pai-intro");
 }
 function proximaFrase(PN, t) {

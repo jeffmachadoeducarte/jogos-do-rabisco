@@ -515,6 +515,8 @@ export function praca(raio) {
   for (let i = 0; i < n; i++) for (let k = 0; k < n; k++) pc(g, lado / n - 0.06, 0.1, lado / n - 0.06, (i + k) % 2 ? 0xe9e6dd : 0xd7d3c9, -lado / 2 + (lado / n) * (i + 0.5), 0.06, -lado / 2 + (lado / n) * (k + 0.5), f);
   const gr = lado * 0.72;
   pc(g, gr + 0.5, 0.13, gr + 0.5, 0xd2c7b0, 0, 0.09, 0, f); pc(g, gr, 0.16, gr, 0x52c842, 0, 0.1, 0, f);
+  // o piso e o gramado são chão de verdade (degrauzinhos): sem isto o Rabisco andava com os pés dentro da grama
+  sol(S, -lado / 2, lado / 2, -lado / 2, lado / 2, 0.11); sol(S, -gr / 2, gr / 2, -gr / 2, gr / 2, 0.18);
   // chafariz de degraus: bacia, coluna, prato e jato
   const pedra = 0xe6e0d4;
   pc(g, 9.2, 0.4, 9.2, claro(pedra, 0.2), 0, 0.3, 0); pc(g, 8.6, 0.9, 8.6, pedra, 0, 0.6, 0);
@@ -530,7 +532,8 @@ export function praca(raio) {
     const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
     const cx = Math.sin(a) * 9.5, cz = Math.cos(a) * 9.5;
     const c = canteiro(3.6, 2.2); c.position.set(cx, 0.1, cz); c.rotation.y = a; g.add(c);
-    sol(S, cx - 1.9, cx + 1.9, cz - 1.9, cz + 1.9, 0.6);
+    // o canteiro fica na diagonal: três caixas ao longo dele (uma caixa só, quadrada, fechava a passagem até a árvore)
+    for (const t of [-1.25, 0, 1.25]) { const qx = cx + Math.cos(a) * t, qz = cz - Math.sin(a) * t; sol(S, qx - 0.8, qx + 0.8, qz - 0.8, qz + 0.8, 0.6); }
     const b = banco(); b.position.set(Math.sin(a + Math.PI / 4) * 7.2, 0.14, Math.cos(a + Math.PI / 4) * 7.2); b.rotation.y = a + Math.PI / 4 + Math.PI; g.add(b);
     // lixeira ao lado de cada banco (Mundo Vivo, etapa 4)
     const lx = lixeira(); lx.position.set(Math.sin(a + Math.PI / 4 + 0.3) * 7.2, 0.1, Math.cos(a + Math.PI / 4 + 0.3) * 7.2); lx.userData.detalhe = true; g.add(lx);

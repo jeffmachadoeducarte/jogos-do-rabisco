@@ -91,8 +91,8 @@ function poseAluna(m, passo, b) {
 function criarAluna(cor, i) {
   const m = criarMorador("lapis", { cor, semente: i + 2, acessorio: "laco", corAcessorio: 0xffffff, tenis: 0xffd3e2, iris: "#8e6cff", escala: 0.74 });
   // saia de tule: três discos abertos na cintura, presos no corpo
-  const saia = new THREE.Group(); saia.position.y = 0.46; m.partes.raiz.add(saia);
-  for (const [r, y, c] of [[0.72, 0, claro(cor, 0.5)], [0.62, 0.07, claro(cor, 0.3)], [0.52, 0.14, cor]]) { const d = malha(new THREE.CylinderGeometry(r, r, 0.05, 14), mat(c), F); d.position.y = y; saia.add(d); }
+  const saia = new THREE.Group(); saia.position.y = 0.5; m.partes.raiz.add(saia);
+  for (const [r, y, c] of [[0.6, 0, claro(cor, 0.5)], [0.52, 0.06, claro(cor, 0.3)], [0.44, 0.12, cor]]) { const d = malha(new THREE.CylinderGeometry(r, r, 0.05, 14), mat(c), F); d.position.y = y; saia.add(d); }
   mesclar(saia);
   return m;
 }
@@ -340,29 +340,29 @@ function vestir(m, qual) {
   const g = new THREE.Group(); m.partes.raiz.add(g);
   const a = m.altura / (m.grupo.scale.y || 1);
   if (qual === "capa") { // capa de herói nas costas
-    for (let i = 0; i < 4; i++) pc(g, 0.76 + i * 0.09, 0.22, 0.05, i % 2 ? 0x1f6fe0 : 0x2f8fe8, 0, 1.12 - i * 0.22, -0.4 - i * 0.03, F);
-    pc(g, 0.82, 0.1, 0.06, 0xffcc1f, 0, 1.22, -0.38, F);
-    pc(g, 0.2, 0.2, 0.05, 0xffcc1f, 0, 0.88, 0.37, F); // brasão no peito (uma estrela de faz de conta)
+    for (let i = 0; i < 4; i++) pc(g, 0.6 + i * 0.09, 0.22, 0.05, i % 2 ? 0x1f6fe0 : 0x2f8fe8, 0, 0.98 - i * 0.2, -0.22 - i * 0.03, F);
+    pc(g, 0.66, 0.1, 0.06, 0xffcc1f, 0, 1.06, -0.2, F);
+    pc(g, 0.2, 0.2, 0.05, 0xffcc1f, 0, 0.82, 0.2, F); // brasão no peito (uma estrela de faz de conta)
   } else if (qual === "festa") { // chapéu de festa e saia de arco-íris
     const ch = malha(new THREE.ConeGeometry(0.28, 0.62, 12), mat(0xec2e8c), F); ch.position.set(0, a + 0.18, 0); g.add(ch);
     const pomp = malha(new THREE.SphereGeometry(0.1, 8, 6), mat(0xffffff), F); pomp.position.set(0, a + 0.54, 0); g.add(pomp);
-    [0xe8413c, 0xff7a00, 0xffcc1f, 0x58c43a, 0x2f8fe8, 0x8e6cff].forEach((c, i) => { const d = malha(new THREE.CylinderGeometry(0.62 - i * 0.03, 0.66 - i * 0.03, 0.07, 14), mat(c), F); d.position.y = 0.34 + i * 0.07; g.add(d); });
+    [0xe8413c, 0xff7a00, 0xffcc1f, 0x58c43a, 0x2f8fe8, 0x8e6cff].forEach((c, i) => { const d = malha(new THREE.CylinderGeometry(0.5 - i * 0.03, 0.54 - i * 0.03, 0.06, 14), mat(c), F); d.position.y = 0.34 + i * 0.06; g.add(d); });
   } else if (qual === "cartola") { // cartola e gravata-borboleta grande
     const aba = malha(new THREE.CylinderGeometry(0.46, 0.46, 0.05, 16), mat(0x24252b), F); aba.position.y = a; g.add(aba);
     const copa = malha(new THREE.CylinderGeometry(0.28, 0.3, 0.46, 14), mat(0x24252b), F); copa.position.y = a + 0.25; g.add(copa);
     const fita = malha(new THREE.CylinderGeometry(0.31, 0.31, 0.09, 14), mat(0x8e5bd8), F); fita.position.y = a + 0.08; g.add(fita);
-    for (const q of [-1, 1]) { pc(g, 0.26, 0.22, 0.05, 0x8e5bd8, q * 0.16, 0.72, 0.4, { ...F, rz: q * 0.25 }); } pc(g, 0.09, 0.09, 0.07, 0xffcc1f, 0, 0.72, 0.42, F);
+    for (const q of [-1, 1]) { pc(g, 0.22, 0.18, 0.05, 0x8e5bd8, q * 0.14, 0.98, 0.21, { ...F, rz: q * 0.25 }); } pc(g, 0.09, 0.09, 0.07, 0xffcc1f, 0, 0.98, 0.23, F);
   } else if (qual === "asas") { // asas de borboleta
     for (const q of [-1, 1]) {
-      pc(g, 0.7, 0.62, 0.05, 0xff7ab8, q * 0.65, 1.04, -0.32, { ...F, rz: q * 0.3 }); pc(g, 0.5, 0.44, 0.05, 0xffcc1f, q * 0.56, 0.5, -0.32, { ...F, rz: -q * 0.28 });
-      pc(g, 0.22, 0.22, 0.06, 0xffffff, q * 0.7, 1.05, -0.31, { ...F, rz: q * 0.3 }); pc(g, 0.16, 0.16, 0.06, 0xec2e8c, q * 0.56, 0.5, -0.31, F);
+      pc(g, 0.7, 0.62, 0.05, 0xff7ab8, q * 0.6, 1.0, -0.22, { ...F, rz: q * 0.3 }); pc(g, 0.5, 0.44, 0.05, 0xffcc1f, q * 0.52, 0.52, -0.22, { ...F, rz: -q * 0.28 });
+      pc(g, 0.22, 0.22, 0.06, 0xffffff, q * 0.65, 1.01, -0.21, { ...F, rz: q * 0.3 }); pc(g, 0.16, 0.16, 0.06, 0xec2e8c, q * 0.52, 0.52, -0.21, F);
     }
   } else if (qual === "coroa") { // coroa de papel e capa de rainha
     pc(g, 0.62, 0.15, 0.62, 0xffcc1f, 0, a + 0.08, 0, F);
     for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 1], [0, -1]]) pc(g, 0.12, 0.17, 0.12, 0xffcc1f, x * 0.25, a + 0.23, z * 0.25, F);
     pc(g, 0.12, 0.12, 0.05, 0xec2e8c, 0, a + 0.09, 0.32, F);
-    for (let i = 0; i < 5; i++) pc(g, 0.82 + i * 0.1, 0.2, 0.05, i % 2 ? 0x8e5bd8 : 0x7a4fd1, 0, 1.0 - i * 0.2, -0.4 - i * 0.02, F);
-    pc(g, 0.9, 0.08, 0.1, 0xffffff, 0, 1.1, -0.36, F);
+    for (let i = 0; i < 5; i++) pc(g, 0.62 + i * 0.1, 0.2, 0.05, i % 2 ? 0x8e5bd8 : 0x7a4fd1, 0, 0.96 - i * 0.18, -0.22 - i * 0.02, F);
+    pc(g, 0.7, 0.08, 0.1, 0xffffff, 0, 1.05, -0.2, F);
   }
   mesclar(g);
 }
@@ -373,27 +373,27 @@ function vestirNatal(m, qual) {
   if (qual === "gorro") { // gorro de Natal com pompom e cachecol listrado
     pc(g, 0.66, 0.14, 0.66, BR, 0, a + 0.02, 0, F); pc(g, 0.52, 0.26, 0.52, VM, 0, a + 0.2, 0, F); pc(g, 0.36, 0.22, 0.36, VM, 0.06, a + 0.42, 0, { ...F, rz: -0.3 }); pc(g, 0.22, 0.2, 0.22, VM, 0.16, a + 0.58, 0, { ...F, rz: -0.6 });
     pc(g, 0.18, 0.18, 0.18, BR, 0.27, a + 0.66, 0, F);
-    pc(g, 0.84, 0.16, 0.82, VM, 0, 1.2, 0, F); pc(g, 0.86, 0.05, 0.84, BR, 0, 1.2, 0, F); // cachecol no pescoço
-    for (let i = 0; i < 4; i++) pc(g, 0.18, 0.14, 0.06, i % 2 ? BR : VM, 0.22, 1.08 - i * 0.14, 0.42, F); // a ponta caindo na frente
+    pc(g, 0.62, 0.12, 0.44, VM, 0, 1.03, 0, F); pc(g, 0.64, 0.04, 0.46, BR, 0, 1.03, 0, F); // cachecol no pescoço
+    for (let i = 0; i < 4; i++) pc(g, 0.16, 0.12, 0.06, i % 2 ? BR : VM, 0.18, 0.94 - i * 0.12, 0.21, F); // a ponta caindo na frente
   } else if (qual === "estrela") { // estrela grande na cabeça (de frente e de lado) e capa azul de céu de noite com estrelinhas
     for (const ry of [0, Math.PI / 2]) { const e = estrela(0.42, 0.12, 0xffc21a); e.position.set(0, a + 0.5, 0); e.rotation.y = ry; g.add(e); }
     pc(g, 0.12, 0.2, 0.12, 0xffc21a, 0, a + 0.06, 0, F); pc(g, 0.56, 0.1, 0.56, 0xffc21a, 0, a + 0.02, 0, F);
-    for (let i = 0; i < 4; i++) pc(g, 0.78 + i * 0.09, 0.22, 0.05, i % 2 ? 0x1f3a8a : 0x274aa8, 0, 1.12 - i * 0.22, -0.4 - i * 0.03, F);
-    for (const [x, y] of [[-0.25, 0.9], [0.22, 0.62], [0, 0.42], [0.2, 1.05], [-0.18, 0.5]]) pc(g, 0.1, 0.1, 0.05, 0xfff3b0, x, y, -0.49, F);
+    for (let i = 0; i < 4; i++) pc(g, 0.6 + i * 0.09, 0.22, 0.05, i % 2 ? 0x1f3a8a : 0x274aa8, 0, 0.98 - i * 0.2, -0.22 - i * 0.03, F);
+    for (const [x, y] of [[-0.2, 0.86], [0.2, 0.62], [0, 0.44], [0.16, 0.98], [-0.18, 0.52]]) pc(g, 0.1, 0.1, 0.05, 0xfff3b0, x, y, -0.34, F);
   } else if (qual === "pastor") { // manto marrom, faixa na cabeça e cajado
     pc(g, 0.64, 0.14, 0.62, 0xd8c3a0, 0, a + 0.02, 0, F); pc(g, 0.66, 0.06, 0.64, 0x5b8fd9, 0, a - 0.04, 0, F);
     for (const k of [-1, 1]) pc(g, 0.08, 0.5, 0.5, 0xd8c3a0, k * 0.34, a - 0.2, -0.04, F);
-    for (let i = 0; i < 5; i++) pc(g, 0.84 + i * 0.06, 0.22, 0.05, i % 2 ? 0x8a5a2b : 0x9c6a38, 0, 1.1 - i * 0.2, -0.4 - i * 0.02, F);
-    pc(g, 0.86, 0.1, 0.84, 0x8a5a2b, 0, 0.62, 0, F);
+    for (let i = 0; i < 5; i++) pc(g, 0.62 + i * 0.06, 0.2, 0.05, i % 2 ? 0x8a5a2b : 0x9c6a38, 0, 0.98 - i * 0.18, -0.22 - i * 0.02, F);
+    pc(g, 0.62, 0.1, 0.42, 0x8a5a2b, 0, 0.6, 0, F);
     pc(g, 0.07, 1.9, 0.07, 0x8a5a2b, 0.52, 0.95, 0.15, F); pc(g, 0.24, 0.07, 0.07, 0x8a5a2b, 0.43, 1.9, 0.15, F); pc(g, 0.07, 0.2, 0.07, 0x8a5a2b, 0.32, 1.82, 0.15, F);
   } else if (qual === "arvore") { // fantasia de árvore de Natal: andares verdes, bolinhas e a estrela em cima
-    for (let i = 0; i < 4; i++) pc(g, 1.02 - i * 0.16, 0.26, 1.0 - i * 0.16, i % 2 ? 0x3fa34a : VD, 0, 0.42 + i * 0.26, 0, { ...F, ry: i % 2 ? Math.PI / 4 : 0 });
-    for (const [x, y, z, c] of [[0.42, 0.34, 0.3, VM], [-0.4, 0.62, 0.28, OU], [0.3, 0.86, 0.3, 0x2f8fe8], [-0.26, 1.1, 0.26, VM], [0.0, 0.5, 0.52, OU]]) pc(g, 0.13, 0.13, 0.13, c, x, y, z, F);
+    for (let i = 0; i < 4; i++) pc(g, 0.98 - i * 0.14, 0.2, 0.8 - i * 0.12, i % 2 ? 0x3fa34a : VD, 0, 0.36 + i * 0.2, 0, { ...F, ry: i % 2 ? Math.PI / 4 : 0 });
+    for (const [x, y, z, c] of [[0.4, 0.32, 0.3, VM], [-0.36, 0.54, 0.28, OU], [0.28, 0.74, 0.28, 0x2f8fe8], [-0.22, 0.94, 0.24, VM], [0.0, 0.44, 0.42, OU]]) pc(g, 0.13, 0.13, 0.13, c, x, y, z, F);
     for (const r of [0, Math.PI / 2]) pc(g, 0.4, 0.12, 0.1, 0xffd23f, 0, a + 0.16, 0, { ...F, rz: Math.PI / 4, ry: r }); pc(g, 0.2, 0.2, 0.14, 0xffe27a, 0, a + 0.16, 0, F);
   } else if (qual === "anjo") { // anjinho: asas brancas, auréola dourada e túnica com faixa dourada
-    for (const q of [-1, 1]) { pc(g, 0.62, 0.72, 0.06, BR, q * 0.55, 1.06, -0.36, { ...F, rz: q * 0.35 }); pc(g, 0.44, 0.4, 0.06, 0xeaf4ff, q * 0.62, 0.6, -0.36, { ...F, rz: -q * 0.3 }); }
+    for (const q of [-1, 1]) { pc(g, 0.62, 0.72, 0.06, BR, q * 0.52, 1.0, -0.24, { ...F, rz: q * 0.35 }); pc(g, 0.44, 0.4, 0.06, 0xeaf4ff, q * 0.58, 0.6, -0.24, { ...F, rz: -q * 0.3 }); }
     for (const [w, d, x, z] of [[0.46, 0.06, 0, 0.2], [0.46, 0.06, 0, -0.2], [0.06, 0.46, 0.2, 0], [0.06, 0.46, -0.2, 0]]) pc(g, w, 0.05, d, 0xffd23f, x, a + 0.24, z, F);
-    pc(g, 0.84, 0.1, 0.82, OU, 0, 0.66, 0, F);
+    pc(g, 0.62, 0.1, 0.42, OU, 0, 0.62, 0, F);
   }
   mesclar(g);
 }

@@ -1,106 +1,85 @@
-// Rabiscolândia: os moradores são amigos do estojo (lápis de cor, borracha, apontador, giz de cera, cola, régua,
-// pincel, caderno, clipe) feitos de blocos: cada um continua sendo o que é, com o rosto do traço do Rabisco (olhos grandes
-// de desenho animado, íris colorida, brilho, sobrancelha grossa e boca aberta com língua rosa), bracinhos e tênis.
+// Rabiscolândia: os moradores são CRIANÇAS de blocos com o uniforme da Educarte (antes eram amigos do estojo: o tipo
+// "lapis", "giz"... continua aceito e só varia a aparência). Rosto do traço do Rabisco (olhos grandes de desenho animado,
+// íris colorida, brilho, sobrancelha grossa e boca aberta), bracinhos e tênis. No coral da igreja: roupa "coral" (beca).
 // Andam dando pulinhos (estica e achata), piscam, olham em volta e acenam quando o Rabisco chega perto.
 //
 //   const m = criarMorador("lapis", { cor: 0xe8413c });   cena.add(m.grupo);
 //   m.atualizar(dt, { vel, acenar, olhar });               // vel em m/s (0 = parado)
 
-import { THREE, matNovo, mat, malha, geoCaixaRedonda, texturaRosto, texturaCanvas, mesclar, MAT } from "./base3d.js";
-import { cx, degraus, escuro, claro } from "./blocos.js";
+import { THREE, matNovo, mat, malha, geoCaixaRedonda, texturaRosto, mesclar, MAT } from "./base3d.js";
+import { cx } from "./blocos.js";
 import { sombraBlob } from "../../src/motor3d/objetos.js";
 
-const PELE = 0xfce3c6, MADEIRA = 0xf3c99a, TINTA = 0x151515;
+const TINTA = 0x151515;
 const IRIS = ["#00b5f0", "#58c43a", "#8e6cff", "#ff7a00", "#ec2e8c", "#2f8fe8", "#1fc08e"];
 
-const rostoPlano = (largura, altura, material) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(largura, altura), material); m.renderOrder = 2; return m; };
+// Rosto e logo da camiseta num desenho só (uma chamada de desenho): a textura tem o rosto em cima (256×256) e a logo
+// oficial da Educarte embaixo (256×128); a malha são dois retângulos, um no rosto e outro no peito.
+const LOGOS = {}, texRL = new Map();
+function logoImg(qual) {
+  if (!LOGOS[qual]) { const i = new Image(); const L = (LOGOS[qual] = { img: i, pronto: false, espera: [] }); i.onload = () => { L.pronto = true; for (const f of L.espera) f(); L.espera = []; }; i.src = `../../assets/marca/logos/${qual}.png`; }
+  return LOGOS[qual];
+}
+function texturaRostoLogo(iris, fechado, logo) {
+  const k = `${iris}|${fechado}|${logo}`;
+  if (texRL.has(k)) return texRL.get(k);
+  const c = document.createElement("canvas"); c.width = 256; c.height = 384;
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  const ctx = c.getContext("2d");
+  const pintar = () => { ctx.clearRect(0, 0, 256, 384); ctx.drawImage(texturaRosto({ iris, fechado }).image, 0, 0, 256, 256); const L = logo && logoImg(logo); if (L?.pronto) ctx.drawImage(L.img, 6, 258, 244, 124); t.needsUpdate = true; };
+  pintar();
+  if (logo && !logoImg(logo).pronto) logoImg(logo).espera.push(pintar);
+  texRL.set(k, t);
+  return t;
+}
 // o rosto brilha um pouquinho (emissivo) para o branco dos olhos não ficar cinza na sombra
-const matRosto = (iris) => { const t = texturaRosto({ iris }); return matNovo({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.35, transparent: true, alphaTest: 0.35 }); };
+const matRosto = (t) => matNovo({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.35, transparent: true, alphaTest: 0.35 });
+// rosto: [x, y, z, lado] · peito: [y, z, largura, altura] (ou null: sem logo)
+function geoRostoLogo(rosto, peito) {
+  const pos = [], uv = [], ind = [];
+  const quad = (x, y, z, w, h, v0, v1) => { const i = pos.length / 3; pos.push(x - w / 2, y - h / 2, z, x + w / 2, y - h / 2, z, x + w / 2, y + h / 2, z, x - w / 2, y + h / 2, z); uv.push(0, v0, 1, v0, 1, v1, 0, v1); ind.push(i, i + 1, i + 2, i, i + 2, i + 3); };
+  quad(rosto[0], rosto[1], rosto[2], rosto[3], rosto[3], 1 / 3, 1);
+  if (peito) quad(0, peito[0], peito[1], peito[2], peito[3], 0, 1 / 3);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+  g.setAttribute("normal", new THREE.Float32BufferAttribute(pos.map((_, i) => (i % 3 === 2 ? 1 : 0)), 3)); g.setIndex(ind);
+  return g;
+}
 
-// faixa de papel do giz de cera (zigue-zague nas pontas)
-const texPapelGiz = (cor) => texturaCanvas(256, 128, (c, w, h) => {
-  c.fillStyle = "#fffaf0"; c.fillRect(0, 0, w, h);
-  c.fillStyle = cor;
-  for (const y0 of [0, h]) { c.beginPath(); c.moveTo(0, y0); for (let x = 0; x <= w; x += 16) c.lineTo(x, y0 + (y0 ? -1 : 1) * (x % 32 ? 22 : 10)); c.lineTo(w, y0); c.fill(); }
-});
-const texRegua = texturaCanvas(64, 512, (c, w, h) => {
-  c.fillStyle = "#ffd84a"; c.fillRect(0, 0, w, h);
-  c.fillStyle = "#151515";
-  for (let i = 0; i < 40; i++) { const y = 8 + i * 12.4; c.fillRect(0, y, i % 5 ? 12 : 24, 2.5); }
-});
-const texRotuloCola = texturaCanvas(256, 96, (c, w, h) => {
-  c.fillStyle = "#00b5f0"; c.fillRect(0, 0, w, h);
-  c.fillStyle = "#ffcc1f"; c.fillRect(0, 0, w, 10); c.fillRect(0, h - 10, w, 10);
-});
-
-// ---------- corpos (cada um devolve { plano, ombro: y dos ombros, quadril, larg, rosto } com a frente em +z)
-const CORPOS = {
-  lapis(c, cor) { // lápis de seção quadrada: arestas mais escuras, faixa branca, madeira em degraus e a ponta da cor dele
-    const w = 0.66, h = 0.92, e = escuro(cor, 0.82);
-    cx(c, w, h, w, cor, 0, h / 2, 0);
-    for (const [x, z] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) cx(c, 0.1, h, 0.1, e, x * (w / 2 - 0.02), h / 2, z * (w / 2 - 0.02), { sombra: false });
-    cx(c, w + 0.03, 0.07, w + 0.03, 0xffffff, 0, h - 0.08, 0, { sombra: false });
-    const m = malha(degraus(w, w, 0.42, 3, { fim: 0.34 }), mat(MADEIRA)); m.position.y = h + 0.21; c.add(m);
-    const p = malha(degraus(0.22, 0.22, 0.2, 2), mat(cor)); p.position.y = h + 0.5; c.add(p);
-    return { plano: w / 2 + 0.012, ombro: 0.5, quadril: 0.06, rostoY: 0.56, larg: w / 2, alto: h + 0.6 };
-  },
-  giz(c, cor) { // giz de cera: papel com zigue-zague e ponta arredondada em degraus
-    const w = 0.72, h = 0.86, papel = matNovo({ map: texPapelGiz(`#${new THREE.Color(cor).getHexString()}`) });
-    cx(c, w, h, w, cor, 0, h / 2, 0); cx(c, w + 0.03, 0.62, w + 0.03, 0, 0, 0.42, 0, { material: papel });
-    const t = malha(degraus(w, w, 0.34, 3, { fim: 0.5 }), mat(cor)); t.position.y = h + 0.17; c.add(t);
-    return { plano: w / 2 + 0.03, ombro: 0.5, quadril: 0.06, rostoY: 0.44, larg: w / 2, alto: h + 0.4 };
-  },
-  cola(c) { // tubo de cola: corpo branco, rótulo, tampa laranja e bico
-    const w = 0.66, h = 0.98;
-    cx(c, w, h, w, 0xfdfdfd, 0, h / 2, 0); cx(c, w + 0.03, 0.26, w + 0.03, 0, 0, 0.2, 0, { material: matNovo({ map: texRotuloCola }) });
-    cx(c, 0.52, 0.22, 0.52, 0xff7a00, 0, h + 0.11, 0); const b = malha(degraus(0.3, 0.3, 0.28, 3, { fim: 0.3 }), mat(0xff7a00)); b.position.y = h + 0.36; c.add(b);
-    return { plano: w / 2 + 0.012, ombro: 0.48, quadril: 0.07, rostoY: 0.64, larg: w / 2, alto: h + 0.5 };
-  },
-  apontador(c, cor) {
-    const w = 0.82, h = 0.78, d = 0.62;
-    cx(c, w, h, d, cor, 0, h / 2, 0); cx(c, w * 0.7, 0.06, d * 0.6, 0xd9e2ec, 0, h + 0.02, 0); cx(c, 0.12, 0.05, 0.12, 0x9aa3ad, 0.22, h + 0.07, 0, { sombra: false });
-    for (const s of [-1, 1]) cx(c, 0.03, 0.3, 0.3, 0x24324a, s * (w / 2 + 0.003), h * 0.55, 0, { sombra: false });
-    return { plano: d / 2 + 0.005, ombro: 0.46, quadril: 0.06, rostoY: 0.42, larg: w / 2, alto: h + 0.1 };
-  },
-  regua(c) {
-    const w = 0.52, h = 1.42, d = 0.16;
-    cx(c, w, h, d, 0xffd84a, 0, h / 2, 0);
-    const marcas = new THREE.Mesh(new THREE.PlaneGeometry(0.13, h - 0.16), matNovo({ map: texRegua, transparent: true }));
-    marcas.position.set(-w / 2 + 0.08, h / 2, d / 2 + 0.004); c.add(marcas);
-    return { plano: d / 2 + 0.006, ombro: 0.62, quadril: 0.06, rostoY: 1.04, larg: w / 2, alto: h, rostoX: 0.06, rostoL: 0.42 };
-  },
-  pincel(c, cor) { // cabo de madeira, virola de metal, pelo e a tinta na ponta
-    cx(c, 0.36, 0.55, 0.36, 0xc97a3a, 0, 0.275, 0);
-    const v = malha(degraus(0.6, 0.6, 0.62, 3, { fim: 0.75 }), mat(0xc8d0da)); v.rotation.x = Math.PI; v.position.y = 0.82; c.add(v);
-    cx(c, 0.6, 0.3, 0.6, 0x6b4a2f, 0, 1.28, 0); cx(c, 0.46, 0.2, 0.46, cor, 0, 1.52, 0); cx(c, 0.28, 0.16, 0.28, cor, 0, 1.7, 0);
-    return { plano: 0.31, ombro: 0.62, quadril: 0.06, rostoY: 0.84, larg: 0.32, alto: 1.78, rostoL: 0.5 };
-  },
-  caderno(c, cor) {
-    const w = 0.92, h = 1.08, d = 0.3;
-    cx(c, w, h, d, cor, 0, h / 2, 0); cx(c, w - 0.1, h - 0.1, d + 0.02, 0xfffdf5, 0.04, h / 2, 0, { sombra: false }); cx(c, w + 0.02, h + 0.02, 0.08, cor, 0, h / 2, 0.13, { sombra: false });
-    cx(c, 0.5, 0.18, 0.02, 0xffffff, 0.06, h - 0.2, d / 2 + 0.03, { sombra: false });
-    for (let i = 0; i < 6; i++) cx(c, 0.12, 0.05, d + 0.1, 0xb8c0cc, -w / 2, 0.14 + i * 0.16, 0, { sombra: false });
-    return { plano: d / 2 + 0.04, ombro: 0.5, quadril: 0.06, rostoY: 0.5, larg: w / 2, alto: h, rostoX: 0.06 };
-  },
-  clipe(c, cor) { // o corpo é um bloco colorido e o arame do clipe, em trechos retos, virou um topete
-    const w = 0.66, h = 1.05, a = 0xc8d0da, e = 0.07;
-    cx(c, w, h, w, cor, 0, h / 2, 0); cx(c, w - 0.2, 0.14, w - 0.2, claro(cor, 0.12), 0, h + 0.07, 0);
-    for (const [ww, hh, x, y] of [[e, 0.56, -0.16, 0.28], [0.36, e, 0.02, 0.56], [e, 0.46, 0.2, 0.33], [0.24, e, 0.08, 0.1], [e, 0.3, -0.04, 0.25]]) cx(c, ww, hh, e, a, x, h + 0.1 + y, 0);
-    return { plano: w / 2 + 0.012, ombro: 0.5, quadril: 0.06, rostoY: 0.6, larg: w / 2, alto: h + 0.8 };
-  },
-  borracha(c, cor) { // borracha: bloco rosa e a capa de papel na metade de baixo, com a ponta gasta em degrau
-    const w = 1.2, d = 0.82, h = 1.0;
-    cx(c, w, h, d, cor, 0, h / 2, 0); cx(c, w + 0.04, 0.54, d + 0.04, 0x00b5f0, 0, 0.27, 0); cx(c, w + 0.05, 0.08, d + 0.05, 0xffffff, 0, 0.54, 0, { sombra: false });
-    cx(c, w - 0.16, 0.1, d - 0.16, claro(cor, 0.16), 0, h + 0.05, 0);
-    return { plano: d / 2 + 0.012, rostoX: 0, ombro: 0.48, quadril: 0.1, rostoY: 0.72, larg: 0.6, alto: 1.15, rostoL: 0.6 };
-  },
-};
+// ---------- corpo: criança de blocos (frente em +z; medidas sem a escala, pés no chão em y = 0)
+// Pernas até 0,5 · tronco 0,5–1,05 · cabeça 1,05–1,67 · cabelo até 1,8.
+// roupa "uniforme" (regra da escola): camiseta BRANCA com a logo rosa (meninas) ou azul (meninos), ou camiseta LARANJA
+// com a logo branca (para os dois); short ou calça rosa (meninas) ou azul (meninos); tênis rosa (meninas) ou azul (meninos).
+// roupa "coral" (só dentro da igreja): beca azul comprida, gola branca e estola dourada.
+const PELES = [0xfad7b8, 0xe9b98f, 0xc98f62, 0x9a6540, 0xf6c9a4, 0x7a4c2e];
+const CABELOS = [0x2b1a12, 0x4a2f1f, 0x151515, 0x8a5a2b, 0xd9a441, 0x5a3a22];
+const AZUL_UNIFORME = 0x00a3e6, ROSA_UNIFORME = 0xec2e8c, LARANJA_UNIFORME = 0xff7a00, BECA = 0x2f6fc0;
+const PERNA_C = 0.5;
+function corpoCrianca(c, { pele, cabelo, menina, roupa, cor, vovo, laranja, calca }) {
+  const coral = roupa === "coral", doGenero = menina ? ROSA_UNIFORME : AZUL_UNIFORME;
+  const blusa = coral ? BECA : laranja ? LARANJA_UNIFORME : 0xffffff, baixo = coral ? BECA : doGenero;
+  cx(c, 0.56, 0.5, 0.36, blusa, 0, 0.3, 0);                  // tronco
+  cx(c, 0.58, 0.14, 0.38, baixo, 0, 0.05, 0);                // quadril (short ou beca)
+  if (coral) {
+    cx(c, 0.66, 0.4, 0.46, BECA, 0, -0.2, 0);                // a beca desce até perto do pé
+    cx(c, 0.4, 0.08, 0.38, 0xffffff, 0, 0.53, 0, { sombra: false }); // gola
+    for (const s of [-1, 1]) cx(c, 0.09, 0.42, 0.02, 0xffd36b, s * 0.13, 0.3, 0.19, { sombra: false }); // estola
+  }
+  cx(c, 0.64, 0.62, 0.58, pele, 0, 0.86, 0);                 // cabeça
+  // cabelo: topo, nuca, laterais e franja
+  cx(c, 0.68, 0.14, 0.62, cabelo, 0, 1.22, 0, { sombra: false });
+  cx(c, 0.68, menina ? 0.62 : 0.34, 0.08, cabelo, 0, menina ? 0.9 : 1.02, -0.3, { sombra: false });
+  for (const s of [-1, 1]) cx(c, 0.06, menina ? 0.5 : 0.26, 0.44, cabelo, s * 0.33, menina ? 0.94 : 1.04, -0.06, { sombra: false });
+  cx(c, 0.6, 0.08, 0.05, cabelo, 0, 1.12, 0.29, { sombra: false });
+  if (menina && !vovo) for (const s of [-1, 1]) { cx(c, 0.14, 0.34, 0.14, cabelo, s * 0.4, 0.72, -0.06, { sombra: false }); cx(c, 0.16, 0.07, 0.16, cor, s * 0.4, 0.9, -0.06, { sombra: false }); } // maria-chiquinha com elástico colorido
+  return { crianca: true, coral, blusa, baixo, calca: calca && !coral, tenis: doGenero, logo: coral ? null : laranja ? "branco" : menina ? "rosa" : "azul", plano: 0.302, peito: 0.185, ombro: 0.5, quadril: 0.06, rostoY: 0.82, rostoL: 0.52, larg: 0.3, alto: 1.3 };
+}
 
 // ---------- montagem do morador
-// corAcessorio: cor do laço (padrão rosa) · tenis: cor do tênis (padrão: pela semente)
+// corAcessorio: cor do laço (padrão rosa) · tenis: só vale com a beca (no uniforme o tênis é rosa ou azul)
 // simples: o boneco inteiro vira uma malha de cor + o rosto (sem a sombrinha redonda): para quem só fica parado esperando
 // (os que pedem as missões de Natal, num lugar já cheio), custa 2 chamadas de desenho em vez de ~9; os bracinhos não acenam
-export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome = "", semente = 0, vovo = false, escala = 0.78, acessorio = null, corAcessorio = null, tenis = null, simples = false } = {}) {
+export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome = "", semente = 0, vovo = false, escala = 0.78, acessorio = null, corAcessorio = null, tenis = null, simples = false, roupa = "uniforme", menina: menina0 = null } = {}) {
   const grupo = new THREE.Group();
   grupo.scale.setScalar(escala); // um pouco menores que o Rabisco (ele é o herói)
   const raiz = new THREE.Group(); // pulinho, estica e achata
@@ -108,27 +87,29 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
   const corpo = new THREE.Group();
   raiz.add(corpo);
   const corIris = iris ?? IRIS[semente % IRIS.length];
-  const mRosto = matRosto(corIris);
-  const texAberto = mRosto.map, texFechado = texturaRosto({ iris: corIris, fechado: true });
-  const info = (CORPOS[tipo] ?? CORPOS.lapis)(corpo, tipo === "borracha" ? 0xff9ec4 : cor);
-  const PERNA = 0.36; // o corpo fica em cima das perninhas
+  // todo morador é uma criança (o tipo antigo, lápis/giz/cola..., só ajuda a variar); a semente escolhe pele e cabelo
+  const menina = menina0 ?? (vovo || acessorio === "laco" || semente % 2 === 1);
+  const pele = PELES[(semente * 5 + tipo.length) % PELES.length], cabelo = vovo ? 0xd9d9e0 : CABELOS[(semente * 3 + tipo.length) % CABELOS.length];
+  const info = corpoCrianca(corpo, { pele, cabelo, menina, roupa, cor, vovo, laranja: semente % 3 === 0, calca: semente % 4 >= 2 });
+  const texAberto = texturaRostoLogo(corIris, false, info.logo), texFechado = texturaRostoLogo(corIris, true, info.logo);
+  const mRosto = matRosto(texAberto);
+  const PERNA = PERNA_C; // o corpo fica em cima das perninhas
   corpo.position.y = PERNA;
   // rosto
   const L = info.rostoL ?? 0.56;
-  const rosto = rostoPlano(L, L, mRosto);
-  rosto.position.set(info.rostoX ?? 0, PERNA + info.rostoY, info.plano);
+  const rosto = new THREE.Mesh(geoRostoLogo([info.rostoX ?? 0, PERNA + info.rostoY, info.plano, L], info.logo ? [PERNA + 0.36, info.peito + 0.006, 0.44, 0.22] : null), mRosto);
+  rosto.renderOrder = 2;
   raiz.add(rosto);
 
   // Vovó Lápis: coque grisalho, óculos redondos e xale
   if (vovo) {
     const cinza = mat(0xd9d9e0);
-    const coque = malha(new THREE.SphereGeometry(0.2, 16, 12), cinza); coque.position.set(0, PERNA + 1.22, -0.18); raiz.add(coque);
-    const franja = malha(new THREE.SphereGeometry(0.31, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2.4), cinza); franja.position.set(0, PERNA + 0.98, 0); franja.scale.set(1.16, 0.6, 1.16); raiz.add(franja);
+    const coque = malha(new THREE.SphereGeometry(0.2, 16, 12), cinza); coque.position.set(0, PERNA + 1.2, -0.3); raiz.add(coque);
     const aro = mat(0x6b4a2f);
     for (const s of [-1, 1]) { const o = malha(new THREE.TorusGeometry(0.105, 0.016, 8, 24), aro); o.position.set(s * 0.115, PERNA + info.rostoY + 0.05, info.plano + 0.05); raiz.add(o); }
     const ponte = malha(new THREE.CylinderGeometry(0.012, 0.012, 0.05, 6), aro); ponte.rotation.z = Math.PI / 2; ponte.position.set(0, PERNA + info.rostoY + 0.07, info.plano + 0.05); raiz.add(ponte);
-    const xale = malha(new THREE.BoxGeometry(info.larg * 2 + 0.14, 0.3, info.plano * 2 + 0.14), mat(0xb58ad9)); xale.position.y = PERNA + 0.36; raiz.add(xale);
-    const laco = malha(new THREE.SphereGeometry(0.08, 10, 8), mat(0x8e5cc9)); laco.position.set(0, PERNA + 0.3, info.plano + 0.14); raiz.add(laco);
+    const xale = malha(new THREE.BoxGeometry(0.7, 0.22, info.peito * 2 + 0.12), mat(0xb58ad9)); xale.position.y = PERNA + 0.44; raiz.add(xale);
+    const laco = malha(new THREE.SphereGeometry(0.08, 10, 8), mat(0x8e5cc9)); laco.position.set(0, PERNA + 0.4, info.peito + 0.1); raiz.add(laco);
   }
 
   // acessórios (vieram da Rabiscópolis): laço, óculos, gravata, chapéu de palha, boné, capacete de bombeiro, touca de chef
@@ -137,15 +118,18 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
   // bracinhos (pivô no ombro) e perninhas com tênis (pivô no quadril)
   const braco = (s) => {
     const p = new THREE.Group(); p.position.set(s * (info.larg + 0.04), PERNA + info.ombro, 0);
-    cx(p, 0.13, 0.3, 0.13, PELE, 0, -0.18, 0, { sombra: false }); cx(p, 0.18, 0.16, 0.18, PELE, 0, -0.41, 0, { sombra: false });
+    cx(p, 0.16, info.coral ? 0.4 : 0.18, 0.16, info.blusa, 0, info.coral ? -0.18 : -0.07, 0, { sombra: false }); // manga (comprida na beca)
+    if (!info.coral) cx(p, 0.12, 0.24, 0.12, pele, 0, -0.26, 0, { sombra: false });
+    cx(p, 0.15, 0.13, 0.15, pele, 0, -0.43, 0, { sombra: false });
     p.rotation.z = s * 0.25;
     raiz.add(p);
     return p;
   };
-  const corTenis = tenis ?? [0x00b5f0, 0xec2e8c, 0xff7a00, 0x58c43a, 0x8e6cff][semente % 5];
+  const corTenis = info.coral ? (tenis ?? 0xffffff) : info.tenis; // uniforme: tênis rosa (meninas) ou azul (meninos)
   const perna = (s) => {
-    const p = new THREE.Group(); p.position.set(s * 0.15, PERNA, 0);
-    cx(p, 0.14, 0.24, 0.14, PELE, 0, -0.13, 0, { sombra: false }); cx(p, 0.24, 0.13, 0.36, corTenis, 0, -0.29, 0.06, { sombra: false }); cx(p, 0.26, 0.05, 0.38, 0xffffff, 0, -0.35, 0.06, { sombra: false });
+    const p = new THREE.Group(); p.position.set(s * 0.14, PERNA, 0);
+    cx(p, 0.22, 0.16, 0.24, info.baixo, 0, -0.08, 0, { sombra: false }); cx(p, info.calca ? 0.2 : 0.15, 0.24, info.calca ? 0.22 : 0.15, info.calca ? info.baixo : pele, 0, -0.26, 0, { sombra: false });
+    cx(p, 0.22, 0.12, 0.34, corTenis, 0, -0.41, 0.05, { sombra: false }); cx(p, 0.24, 0.05, 0.36, 0xffffff, 0, -0.475, 0.05, { sombra: false });
     raiz.add(p);
     return p;
   };
@@ -159,7 +143,7 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
 
   let fase = semente * 1.7, tempo = semente * 3.1, piscar = 2 + (semente % 3), aceno = 0, pulinho = 0, vy = 0, py = 0, juntas = false;
   const api = {
-    grupo, nome, tipo, altura: (PERNA + info.alto) * escala,
+    grupo, nome, tipo, altura: (PERNA + info.alto) * escala, rostoY: PERNA + info.rostoY, rostoZ: info.plano,
     partes: { raiz, bE, bD, pE, pD }, // cenas de dança e de desfile mexem nos membros depois do atualizar
     pular() { if (py <= 0.001) { vy = 3.4; pulinho = 1; } },
     acenar(s = 1.8) { aceno = Math.max(aceno, s); },
@@ -208,7 +192,7 @@ export function criarMorador(tipo = "lapis", { cor = 0xe8413c, iris = null, nome
 
 // ---------- acessórios dos moradores das missões
 function enfeitarMorador(raiz, qual, info, PERNA, corA = null, juntar = true) {
-  const r = info.larg, topo = PERNA + info.rostoY + 0.36, frente = info.plano ?? r;
+  const r = info.larg, topo = PERNA + info.rostoY + (info.crianca ? 0.47 : 0.36), frente = info.plano ?? r;
   const g = new THREE.Group(); raiz.add(g);
   if (qual === "laco") {
     const fita = mat(corA ?? 0xff4f9a);
@@ -219,8 +203,8 @@ function enfeitarMorador(raiz, qual, info, PERNA, corA = null, juntar = true) {
     for (const s of [-1, 1]) { const o = malha(new THREE.TorusGeometry(0.1, 0.016, 8, 22), aro); o.position.set(s * 0.115, PERNA + info.rostoY + 0.05, frente + 0.05); g.add(o); }
     const ponte = malha(new THREE.CylinderGeometry(0.012, 0.012, 0.05, 6), aro); ponte.rotation.z = Math.PI / 2; ponte.position.set(0, PERNA + info.rostoY + 0.07, frente + 0.05); g.add(ponte);
   } else if (qual === "gravata") {
-    const gr = malha(new THREE.ConeGeometry(0.08, 0.32, 4), mat(0x1f3a8a)); gr.rotation.x = Math.PI; gr.position.set(0, PERNA + info.ombro - 0.12, frente + 0.03); gr.scale.z = 0.35; g.add(gr);
-    const no = malha(new THREE.SphereGeometry(0.05, 8, 6), mat(0x1f3a8a)); no.position.set(0, PERNA + info.ombro + 0.06, frente + 0.03); g.add(no);
+    const gr = malha(new THREE.ConeGeometry(0.08, 0.32, 4), mat(0x1f3a8a)); gr.rotation.x = Math.PI; gr.position.set(0, PERNA + info.ombro - 0.14, (info.peito ?? frente) + 0.03); gr.scale.z = 0.35; g.add(gr);
+    const no = malha(new THREE.SphereGeometry(0.05, 8, 6), mat(0x1f3a8a)); no.position.set(0, PERNA + info.ombro + 0.02, (info.peito ?? frente) + 0.03); g.add(no);
   } else if (qual === "chapeu" || qual === "bone" || qual === "capacete" || qual === "chef") {
     const cor = (qual === "capacete" && corA) || { chapeu: 0xf2d27a, bone: 0x00b5f0, capacete: 0xe63946, chef: 0xffffff }[qual]; // capacete com corA: o amarelo de obra
     const aba = malha(new THREE.CylinderGeometry(r + (qual === "chapeu" ? 0.2 : 0.06), r + (qual === "chapeu" ? 0.2 : 0.06), 0.05, 20), mat(cor));

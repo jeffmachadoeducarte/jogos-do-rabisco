@@ -26,6 +26,7 @@ import { criarMissoes } from "./missoes.js";
 import { criarProfissoes } from "./profissoes.js";
 import { natalAtivo } from "./natal.js";
 import { criarDesafios } from "./desafios.js";
+import { criarMoedasCidade } from "./moedas-cidade.js";
 import { criarNatal } from "./natal-cidade.js";
 import { criarPatioJE, enfeitarCarro } from "./je-patio.js";
 import { criarJogador2 } from "./jogador2.js";
@@ -269,6 +270,7 @@ let hud, hudNovo = null, minimapa, mapaGrande, mapaUI = null, guia = null, balao
 const j = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), noChao: true, coyote: 0, buffer: 0, dir: 0 };
 const veiculos = []; let garagem = null; // veículo chamado pelo Rabisfone (só um por vez)
 let transito = [], moradores = [], vovo = null, missoes = null, profissoes = null, j2 = null, patioJE = null;
+let moedasCidade = null, velAPe = 0; // moedinhas pela cidade e faíscas (moedas-cidade.js)
 let desafios = null; // Desafios de obstáculos (desafios.js): Pula-telhados, Argolas do helicóptero e Corrida de barco
 let natal = null; // Natal na cidade (natal.js: de 1º/12 a 6/1, ou ?natal=1): luzes, árvore, presépio e música da praça
 let dentro = null, contexto = null, salvo = carregar(), alvoMapa = null, monteLugar = null;
@@ -414,6 +416,7 @@ function iniciar() {
 
   // HUD
   hud = el("div", { class: "hud-rp" });
+  hud.addEventListener("click", (e) => { const b = e.target.closest?.(".sair-missao-rp"); if (b) { e.stopPropagation(); sairDaMissao(b.dataset.sair); } });
   minimapa = el("canvas", { class: "minimapa-rp", width: "200", height: "200", role: "button", "aria-label": "Abrir o mapa grande", hidden: "" });
   mapaLigado = false;
   minimapa.addEventListener("click", () => alternarMapa());
@@ -546,6 +549,10 @@ function iniciar() {
     descreverItem: (id) => inventario?.descrever(id) ?? null,
   });
   hudNovo.nivel(nivel.info()); hudNovo.barra(inventario.lista());
+  moedasCidade = criarMoedasCidade(cena, {
+    mundo, fis, salvo: () => salvo, salvar: () => salvar(salvo), hoje: () => diario.hoje(), sons, dizer: (...a) => dizer(...a), toque: Boolean(qualidade.perfil.toque),
+    ganhar: (qtd, rotulo) => { const r = Rabiscoins.ganhar(qtd, "rabiscolandia:moedinha"); if (r.ganhou > 0) contadorMoedas?.ganhou(r.ganhou, { rotulo, alvo: r.saldo }); else sons.moeda?.(); },
+  });
   desafios = criarDesafios(cena, {
     caixa, mundo, jogador: j, salvo: () => salvo, salvar: () => salvar(salvo), sons, falar: (k) => { radio?.pausarPorFala(true); falar(k); }, dizer: (...a) => dizer(...a),
     veiculo: () => dentro, ocupado: () => Boolean(emCasa || emLugar || oracao || trava || roda), vezes: (m) => Rabiscoins.vezes(m),
@@ -590,6 +597,7 @@ function parar() {
   natal?.pararMusica(); natal = null;
   bichinho?.liberar(); bichinho = null;
   desafios?.destruir(); desafios = null;
+  moedasCidade?.destruir(); moedasCidade = null;
   jogo.palco.querySelector('.escolha-j2-rp')?.remove(); j2 = null;
   mapaUI?.fechar();
   dentro = null; contexto = null; alvoMapa = null; oracao = null; trava = null; monteLugar = null; regras.monte = false;
@@ -1512,6 +1520,7 @@ function passo(dt, ultimo) {
       pad.puloNovo = false; if (toque) toque.puloNovo = false;
       const { v, pulou } = fis.andar(j, { ix: ent.ix, iy: ent.iy, pular: quer, segura: pad.pulo || toque?.pulo || tem("pular") }, camera.st.yaw, dt);
       if (pulou) sons.pulo();
+      velAPe = v;
       rabisco.grupo.position.copy(j.pos); rabisco.grupo.rotation.y = j.dir;
       rabisco.atualizar(dt, { modo: !j.noChao ? "pular" : v > 0.6 ? "andar" : "parado", vel: v, vmax: VEL });
       rabisco.aoPosar?.(rabisco, dt); // ex.: a pata Ale no colo (sitio.js): os braços seguram, por cima da animação do andar
@@ -1544,6 +1553,7 @@ function passo(dt, ultimo) {
     mundo.sitio?.atualizar(dt, t, j.pos); // Sítio Floresça: portão, Tia Regina, Duck, Ale (só perto)
     natal?.atualizar(dt, t, j.pos, !emCasa && !emLugar && !dentro);
     desafios?.atualizar(dt, t);
+    { const p = dentro ? dentro.pos : j.pos; moedasCidade?.atualizar(dt, t, { x: p.x, y: dentro ? 0 : j.pos.y, z: p.z, veiculo: dentro, noChao: dentro ? true : j.noChao, vel: dentro ? 0 : velAPe, ocupado: Boolean(emCasa || emLugar || oracao || trava || roda) }); }
     if (emLugar) emLugar.atualizar(dt, t);
     if (emCasa) decoCasa?.passo(dt, t);
     saidaPelaPorta();
@@ -1577,7 +1587,7 @@ function comecarOracao(tp, fim) {
   // a oração é com o NOME DA CRIANÇA ("Alice, vamos orar juntos."); sem nome no banco, a fala neutra gravada
   const nm = nomeCrianca();
   if (nm) oracao.dur = 5.6; // com o nome a introdução é mais longa: a 1ª frase só vem depois dela
-  painelOracao.innerHTML = `<p class="frase">🙏 ${nm ? `${nm}, vamos` : "Vamos"} orar juntos.</p><p class="dica">Fique quietinho e repita comigo.</p>`;
+  painelOracao.innerHTML = `<p class="frase">🙏 ${nm ? `${nm}, vamos` : "Vamos"} orar juntos.</p><p class="dica">Eu falo e você repete comigo.</p>`;
   falarNome(null, "rp-pai-intro-pos").then((ok) => { if (!ok) falar("cid-pai-intro"); });
 }
 function proximaFrase() {
@@ -1644,9 +1654,17 @@ function atualizarAcaoJ2() {
 function atualizarMissaoHud() {
   const box = hud.querySelector(".missao-rp"), m = !emCasa && !emLugar ? profissoes?.texto() ?? missoes?.texto() : null;
   if (!m) { box.hidden = true; return; }
-  const html = `<b>${m.icone} ${m.titulo}</b><span>${m.passo}</span>`;
-  if (box.innerHTML !== html) box.innerHTML = html;
+  // botão para sair sem terminar (missão ou trabalho): dá para voltar depois
+  const trabalho = Boolean(profissoes?.texto());
+  const html = `<b>${m.icone} ${m.titulo}</b><span>${m.passo}</span><button type="button" class="sair-missao-rp" data-sair="${trabalho ? "trabalho" : "missao"}">✖ ${trabalho ? "Sair do trabalho" : "Sair da missão"}</button>`;
+  if (box.dataset.html !== html) { box.dataset.html = html; box.innerHTML = html; }
   box.hidden = false;
+}
+function sairDaMissao(qual) {
+  if (qual === "trabalho") { profissoes?.terminar(); return; }
+  if (!missoes?.ativa) return;
+  missoes.largar(); alvoMapa = null;
+  dizer("Passaporte", "Tudo bem! Dá para voltar quando quiser.", 2400);
 }
 function atualizarBotaoAcao() {
   const b = hud.btnAcao;
@@ -1870,6 +1888,7 @@ if (params.has("teste")) window.teste = {
   corCasa(hex) { trocarCorCasa(hex); },
   get corParedes() { const c = mundo.casas.find((k) => k.lote.numero === salvo.casa); return c?.grupo.userData.paredes.userData.cor; },
   get radio() { return radio; }, get radioUI() { return radioUI; }, get avisoRadio() { return avisoRadio; }, falar: (k) => falar(k),
+  get moedasCidade() { return moedasCidade; },
   get missoes() { return missoes; }, get profissoes() { return profissoes; }, get patioJE() { return patioJE; }, get natal() { return natal; }, get desafios() { return desafios; },
   get roda() { return roda ? { ...roda, y: j.pos.y } : null; }, subirRoda: () => subirRoda(), descerRoda: () => descerRoda(),
   get trava() { return trava ? { pose: trava.pose ?? null, t: trava.t } : null; },
